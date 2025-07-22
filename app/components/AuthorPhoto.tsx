@@ -11,8 +11,7 @@ export default function AuthorPhoto() {
         right: "20px",
         borderRadius: "50%",
         overflow: "hidden",
-        width: "80px",
-        height: "80px",
+        
         boxShadow: "0 0 10px rgba(0,0,0,0.3)",
       }}
     >

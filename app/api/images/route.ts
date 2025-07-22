@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 
 export async function GET() {
-  const imagesDir = path.join(process.cwd(), "public/images");
+  const imagesDir = path.join(process.cwd(), "public/Images");
   let files: string[] = [];
 
   if (fs.existsSync(imagesDir)) {

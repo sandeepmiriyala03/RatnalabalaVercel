@@ -24,6 +24,6 @@ export async function POST(req: Request) {
 
   return Response.json({
     type: "text",
-    text: "Sorry, I don’t understand your message.",
+    text: "క్షమించండి, మీ సందేశం నాకు అర్థం కాలేదు.",
   });
 }

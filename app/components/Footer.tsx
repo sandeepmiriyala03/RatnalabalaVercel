@@ -1,31 +1,58 @@
-"use client";
+'use client';
 
-import { Box, Typography, Link } from "@mui/material";
+import { Box, Container, Typography, useTheme } from "@mui/material";
+import { useEffect, useState } from "react";
+
 
 export default function Footer() {
+  const theme = useTheme();
+  const [dateTime, setDateTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDateTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedDate = dateTime.toLocaleDateString('te-IN', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
+ 
+
   return (
     <Box
+      component="footer"
       sx={{
-        mt: 8,
+        mt: 4,
         py: 3,
-        borderTop: "1px solid #ddd",
+        px: 2,
+        backgroundColor:
+          theme.palette.mode === "light"
+            ? theme.palette.grey[200]
+            : theme.palette.grey[800],
         textAlign: "center",
+        borderRadius: "8px",
       }}
     >
-      <Typography variant="body2" sx={{ fontWeight: "bold", mt: 2 }}>
+      <Container maxWidth="sm">
+        <Typography variant="body2" sx={{ fontWeight: "bold", mt: 2 }}>
+          రత్నాలబాల పద్యాలవాల భావాలమాల
+        </Typography>
 
-        శ్రీ మిరియాల వెంకటరత్నం<br />
-        రత్నాల బాల పద్యాలవాల భావాల మాల
-      </Typography>
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          ఈ రోజు: <strong>{formattedDate}</strong>
+        </Typography>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-        © {new Date().getFullYear()} MIRIYALA Family Ratnalabala. All rights reserved.
-      </Typography>
-
-      <Typography variant="body2" sx={{ mt: 1 }}>
-        Contact us at:{" "}
-        <Link href="mailto:sandeep@example.com">sandeep@example.com</Link>
-      </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          © {new Date().getFullYear()} మిరియాల కుటుంబం రత్నాలబాల. అన్ని హక్కులు ప్రత్యేకించబడ్డాయి.
+        </Typography>
+    
+      </Container>
     </Box>
   );
 }

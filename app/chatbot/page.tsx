@@ -2,54 +2,84 @@
 
 import { useState } from "react";
 import { Box, TextField, Button, Typography } from "@mui/material";
-import Image from "next/image";
+
+interface Message {
+  sender: "user" | "bot";
+  text?: string;
+  type?: string;
+  file?: string;
+}
 
 export default function ChatbotPage() {
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
 
+  const paragraphText = `
+    అసహనం, జ్ఞానం, జాప్యం, దిలీప్, దయ, దానం, దారిద్య్రం, దురాశ, ద్రోహం, ధనం, న్యాయం, పొదుపు,
+    పౌరుషం, ప్రదీప్, పెద్దలు, బాల్యం, మిరియాల, రత్నాలబాల, రామకృష్ణ, లోకం, విషం, వైద్యం, సుఖం,
+    సొగసు, సౌజన్యం, గౌరవం.
+  `;
+
   const handleSend = async () => {
-    if (!input) return;
+    if (!input.trim()) return;
 
-    // Add user's message
-    setMessages((prev) => [...prev, { sender: "user", text: input }]);
+    const userMessage: Message = { sender: "user", text: input, type: "text" };
+    setInput(""); // Clear input early
 
-    // Call chatbot API
     const res = await fetch("/api/chatbot", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: input }),
     });
 
-    const data = await res.json();
+    const botMessage: Message = await res.json();
 
-    setMessages((prev) => [...prev, { sender: "bot", ...data }]);
-    setInput("");
+    setMessages((prev) => [...prev, userMessage, botMessage]); // One safe update
   };
 
   return (
     <Box sx={{ mt: 4, px: 2 }}>
-      <Typography variant="h4" gutterBottom>
-        Ratnalabala Chatbot
+      <Typography variant="h4" gutterBottom align="center">
+        భావాలమాల
+      </Typography>
+
+      <Typography variant="subtitle1" gutterBottom align="center">
+        దయచేసి క్రింద ఉన్న పదాల నుండి ఎంచుకుని ఎంటర్ చేయండి.
+      </Typography>
+
+      <Typography
+        variant="body1"
+        gutterBottom
+        align="center"
+        sx={{
+          lineHeight: 1.7,
+          color: "#333",
+          fontSize: { xs: "0.9rem", sm: "1rem", md: "1.1rem" },
+        }}
+      >
+        {paragraphText}
       </Typography>
 
       <Box sx={{ display: "flex", gap: 2, mb: 4 }}>
         <TextField
           fullWidth
-          label="Type your message"
+          label="భావాలమాల అడగండి"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === "Enter") handleSend();
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
           }}
         />
         <Button variant="contained" onClick={handleSend}>
-          Send
+          భావాలమాలకి పంపండి
         </Button>
       </Box>
 
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {messages.map((msg, i) => (
+        {[...messages].reverse().map((msg, i) => (
           <Box
             key={i}
             sx={{
@@ -61,37 +91,17 @@ export default function ChatbotPage() {
               alignSelf: msg.sender === "user" ? "flex-end" : "flex-start",
             }}
           >
-            {/* TEXT */}
-            {msg.type === "text" && (
-              <Typography>{msg.text}</Typography>
-            )}
+            {msg.type === "text" && <Typography>{msg.text}</Typography>}
 
-            {/* IMAGE */}
-            {msg.type === "image" && (
-              <>
-                <Typography>{msg.text}</Typography>
-                <Image
-                  src={`/images/${msg.file}`}
-                  alt={msg.file}
-                  width={300}
-                  height={200}
-                  style={{ borderRadius: "8px" }}
-                />
-              </>
-            )}
-
-            {/* AUDIO */}
             {msg.type === "audio" && (
               <>
                 <Typography>{msg.text}</Typography>
                 <audio controls style={{ width: "100%", marginTop: "10px" }}>
                   <source src={`/audio/${msg.file}`} type="audio/mpeg" />
-                  Your browser does not support the audio element.
                 </audio>
               </>
             )}
 
-            {/* VIDEO */}
             {msg.type === "video" && (
               <>
                 <Typography>{msg.text}</Typography>
@@ -101,7 +111,6 @@ export default function ChatbotPage() {
                   style={{ marginTop: "10px", borderRadius: "8px" }}
                 >
                   <source src={`/video/${msg.file}`} type="video/mp4" />
-                  Your browser does not support the video tag.
                 </video>
               </>
             )}

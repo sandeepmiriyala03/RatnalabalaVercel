@@ -3,3 +3,19 @@ type: text
 ---
 
 నమస్తే! Hello from Ratnalabala chatbot!
+
+
+---
+title: "అసహనం"
+author: "Ratnalabala"
+audio: "poem1.mp3"
+language: "Telugu"
+---
+
+గొప్పవారి జూచి క్రూరులు కొందరు 
+సహనబుద్ధి లేక సణుగుచుంద్రు ! 
+హంస జూచి కాకి హింసించబూనదా ?
+భావరత్నబాల ! భాగ్యలీల 
+
+But in English:  
+ English text here. poem 1

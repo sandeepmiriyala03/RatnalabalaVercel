@@ -1,19 +1,34 @@
-"use client";
-
+import ClientWrapper from "@/app/components/ClientWrapper";
+import Navbar from "@/app/components/Navbar";
 import {
   AppBar,
   Toolbar,
-  Button,
   Container,
-  Box,
-  Typography,
 } from "@mui/material";
-import Link from "next/link";
-import Image from "next/image";
-import Footer from "@/app/components/Footer";
-import { useEffect, useState } from "react";
 
+export const metadata = {
+  title: "రత్నాలబాల",
+  description: "రత్నాలబాల",
+  verification: {
+    google: "iFv4A22XfCP550a1-K4ZS3eHmGUtGWWSrOhjE9aPyGQ",
+  },
+  manifest: "/manifest.json",
 
+  icons: {
+    icon: "/icons/favicon.png",       
+    shortcut: "/icons/favicon.png",   
+    apple: "/icons/favicon.png",       
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "రత్నాలబాల",
+    Description: "రత్నాలబాల",
+  },
+};
+export const viewport = {
+  themeColor: "#6200ee", // ✅ Required fix
+};
 
 export default function RootLayout({
   children,
@@ -31,52 +46,14 @@ export default function RootLayout({
               alignItems: "center",
             }}
           >
-            {/* LEFT SIDE: Logo + Poem Text */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-              <Image
-                src="/images/logo.png"
-                alt="Ratnalabala Logo"
-                width={100}
-                height={50}
-              />
-
-              {/* POEM TEXT */}
-              <Box sx={{ display: "flex", flexDirection: "column" }}>
-            
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontWeight: "bold",
-                    color: "primary.main",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  శ్రీ మిరియాల వెంకటరత్నం
-                  రత్నాల బాల పద్యాలవాల   భావాల మాల
-                </Typography>
-               
-              </Box>
-            </Box>
-
-            {/* RIGHT SIDE: Nav Buttons + Clock */}
-            <Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
-        
-              <Button component={Link} href="/" color="inherit">
-                Home
-              </Button>
-              <Button component={Link} href="/chatbot" color="inherit">
-                Chatbot
-              </Button>
-              <Button component={Link} href="/images" color="inherit">
-                Images
-              </Button>
-            </Box>
+            <Navbar />
           </Toolbar>
         </AppBar>
-
         <Toolbar />
-        <Container sx={{ my: 4 }}>{children}</Container>
-        <Footer />
+
+        <Container sx={{ my: 4 }}>
+          <ClientWrapper>{children}</ClientWrapper>
+        </Container>
       </body>
     </html>
   );

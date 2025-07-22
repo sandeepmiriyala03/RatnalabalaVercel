@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-function getFiles(dir: string, prefix: string) {
+function getFiles(dir: string) {
   const result: Record<string, string> = {};
   const fullPath = path.join(process.cwd(), "public", dir);
 
@@ -17,20 +17,18 @@ function getFiles(dir: string, prefix: string) {
 }
 
 export async function GET() {
-  const images = getFiles("images", "/images");
-  const audio = getFiles("audio", "/audio");
-  const video = getFiles("video", "/video");
+ 
+  const audio = getFiles("audio");
+  const video = getFiles("video");
 
-  // Merge by base name
   const names = new Set([
-    ...Object.keys(images),
-    ...Object.keys(audio),
+     ...Object.keys(audio),
     ...Object.keys(video),
   ]);
 
   const mediaItems = Array.from(names).map((name) => ({
     name,
-    image: images[name] || null,
+   
     audio: audio[name] || null,
     video: video[name] || null,
   }));
