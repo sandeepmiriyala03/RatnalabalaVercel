@@ -56,11 +56,6 @@ const personalDetails = [
     label: " వివాహం ",
     value: " 'లక్ష్మీదేవి",
   },
-  {
-  icon: <FileText size={20} />,
-  label: "వివాహం",
-  value: "జోశ్యుల నరసింహారావు, సీతాదేవిల కుమార్తె 'లక్ష్మీదేవి'తో 1965 ఆగష్టు 17న"
-},
 {
   icon: <User size={20} />,
   label: "పిల్లలు",
