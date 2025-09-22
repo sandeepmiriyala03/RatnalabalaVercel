@@ -171,7 +171,7 @@ export default function MiryalaLifeJourney() {
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            జీవితం - ముఖ్య సంఘటనలు
+            జీవితం ముఖ్య సంఘటనలు
           </Typography>
           <List>
             {lifeEvents.map((event, i) => (
