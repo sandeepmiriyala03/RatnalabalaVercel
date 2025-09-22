@@ -182,10 +182,11 @@ text += `\n *రచనలు*:\n`;
     writings.forEach(line => {
       text += `${line}\n`;
     });
-    text += `\n *పురస్కారాలు *:\n`;
+    text += `\n *పురస్కారాలు*:\n`;
     awards.forEach(line => {
       text += `${line}\n`;
     });
+    text += `\n *పూర్తి వివరాలు సందర్శించండి.* : https://ratnalabala.vercel.app/ \n`;
     return text;
   };
 
