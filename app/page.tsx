@@ -169,7 +169,7 @@ const authorInfo = [
 
 export default function MiryalaLifeJourney() {
   const formatShareText = () => {
-    let text = "మిరియాల రామకృష్ణ గారి జీవిత ప్రస్థానం\n\n";
+    let text = "*మిరియాల రామకృష్ణ గారి ప్రస్థానం*\n\n";
     text += "*వ్యక్తిగత వివరాలు*:\n";
     personalDetails.forEach(({ label, value }) => {
       text += `${label}: ${value}\n`;
