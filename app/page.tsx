@@ -343,7 +343,7 @@ text += `\n *రచనలు*:\n`;
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-         మిరియాల రామకృష్ణ గారు ఆడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
+         మిరియాల రామకృష్ణ గారి ఆడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
           </Typography>
           <audio controls style={{ width: "100%" }}>
             <source src={audioSrc} type="audio/mp3" />
@@ -356,7 +356,7 @@ text += `\n *రచనలు*:\n`;
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            మిరియాల రామకృష్ణ గారి వీడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
+          మిరియాల రామకృష్ణ గారి వీడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
           </Typography>
           <video controls style={{ width: "100%" }}>
             <source src={videoSrc} type="video/mp4" />
