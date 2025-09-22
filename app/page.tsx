@@ -1,27 +1,19 @@
 "use client";
 
+import React from "react";
 import {
   Box,
   Typography,
   Container,
   Card,
   CardContent,
-  Divider,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
+  Button,
 } from "@mui/material";
-import {
-  Calendar,
-  User,
-  Home,
-  Book,
-  Award,
-  Heart,
-  MapPin,
-  FileText,
-} from "react-feather";
+import { Calendar, User, Home, Book, Award, MapPin, FileText } from "react-feather";
 
 const personalDetails = [
   {
@@ -132,17 +124,90 @@ const awards = [
   "2002 - సోమసుందర్ సాహిత్య ట్రస్ట్ అవార్డ్",
 ];
 
+// సాహిత్య విమర్శలు, పరిశోధనలు & తెలుగు భాష గురించి డేటా
+const literaryResearch = [
+  `మిరియాల రామకృష్ణ శ్రీశ్రీ సాహిత్యంపై పరిశోధన చేసి డాక్టరేట్ సాధించాడు. ఈ పుస్తకంపై ఆంధ్రజ్యోతి పత్రికలో పురాణం సుబ్రహ్మణ్య శర్మ "శ్రీశ్రీకి మిరియాల కషాయం" పేరుతో ఏడు వారాల సీరియల్ విమర్శలు రాశాడు. మహాప్రస్థానంలోని పదాలకు సరిపడని వ్యాఖ్యానాలు, లేని సారస్వాలు లాగుతూ రాశాడని విమర్శ. రామకృష్ణకు ఈ రచనకు డాక్టరేట్ వచ్చినప్పుడు శ్రీశ్రీ "డియర్ డాక్టర్ రామకృష్ణా! హార్టీ కంగ్రాచ్యులేషన్స్. యువర్స్ పేషెంట్లీ శ్రీశ్రీ" అంటూ సందేశం పంపి చమత్కరించాడు.`,
+];
+
+const teluguLanguagePoem = [
+  `సంస్కృతంబులోని చక్కెర పాకంబు  
+అరవ భాషలోని అమృత రాశి  
+కన్నడంబులోని కస్తూరి వాసన  
+కలిసిపోయె తేట తెలుగునందు ! 
+
+ఉగ్గుపాలనుండి ఉయ్యాలలోననుండి  
+అమ్మ పాట పాడినట్టి భాష  
+తేనెవంటి మందు వీనులకును విందు  
+దేశభాషలందు తెలుగులెస్స!  
+
+వేనవేల కవుల వెలుగులో రూపొంది  
+దేశదేశములను వాసిగాంచి  
+వేయి యేండ్లనుండి విలసిల్లు నా “భాష”  
+దేశ భాషలందు తెలుగు లెస్స!`,
+];
+
+
+const authorInfo = [
+  `మిరియాల రామకృష్ణ తెలుగు రచయిత, పరిశోధకుడు. ఇతను సుమారు 36 సంవత్సరాలు విద్యాశాఖలో తెలుగు భాషా సాహిత్యాలు బోధిస్తూ, మహాకవి శ్రీశ్రీ రచనలపై పరిశోధన చేశాడు. కొంతమంది పరిశోధన అతిగా సాగిందని విమర్శించారు.`,
+  `ఇతను రచించిన కథల్లో ఆకుపచ్చని కుక్కపిల్ల, ఆశ్చర్య చూడామణి, చెరసాలలో సరస్వతి, ఉంగరం వంటి గొప్ప కథలు ఉన్నాయి.`,
+  `కథలతో పాటు పద్యాలు, వచన కవితలు, గేయాలు, వ్యాసాలు, బాలసాహిత్యం విస్తృతంగా వ్రాసాడు.`,
+  `సుధాకిరణ్, ఆనందవర్ధన్ వంటి పత్రికలతో కలసి రచనలు ప్రచురణలో ఉన్నాయి.`,
+  `1995-96లో గీతాంజలి పత్రికకి సంపాదకుడు గా పని చేశాడు.`,
+  `హిమబిందు అకాడమీ ఆఫ్ ఆర్ట్స్ అండ్ లిటరేచర్ సంస్థను స్థాపించి, మంచి రచనల కోసం అవార్డులు ఇచ్చుతూ రచయితలను ప్రోత్సహిస్తున్నాడు.`,
+];
+
 export default function MiryalaLifeJourney() {
+  const formatShareText = () => {
+    let text = "మిరియాల రామకృష్ణ గారి జీవిత ప్రస్థానం\n\n";
+    text += "*వ్యక్తిగత వివరాలు*:\n";
+    personalDetails.forEach(({ label, value }) => {
+      text += `${label}: ${value}\n`;
+    });
+    text += `\n*రచయిత, పరిశోధకుడు వివరాలు*:\n`;
+    authorInfo.forEach(line => {
+      text += `${line}\n`;
+    
+    });
+    text += `\n*సాహిత్య విమర్శలు,పరిశోధనలు*:\n`;
+    literaryResearch.forEach(line => {
+      text += `${line}\n`;
+    
+    });
+    text += `\n *తెలుగు భాష గురించి*:\n`;
+    teluguLanguagePoem.forEach(line => {
+      text += `${line}\n`;
+    });
+    
+text += `\n *రచనలు*:\n`;
+    writings.forEach(line => {
+      text += `${line}\n`;
+    });
+    text += `\n *పురస్కారాలు *:\n`;
+    awards.forEach(line => {
+      text += `${line}\n`;
+    });
+    return text;
+  };
+
+  const handleWhatsAppShare = async () => {
+  try {
+    const shareText = formatShareText();
+    alert(shareText.length);
+    await navigator.clipboard.writeText(shareText);
+    const encodedText = encodeURIComponent(shareText);
+    // వెంటనే విండో ఓపెన్ చేయండి
+    window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+  } catch (error) {
+    alert("పంచుకునే విషయం ప్రతిలిపి చేయడంలో విఫలమైంది.");
+    console.error(error);
+  }
+};
+
+
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography
-        variant="h3"
-        component="h1"
-        gutterBottom
-        align="center"
-        sx={{ fontWeight: "bold" }}
-      >
-        మి రా ప్రస్థానం
+      <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ fontWeight: "bold" }}>
+        మిరా ప్రస్థానం
       </Typography>
 
       {/* Personal Details */}
@@ -156,9 +221,7 @@ export default function MiryalaLifeJourney() {
               <ListItem key={label}>
                 <ListItemIcon sx={{ minWidth: 40 }}>{icon}</ListItemIcon>
                 <ListItemText
-                  primary={
-                    <Typography sx={{ fontWeight: "semibold" }}>{label}:</Typography>
-                  }
+                  primary={<Typography sx={{ fontWeight: "semibold" }}>{label}:</Typography>}
                   secondary={value}
                 />
               </ListItem>
@@ -166,31 +229,48 @@ export default function MiryalaLifeJourney() {
           </List>
         </CardContent>
       </Card>
-
-      {/* Life Events */}
+{/* Author Info Section */}
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            జీవితం ముఖ్య సంఘటనలు
+            రచయిత & పరిశోధకుడు
           </Typography>
-          <List>
-            {lifeEvents.map((event, i) => (
-              <ListItem key={i}>
-                <ListItemIcon>
-                  <Calendar size={16} />
-                </ListItemIcon>
-                <ListItemText primary={event} />
-              </ListItem>
-            ))}
-          </List>
+          {authorInfo.map((info, idx) => (
+            <Typography key={idx} variant="body1" paragraph>{info}</Typography>
+          ))}
         </CardContent>
       </Card>
+    
+
+     {/* Literary Research Section */}
+<Card sx={{ mb: 4 }}>
+  <CardContent>
+    <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+      సాహిత్య విమర్శలు, పరిశోధనలు
+    </Typography>
+    <Typography variant="body1" paragraph>
+      {literaryResearch[0]}
+    </Typography>
+  </CardContent>
+</Card>
+
+{/* Telugu Language Section */}
+<Card sx={{ mb: 4 }}>
+  <CardContent>
+    <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+      తెలుగు భాష గురించి
+    </Typography>
+    <Typography component="pre" sx={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
+      {teluguLanguagePoem[0]}
+    </Typography>
+  </CardContent>
+</Card>
 
       {/* Writings */}
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-             రచనలు   : {writings.length}
+            రచనలు: {writings.length}
           </Typography>
           <List>
             {writings.map((work, i) => (
@@ -209,7 +289,7 @@ export default function MiryalaLifeJourney() {
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            పురస్కారాలు :{awards.length}
+            పురస్కారాలు: {awards.length}
           </Typography>
           <List>
             {awards.map((award, i) => (
@@ -223,6 +303,30 @@ export default function MiryalaLifeJourney() {
           </List>
         </CardContent>
       </Card>
+  {/* Life Events */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            జీవితం ముఖ్య సంఘటనలు
+          </Typography>
+          <List>
+            {lifeEvents.map((event, i) => (
+              <ListItem key={i}>
+                <ListItemIcon>
+                  <Calendar size={16} />
+                </ListItemIcon>
+                <ListItemText primary={event} />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
+      {/* WhatsApp Share Button */}
+      <Box textAlign="center" sx={{ mt: 4 }}>
+        <Button variant="contained" color="success" onClick={handleWhatsAppShare}>
+          వాట్సాప్ ద్వారా పంచుకోండి
+        </Button>
+      </Box>
     </Container>
   );
 }
