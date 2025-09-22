@@ -82,7 +82,7 @@ export default function MiryalaLifeJourney() {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ fontWeight: "bold" }}>
-        శ్రీ మిరియాల రామకృష్ణ గారి జీవిత ప్రస్థానం
+       మిరియాల రామకృష్ణ ప్రస్థానం
       </Typography>
 
       {/* Personal Details */}
