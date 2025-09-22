@@ -54,7 +54,7 @@ const personalDetails = [
   {
     icon: <FileText size={20} />,
     label: " వివాహం ",
-    value: " ' శ్రీమతి లక్ష్మీదేవి",
+    value: " లక్ష్మీదేవి",
   },
 {
   icon: <User size={20} />,
