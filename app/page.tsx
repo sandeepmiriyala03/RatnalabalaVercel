@@ -170,6 +170,8 @@ const authorInfo = [
   `1995-96లో గీతాంజలి పత్రికకి సంపాదకుడుగా పని చేశారు.`,
   `హిమబిందు అకాడమీ ఆఫ్ ఆర్ట్స్ అండ్ లిటరేచర్ సంస్థను స్థాపించి, మంచి రచనల కోసం అవార్డులు ఇచ్చుతూ రచయితలను ప్రోత్సహిస్తున్నారు.`,
 ];
+const audioSrc = "/MusicPlayer/mira.mp4"; // Replace with your audio file URL
+const videoSrc = "/video/mira.mp4"; // Replace with your video file URL
 
 export default function MiryalaLifeJourney() {
   const formatShareText = () => {
@@ -337,6 +339,32 @@ text += `\n *రచనలు*:\n`;
           </List>
         </CardContent>
       </Card>
+       {/* Audio Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+         మిరియాల రామకృష్ణ గారు ఆడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
+          </Typography>
+          <audio controls style={{ width: "100%" }}>
+            <source src={audioSrc} type="audio/mp3" />
+            మీ బ్రౌజర్ ఆడియో అదేవిధంగా వినగలదు.
+          </audio>
+        </CardContent>
+      </Card>
+
+      {/* Video Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            మిరియాల రామకృష్ణ గారి వీడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
+          </Typography>
+          <video controls style={{ width: "100%" }}>
+            <source src={videoSrc} type="video/mp4" />
+            మీ బ్రౌజర్ వీడియో ఆడలేదని చెప్పింది.
+          </video>
+        </CardContent>
+      </Card>
+
       {/* WhatsApp Share Button */}
       <Box textAlign="center" sx={{ mt: 4 }}>
         <Button variant="contained" color="success" onClick={handleWhatsAppShare}>
