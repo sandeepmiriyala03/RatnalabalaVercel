@@ -192,7 +192,7 @@ text += `\n *రచనలు*:\n`;
   const handleWhatsAppShare = async () => {
   try {
     const shareText = formatShareText();
-    alert(shareText.length);
+    
     await navigator.clipboard.writeText(shareText);
     const encodedText = encodeURIComponent(shareText);
     // వెంటనే విండో ఓపెన్ చేయండి
