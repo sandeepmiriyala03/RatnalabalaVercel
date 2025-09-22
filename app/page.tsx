@@ -43,7 +43,7 @@ const personalDetails = [
   },
   {
     icon: <Home size={20} />,
-    label: "హైస్కూలు",
+    label: "హైస్కూల్",
     value: "రాజారావ్ భావయమ్మారావ్ బహద్దూర్ హైస్కూల్, పిఠాపురం",
   },
    {
@@ -54,7 +54,7 @@ const personalDetails = [
   {
     icon: <FileText size={20} />,
     label: " వివాహం ",
-    value: " 'లక్ష్మీదేవి",
+    value: " ' శ్రీమతి లక్ష్మీదేవి",
   },
 {
   icon: <User size={20} />,
