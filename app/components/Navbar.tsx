@@ -14,7 +14,7 @@ import { Box } from "@mui/material";
 
 import Image from 'next/image';
 const navItems = [
-  { label: "పరిశోధన స్రవంతి", path: "/" },
+  { label: "మిరా", path: "/" },
   { label: "రత్నభావాలు - భావరత్నాలు", path: "/AboutAuthor" },
   { label: "పద్యాలవాల", path: "/poems" },
   { label: "భావాలమాల", path: "/chatbot" },
