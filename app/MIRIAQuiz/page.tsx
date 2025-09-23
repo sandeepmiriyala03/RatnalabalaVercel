@@ -108,7 +108,7 @@ export default function MiraQuizPage() {
       <Card>
         <CardContent>
           <Typography variant="h4" align="center" gutterBottom fontWeight="bold">
-            మిరియాల రామకృష్ణ గారి క్విజ్
+            మిరా గారి మీద క్విజ్
           </Typography>
 
           {questions.map((q, idx) => (
