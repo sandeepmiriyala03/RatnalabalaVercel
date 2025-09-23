@@ -96,7 +96,7 @@ export default function MiraQuizPage() {
     setScore(0);
   };
 
-  const shareText = `మీరూ సమర్పించారు: మిరియాల రామకృష్ణ క్విజ్\nమీ స్కోరు: ${score}/5 (${((score / 5) * 100).toFixed(2)}%)\nమరిన్ని క్విజిల కోసం https://ratnalabala.vercel.app/ సందర్శించండి`;
+  const shareText = `మీరూ సమర్పించారు: మిరియాల రామకృష్ణ గారి  క్విజ్\nమీ స్కోరు: ${score}/5 (${((score / 5) * 100).toFixed(2)}%)\nమరిన్ని క్విజిల కోసం https://ratnalabala.vercel.app/ సందర్శించండి`;
 
   const handleShareWhatsApp = () => {
     const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
@@ -108,7 +108,7 @@ export default function MiraQuizPage() {
       <Card>
         <CardContent>
           <Typography variant="h4" align="center" gutterBottom fontWeight="bold">
-            మిరియాల రామకృష్ణ క్విజ్
+            మిరియాల రామకృష్ణ గారి క్విజ్
           </Typography>
 
           {questions.map((q, idx) => (
