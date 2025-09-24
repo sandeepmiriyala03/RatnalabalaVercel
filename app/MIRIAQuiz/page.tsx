@@ -121,13 +121,31 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
           {score} / {total}
         </Typography>
 
-        <Typography variant="body2" sx={{ mb: 3 }}>
-          🚀 అభినందనలు! మీ విజయం మిన్నగా మెరిసిపోతోంది!
-          
-          📚 మరిన్ని క్విజ్‌లతో కలిసి చదవండి,👉 https://ratnalabala.vercel.app/
+     <Typography
+  variant="body2"
+  sx={{
+    mb: 3,
+    whiteSpace: "pre-line",
+    lineHeight: 1.6,
+    fontWeight: "medium",
+    letterSpacing: 0.3,
+    color: "text.primary",
+  }}
+>
+  🚀 అభినందనలు! మీ విజయం మిన్నగా మెరిసిపోతోంది!
 
-          ❤️ మీ స్నేహితులతో ఈ విజయాన్ని పంచుకోండి!
-        </Typography>
+  {"\n\n"}📚 మరిన్ని క్విజ్‌లతో కలిసి చదవండి, 👉{" "}
+  <Box
+    component="span"
+    sx={{ color: "primary.main", cursor: "pointer", textDecoration: "underline" }}
+    onClick={() => window.open("https://ratnalabala.vercel.app/", "_blank")}
+  >
+    https://ratnalabala.vercel.app/
+  </Box>
+
+  {"\n\n"}❤️ మీ స్నేహితులతో ఈ విజయాన్ని పంచుకోండి!
+</Typography>
+
 
       </Box>
 
