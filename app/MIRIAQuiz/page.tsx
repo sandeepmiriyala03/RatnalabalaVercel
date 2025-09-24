@@ -155,10 +155,10 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
             sx={{
               width: 100,
               height: 100,
-              borderRadius: "50%",
+              borderRadius: "60%",
               objectFit: "cover",
               display: "block",
-              margin: "16px auto",
+              margin: "18px auto",
               boxShadow: theme.shadows[2],
             }}
           />
