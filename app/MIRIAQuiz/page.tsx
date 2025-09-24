@@ -230,7 +230,7 @@ export default function MiraQuizPage() {
 
   const shareText = `
 
-         🎉 *మిరియాల రామకృష్ణ గారి మీద  మీ క్విజ్ ఫలితం* 🎉
+         🎉 * మీ క్విజ్ ఫలితం* 🎉
 
 
 🗓️ *తేదీ:* ${new Date().toLocaleDateString("te-IN", {
