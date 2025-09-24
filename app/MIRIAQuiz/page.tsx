@@ -91,7 +91,7 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
 
          <Box
     component="img"
-    src="/Images/MiriaPen.jpg" // replace with actual image path or URL
+    src="/Images/MiriaPen.jpg" 
     alt="డాక్టర్ మిరియాల రామకృష్ణ"
     sx={{
       width: 120,
@@ -107,7 +107,7 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
           variant="h6"
           sx={{ fontWeight: "bold", mb: 2, color: theme.palette.primary.main }}
         >
-          డా.మిరియాల రామకృష్ణ గారి మీద మీ క్విజ్ ఫలితం
+         మీ క్విజ్ ఫలితం
         </Typography>
 
         <Typography variant="body1" sx={{ mb: 1 }}>
