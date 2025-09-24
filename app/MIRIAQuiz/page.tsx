@@ -73,70 +73,54 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
   return (
     <>
       <Box
-        ref={ref}
-        sx={{
-          maxWidth: 360,
-          margin: "0 auto",
-          padding: 3,
-          borderRadius: 3,
-          boxShadow: theme.shadows[4],
-          backgroundColor: theme.palette.background.paper,
-          textAlign: "center",
-          fontFamily: "'Noto Sans Telugu', sans-serif",
-          color: theme.palette.text.primary,
-          userSelect: "none",
-        }}
-        id="scorecard-root"
-      >
+  component="img"
+  src="/Images/MiriaPen.jpg"
+  alt="డాక్టర్ మిరియాల రామకృష్ణ"
+  sx={{
+    width: 120,
+    height: 120,
+    borderRadius: "50%",
+    objectFit: "cover",
+    margin: "0 auto 16px",
+    display: "block",
+    boxShadow: theme.shadows[3],
+  }}
+/>
 
-         <Box
-    component="img"
-    src="/Images/MiriaPen.jpg" 
-    alt="డాక్టర్ మిరియాల రామకృష్ణ"
-    sx={{
-      width: 120,
-      height: 120,
-      borderRadius: "50%",
-      objectFit: "cover",
-      margin: "0 auto 16px",
-      display: "block",
-      boxShadow: theme.shadows[3],
-    }}
-  />
-        <Typography
-          variant="h6"
-          sx={{ fontWeight: "bold", mb: 2, color: theme.palette.primary.main }}
-        >
-         మీ క్విజ్ ఫలితం
-        </Typography>
+<Typography
+  variant="h6"
+  sx={{ fontWeight: "bold", mb: 2, color: theme.palette.primary.main }}
+>
+  మీ క్విజ్ ఫలితం
+</Typography>
 
-        <Typography variant="body1" sx={{ mb: 1 }}>
-          📅 తేదీ:{" "}
-          {new Date().toLocaleDateString("te-IN", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </Typography>
+<Typography variant="body1" sx={{ mb: 1 }}>
+  📅 తేదీ:{" "}
+  {new Date().toLocaleDateString("te-IN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })}
+</Typography>
 
-        <Box sx={{ fontSize: 40, mb: 1 }}>
-          {Array.from({ length: score }).map((_, i) => (
-            <span key={i} style={{ color: "#ffb400" }}>
-              ⭐
-            </span>
-          ))}
-          {Array.from({ length: total - score }).map((_, i) => (
-            <span key={i} style={{ color: "#ccc" }}>
-              ⭐
-            </span>
-          ))}
-        </Box>
+<Box sx={{ fontSize: 40, mb: 1 }}>
+  {Array.from({ length: score }).map((_, i) => (
+    <span key={i} style={{ color: "#ffb400" }}>
+      ⭐
+    </span>
+  ))}
+  {Array.from({ length: total - score }).map((_, i) => (
+    <span key={i} style={{ color: "#ccc" }}>
+      ⭐
+    </span>
+  ))}
+</Box>
 
-        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
-          {score} / {total}
-        </Typography>
+<Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
+  {score} / {total}
+</Typography>
 
-     <Typography
+<Typography
   variant="body2"
   sx={{
     mb: 3,
@@ -146,10 +130,28 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
     letterSpacing: 0.3,
     color: "text.primary",
   }}
-> 
-  🚀 అభినందనలు! మీ విజయం మిన్నగా మెరిసిపోతోంది!
+>
+  🚀 అభినందనలు!
 
-      రత్నాలబాల పద్యాలవాల భావాలమాల
+  మీ విజయం మిన్నగా మెరిసిపోతోంది!
+
+  {/* Image inserted here before the text */}
+  <Box
+    component="img"
+    src="/Images/Ratanal logo.png" // Replace with your desired image path
+    alt="రత్నాలబాల"
+    sx={{
+      width: 100,
+      height: 100,
+      borderRadius: "50%",
+      objectFit: "cover",
+      display: "block",
+      margin: "16px auto",
+      boxShadow: theme.shadows[2],
+    }}
+  />
+
+  రత్నాలబాల పద్యాలవాల భావాలమాల
 
   {"\n\n"}📚 మరిన్ని క్విజ్‌లతో కలిసి చదవండి, 👉{" "}
   <Box
@@ -161,9 +163,8 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
   </Box>
 
   {"\n\n"}❤️ మీ స్నేహితులతో ఈ విజయాన్ని పంచుకోండి!
-
 </Typography>
-      </Box>
+
 
       <Button
         variant="contained"
