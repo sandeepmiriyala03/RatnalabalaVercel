@@ -88,11 +88,26 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
         }}
         id="scorecard-root"
       >
+
+         <Box
+    component="img"
+    src="/Images/MiriaPen.jpg" // replace with actual image path or URL
+    alt="డాక్టర్ మిరియాల రామకృష్ణ"
+    sx={{
+      width: 120,
+      height: 120,
+      borderRadius: "50%",
+      objectFit: "cover",
+      margin: "0 auto 16px",
+      display: "block",
+      boxShadow: theme.shadows[3],
+    }}
+  />
         <Typography
           variant="h6"
           sx={{ fontWeight: "bold", mb: 2, color: theme.palette.primary.main }}
         >
-          మిరియాల రామకృష్ణ గారి క్విజ్ ఫలితం
+          డా.మిరియాల రామకృష్ణ గారి మీద క్విజ్ ఫలితం
         </Typography>
 
         <Typography variant="body1" sx={{ mb: 1 }}>
@@ -135,7 +150,7 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
   🚀 అభినందనలు! మీ విజయం మిన్నగా మెరిసిపోతోంది!
 
     రత్నాలబాల పద్యాలవాల భావాలమాల
-    
+
   {"\n\n"}📚 మరిన్ని క్విజ్‌లతో కలిసి చదవండి, 👉{" "}
   <Box
     component="span"
@@ -147,8 +162,6 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
 
   {"\n\n"}❤️ మీ స్నేహితులతో ఈ విజయాన్ని పంచుకోండి!
 </Typography>
-
-
       </Box>
 
       <Button
