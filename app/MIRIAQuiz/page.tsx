@@ -19,7 +19,6 @@ import {
 } from "@mui/material";
 import html2canvas from "html2canvas";
 
-// Question type
 type Question = {
   question: string;
   options: string[];
@@ -47,8 +46,6 @@ const allQuestions: Question[] = [
   { question: "మిరియాల రామకృష్ణ గారి గురించి కొత్తగా నేర్చుకున్నది ఏమిటి?", options: ["ఆయన సాహిత్యం", "ఆయన జీవితం", "ఆయన పురస్కారాలు", "పైనివన్నారు"], answer: 3 },
   { question: "మిరియాల గారి రచనలు ఏ దేశీయ పత్రికలో ప్రచురించబడ్డాయ్?", options: ["ఆంధ్రజ్యోతి", "తెలుగు జగత్", "ఈనాడు", "మంత్రిమండలి"], answer: 0 },
 ];
-
-// Scorecard component with image download functionality
 type ScorecardProps = {
   score: number;
   total: number;
@@ -73,98 +70,113 @@ function Scorecard({ score, total, onShare }: ScorecardProps) {
   return (
     <>
       <Box
-  component="img"
-  src="/Images/MiriaPen.jpg"
-  alt="డాక్టర్ మిరియాల రామకృష్ణ"
-  sx={{
-    width: 120,
-    height: 120,
-    borderRadius: "50%",
-    objectFit: "cover",
-    margin: "0 auto 16px",
-    display: "block",
-    boxShadow: theme.shadows[3],
-  }}
-/>
+        ref={ref}
+        sx={{
+          maxWidth: 360,
+          margin: "0 auto",
+          padding: 3,
+          borderRadius: 3,
+          boxShadow: theme.shadows[4],
+          backgroundColor: theme.palette.background.paper,
+          textAlign: "center",
+          fontFamily: "'Noto Sans Telugu', sans-serif",
+          color: theme.palette.text.primary,
+          userSelect: "none",
+        }}
+        id="scorecard-root"
+      >
+        <Box
+          component="img"
+          src="/Images/MiriaPen.jpg"
+          alt="డాక్టర్ మిరియాల రామకృష్ణ"
+          sx={{
+            width: 120,
+            height: 120,
+            borderRadius: "50%",
+            objectFit: "cover",
+            margin: "0 auto 16px",
+            display: "block",
+            boxShadow: theme.shadows[3],
+          }}
+        />
 
-<Typography
-  variant="h6"
-  sx={{ fontWeight: "bold", mb: 2, color: theme.palette.primary.main }}
->
-  మీ క్విజ్ ఫలితం
-</Typography>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: "bold", mb: 2, color: theme.palette.primary.main }}
+        >
+          మీ క్విజ్ ఫలితం
+        </Typography>
 
-<Typography variant="body1" sx={{ mb: 1 }}>
-  📅 తేదీ:{" "}
-  {new Date().toLocaleDateString("te-IN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })}
-</Typography>
+        <Typography variant="body1" sx={{ mb: 1 }}>
+          📅 తేదీ:{" "}
+          {new Date().toLocaleDateString("te-IN", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </Typography>
 
-<Box sx={{ fontSize: 40, mb: 1 }}>
-  {Array.from({ length: score }).map((_, i) => (
-    <span key={i} style={{ color: "#ffb400" }}>
-      ⭐
-    </span>
-  ))}
-  {Array.from({ length: total - score }).map((_, i) => (
-    <span key={i} style={{ color: "#ccc" }}>
-      ⭐
-    </span>
-  ))}
-</Box>
+        <Box sx={{ fontSize: 40, mb: 1 }}>
+          {Array.from({ length: score }).map((_, i) => (
+            <span key={i} style={{ color: "#ffb400" }}>
+              ⭐
+            </span>
+          ))}
+          {Array.from({ length: total - score }).map((_, i) => (
+            <span key={i} style={{ color: "#ccc" }}>
+              ⭐
+            </span>
+          ))}
+        </Box>
 
-<Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
-  {score} / {total}
-</Typography>
+        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
+          {score} / {total}
+        </Typography>
 
-<Typography
-  variant="body2"
-  sx={{
-    mb: 3,
-    whiteSpace: "pre-line",
-    lineHeight: 1.6,
-    fontWeight: "medium",
-    letterSpacing: 0.3,
-    color: "text.primary",
-  }}
->
-  🚀 అభినందనలు!
+        <Typography
+          variant="body2"
+          sx={{
+            mb: 3,
+            whiteSpace: "pre-line",
+            lineHeight: 1.6,
+            fontWeight: "medium",
+            letterSpacing: 0.3,
+            color: "text.primary",
+          }}
+        >
+          🚀 అభినందనలు!
 
-  మీ విజయం మిన్నగా మెరిసిపోతోంది!
+          మీ విజయం మిన్నగా మెరిసిపోతోంది!
 
-  {/* Image inserted here before the text */}
-  <Box
-    component="img"
-    src="/Images/Ratanal logo.png" // Replace with your desired image path
-    alt="రత్నాలబాల"
-    sx={{
-      width: 100,
-      height: 100,
-      borderRadius: "50%",
-      objectFit: "cover",
-      display: "block",
-      margin: "16px auto",
-      boxShadow: theme.shadows[2],
-    }}
-  />
+          <Box
+            component="img"
+            src="/Images/Ratanal logo.png"
+            alt="రత్నాలబాల"
+            sx={{
+              width: 100,
+              height: 100,
+              borderRadius: "50%",
+              objectFit: "cover",
+              display: "block",
+              margin: "16px auto",
+              boxShadow: theme.shadows[2],
+            }}
+          />
 
-  రత్నాలబాల పద్యాలవాల భావాలమాల
+          రత్నాలబాల పద్యాలవాల భావాలమాల
 
-  {"\n\n"}📚 మరిన్ని క్విజ్‌లతో కలిసి చదవండి, 👉{" "}
-  <Box
-    component="span"
-    sx={{ color: "primary.main", cursor: "pointer", textDecoration: "underline" }}
-    onClick={() => window.open("https://ratnalabala.vercel.app/", "_blank")}
-  >
-    https://ratnalabala.vercel.app/
-  </Box>
+          {"\n\n"}📚 మరిన్ని క్విజ్‌లతో కలిసి చదవండి, 👉{" "}
+          <Box
+            component="span"
+            sx={{ color: "primary.main", cursor: "pointer", textDecoration: "underline" }}
+            onClick={() => window.open("https://ratnalabala.vercel.app/", "_blank")}
+          >
+            https://ratnalabala.vercel.app/
+          </Box>
 
-  {"\n\n"}❤️ మీ స్నేహితులతో ఈ విజయాన్ని పంచుకోండి!
-</Typography>
-
+          {"\n\n"}❤️ మీ స్నేహితులతో ఈ విజయాన్ని పంచుకోండి!
+        </Typography>
+      </Box>
 
       <Button
         variant="contained"
@@ -230,9 +242,7 @@ export default function MiraQuizPage() {
   };
 
   const shareText = `
-
-         🎉 * మీ క్విజ్ ఫలితం* 🎉
-
+🎉 *మీ క్విజ్ ఫలితం* 🎉
 
 🗓️ *తేదీ:* ${new Date().toLocaleDateString("te-IN", {
     year: "numeric",
@@ -240,14 +250,15 @@ export default function MiraQuizPage() {
     day: "numeric",
   })}
 
-🏆      *మీ స్కోరు:*
+🏆  *మీ స్కోరు:*
 ─────────────────────
 ${"⭐".repeat(score)}${"☆".repeat(5 - score)}  (${score} / 5)
 ─────────────────────
 
 🚀 అభినందనలు! మీ విజయం మిన్నగా మెరిసిపోతోంది!
 
-📚 మరిన్ని క్విజ్‌లతో కలిసి చదవండి,👉 https://ratnalabala.vercel.app/
+📚 మరిన్ని క్విజ్‌లతో కలిసి చదవండి,
+👉 https://ratnalabala.vercel.app/
 
 ❤️ మీ స్నేహితులతో ఈ విజయాన్ని పంచుకోండి!
 `;
@@ -268,22 +279,11 @@ ${"⭐".repeat(score)}${"☆".repeat(5 - score)}  (${score} / 5)
 
             {questions.map((q, idx) => (
               <Box key={idx} sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 1 }}>
-                  {`Q${idx + 1}. ${q.question}`}
-                </Typography>
+                <Typography variant="h6" sx={{ mb: 1 }}>{`Q${idx + 1}. ${q.question}`}</Typography>
                 <FormControl component="fieldset">
-                  <RadioGroup
-                    value={answers[idx]}
-                    onChange={(_, val) => handleChange(idx, Number(val))}
-                  >
+                  <RadioGroup value={answers[idx]} onChange={(_, val) => handleChange(idx, Number(val))}>
                     {q.options.map((opt, i) => (
-                      <FormControlLabel
-                        key={i}
-                        value={i}
-                        control={<Radio />}
-                        label={opt}
-                        disabled={showResult}
-                      />
+                      <FormControlLabel key={i} value={i} control={<Radio />} label={opt} disabled={showResult} />
                     ))}
                   </RadioGroup>
                 </FormControl>
