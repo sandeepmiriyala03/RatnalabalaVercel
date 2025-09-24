@@ -285,7 +285,7 @@ export default function MiryalaLifeJourney() {
 
             <Box textAlign="center" sx={{ maxWidth: 200 }}>
               <img
-                src="/images/.jpg" // Replace with actual path/image URL
+                src="/images/MiriaPen.jpg" // Replace with actual path/image URL
                 alt="55 సంవత్సరాల తరువాత మిరియాల రామకృష్ణ"
                 style={{ width: "100%", borderRadius: 8 }}
               />
