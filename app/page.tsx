@@ -2,16 +2,18 @@
 
 import React from "react";
 import {
-  Box,
-  Typography,
-  Container,
-  Card,
-  CardContent,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Button,
+  Box,
+  Typography,
+  Container,
+  Card,
+  CardContent,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Button,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { Calendar, User, Home, Book, Award, MapPin, FileText } from "react-feather";
 
@@ -174,85 +176,100 @@ const audioSrc = "/MusicPlayer/mira.mp4"; // Replace with your audio file URL
 const videoSrc = "/video/mira.mp4"; // Replace with your video file URL
 
 export default function MiryalaLifeJourney() {
-  const formatShareText = () => {
-    let text = "*మిరియాల రామకృష్ణ గారి ప్రస్థానం*\n\n";
-    text += "*వ్యక్తిగత వివరాలు*:\n";
-    personalDetails.forEach(({ label, value }) => {
-      text += `${label}: ${value}\n`;
-    });
-    text += `\n*రచయిత, పరిశోధకుడు వివరాలు*:\n`;
-    authorInfo.forEach(line => {
-      text += `${line}\n`;
-    });
-    text += `\n*సాహిత్య విమర్శలు,పరిశోధనలు*:\n`;
-    literaryResearch.forEach(line => {
-      text += `${line}\n`;
-    });
-    text += `\n *తెలుగు భాష గురించి*:\n`;
-    teluguLanguagePoem.forEach(line => {
-      text += `${line}\n`;
-    });
-    text += `\n *రచనలు*:\n`;
-    writings.forEach(line => {
-      text += `${line}\n`;
-    });
-    text += `\n *పురస్కారాలు*:\n`;
-    awards.forEach(line => {
-      text += `${line}\n`;
-    });
-    text += `\n *పూర్తి వివరాలు సందర్శించండి.* : [https://ratnalabala.vercel.app/](https://ratnalabala.vercel.app/) \n`;
-    return text;
-  };
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const handleWhatsAppShare = async () => {
-    try {
-      const shareText = formatShareText();
-      await navigator.clipboard.writeText(shareText);
-      const encodedText = encodeURIComponent(shareText);
-      window.open(`https://wa.me/?text=${encodedText}`, "_blank");
-    } catch (error) {
-      alert("పంచుకునే విషయం ప్రతిలిపి చేయడంలో విఫలమైంది.");
-      console.error(error);
-    }
-  };
+  const formatShareText = () => {
+    let text = "*మిరియాల రామకృష్ణ గారి ప్రస్థానం*\n\n";
+    text += "*వ్యక్తిగత వివరాలు*:\n";
+    personalDetails.forEach(({ label, value }) => {
+      text += `${label}: ${value}\n`;
+    });
+    text += `\n*రచయిత, పరిశోధకుడు వివరాలు*:\n`;
+    authorInfo.forEach((line) => {
+      text += `${line}\n`;
+    });
+    text += `\n*సాహిత్య విమర్శలు,పరిశోధనలు*:\n`;
+    literaryResearch.forEach((line) => {
+      text += `${line}\n`;
+    });
+    text += `\n *తెలుగు భాష గురించి*:\n`;
+    teluguLanguagePoem.forEach((line) => {
+      text += `${line}\n`;
+    });
+    text += `\n *రచనలు*:\n`;
+    writings.forEach((line) => {
+      text += `${line}\n`;
+    });
+    text += `\n *పురస్కారాలు*:\n`;
+    awards.forEach((line) => {
+      text += `${line}\n`;
+    });
+    text += `\n *పూర్తి వివరాలు సందర్శించండి.* : [https://ratnalabala.vercel.app/](https://ratnalabala.vercel.app/) \n`;
+    return text;
+  };
 
-  return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ fontWeight: "bold" }}>
-        మిరా ప్రస్థానం
-      </Typography>
+  const handleWhatsAppShare = async () => {
+    try {
+      const shareText = formatShareText();
+      await navigator.clipboard.writeText(shareText);
+      const encodedText = encodeURIComponent(shareText);
+      window.open(`https://wa.me/?text=${encodedText}`, "_blank");
+    } catch (error) {
+      alert("పంచుకునే విషయం ప్రతిలిపి చేయడంలో విఫలమైంది.");
+      console.error(error);
+    }
+  };
 
-      {/* Personal Details */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            వ్యక్తిగత వివరాలు
-          </Typography>
-          <List>
-            {personalDetails.map(({ icon, label, value }) => (
-              <ListItem key={label}>
-                <ListItemIcon sx={{ minWidth: 40 }}>{icon}</ListItemIcon>
-                <ListItemText
-                  primary={<Typography sx={{ fontWeight: "semibold" }}>{label}:</Typography>}
-                  secondary={value}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </CardContent>
-      </Card>
+  return (
+    <Container maxWidth="md" sx={{ py: 4, px: { xs: 2, sm: 3 } }}>
+      <Typography
+        variant={isMobile ? "h4" : "h3"}
+        component="h1"
+        gutterBottom
+        align="center"
+        sx={{ fontWeight: "bold" }}
+      >
+        మిరా ప్రస్థానం
+      </Typography>
 
-      {/* Author Info Section */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            రచయిత , పరిశోధకుడు
-          </Typography>
-          {authorInfo.map((info, idx) => (
-            <Typography key={idx} variant="body1" paragraph>{info}</Typography>
-          ))}
-        </CardContent>
-      </Card>
+      {/* Personal Details Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            వ్యక్తిగత వివరాలు
+          </Typography>
+          <List dense={isMobile}>
+            {personalDetails.map(({ icon, label, value }) => (
+              <ListItem key={label} sx={{ px: 0 }}>
+                <ListItemIcon sx={{ minWidth: 40 }}>{icon}</ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Typography sx={{ fontWeight: "semibold" }}>
+                      {label}:
+                    </Typography>
+                  }
+                  secondary={value}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
+
+      {/* Author Info Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            రచయిత , పరిశోధకుడు
+          </Typography>
+          {authorInfo.map((info, idx) => (
+            <Typography key={idx} variant="body1" paragraph>
+              {info}
+            </Typography>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Photos Section */}
       <Card sx={{ mb: 4 }}>
@@ -260,156 +277,186 @@ export default function MiryalaLifeJourney() {
           <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
             చిత్రాలు
           </Typography>
-          <Box display="flex" justifyContent="space-around" flexWrap="wrap" gap={2}>
-            <Box textAlign="center" sx={{ maxWidth: 200 }}>
-              <img
-                src="/images/MiriaSriSri.jpg" // Replace with the actual path/image URL
-                alt="శ్రీశ్రీతో మిరియాల రామకృష్ణ"
-                style={{ width: "100%", borderRadius: 8 }}
-              />
-              <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                శ్రీశ్రీ  తో మిరియాల రామకృష్ణ
-              </Typography>
-            </Box>
-
-            <Box textAlign="center" sx={{ maxWidth: 200 }}>
-              <img
-                src="/images/Mira.jpg" // Replace with actual path/image URL
-                alt="తరుణ మిరియాల రామకృష్ణ"
-                style={{ width: "100%", borderRadius: 8 }}
-              />
-              <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-               మిరియాల రామకృష్ణ
-              </Typography>
-            </Box>
-
-            <Box textAlign="center" sx={{ maxWidth: 200 }}>
-              <img
-                src="/images/MiriaPen.jpg" // Replace with actual path/image URL
-                alt="55 సంవత్సరాల తరువాత మిరియాల రామకృష్ణ"
-                style={{ width: "100%", borderRadius: 8 }}
-              />
-              <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-              మిరియాల రామకృష్ణ
-              </Typography>
-            </Box>
+          <Box
+            display="flex"
+            justifyContent="space-around"
+            flexWrap="wrap"
+            gap={2}
+          >
+            {[
+              {
+                src: "/Images/MiriaSriSri.jpg",
+                alt: "శ్రీశ్రీతో మిరియాల రామకృష్ణ",
+                caption: "శ్రీశ్రీగారితో మిరా",
+              },
+              {
+                src: "/Images/Mira.jpg",
+                alt: " మిరియాల రామకృష్ణ",
+                caption: "మిరియాల రామకృష్ణ",
+              },
+              {
+                src: "/Images/MiriaPen.jpg",
+                alt: " మిరియాల రామకృష్ణ",
+                caption: "మిరియాల రామకృష్ణ",
+              },
+            ].map(({ src, alt, caption }, i) => (
+              <Box
+                textAlign="center"
+                sx={{ maxWidth: isMobile ? 120 : 200 }}
+                key={i}
+              >
+                <img
+                  src={src}
+                  alt={alt}
+                  style={{
+                    width: "100%",
+                    borderRadius: 8,
+                    objectFit: "cover",
+                    height: isMobile ? 90 : 150,
+                  }}
+                  loading="lazy"
+                />
+                <Typography
+                  variant="caption"
+                  display="block"
+                  sx={{ mt: 1, fontSize: isMobile ? 10 : 12 }}
+                >
+                  {caption}
+                </Typography>
+              </Box>
+            ))}
           </Box>
         </CardContent>
       </Card>
 
-      {/* Literary Research Section */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            సాహిత్య విమర్శలు, పరిశోధనలు
-          </Typography>
-          <Typography variant="body1" paragraph>
-            {literaryResearch[0]}
-          </Typography>
-        </CardContent>
-      </Card>
+      {/* Literary Research Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            సాహిత్య విమర్శలు, పరిశోధనలు
+          </Typography>
+          <Typography variant="body1" paragraph>
+            {literaryResearch[0]}
+          </Typography>
+        </CardContent>
+      </Card>
 
-      {/* Telugu Language Section */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            తెలుగు భాష గురించి
-          </Typography>
-          <Typography component="pre" sx={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
-            {teluguLanguagePoem[0]}
-          </Typography>
-        </CardContent>
-      </Card>
+      {/* Telugu Language Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            తెలుగు భాష గురించి
+          </Typography>
+          <Typography
+            component="pre"
+            sx={{
+              whiteSpace: "pre-wrap",
+              fontFamily: "inherit",
+              fontSize: isMobile ? 13 : 16,
+            }}
+          >
+            {teluguLanguagePoem[0]}
+          </Typography>
+        </CardContent>
+      </Card>
 
-      {/* Writings */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            రచనలు: {writings.length}
-          </Typography>
-          <List>
-            {writings.map((work, i) => (
-              <ListItem key={i}>
-                <ListItemIcon>
-                  <Book size={16} />
-                </ListItemIcon>
-                <ListItemText primary={work} />
-              </ListItem>
-            ))}
-          </List>
-        </CardContent>
-      </Card>
+      {/* Writings Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            రచనలు: {writings.length}
+          </Typography>
+          <List dense={isMobile}>
+            {writings.map((work, i) => (
+              <ListItem key={i} sx={{ px: 0 }}>
+                <ListItemIcon>
+                  <Book size={16} />
+                </ListItemIcon>
+                <ListItemText primary={work} />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
 
-      {/* Awards */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            పురస్కారాలు: {awards.length}
-          </Typography>
-          <List>
-            {awards.map((award, i) => (
-              <ListItem key={i}>
-                <ListItemIcon>
-                  <Award size={16} />
-                </ListItemIcon>
-                <ListItemText primary={award} />
-              </ListItem>
-            ))}
-          </List>
-        </CardContent>
-      </Card>
+      {/* Awards Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            పురస్కారాలు: {awards.length}
+          </Typography>
+          <List dense={isMobile}>
+            {awards.map((award, i) => (
+              <ListItem key={i} sx={{ px: 0 }}>
+                <ListItemIcon>
+                  <Award size={16} />
+                </ListItemIcon>
+                <ListItemText primary={award} />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
 
-      {/* Life Events */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            జీవితం ముఖ్య సంఘటనలు
-          </Typography>
-          <List>
-            {lifeEvents.map((event, i) => (
-              <ListItem key={i}>
-                <ListItemIcon>
-                  <Calendar size={16} />
-                </ListItemIcon>
-                <ListItemText primary={event} />
-              </ListItem>
-            ))}
-          </List>
-        </CardContent>
-      </Card>
+      {/* Life Events Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            జీవితం ముఖ్య సంఘటనలు
+          </Typography>
+          <List dense={isMobile}>
+            {lifeEvents.map((event, i) => (
+              <ListItem key={i} sx={{ px: 0 }}>
+                <ListItemIcon>
+                  <Calendar size={16} />
+                </ListItemIcon>
+                <ListItemText primary={event} />
+              </ListItem>
+            ))}
+          </List>
+        </CardContent>
+      </Card>
 
-      {/* Audio Section */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            మిరియాల రామకృష్ణ గారి ఆడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
-          </Typography>
-          <audio controls style={{ width: "100%" }}>
-            <source src={audioSrc} type="audio/mp3" />
-            మీ బ్రౌజర్ ఆడియో అదేవిధంగా వినగలదు.
-          </audio>
-        </CardContent>
-      </Card>
+      {/* Audio Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            మిరియాల రామకృష్ణ గారి ఆడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
+          </Typography>
+          <audio controls style={{ width: "100%" }} preload="metadata">
+            <source src={audioSrc} type="audio/mp3" />
+            <track kind="captions" />
+            మీ బ్రౌజర్ ఆడియో అదేవిధంగా వినగలదు.
+          </audio>
+        </CardContent>
+      </Card>
 
-      {/* Video Section */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            మిరియాల రామకృష్ణ గారి వీడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
-          </Typography>
-          <video controls style={{ width: "100%" }}>
-            <source src={videoSrc} type="video/mp4" />
-            మీ బ్రౌజర్ వీడియో ఆడలేదని చెప్పింది.
-          </video>
-        </CardContent>
-      </Card>
+      {/* Video Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
+            మిరియాల రామకృష్ణ గారి వీడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
+          </Typography>
+          <video controls style={{ width: "100%" }} preload="metadata">
+            <source src={videoSrc} type="video/mp4" />
+            మీ బ్రౌజర్ వీడియో ఆడలేదని చెప్పింది.
+          </video>
+        </CardContent>
+      </Card>
 
-      {/* WhatsApp Share Button */}
-      <Box textAlign="center" sx={{ mt: 4 }}>
-        <Button variant="contained" color="success" onClick={handleWhatsAppShare}>
-          వాట్సాప్ ద్వారా పంచుకోండి
-        </Button>
-      </Box>
-    </Container>
-  );
+      {/* WhatsApp Share Button */}
+      <Box textAlign="center" sx={{ mt: 4 }}>
+        <Button
+          variant="contained"
+          color="success"
+          onClick={handleWhatsAppShare}
+          size={isMobile ? "medium" : "large"}
+          sx={{ px: 4, py: 1.5 }}
+          aria-label="WhatsApp ద్వారా పంచుకోండి"
+        >
+          వాట్సాప్ ద్వారా పంచుకోండి
+        </Button>
+      </Box>
+    </Container>
+  );
 }
