@@ -49,8 +49,10 @@ export default function Footer() {
         </Typography>
 
         <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-          © {new Date().getFullYear()} మిరియాల కుటుంబం రత్నాలబాల. అన్ని హక్కులు ప్రత్యేకించబడ్డాయి.
-        </Typography>
+  © {new Date().getFullYear()} మిరియాల కుటుంబం రత్నాలబాల. అన్ని హక్కులు ప్రత్యేకించబడ్డాయి. <br />
+  అభివృద్ధి చేసినవారు: సందీప్ మిరియాల
+</Typography>
+
     
       </Container>
     </Box>
