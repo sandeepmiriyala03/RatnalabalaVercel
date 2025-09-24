@@ -13,9 +13,7 @@ export default function MusicPlayer() {
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.src = `/MusicPlayer/${defaultMusicTrack}`;
-      // Optional: Autoplay the music when the component mounts
-      // audioRef.current.play().catch(e => console.error("Error playing audio on mount:", e));
-      // setIsPlaying(true); // Uncomment if you want autoplay
+     
     }
   }, []); // Empty dependency array ensures this runs only once on mount
 
