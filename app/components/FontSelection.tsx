@@ -56,18 +56,27 @@ export default function FontControlsTelugu({
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const { min, max } = getDeviceBounds();
 
-  /* 🔺 Increase size */
+  /* 🔺 Increase size (LIVE PREVIEW) */
   const increase = () =>
     setFontSize((v) => Math.min(max, +(v + 0.2).toFixed(2)));
 
-  /* 🔻 Decrease size */
+  /* 🔻 Decrease size (LIVE PREVIEW) */
   const decrease = () =>
     setFontSize((v) => Math.max(min, +(v - 0.2).toFixed(2)));
 
-  /* ♻️ Restore defaults */
+  /* 💾 SAVE SETTINGS */
+  const saveSettings = () => {
+    localStorage.setItem("teluguFontFamily", fontFamily);
+    localStorage.setItem("teluguFontSize", String(fontSize));
+    setSnackbarOpen(true);
+  };
+
+  /* ♻️ RESTORE DEFAULTS */
   const restoreDefaults = () => {
     setFontFamily("Gurajada");
     setFontSize(1.0);
+    localStorage.removeItem("teluguFontFamily");
+    localStorage.removeItem("teluguFontSize");
     setSnackbarOpen(true);
   };
 
@@ -83,7 +92,7 @@ export default function FontControlsTelugu({
       >
         {/* 🔤 Font Selector */}
         <Box display="flex" alignItems="center" gap={1} flex={1}>
-          <Typography sx={{ fontSize: "0.9rem" }}>
+          <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap" }}>
             తెలుగు ఫాంట్
           </Typography>
 
@@ -92,7 +101,7 @@ export default function FontControlsTelugu({
             value={fontFamily}
             onChange={(e) => setFontFamily(e.target.value)}
             sx={{
-              minWidth: 160,
+              minWidth: 170,
               height: 34,
               fontFamily,
             }}
@@ -132,17 +141,33 @@ export default function FontControlsTelugu({
           </IconButton>
         </Box>
 
-        {/* 🔘 Reset */}
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={restoreDefaults}
-          sx={{ textTransform: "none" }}
-        >
-          డిఫాల్ట్
-        </Button>
+        {/* 🔘 ACTIONS */}
+        <Box display="flex" gap={1}>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={saveSettings}
+            sx={{
+              backgroundColor: "#0d9488",
+              ":hover": { backgroundColor: "#0f766e" },
+              textTransform: "none",
+            }}
+          >
+            సేవ్
+          </Button>
+
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={restoreDefaults}
+            sx={{ textTransform: "none" }}
+          >
+            డిఫాల్ట్
+          </Button>
+        </Box>
       </Box>
 
+      {/* ✅ Feedback */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={2000}
