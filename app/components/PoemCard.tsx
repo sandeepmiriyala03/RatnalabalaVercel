@@ -149,4 +149,3 @@ export default function PoemCard({
     </Card>
   );
 }
-/* ---------- Speech Synthesis Notes ----------
