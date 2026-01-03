@@ -22,7 +22,7 @@ interface Poem {
 type Props = {
   poem: Poem;
   ready: boolean;
-  speak: (c: string) => void;
+  speak: (text: string) => void;
   stopSpeech: () => void;
 };
 
@@ -32,42 +32,100 @@ export default function PoemCard({
   speak,
   stopSpeech,
 }: Props) {
-  const poemRef = useRef<HTMLDivElement>(null); // ✅ SAFE (top-level)
+  // 🔒 Only THIS ref is captured as image
+  const poemRef = useRef<HTMLDivElement>(null);
 
   return (
     <Card sx={{ mb: 3 }}>
       <CardContent>
-        {/* 🖼 Capture area */}
+        {/* 🖼 IMAGE CAPTURE AREA (PURE CONTENT ONLY) */}
         <Box ref={poemRef}>
-          <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            mb={1}
+          {/* Title */}
+          <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+            {poem.title}
+          </Typography>
+
+          <Divider sx={{ mb: 1 }} />
+
+          {/* Poem Content */}
+          <Typography
+            sx={{
+              whiteSpace: "pre-line",
+              lineHeight: 1.8,
+              fontSize: "1rem",
+            }}
           >
-            <Typography variant="h6" fontWeight={500}>
-              {poem.title}
-            </Typography>
-
-            <Box>
-              <IconButton onClick={() => speak(poem.content)} disabled={!ready}>
-                <VolumeUpIcon color="primary" />
-              </IconButton>
-              <IconButton onClick={stopSpeech} disabled={!ready}>
-                <StopCircleIcon color="error" />
-              </IconButton>
-            </Box>
-          </Box>
-
-          <Divider sx={{ my: 1 }} />
-
-          <Typography sx={{ whiteSpace: "pre-line" }}>
             {poem.content}
           </Typography>
+
+          {/* 🧾 IMAGE FOOTER (PERFECT ALIGNMENT) */}
+          <Box
+            sx={{
+              mt: 4,
+              pt: 2,
+              borderTop: "1px solid #ddd",
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
+              alignItems: "center",
+              fontSize: "0.8rem",
+              color: "#444",
+            }}
+          >
+            {/* Left */}
+            <Typography sx={{ justifySelf: "start", fontWeight: 500 }}>
+              మిరియాల వెంకటరత్నం
+            </Typography>
+
+            {/* Center (TRUE CENTER) */}
+            <Typography
+              sx={{
+                justifySelf: "center",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                opacity: 0.85,
+              }}
+            >
+              రత్నాలబాల · పద్యాలవాల · భావాలమాల
+            </Typography>
+
+            {/* Right spacer */}
+            <Box />
+          </Box>
         </Box>
 
-        {/* 📤 Share bar */}
-        <ShareButtons targetRef={poemRef} />
+        {/* 🎛 UI CONTROLS (NOT IN IMAGE) */}
+        <Box
+          sx={{
+            mt: 1.5,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 1,
+          }}
+        >
+          {/* Speak / Stop */}
+          <Box>
+            <IconButton
+              onClick={() => speak(poem.content)}
+              disabled={!ready}
+              aria-label="పద్యాన్ని వినండి"
+            >
+              <VolumeUpIcon color="primary" />
+            </IconButton>
+
+            <IconButton
+              onClick={stopSpeech}
+              disabled={!ready}
+              aria-label="ఆపండి"
+            >
+              <StopCircleIcon color="error" />
+            </IconButton>
+          </Box>
+
+          {/* Share */}
+          <ShareButtons targetRef={poemRef} />
+        </Box>
       </CardContent>
     </Card>
   );
