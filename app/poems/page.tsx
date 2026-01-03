@@ -6,14 +6,9 @@ import {
   Typography,
   TextField,
   Button,
-  Card,
-  CardContent,
-  Divider,
   Pagination,
-  IconButton,
 } from "@mui/material";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
+import PoemCard from "@/app/components/PoemCard";
 
 interface Poem {
   title: string;
@@ -33,7 +28,7 @@ const PoemList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [viewAll, setViewAll] = useState(false);
 
-  /* 🔊 Load poems + voices */
+  /* 📥 Load poems + voices */
   useEffect(() => {
     const fetchPoems = async () => {
       try {
@@ -59,8 +54,6 @@ const PoemList: React.FC = () => {
       };
       loadVoices();
       window.speechSynthesis.onvoiceschanged = loadVoices;
-    } else {
-      setError("మీ బ్రౌజర్‌లో వచన-మాట్లాడటం మద్దతు లేదు.");
     }
 
     return () => {
@@ -69,29 +62,24 @@ const PoemList: React.FC = () => {
     };
   }, []);
 
-  /* 🔇 Stop speech */
-  const stopSpeech = () => {
-    window.speechSynthesis.cancel();
-  };
+  const stopSpeech = () => window.speechSynthesis.cancel();
 
-  /* 🔊 Speak poem */
   const speak = (content: string) => {
     stopSpeech();
-
-    const utterance = new SpeechSynthesisUtterance(content);
-    utterance.lang = "te-IN";
-    utterance.rate = 0.8;
+    const u = new SpeechSynthesisUtterance(content);
+    u.lang = "te-IN";
+    u.rate = 0.8;
 
     const voice =
       voices.find((v) => v.lang === "te-IN") ||
       voices.find((v) => v.lang === "hi-IN") ||
       voices.find((v) => v.lang.includes("en-IN"));
 
-    if (voice) utterance.voice = voice;
-    window.speechSynthesis.speak(utterance);
+    if (voice) u.voice = voice;
+    window.speechSynthesis.speak(u);
   };
 
-  /* 🔍 Filter poems */
+  /* 🔍 Filter */
   const filtered = useMemo(
     () =>
       poems.filter(
@@ -142,63 +130,16 @@ const PoemList: React.FC = () => {
         </Button>
       </Box>
 
-      {loading && (
-        <Typography align="center" color="text.secondary">
-          పద్యాలు లోడ్ అవుతున్నాయి...
-        </Typography>
-      )}
-
-      {error && (
-        <Typography align="center" color="error">
-          {error}
-        </Typography>
-      )}
-
-      {!loading && !error && filtered.length === 0 && (
-        <Typography align="center" color="text.secondary">
-          పద్యం కనిపించలేదు.
-        </Typography>
-      )}
-
       {!loading &&
         !error &&
         current.map((poem, i) => (
-          <Card key={poem.slug || i} sx={{ mb: 3 }}>
-            <CardContent>
-              <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={1}
-              >
-                <Typography variant="h6" fontWeight={500}>
-                  {poem.title}
-                </Typography>
-
-                <Box>
-                  <IconButton
-                    aria-label="పద్యాన్ని వినండి"
-                    onClick={() => speak(poem.content)}
-                    disabled={!ready}
-                  >
-                    <VolumeUpIcon color="primary" />
-                  </IconButton>
-                  <IconButton
-                    aria-label="ఆపండి"
-                    onClick={stopSpeech}
-                    disabled={!ready}
-                  >
-                    <StopCircleIcon color="error" />
-                  </IconButton>
-                </Box>
-              </Box>
-
-              <Divider sx={{ my: 1 }} />
-              <Typography sx={{ whiteSpace: "pre-line" }}>
-                {poem.content}
-              </Typography>
-            </CardContent>
-          </Card>
+          <PoemCard
+            key={poem.slug || i}
+            poem={poem}
+            ready={ready}
+            speak={speak}
+            stopSpeech={stopSpeech}
+          />
         ))}
 
       {!loading && !error && !viewAll && filtered.length > ITEMS_PER_PAGE && (

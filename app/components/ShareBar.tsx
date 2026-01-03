@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { IconButton, Stack } from "@mui/material";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
@@ -10,16 +12,13 @@ type Props = {
 };
 
 export default function ShareButtons({ targetRef }: Props) {
-
   const generateImage = async () => {
     if (!targetRef.current) return null;
 
-    const element = targetRef.current;
-
-    const canvas = await html2canvas(element, {
+    const canvas = await html2canvas(targetRef.current, {
       scale: window.devicePixelRatio || 2,
       backgroundColor: "#ffffff",
-      width: 360,              // ✅ mobile-friendly width
+      width: 360,
       windowWidth: 360,
       scrollY: -window.scrollY,
       useCORS: true,
@@ -31,45 +30,39 @@ export default function ShareButtons({ targetRef }: Props) {
   const downloadPng = async () => {
     const img = await generateImage();
     if (!img) return;
+
     const link = document.createElement("a");
     link.href = img;
-    link.download = "mantra.png";
+    link.download = "padya.png";
     link.click();
   };
 
-  const shareTo = async () => {
+  const shareImage = async () => {
     const img = await generateImage();
     if (!img) return;
 
     const blob = await (await fetch(img)).blob();
-    const file = new File([blob], "mantra.png", { type: "image/png" });
+    const file = new File([blob], "padya.png", { type: "image/png" });
 
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: "Mantra",
-        text: "🙏 Vedic Mantra",
+        title: "పద్యాలవాల",
+        text: "📜 తెలుగు పద్యం",
       });
     } else {
-      downloadPng(); // fallback for desktop
+      downloadPng();
     }
   };
 
   return (
-    <Stack
-      direction="row"
-      spacing={1}
-      justifyContent="center"
-      sx={{ my: 2, flexWrap: "wrap" }}
-    >
-      <IconButton color="success" onClick={shareTo}>
+    <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 1 }}>
+      <IconButton color="success" onClick={shareImage}>
         <WhatsAppIcon />
       </IconButton>
-
-      <IconButton color="primary" onClick={shareTo}>
+      <IconButton color="primary" onClick={shareImage}>
         <TelegramIcon />
       </IconButton>
-
       <IconButton color="secondary" onClick={downloadPng}>
         <DownloadIcon />
       </IconButton>
