@@ -12,48 +12,90 @@ type Props = {
 };
 
 export default function ShareButtons({ targetRef }: Props) {
-  /* 🖼 Generate poster-sized image - TypeScript safe */
   const generateImage = useCallback(async () => {
     if (!targetRef.current) return null;
 
-    // Wait for Telugu fonts
     if (document.fonts?.ready) {
       await document.fonts.ready;
     }
 
-    const isMobile = window.innerWidth < 768;
     const WIDTH = 1080;
-    const HEIGHT = isMobile ? 1920 : 1080;
+    const HEIGHT = 1350; // ⭐ Best poster ratio
 
-    const canvas = await html2canvas(targetRef.current!, {
+    const canvas = await html2canvas(targetRef.current, {
+      backgroundColor: "#ffffff",
       width: WIDTH,
       height: HEIGHT,
-      backgroundColor: "#ffffff",
-      scale: 2,
+      scale: window.devicePixelRatio || 2,
       useCORS: true,
-      windowWidth: WIDTH,
       scrollX: 0,
       scrollY: 0,
-      onclone: (clonedDoc: Document, clonedElement: HTMLElement) => {
-        // ✅ TypeScript-safe: clonedElement is HTMLElement
-        const content = clonedElement.querySelector('[data-poster-content]');
-        if (content instanceof HTMLElement) {
-          Object.assign(content.style, {
-            width: `${WIDTH}px`,
-            height: `${HEIGHT}px`,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '40px 30px',
-            boxSizing: 'border-box',
-            fontSize: isMobile ? '28px' : '32px',
-            lineHeight: '1.4',
-            textAlign: 'center',
-            overflow: 'hidden',
+      letterRendering: true,
+
+      onclone: (_, clonedRoot) => {
+        const root = clonedRoot.querySelector(
+          "[data-poster-root]"
+        ) as HTMLElement | null;
+
+        if (!root) return;
+
+        /* 🖼 Poster base */
+        Object.assign(root.style, {
+          width: `${WIDTH}px`,
+          height: `${HEIGHT}px`,
+          padding: "120px 100px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          boxSizing: "border-box",
+          textAlign: "center",
+          fontFamily: "'Noto Serif Telugu', serif",
+        });
+
+        /* 🔸 Title */
+        const title = root.querySelector("[data-poster-title]") as HTMLElement;
+        if (title) {
+          Object.assign(title.style, {
+            fontSize: "44px",
+            fontWeight: "700",
+            marginBottom: "20px",
           });
         }
-      }
+
+        /* 📜 Poem (FOCUS AREA – 4 lines) */
+        const poem = root.querySelector("[data-poster-poem]") as HTMLElement;
+        if (poem) {
+          Object.assign(poem.style, {
+            fontSize: "38px",
+            lineHeight: "1.9",
+            margin: "60px 0",
+            whiteSpace: "pre-line",
+          });
+        }
+
+        /* ✍️ Author */
+        const author = root.querySelector("[data-poster-author]") as HTMLElement;
+        if (author) {
+          Object.assign(author.style, {
+            fontSize: "26px",
+            marginTop: "30px",
+            textAlign: "right",
+          });
+        }
+
+        /* 🧾 Footer */
+        const footer = root.querySelector("[data-poster-footer]") as HTMLElement;
+        if (footer) {
+          Object.assign(footer.style, {
+            fontSize: "24px",
+            opacity: "0.85",
+            marginTop: "40px",
+          });
+        }
+
+        // ❌ Remove shadows / borders
+        root.style.boxShadow = "none";
+      },
     });
 
     return canvas.toDataURL("image/png");
@@ -65,7 +107,7 @@ export default function ShareButtons({ targetRef }: Props) {
 
     const link = document.createElement("a");
     link.href = img;
-    link.download = "padya-poster.png";
+    link.download = "telugu-padyam-poster.png";
     link.click();
   };
 
@@ -74,13 +116,15 @@ export default function ShareButtons({ targetRef }: Props) {
     if (!img) return;
 
     const blob = await (await fetch(img)).blob();
-    const file = new File([blob], "padya-poster.png", { type: "image/png" });
+    const file = new File([blob], "telugu-padyam.png", {
+      type: "image/png",
+    });
 
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: "రత్నాలబాల",
-        text: "📜 తెలుగు పద్యం - అందమైన పోస్టర్",
+        title: "తెలుగు పద్యం",
+        text: "📜 నాలుగు పంక్తుల తెలుగు పద్యం",
       });
     } else {
       downloadPng();
@@ -88,29 +132,26 @@ export default function ShareButtons({ targetRef }: Props) {
   };
 
   return (
-    <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 2 }}>
+    <Stack direction="row" spacing={1} justifyContent="center">
       <IconButton
-        aria-label="WhatsApp Share Poster"
+        aria-label="వాట్సాప్‌లో పంచుకోండి"
         color="success"
-        size="large"
         onClick={shareImage}
       >
         <WhatsAppIcon />
       </IconButton>
 
       <IconButton
-        aria-label="Telegram Share Poster"
+        aria-label="టెలిగ్రామ్‌లో పంచుకోండి"
         color="primary"
-        size="large"
         onClick={shareImage}
       >
         <TelegramIcon />
       </IconButton>
 
       <IconButton
-        aria-label="Download Poster"
+        aria-label="డౌన్‌లోడ్ చేయండి"
         color="secondary"
-        size="large"
         onClick={downloadPng}
       >
         <DownloadIcon />
