@@ -62,6 +62,7 @@ const PoemList: React.FC = () => {
     };
   }, []);
 
+  /* 🔊 Speech helpers */
   const stopSpeech = () => window.speechSynthesis.cancel();
 
   const speak = (content: string) => {
@@ -79,7 +80,7 @@ const PoemList: React.FC = () => {
     window.speechSynthesis.speak(u);
   };
 
-  /* 🔍 Filter */
+  /* 🔍 Filter poems */
   const filtered = useMemo(
     () =>
       poems.filter(
@@ -103,12 +104,30 @@ const PoemList: React.FC = () => {
   }, [search, viewAll]);
 
   return (
-    <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 900, mx: "auto" }}>
-      <Typography variant="h4" align="center" fontWeight={600} gutterBottom>
+    <Box
+      sx={{
+        p: { xs: 2, sm: 4 },
+        maxWidth: 900,
+        mx: "auto",
+
+        /* ✅ GLOBAL FONT APPLY */
+        fontFamily: "var(--telugu-font-family)",
+        fontSize: "var(--telugu-font-size)",
+        lineHeight: 1.8,
+      }}
+    >
+      <Typography
+        align="center"
+        gutterBottom
+        sx={{
+          fontWeight: 700,
+          fontSize: "calc(var(--telugu-font-size) * 1.8)",
+        }}
+      >
         పద్యాలవాల
       </Typography>
 
-      <Typography variant="subtitle1" align="center" mb={2}>
+      <Typography align="center" sx={{ mb: 2 }}>
         మొత్తం పద్యాల సంఖ్య: <strong>{filtered.length}</strong>
       </Typography>
 
@@ -129,6 +148,16 @@ const PoemList: React.FC = () => {
           {viewAll ? "పేజీలవారీగా చూడండి" : "అన్ని పద్యాలు చూడండి"}
         </Button>
       </Box>
+
+      {loading && (
+        <Typography align="center">పద్యాలు లోడ్ అవుతున్నాయి…</Typography>
+      )}
+
+      {error && (
+        <Typography align="center" color="error">
+          {error}
+        </Typography>
+      )}
 
       {!loading &&
         !error &&

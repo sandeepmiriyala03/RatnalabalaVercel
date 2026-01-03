@@ -11,164 +11,122 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 
-// --- Data for Poem Titles ---
+/* ------------------ DATA ------------------ */
+
 const poemTitles = [
-  "అసహనం",
-  "ఆకలి",
-  "ఆనందం",
-  "బుణం",
-  "బాల్యం",
-  "గుణం",
-  "గర్వం",
-  "గౌరవం",
-  "జ్ఞానం",
-  "జొప్యం",
-  "క్రమశిక్షణ",
-  "దయ",
-  "దారిద్య్రం",
-  "దానం",
-  "దురాశ",
-  "ద్రోహం",
-  "ధనం",
-  "న్యాయం",
-  "పెద్దలు",
-  "పొదుపు",
-  "పౌరుషం",
-  "భారం",
-  "మనిషి",
-  "మంచితనం",
-  "మాటలు",
-  "మనసు",
-  "మైత్రి",
-  "లోకం",
-  "విషం",
-  "వ్యసనం",
-  "వైద్యం",
-  "శుచి",
-  "సుఖం",
-  "సొగసు",
-  "సౌజన్యం",
-  "సాహసం"
-];
-const poemTitlesInEnglish = [
-  "Addiction",
-  "Adventure/Courage",
-  "Beauty",
-  "Betrayal",
-  "Burden",
-  "Charity",
-  "Childhood",
-  "Courtesy",
-  "Debt",
-  "Discipline",
-  "Elders",
-  "Friendness",
-  "Goodness",
-  "Greed",
-  "Happiness/Comfort",
-  "Human",
-  "Hunger",
-  "Intolerance",
-  "Interference",
-  "Joy",
-  "Justice",
-  "Kindness",
-  "Knowledge",
-  "Manliness/Valor",
-  "Medicine",
-  "Mind",
-  "Poison",
-  "Poverty",
-  "Pride",
-  "Purity/Cleanliness",
-  "Quality/Virtue",
-  "Respect",
-  "Saving",
-  "Wealth",
-  "Words",
-  "World"
+  "అసహనం","ఆకలి","ఆనందం","బుణం","బాల్యం","గుణం","గర్వం","గౌరవం",
+  "జ్ఞానం","జొప్యం","క్రమశిక్షణ","దయ","దారిద్య్రం","దానం","దురాశ",
+  "ద్రోహం","ధనం","న్యాయం","పెద్దలు","పొదుపు","పౌరుషం","భారం",
+  "మనిషి","మంచితనం","మాటలు","మనసు","మైత్రి","లోకం","విషం",
+  "వ్యసనం","వైద్యం","శుచి","సుఖం","సొగసు","సౌజన్యం","సాహసం",
 ];
 
-// --- Language-specific Content Constants ---
-const teluguIntro = "మొత్తం రచయిత రాసిన తెలుగు కవితలు 36 బాల్యం గురించి మీరు క్రింద శీర్షికలను చూడవచ్చు.ప్రతి కవితలో అద్భుతమైన అర్థం మరియు సరళమైన మార్గం తెలుగులో ఉన్నాయి. ఇందులో నాలుగు పంక్తులు ఉన్నాయి.";
-const englishIntro = "You can see 36 Telugu poems written by the author about childhood below. Each poem has a wonderful meaning and a simple path in Telugu. Each poem contains four lines.";
+const poemTitlesInEnglish = [
+  "Addiction","Adventure / Courage","Beauty","Betrayal","Burden",
+  "Charity","Childhood","Courtesy","Debt","Discipline","Elders",
+  "Friendship","Goodness","Greed","Happiness","Human","Hunger",
+  "Intolerance","Interference","Joy","Justice","Kindness","Knowledge",
+  "Valor","Medicine","Mind","Poison","Poverty","Pride","Purity",
+  "Virtue","Respect","Saving","Wealth","Words","World",
+];
+
+/* ------------------ TEXT ------------------ */
+
+const teluguIntro =
+  "మొత్తం రచయిత రాసిన తెలుగు కవితలు 36. బాల్యం గురించి రచించబడిన ఈ పద్యాలు సరళమైన భాషలో గాఢమైన భావాన్ని వ్యక్తపరుస్తాయి.";
+
+const englishIntro =
+  "Below are 36 Telugu poems written by the author. Each poem conveys deep meaning in a simple and elegant form.";
 
 const teluguListIntro = "మొత్తం పద్యాల పట్టిక";
 const englishListIntro = "List of all poems";
 
-const teluguLastLine = "చివరి పంక్తి భావరత్నబాల! భాగ్యలీల!";
+const teluguLastLine = "చివరి పంక్తి : భావరత్నబాల! భాగ్యలీల!";
 const englishLastLine = "Last line: Bhavaratnabala! Bhagyaleela!";
 
 const teluguHeading = "పదాలు";
 const englishHeading = "Words";
 
-// --- PoemTitlesPage Component ---
-export default function PoemTitlesPage() {
-  // Set initial language to English, as Sanskrit is removed
-  const [lang, setLang] = useState<"en" | "te">("en");
+/* ------------------ COMPONENT ------------------ */
 
-  const displayedPoemTitles =
-    lang === "te"
-      ? poemTitles
-      : poemTitlesInEnglish; // Only English or Telugu now
+export default function PoemTitlesPage() {
+  const [lang, setLang] = useState<"te" | "en">("en");
+
+  const displayedTitles = lang === "te" ? poemTitles : poemTitlesInEnglish;
 
   return (
-    <Container sx={{ mt: 6 }}>
-      {/* --- Language Toggle --- */}
+    <Container
+      sx={{
+        mt: 6,
+        fontFamily: "var(--telugu-font-family)",
+        fontSize: "var(--telugu-font-size)",
+        lineHeight: 1.9,
+      }}
+    >
+      {/* 🌐 Language Toggle */}
       <Box
         sx={{
           display: "flex",
-          flexDirection: { xs: "column", sm: "row" },
           justifyContent: "center",
-          alignItems: "center",
-          gap: 3,
           mb: 3,
         }}
       >
         <ToggleButtonGroup
           value={lang}
           exclusive
-          onChange={(_, newLang) => {
-            if (newLang) {
-              setLang(newLang);
-            }
-          }}
-          aria-label="language selection"
+          onChange={(_, v) => v && setLang(v)}
         >
-          <ToggleButton value="te" aria-label="Telugu">తెలుగు</ToggleButton>
-          <ToggleButton value="en" aria-label="English">English</ToggleButton>
-          {/* Sanskrit toggle has been removed */}
+          <ToggleButton value="te">తెలుగు</ToggleButton>
+          <ToggleButton value="en">English</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
-      {/* --- Main Content Card --- */}
-      <Card sx={{ p: 2, mb: 4 }}>
-        <Typography variant="h4" gutterBottom align="center">
-          {lang === "te" ? teluguHeading : englishHeading}
-        </Typography>
-
+      {/* 📘 Content */}
+      <Card sx={{ mb: 4 }}>
         <CardContent>
-          {/* Introductory Text */}
-          <Typography variant="h6" sx={{ whiteSpace: "pre-line", textAlign: "center" }}>
+          <Typography
+            align="center"
+            gutterBottom
+            sx={{
+              fontWeight: 700,
+              fontSize: "calc(var(--telugu-font-size) * 1.8)",
+            }}
+          >
+            {lang === "te" ? teluguHeading : englishHeading}
+          </Typography>
+
+          <Typography
+            align="center"
+            sx={{ whiteSpace: "pre-line", mb: 2 }}
+          >
             {lang === "te" ? teluguIntro : englishIntro}
           </Typography>
 
-          {/* Last Line */}
-          <Typography align="center" sx={{ fontWeight: "bold", mt: 2 }}>
+          <Typography
+            align="center"
+            sx={{ fontWeight: 600, mb: 3 }}
+          >
             {lang === "te" ? teluguLastLine : englishLastLine}
           </Typography>
 
-          {/* List of Poem Titles */}
-          <Box sx={{ mt: 4, px: 3 }}>
-            <Typography variant="h5" gutterBottom textAlign="center">
-              {lang === "te" ? teluguListIntro : englishListIntro}
-            </Typography>
+          {/* 📜 Titles List */}
+          <Typography
+            align="center"
+            sx={{ fontWeight: 700, mb: 2 }}
+          >
+            {lang === "te" ? teluguListIntro : englishListIntro}
+          </Typography>
 
-            <ul style={{ listStyleType: "circle", lineHeight: "2", fontSize: "1.1rem" }}>
-              {displayedPoemTitles.map((title, index) => (
-                <li key={index}>{title}</li>
-              ))}
-            </ul>
+          <Box component="ul" sx={{ pl: 3 }}>
+            {displayedTitles.map((t, i) => (
+              <Typography
+                component="li"
+                key={i}
+                sx={{ mb: 0.5 }}
+              >
+                {t}
+              </Typography>
+            ))}
           </Box>
         </CardContent>
       </Card>

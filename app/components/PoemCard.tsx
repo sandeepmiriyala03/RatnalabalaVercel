@@ -32,79 +32,99 @@ export default function PoemCard({
   speak,
   stopSpeech,
 }: Props) {
-  // 🔒 Only THIS ref is captured as image
   const poemRef = useRef<HTMLDivElement>(null);
 
   return (
     <Card sx={{ mb: 3 }}>
-      <CardContent>
-        {/* 🖼 IMAGE CAPTURE AREA (PURE CONTENT ONLY) */}
-        <Box ref={poemRef}>
-          {/* Title */}
-          <Typography variant="h6" fontWeight={600} sx={{ mb: 1 }}>
+      <CardContent
+        sx={{
+          fontFamily: "var(--telugu-font-family)",
+          fontSize: "var(--telugu-font-size)",
+        }}
+      >
+        {/* 🖼 IMAGE CAPTURE AREA */}
+        <Box
+          ref={poemRef}
+          sx={{
+            px: { xs: 2.5, sm: 4 },
+            py: { xs: 3, sm: 4 },
+          }}
+        >
+          {/* 🔸 TITLE – CENTER */}
+          <Typography
+            sx={{
+              textAlign: "center",
+              fontWeight: 700,
+              fontSize: "1.3em",
+              letterSpacing: "0.04em",
+              mb: 2,
+            }}
+          >
             {poem.title}
           </Typography>
 
-          <Divider sx={{ mb: 1 }} />
+          <Divider sx={{ mb: 2 }} />
 
-          {/* Poem Content */}
+          {/* 📜 POEM CONTENT – EXACT LINES (NO EXTRA BREAKS) */}
           <Typography
             sx={{
-              whiteSpace: "pre-line",
-              lineHeight: 1.8,
-              fontSize: "1rem",
+              whiteSpace: "pre-line", // keeps exactly 4 lines if present
+              lineHeight: 2,
+              textAlign: "center",
+              fontSize: "1em",
             }}
           >
             {poem.content}
           </Typography>
 
-          {/* 🧾 IMAGE FOOTER (PERFECT ALIGNMENT) */}
+          {/* ✍️ WRITER NAME – SINGLE LINE ONLY */}
+          <Typography
+            sx={{
+              mt: 2.5,
+              textAlign: "right",
+              fontWeight: 500,
+              fontSize: "0.9em",
+              whiteSpace: "nowrap",   // ✅ NEVER wrap
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            — మిరియాల వెంకటరత్నం
+          </Typography>
+
+          {/* 🧾 FOOTER – ONE LINE, TRUE CENTER */}
           <Box
             sx={{
               mt: 4,
               pt: 2,
               borderTop: "1px solid #ddd",
-              display: "grid",
-              gridTemplateColumns: "1fr auto 1fr",
-              alignItems: "center",
-              fontSize: "0.8rem",
-              color: "#444",
+              display: "flex",
+              justifyContent: "center",
             }}
           >
-            {/* Left */}
-            <Typography sx={{ justifySelf: "start", fontWeight: 500 }}>
-              మిరియాల వెంకటరత్నం
-            </Typography>
-
-            {/* Center (TRUE CENTER) */}
             <Typography
               sx={{
-                justifySelf: "center",
+                fontSize: "0.8em",
                 fontWeight: 600,
-                whiteSpace: "nowrap",
                 opacity: 0.85,
+                whiteSpace: "nowrap", // ✅ ALWAYS single line
               }}
             >
-              రత్నాలబాల · పద్యాలవాల · భావాలమాల
+              రత్నాలబాల 
             </Typography>
-
-            {/* Right spacer */}
-            <Box />
           </Box>
         </Box>
 
-        {/* 🎛 UI CONTROLS (NOT IN IMAGE) */}
+        {/* 🎛 CONTROLS (OUTSIDE IMAGE) */}
         <Box
           sx={{
-            mt: 1.5,
+            mt: 2,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            flexWrap: "wrap",
             gap: 1,
           }}
         >
-          {/* Speak / Stop */}
           <Box>
             <IconButton
               onClick={() => speak(poem.content)}
@@ -123,10 +143,10 @@ export default function PoemCard({
             </IconButton>
           </Box>
 
-          {/* Share */}
           <ShareButtons targetRef={poemRef} />
         </Box>
       </CardContent>
     </Card>
   );
 }
+/* ---------- Speech Synthesis Notes ----------
