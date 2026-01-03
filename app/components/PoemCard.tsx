@@ -42,80 +42,88 @@ export default function PoemCard({
           fontSize: "var(--telugu-font-size)",
         }}
       >
-        {/* 🖼 IMAGE CAPTURE AREA */}
+        {/* 🖼 IMAGE CAPTURE ROOT */}
         <Box
           ref={poemRef}
+          data-poster-root
           sx={{
             px: { xs: 2.5, sm: 4 },
             py: { xs: 3, sm: 4 },
           }}
         >
-          {/* 🔸 TITLE – CENTER */}
-          <Typography
-            sx={{
-              textAlign: "center",
-              fontWeight: 700,
-              fontSize: "1.3em",
-              letterSpacing: "0.04em",
-              mb: 2,
-            }}
-          >
-            {poem.title}
-          </Typography>
-
-          <Divider sx={{ mb: 2 }} />
-
-          {/* 📜 POEM CONTENT – EXACT LINES (NO EXTRA BREAKS) */}
-          <Typography
-            sx={{
-              whiteSpace: "pre-line", // keeps exactly 4 lines if present
-              lineHeight: 2,
-              textAlign: "center",
-              fontSize: "1em",
-            }}
-          >
-            {poem.content}
-          </Typography>
-
-          {/* ✍️ WRITER NAME – SINGLE LINE ONLY */}
-          <Typography
-            sx={{
-              mt: 2.5,
-              textAlign: "right",
-              fontWeight: 500,
-              fontSize: "0.9em",
-              whiteSpace: "nowrap",   // ✅ NEVER wrap
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            — మిరియాల వెంకటరత్నం
-          </Typography>
-
-          {/* 🧾 FOOTER – ONE LINE, TRUE CENTER */}
-          <Box
-            sx={{
-              mt: 4,
-              pt: 2,
-              borderTop: "1px solid #ddd",
-              display: "flex",
-              justifyContent: "center",
-            }}
-          >
+          {/* 📜 POSTER BODY (COMPACT) */}
+          <Box data-poster-body>
+            {/* 🔸 TITLE */}
             <Typography
+              data-poster-title
               sx={{
-                fontSize: "0.8em",
-                fontWeight: 600,
-                opacity: 0.85,
-                whiteSpace: "nowrap", // ✅ ALWAYS single line
+                textAlign: "center",
+                fontWeight: 700,
+                fontSize: "1.3em",
+                letterSpacing: "0.04em",
+                mb: 2,
               }}
             >
-              రత్నాలబాల 
+              {poem.title}
             </Typography>
+
+            <Divider sx={{ mb: 2 }} />
+
+            {/* 📜 POEM CONTENT – EXACT LINES */}
+            <Typography
+              data-poster-poem
+              sx={{
+                whiteSpace: "pre-line",
+                lineHeight: 2,
+                textAlign: "center",
+                fontSize: "1em",
+              }}
+            >
+              {poem.content}
+            </Typography>
+
+            {/* ✍️ AUTHOR */}
+            <Typography
+              data-poster-author
+              sx={{
+                mt: 2.5,
+                textAlign: "right",
+                fontWeight: 500,
+                fontSize: "0.9em",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              — మిరియాల వెంకటరత్నం
+            </Typography>
+
+            {/* 🧾 FOOTER */}
+            <Box
+              sx={{
+                mt: 4,
+                pt: 2,
+                borderTop: "1px solid #ddd",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <Typography
+                data-poster-footer
+                sx={{
+                  fontSize: "0.8em",
+                  fontWeight: 600,
+                  opacity: 0.85,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                రత్నాలబాల
+              </Typography>
+            </Box>
           </Box>
         </Box>
 
-        {/* 🎛 CONTROLS (OUTSIDE IMAGE) */}
+        {/* 🎛 CONTROLS (NOT CAPTURED) */}
         <Box
           sx={{
             mt: 2,

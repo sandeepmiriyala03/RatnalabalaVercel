@@ -15,86 +15,96 @@ export default function ShareButtons({ targetRef }: Props) {
   const generateImage = useCallback(async () => {
     if (!targetRef.current) return null;
 
+    // ✅ Ensure Telugu fonts are loaded
     if (document.fonts?.ready) {
       await document.fonts.ready;
     }
 
+    // ✅ SOCIAL MEDIA SAFE SIZE (Universal)
     const WIDTH = 1080;
-    const HEIGHT = 1350; // ⭐ Best poster ratio
+    const HEIGHT = 1080;
 
     const canvas = await html2canvas(targetRef.current, {
       backgroundColor: "#ffffff",
       width: WIDTH,
       height: HEIGHT,
-      scale: window.devicePixelRatio || 2,
+      scale: Math.min(window.devicePixelRatio || 2, 2),
       useCORS: true,
       scrollX: 0,
       scrollY: 0,
-   
+      letterRendering: true,
 
-      onclone: (_, clonedRoot) => {
-        const root = clonedRoot.querySelector(
+      onclone: (_, clonedDoc) => {
+        const root = clonedDoc.querySelector(
           "[data-poster-root]"
         ) as HTMLElement | null;
 
-        if (!root) return;
+        const body = clonedDoc.querySelector(
+          "[data-poster-body]"
+        ) as HTMLElement | null;
 
-        /* 🖼 Poster base */
+        if (!root || !body) return;
+
+        /* 🖼 Poster canvas */
         Object.assign(root.style, {
           width: `${WIDTH}px`,
           height: `${HEIGHT}px`,
-          padding: "120px 100px",
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "#ffffff",
+          padding: "0",
+          boxSizing: "border-box",
+          position: "relative", // important safety fix
+          boxShadow: "none",
+        });
+
+        /* 📜 Compact poster content */
+        Object.assign(body.style, {
+          width: "100%",
+          maxWidth: "760px",
+          padding: "64px 56px",
           boxSizing: "border-box",
           textAlign: "center",
-          fontFamily: "'Noto Serif Telugu', serif",
+          fontFamily: "var(--telugu-font-family)",
         });
 
         /* 🔸 Title */
-        const title = root.querySelector("[data-poster-title]") as HTMLElement;
-        if (title) {
-          Object.assign(title.style, {
-            fontSize: "44px",
+        body.querySelectorAll("[data-poster-title]").forEach(el => {
+          Object.assign((el as HTMLElement).style, {
+            fontSize: "36px",
             fontWeight: "700",
-            marginBottom: "20px",
+            marginBottom: "12px",
           });
-        }
+        });
 
-        /* 📜 Poem (FOCUS AREA – 4 lines) */
-        const poem = root.querySelector("[data-poster-poem]") as HTMLElement;
-        if (poem) {
-          Object.assign(poem.style, {
-            fontSize: "38px",
-            lineHeight: "1.9",
-            margin: "60px 0",
+        /* 📜 Poem (main focus – 4 lines) */
+        body.querySelectorAll("[data-poster-poem]").forEach(el => {
+          Object.assign((el as HTMLElement).style, {
+            fontSize: "32px",
+            lineHeight: "1.85",
+            margin: "36px 0",
             whiteSpace: "pre-line",
           });
-        }
+        });
 
         /* ✍️ Author */
-        const author = root.querySelector("[data-poster-author]") as HTMLElement;
-        if (author) {
-          Object.assign(author.style, {
-            fontSize: "26px",
-            marginTop: "30px",
+        body.querySelectorAll("[data-poster-author]").forEach(el => {
+          Object.assign((el as HTMLElement).style, {
+            fontSize: "22px",
+            marginTop: "18px",
             textAlign: "right",
           });
-        }
+        });
 
         /* 🧾 Footer */
-        const footer = root.querySelector("[data-poster-footer]") as HTMLElement;
-        if (footer) {
-          Object.assign(footer.style, {
-            fontSize: "24px",
-            opacity: "0.85",
-            marginTop: "40px",
+        body.querySelectorAll("[data-poster-footer]").forEach(el => {
+          Object.assign((el as HTMLElement).style, {
+            fontSize: "20px",
+            opacity: "0.8",
+            marginTop: "28px",
           });
-        }
-
-        // ❌ Remove shadows / borders
-        root.style.boxShadow = "none";
+        });
       },
     });
 
@@ -107,7 +117,7 @@ export default function ShareButtons({ targetRef }: Props) {
 
     const link = document.createElement("a");
     link.href = img;
-    link.download = "telugu-padyam-poster.png";
+    link.download = "telugu-padyam.png";
     link.click();
   };
 
