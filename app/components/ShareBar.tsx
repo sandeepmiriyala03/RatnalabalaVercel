@@ -30,7 +30,7 @@ export default function ShareButtons({ targetRef }: Props) {
       useCORS: true,
       scrollX: 0,
       scrollY: 0,
-      letterRendering: true,
+   
 
       onclone: (_, clonedRoot) => {
         const root = clonedRoot.querySelector(
