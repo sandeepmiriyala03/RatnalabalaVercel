@@ -1,4 +1,9 @@
+/* ===============================
+   🌐 Page Layout (FINAL)
+   =============================== */
+
 .page {
+  /* Color helpers */
   --gray-rgb: 0, 0, 0;
   --gray-alpha-200: rgba(var(--gray-rgb), 0.08);
   --gray-alpha-100: rgba(var(--gray-rgb), 0.05);
@@ -6,16 +11,21 @@
   --button-primary-hover: #383838;
   --button-secondary-hover: #f2f2f2;
 
-  display: grid;
-  grid-template-rows: 20px 1fr 20px;
-  align-items: center;
-  justify-items: center;
+  /* ✅ SAFE LAYOUT */
+  display: flex;
+  flex-direction: column;
+
   min-height: 100svh;
   padding: 80px;
   gap: 64px;
+
+  align-items: stretch;
+  justify-content: flex-start;
+
   font-family: var(--font-geist-sans);
 }
 
+/* 🌙 Dark Mode */
 @media (prefers-color-scheme: dark) {
   .page {
     --gray-rgb: 255, 255, 255;
@@ -27,13 +37,17 @@
   }
 }
 
+/* ===============================
+   🧱 Main Content
+   =============================== */
+
 .main {
   display: flex;
   flex-direction: column;
   gap: 32px;
-  grid-row-start: 2;
 }
 
+/* Lists */
 .main ol {
   font-family: var(--font-geist-mono);
   padding-left: 0;
@@ -48,13 +62,18 @@
   margin-bottom: 8px;
 }
 
+/* Inline code */
 .main code {
   font-family: inherit;
   background: var(--gray-alpha-100);
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  border-radius: 6px;
   font-weight: 600;
 }
+
+/* ===============================
+   🔘 CTA Buttons
+   =============================== */
 
 .ctas {
   display: flex;
@@ -63,21 +82,25 @@
 
 .ctas a {
   appearance: none;
-  border-radius: 128px;
+  border-radius: 999px;
   height: 48px;
   padding: 0 20px;
+
   border: 1px solid transparent;
-  transition:
-    background 0.2s,
-    color 0.2s,
-    border-color 0.2s;
   cursor: pointer;
-  display: flex;
+
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+
   font-size: 16px;
   line-height: 20px;
   font-weight: 500;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 a.primary {
@@ -91,10 +114,25 @@ a.secondary {
   min-width: 158px;
 }
 
+/* Hover only on non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+  a.primary:hover {
+    background: var(--button-primary-hover);
+  }
+
+  a.secondary:hover {
+    background: var(--button-secondary-hover);
+  }
+}
+
+/* ===============================
+   🧩 Footer
+   =============================== */
+
 .footer {
-  grid-row-start: 3;
   display: flex;
   gap: 24px;
+  flex-wrap: wrap;
 }
 
 .footer a {
@@ -107,28 +145,21 @@ a.secondary {
   flex-shrink: 0;
 }
 
-/* Enable hover only on non-touch devices */
 @media (hover: hover) and (pointer: fine) {
-  a.primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
-  }
-
-  a.secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
-  }
-
   .footer a:hover {
     text-decoration: underline;
     text-underline-offset: 4px;
   }
 }
 
+/* ===============================
+   📱 Mobile Adjustments
+   =============================== */
+
 @media (max-width: 600px) {
   .page {
     padding: 32px;
-    padding-bottom: 80px;
+    padding-bottom: 96px; /* ✅ space for bottom nav */
   }
 
   .main {
@@ -154,11 +185,13 @@ a.secondary {
   }
 
   .footer {
-    flex-wrap: wrap;
-    align-items: center;
     justify-content: center;
   }
 }
+
+/* ===============================
+   🌙 Dark Mode Logo
+   =============================== */
 
 @media (prefers-color-scheme: dark) {
   .logo {
