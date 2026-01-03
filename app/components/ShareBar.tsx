@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback } from "react";
 import { IconButton, Stack } from "@mui/material";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import TelegramIcon from "@mui/icons-material/Telegram";
@@ -12,37 +12,35 @@ type Props = {
 };
 
 export default function ShareButtons({ targetRef }: Props) {
-  /* 🖼 Generate poster-sized image optimized for device */
-  const generateImage = async () => {
+  /* 🖼 Generate poster-sized image - TypeScript safe */
+  const generateImage = useCallback(async () => {
     if (!targetRef.current) return null;
 
-    /* ✅ Wait for Telugu fonts to load */
+    // Wait for Telugu fonts
     if (document.fonts?.ready) {
       await document.fonts.ready;
     }
 
-    /* 📱 True poster dimensions - mobile story size, desktop square */
     const isMobile = window.innerWidth < 768;
-    const WIDTH = isMobile ? 1080 : 1080;   // WhatsApp story width
-    const HEIGHT = isMobile ? 1920 : 1080;  // Mobile: portrait poster, Desktop: square
+    const WIDTH = 1080;
+    const HEIGHT = isMobile ? 1920 : 1080;
 
-    /* 🎨 Create optimized poster canvas */
     const canvas = await html2canvas(targetRef.current!, {
       width: WIDTH,
       height: HEIGHT,
       backgroundColor: "#ffffff",
-      scale: 2,  // Crisp fonts on all devices
+      scale: 2,
       useCORS: true,
       windowWidth: WIDTH,
       scrollX: 0,
       scrollY: 0,
-      /* 👇 Key fix: Force content to fit poster bounds */
-      onclone: (clonedDoc) => {
-        const content = clonedDoc.querySelector('[data-poster-content]');
-        if (content) {
+      onclone: (clonedDoc: Document, clonedElement: HTMLElement) => {
+        // ✅ TypeScript-safe: clonedElement is HTMLElement
+        const content = clonedElement.querySelector('[data-poster-content]');
+        if (content instanceof HTMLElement) {
           Object.assign(content.style, {
-            width: WIDTH + 'px',
-            height: HEIGHT + 'px',
+            width: `${WIDTH}px`,
+            height: `${HEIGHT}px`,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
@@ -59,9 +57,8 @@ export default function ShareButtons({ targetRef }: Props) {
     });
 
     return canvas.toDataURL("image/png");
-  };
+  }, [targetRef]);
 
-  /* ⬇️ Download poster */
   const downloadPng = async () => {
     const img = await generateImage();
     if (!img) return;
@@ -72,7 +69,6 @@ export default function ShareButtons({ targetRef }: Props) {
     link.click();
   };
 
-  /* 📱📤 WhatsApp/Telegram optimized share */
   const shareImage = async () => {
     const img = await generateImage();
     if (!img) return;
