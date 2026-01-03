@@ -2,6 +2,8 @@ import ClientWrapper from "@/app/components/ClientWrapper";
 import Navbar from "@/app/components/Navbar";
 import MobileBottomNav from "@/app/components/MobileBottomNav";
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
+import FloatingAIButton from "@/app/components/FloatingAIButton";
+
 import {
   AppBar,
   Toolbar,
@@ -65,8 +67,11 @@ export default function RootLayout({
         {/* 📱 Mobile Bottom Navigation */}
         <MobileBottomNav />
 
-        {/* 🤖 Floating AI Button (Mobile only) */}
+        {/* ⬇️ PWA Install Button (LEFT floating) */}
         <PwaInstallPrompt />
+
+        {/* 🤖 AI Chatbot Button (RIGHT floating – ALL devices) */}
+        <FloatingAIButton />
       </body>
     </html>
   );

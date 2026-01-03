@@ -12,7 +12,6 @@ const navItems = [
   { label: "మిరా క్విజ్", path: "/MIRIAQuiz" },
   { label: "రత్నభావాలు", path: "/AboutAuthor" },
   { label: "పద్యాలవాల", path: "/poems" },
-  { label: "భావాలమాల", path: "/chatbot" },
   { label: "పదాలు", path: "/PoemTitles" },
   { label: "ధ్వని దృశ్యం", path: "/images" },
   { label: "అంకితం", path: "/Dedication" },
