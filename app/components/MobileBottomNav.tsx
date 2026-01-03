@@ -12,8 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 const items = [
   { label: "మిరా", path: "/", icon: <HomeIcon /> },
   { label: "పద్యాలు", path: "/poems", icon: <MenuBookIcon /> },
-  { label: "క్విజ్", path: "/MIRIAQuiz", icon: <QuizIcon /> },
-  { label: "భావాలు", path: "/chatbot", icon: <ChatIcon /> },
+
   { label: "అంకితం", path: "/Dedication", icon: <InfoIcon /> },
 ];
 
