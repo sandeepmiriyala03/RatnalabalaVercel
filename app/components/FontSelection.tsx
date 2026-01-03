@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import {
   Box,
@@ -18,7 +20,7 @@ type Props = {
   onApply: (family: string, size: number) => void;
 };
 
-// Make sure these names match your @font-face font-family values in globals.css
+/* 🔤 Telugu Fonts */
 const TELUGU_FONTS = [
   { label: "ఎన్‌టిఆర్", value: "NTR", family: "NTR" },
   { label: "గురజాడ", value: "Gurajada", family: "Gurajada" },
@@ -38,18 +40,12 @@ const TELUGU_FONTS = [
   { label: "టానా", value: "TANA", family: "TANA" },
 ];
 
-// Device-wise min/max bounds
+/* 📱 Device bounds */
 function getDeviceBounds() {
-  if (typeof window === "undefined") {
-    return { min: 1.0, max: 2.0 };
-  }
-  const w = window.innerWidth;
-  if (w < 960) {
-    // mobile + tablet
-    return { min: 0.9, max: 1.8 };
-  }
-  // desktop
-  return { min: 1.0, max: 2.0 };
+  if (typeof window === "undefined") return { min: 1.0, max: 2.0 };
+  return window.innerWidth < 960
+    ? { min: 0.9, max: 1.8 }
+    : { min: 1.0, max: 2.0 };
 }
 
 export default function FontControlsTelugu({
@@ -60,18 +56,28 @@ export default function FontControlsTelugu({
   onApply,
 }: Props) {
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
-
   const { min, max } = getDeviceBounds();
 
+  /* 🔺 Increase size (LIVE APPLY) */
   const increase = () =>
-    setFontSize((current) => +(Math.min(max, current + 0.2).toFixed(2)));
+    setFontSize((current) => {
+      const next = +(Math.min(max, current + 0.2).toFixed(2));
+      onApply(fontFamily, next);
+      return next;
+    });
 
+  /* 🔻 Decrease size (LIVE APPLY) */
   const decrease = () =>
-    setFontSize((current) => +(Math.max(min, current - 0.2).toFixed(2)));
+    setFontSize((current) => {
+      const next = +(Math.max(min, current - 0.2).toFixed(2));
+      onApply(fontFamily, next);
+      return next;
+    });
 
+  /* ♻️ Restore defaults */
   const restoreDefaults = () => {
-    const defaultSize = 1.0;
     const defaultFont = "Gurajada";
+    const defaultSize = 1.0;
 
     setFontFamily(defaultFont);
     setFontSize(defaultSize);
@@ -79,6 +85,7 @@ export default function FontControlsTelugu({
     setSnackbarOpen(true);
   };
 
+  /* 💾 Save (explicit) */
   const saveFontSettings = () => {
     onApply(fontFamily, fontSize);
     setSnackbarOpen(true);
@@ -94,7 +101,7 @@ export default function FontControlsTelugu({
         gap={2}
         sx={{ width: "100%", p: 1 }}
       >
-        {/* Font Selector */}
+        {/* 🔤 Font Selector */}
         <Box display="flex" alignItems="center" gap={1} flex={1}>
           <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap" }}>
             తెలుగు ఫాంట్
@@ -103,9 +110,13 @@ export default function FontControlsTelugu({
           <Select
             size="small"
             value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value as string)}
+            onChange={(e) => {
+              const family = e.target.value as string;
+              setFontFamily(family);
+              onApply(family, fontSize); // ✅ APPLY IMMEDIATELY
+            }}
             sx={{
-              minWidth: 150,
+              minWidth: 160,
               fontFamily,
               height: 34,
             }}
@@ -122,21 +133,14 @@ export default function FontControlsTelugu({
           </Select>
         </Box>
 
-        {/* Font Size */}
+        {/* 🔠 Font Size */}
         <Box display="flex" alignItems="center" gap={1}>
-          <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap" }}>
-            సైజ్
-          </Typography>
+          <Typography sx={{ fontSize: "0.9rem" }}>సైజ్</Typography>
 
           <IconButton
             size="small"
             onClick={decrease}
-            sx={{
-              border: "1px solid #ccc",
-              width: 30,
-              height: 30,
-              fontSize: "0.8rem",
-            }}
+            sx={{ border: "1px solid #ccc", width: 30, height: 30 }}
           >
             అ
           </IconButton>
@@ -146,18 +150,13 @@ export default function FontControlsTelugu({
           <IconButton
             size="small"
             onClick={increase}
-            sx={{
-              border: "1px solid #ccc",
-              width: 30,
-              height: 30,
-              fontSize: "1.2rem",
-            }}
+            sx={{ border: "1px solid #ccc", width: 30, height: 30 }}
           >
             అ
           </IconButton>
         </Box>
 
-        {/* Buttons */}
+        {/* 🔘 Actions */}
         <Box display="flex" gap={1}>
           <Button
             variant="contained"
@@ -179,7 +178,6 @@ export default function FontControlsTelugu({
               color: "#0d9488",
               borderColor: "#0d9488",
               textTransform: "none",
-              ":hover": { borderColor: "#0f766e", color: "#0f766e" },
             }}
             onClick={restoreDefaults}
           >
@@ -188,15 +186,20 @@ export default function FontControlsTelugu({
         </Box>
       </Box>
 
+      {/* ✅ Feedback */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={2000}
         onClose={() => setSnackbarOpen(false)}
       >
         <Alert severity="success" variant="filled">
-          సెట్టింగులు సేవ్ అయ్యాయి!
+          సెట్టింగులు అమలయ్యాయి!
         </Alert>
       </Snackbar>
     </>
   );
 }
+/* ---------- Initial Load ---------- */
+/* ---------- Debounced Preview ---------- */
+/* ---------- Apply & Save ---------- */
+/* ---------- Reset ---------- */

@@ -20,9 +20,13 @@
   --radius: 12px;
   --radius-sm: 8px;
 
-  /* Typography */
+  /* System fallback font */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* ✅ TELUGU FONT CONTROLS (GLOBAL) */
+  --telugu-font-family: Gurajada;   /* default */
+  --telugu-font-size: 1rem;         /* default */
 
   /* Motion */
   --transition-fast: 0.15s ease;
@@ -68,13 +72,23 @@ html {
   scroll-behavior: smooth;
 }
 
+/* ✅ GLOBAL FONT APPLICATION */
 body {
-  font-family: var(--font-sans);
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans);
+
+  font-size: var(--telugu-font-size);
+
   background-color: var(--background);
   color: var(--foreground);
   line-height: 1.6;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* PWA Safe Area (iOS) */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ===============================
@@ -151,7 +165,7 @@ a:hover {
 
 @media (max-width: 768px) {
   body {
-    font-size: 15px;
+    font-size: calc(var(--telugu-font-size) * 0.95);
   }
 }
 
@@ -170,12 +184,4 @@ a:hover {
     transition: none !important;
     animation: none !important;
   }
-}
-
-/* ===============================
-   📦 PWA Safe Area (iOS)
-   =============================== */
-
-body {
-  padding-bottom: env(safe-area-inset-bottom);
 }
