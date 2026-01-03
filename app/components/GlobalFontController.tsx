@@ -4,10 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
-import Button from "@mui/material/Button";
-
-import FontControlsTelugu from "@/components/FontSelection";
-import ShowHideSection from "@/components/ShowHideSection";
+import FontControlsTelugu from "./FontSelection";
+import ShowHideSection from "./ShowHideSection";
 
 const DEFAULT_FONT = "Gurajada";
 const DEFAULT_SIZE = 1.0;

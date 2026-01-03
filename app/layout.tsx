@@ -1,9 +1,12 @@
 import ClientWrapper from "@/app/components/ClientWrapper";
 import Navbar from "@/app/components/Navbar";
+import MobileBottomNav from "@/app/components/MobileBottomNav";
+import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
 import {
   AppBar,
   Toolbar,
   Container,
+  Box,
 } from "@mui/material";
 
 export const metadata = {
@@ -13,21 +16,20 @@ export const metadata = {
     google: "iFv4A22XfCP550a1-K4ZS3eHmGUtGWWSrOhjE9aPyGQ",
   },
   manifest: "/manifest.json",
-
   icons: {
-    icon: "/icons/favicon.png",       
-    shortcut: "/icons/favicon.png",   
-    apple: "/icons/favicon.png",       
+    icon: "/icons/favicon.png",
+    shortcut: "/icons/favicon.png",
+    apple: "/icons/favicon.png",
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "రత్నాలబాల",
-    Description: "రత్నాలబాల",
   },
 };
+
 export const viewport = {
-  themeColor: "#6200ee", // ✅ Required fix
+  themeColor: "#6200ee",
 };
 
 export default function RootLayout({
@@ -36,24 +38,35 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="te">
       <body>
+        {/* 🔝 Top AppBar */}
         <AppBar position="fixed" color="default" elevation={2}>
           <Toolbar
             sx={{
               justifyContent: "space-between",
-              flexWrap: "wrap",
               alignItems: "center",
             }}
           >
             <Navbar />
           </Toolbar>
         </AppBar>
+
+        {/* Spacer for fixed AppBar */}
         <Toolbar />
 
+        {/* 🧱 Main Content */}
         <Container sx={{ my: 4 }}>
-          <ClientWrapper>{children}</ClientWrapper>
+          <Box sx={{ pb: { xs: 8, md: 0 } }}>
+            <ClientWrapper>{children}</ClientWrapper>
+          </Box>
         </Container>
+
+        {/* 📱 Mobile Bottom Navigation */}
+        <MobileBottomNav />
+
+        {/* 🤖 Floating AI Button (Mobile only) */}
+        <PwaInstallPrompt />
       </body>
     </html>
   );

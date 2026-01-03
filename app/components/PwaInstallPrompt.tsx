@@ -1,8 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Box, Typography, Button, Paper, IconButton } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import {
+  Box,
+  Typography,
+  Button,
+  Paper,
+  Fab,
+} from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -10,7 +16,8 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 export default function PwaInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
@@ -29,9 +36,8 @@ export default function PwaInstallPrompt() {
     }
 
     const handler = (e: Event) => {
-      const event = e as BeforeInstallPromptEvent;
       e.preventDefault();
-      setDeferredPrompt(event);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
       setShowPrompt(true);
     };
 
@@ -39,57 +45,67 @@ export default function PwaInstallPrompt() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const handleInstall = () => {
+  const handleInstall = async () => {
     if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then(() => {
-      setDeferredPrompt(null);
-      setShowPrompt(false);
-    });
+    await deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+    setShowPrompt(false);
   };
 
   if (!showPrompt) return null;
 
   return (
-    <Paper
-      elevation={6}
-      sx={{
-        position: 'fixed',
-        top: 16,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        p: 2,
-        maxWidth: 360,
-        zIndex: 1300,
-      }}
-    >
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-          {isIOS ? 'Install App on iPhone' : 'Install this App'}
-        </Typography>
-        <IconButton size="small" onClick={() => setShowPrompt(false)}>
-          <CloseIcon />
-        </IconButton>
-      </Box>
+    <>
+      {/* ⬇️ LEFT Floating Install Button */}
+      <Fab
+        color="primary"
+        aria-label="Install App"
+        onClick={() => setShowPrompt(true)}
+        sx={{
+          position: 'fixed',
+          bottom: { xs: 90, md: 24 }, // bottom nav పైన
+          left: 20,
+          zIndex: 1500,
+          display: { xs: 'flex', md: 'none' },
+        }}
+      >
+        <DownloadIcon />
+      </Fab>
 
-      {isIOS ? (
-        <Box mt={1}>
-          <Typography variant="body2">
-            1. Safari బ్రౌజర్ లో ఈ పేజీని ఓపెన్ చేయండి<br />
-            2. Share బటన్ పై క్లిక్ చేయండి<br />
+      {/* 📦 Install Popup */}
+      <Paper
+        elevation={8}
+        sx={{
+          position: 'fixed',
+          bottom: { xs: 160, md: 90 },
+          left: 16,
+          maxWidth: 320,
+          p: 2,
+          zIndex: 1500,
+        }}
+      >
+        <Typography variant="subtitle1" fontWeight="bold">
+          {isIOS ? 'iPhone లో App Install చేయండి' : 'App Install చేయండి'}
+        </Typography>
+
+        {isIOS ? (
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            1. Safari లో ఈ సైట్ ఓపెన్ చేయండి <br />
+            2. Share బటన్ నొక్కండి <br />
             3. “Add to Home Screen” ఎంచుకోండి
           </Typography>
-        </Box>
-      ) : (
-        <Button
-          variant="contained"
-          fullWidth
-          sx={{ mt: 2 }}
-          onClick={handleInstall}
-        >
-          App Install చేయండి
-        </Button>
-      )}
-    </Paper>
+        ) : (
+          <Button
+            variant="contained"
+            fullWidth
+            sx={{ mt: 2 }}
+            onClick={handleInstall}
+          >
+            App Install చేయండి
+          </Button>
+        )}
+      </Paper>
+    </>
   );
 }
