@@ -15,12 +15,20 @@ export default function ShareButtons({ targetRef }: Props) {
   const generateImage = async () => {
     if (!targetRef.current) return null;
 
+    // ✅ Wait for fonts (VERY IMPORTANT)
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
+    const size = 1080; // ✅ Perfect for WhatsApp (1:1 HD)
+
     const canvas = await html2canvas(targetRef.current, {
-      scale: window.devicePixelRatio || 2,
       backgroundColor: "#ffffff",
-      width: 360,
-      windowWidth: 360,
-      scrollY: -window.scrollY,
+      scale: 2,
+      width: size,
+      height: size,
+      windowWidth: size,
+      windowHeight: size,
       useCORS: true,
     });
 
@@ -47,7 +55,7 @@ export default function ShareButtons({ targetRef }: Props) {
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: "పద్యాలవాల",
+        title: "రత్నాలబాల",
         text: "📜 తెలుగు పద్యం",
       });
     } else {
@@ -57,13 +65,15 @@ export default function ShareButtons({ targetRef }: Props) {
 
   return (
     <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 1 }}>
-      <IconButton color="success" onClick={shareImage}>
+      <IconButton aria-label="WhatsApp Share" color="success" onClick={shareImage}>
         <WhatsAppIcon />
       </IconButton>
-      <IconButton color="primary" onClick={shareImage}>
+
+      <IconButton aria-label="Telegram Share" color="primary" onClick={shareImage}>
         <TelegramIcon />
       </IconButton>
-      <IconButton color="secondary" onClick={downloadPng}>
+
+      <IconButton aria-label="Download Image" color="secondary" onClick={downloadPng}>
         <DownloadIcon />
       </IconButton>
     </Stack>
