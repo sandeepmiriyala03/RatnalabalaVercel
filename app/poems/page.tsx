@@ -1,7 +1,16 @@
 "use client";
-import React, { useState, useEffect } from "react";
+
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Box, Typography, TextField, Button, Card, CardContent, Divider, Pagination, IconButton
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Card,
+  CardContent,
+  Divider,
+  Pagination,
+  IconButton,
 } from "@mui/material";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
@@ -11,6 +20,8 @@ interface Poem {
   content: string;
   slug?: string;
 }
+
+const ITEMS_PER_PAGE = 3;
 
 const PoemList: React.FC = () => {
   const [poems, setPoems] = useState<Poem[]>([]);
@@ -22,14 +33,14 @@ const PoemList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [viewAll, setViewAll] = useState(false);
 
+  /* 🔊 Load poems + voices */
   useEffect(() => {
     const fetchPoems = async () => {
       try {
         const res = await fetch("/api/poems");
-        if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
-        const data = await res.json();
-        setPoems(data);
-      } catch (err) {
+        if (!res.ok) throw new Error();
+        setPoems(await res.json());
+      } catch {
         setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
       } finally {
         setLoading(false);
@@ -40,34 +51,33 @@ const PoemList: React.FC = () => {
 
     if ("speechSynthesis" in window) {
       const loadVoices = () => {
-        const allVoices = window.speechSynthesis.getVoices();
-        if (allVoices.length > 0) {
-          setVoices(allVoices);
+        const v = window.speechSynthesis.getVoices();
+        if (v.length) {
+          setVoices(v);
           setReady(true);
-        } else {
-          window.speechSynthesis.onvoiceschanged = () => {
-            const loaded = window.speechSynthesis.getVoices();
-            setVoices(loaded);
-            setReady(true);
-          };
         }
       };
       loadVoices();
+      window.speechSynthesis.onvoiceschanged = loadVoices;
     } else {
       setError("మీ బ్రౌజర్‌లో వచన-మాట్లాడటం మద్దతు లేదు.");
     }
 
     return () => {
+      window.speechSynthesis.cancel();
       window.speechSynthesis.onvoiceschanged = null;
     };
   }, []);
 
+  /* 🔇 Stop speech */
   const stopSpeech = () => {
     window.speechSynthesis.cancel();
   };
 
+  /* 🔊 Speak poem */
   const speak = (content: string) => {
     stopSpeech();
+
     const utterance = new SpeechSynthesisUtterance(content);
     utterance.lang = "te-IN";
     utterance.rate = 0.8;
@@ -77,30 +87,35 @@ const PoemList: React.FC = () => {
       voices.find((v) => v.lang === "hi-IN") ||
       voices.find((v) => v.lang.includes("en-IN"));
 
-    if (voice) {
-      utterance.voice = voice;
-    }
-
+    if (voice) utterance.voice = voice;
     window.speechSynthesis.speak(utterance);
   };
 
-  const filtered = poems.filter(
-    (p) =>
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.content.toLowerCase().includes(search.toLowerCase())
+  /* 🔍 Filter poems */
+  const filtered = useMemo(
+    () =>
+      poems.filter(
+        (p) =>
+          p.title.toLowerCase().includes(search.toLowerCase()) ||
+          p.content.toLowerCase().includes(search.toLowerCase())
+      ),
+    [poems, search]
   );
 
-  const itemsPerPage = viewAll ? filtered.length : 3;
+  const itemsPerPage = viewAll ? filtered.length : ITEMS_PER_PAGE;
   const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const current = filtered.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const current = filtered.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
 
   useEffect(() => {
     setPage(1);
     stopSpeech();
-  }, [search]);
+  }, [search, viewAll]);
 
   return (
-    <Box sx={{ p: 4, maxWidth: 900, mx: "auto" }}>
+    <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 900, mx: "auto" }}>
       <Typography variant="h4" align="center" fontWeight={600} gutterBottom>
         పద్యాలవాల
       </Typography>
@@ -111,21 +126,16 @@ const PoemList: React.FC = () => {
 
       <TextField
         label="పద్యం కోసం వెతకండి..."
-        variant="outlined"
         fullWidth
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         sx={{ mb: 4 }}
       />
 
-      <Box sx={{ textAlign: "center", mb: 3 }}>
+      <Box textAlign="center" mb={3}>
         <Button
           variant={viewAll ? "outlined" : "contained"}
-          onClick={() => {
-            setViewAll(!viewAll);
-            setPage(1);
-            stopSpeech();
-          }}
+          onClick={() => setViewAll((v) => !v)}
           disabled={filtered.length === 0}
         >
           {viewAll ? "పేజీలవారీగా చూడండి" : "అన్ని పద్యాలు చూడండి"}
@@ -155,26 +165,43 @@ const PoemList: React.FC = () => {
         current.map((poem, i) => (
           <Card key={poem.slug || i} sx={{ mb: 3 }}>
             <CardContent>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={1}
+              >
                 <Typography variant="h6" fontWeight={500}>
                   {poem.title}
                 </Typography>
+
                 <Box>
-                  <IconButton onClick={() => speak(poem.content)} disabled={!ready}>
+                  <IconButton
+                    aria-label="పద్యాన్ని వినండి"
+                    onClick={() => speak(poem.content)}
+                    disabled={!ready}
+                  >
                     <VolumeUpIcon color="primary" />
                   </IconButton>
-                  <IconButton onClick={stopSpeech} disabled={!ready}>
+                  <IconButton
+                    aria-label="ఆపండి"
+                    onClick={stopSpeech}
+                    disabled={!ready}
+                  >
                     <StopCircleIcon color="error" />
                   </IconButton>
                 </Box>
               </Box>
+
               <Divider sx={{ my: 1 }} />
-              <Typography sx={{ whiteSpace: "pre-line" }}>{poem.content}</Typography>
+              <Typography sx={{ whiteSpace: "pre-line" }}>
+                {poem.content}
+              </Typography>
             </CardContent>
           </Card>
         ))}
 
-      {!loading && !error && !viewAll && filtered.length > 3 && (
+      {!loading && !error && !viewAll && filtered.length > ITEMS_PER_PAGE && (
         <Box display="flex" justifyContent="center" mt={4}>
           <Pagination
             count={totalPages}
