@@ -17,27 +17,26 @@ type Props = {
   setFontFamily: React.Dispatch<React.SetStateAction<string>>;
   fontSize: number;
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
-  onApply: (family: string, size: number) => void;
 };
 
 /* 🔤 Telugu Fonts */
 const TELUGU_FONTS = [
-  { label: "ఎన్‌టిఆర్", value: "NTR", family: "NTR" },
-  { label: "గురజాడ", value: "Gurajada", family: "Gurajada" },
+  { label: "ఎన్‌టిఆర్", value: "NTR" },
+  { label: "గురజాడ", value: "Gurajada" },
 
-  { label: "చతుర (Regular)", value: "Chathura-Regular", family: "Chathura-Regular" },
-  { label: "చతుర (Light)", value: "Chathura-Light", family: "Chathura-Light" },
-  { label: "చతుర (Bold)", value: "Chathura-Bold", family: "Chathura-Bold" },
-  { label: "చతుర (ExtraBold)", value: "Chathura-ExtraBold", family: "Chathura-ExtraBold" },
+  { label: "చతుర (Regular)", value: "Chathura-Regular" },
+  { label: "చతుర (Light)", value: "Chathura-Light" },
+  { label: "చతుర (Bold)", value: "Chathura-Bold" },
+  { label: "చతుర (ExtraBold)", value: "Chathura-ExtraBold" },
 
-  { label: "రామరాజ", value: "Ramaraja", family: "Ramaraja" },
-  { label: "రవి ప్రకాష్", value: "RaviPrakash", family: "RaviPrakash" },
-  { label: "తెనాలి రామకృష్ణ", value: "TenaliRamakrishna", family: "TenaliRamakrishna" },
-  { label: "తిమ్మన", value: "Timmana", family: "Timmana" },
-  { label: "వేటూరి", value: "Veturi", family: "Veturi" },
-  { label: "సిరివెన్నెల", value: "Sirivennela", family: "Sirivennela" },
-  { label: "రమణీయ", value: "Ramaneeya", family: "Ramaneeya" },
-  { label: "టానా", value: "TANA", family: "TANA" },
+  { label: "రామరాజ", value: "Ramaraja" },
+  { label: "రవి ప్రకాష్", value: "RaviPrakash" },
+  { label: "తెనాలి రామకృష్ణ", value: "TenaliRamakrishna" },
+  { label: "తిమ్మన", value: "Timmana" },
+  { label: "వేటూరి", value: "Veturi" },
+  { label: "సిరివెన్నెల", value: "Sirivennela" },
+  { label: "రమణీయ", value: "Ramaneeya" },
+  { label: "టానా", value: "TANA" },
 ];
 
 /* 📱 Device bounds */
@@ -53,41 +52,22 @@ export default function FontControlsTelugu({
   setFontFamily,
   fontSize,
   setFontSize,
-  onApply,
 }: Props) {
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const { min, max } = getDeviceBounds();
 
-  /* 🔺 Increase size (LIVE APPLY) */
+  /* 🔺 Increase size */
   const increase = () =>
-    setFontSize((current) => {
-      const next = +(Math.min(max, current + 0.2).toFixed(2));
-      onApply(fontFamily, next);
-      return next;
-    });
+    setFontSize((v) => Math.min(max, +(v + 0.2).toFixed(2)));
 
-  /* 🔻 Decrease size (LIVE APPLY) */
+  /* 🔻 Decrease size */
   const decrease = () =>
-    setFontSize((current) => {
-      const next = +(Math.max(min, current - 0.2).toFixed(2));
-      onApply(fontFamily, next);
-      return next;
-    });
+    setFontSize((v) => Math.max(min, +(v - 0.2).toFixed(2)));
 
   /* ♻️ Restore defaults */
   const restoreDefaults = () => {
-    const defaultFont = "Gurajada";
-    const defaultSize = 1.0;
-
-    setFontFamily(defaultFont);
-    setFontSize(defaultSize);
-    onApply(defaultFont, defaultSize);
-    setSnackbarOpen(true);
-  };
-
-  /* 💾 Save (explicit) */
-  const saveFontSettings = () => {
-    onApply(fontFamily, fontSize);
+    setFontFamily("Gurajada");
+    setFontSize(1.0);
     setSnackbarOpen(true);
   };
 
@@ -103,29 +83,25 @@ export default function FontControlsTelugu({
       >
         {/* 🔤 Font Selector */}
         <Box display="flex" alignItems="center" gap={1} flex={1}>
-          <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap" }}>
+          <Typography sx={{ fontSize: "0.9rem" }}>
             తెలుగు ఫాంట్
           </Typography>
 
           <Select
             size="small"
             value={fontFamily}
-            onChange={(e) => {
-              const family = e.target.value as string;
-              setFontFamily(family);
-              onApply(family, fontSize); // ✅ APPLY IMMEDIATELY
-            }}
+            onChange={(e) => setFontFamily(e.target.value)}
             sx={{
               minWidth: 160,
-              fontFamily,
               height: 34,
+              fontFamily,
             }}
           >
             {TELUGU_FONTS.map((f) => (
               <MenuItem
                 key={f.value}
                 value={f.value}
-                sx={{ fontFamily: f.family }}
+                sx={{ fontFamily: f.value }}
               >
                 {f.label}
               </MenuItem>
@@ -156,37 +132,17 @@ export default function FontControlsTelugu({
           </IconButton>
         </Box>
 
-        {/* 🔘 Actions */}
-        <Box display="flex" gap={1}>
-          <Button
-            variant="contained"
-            size="small"
-            sx={{
-              backgroundColor: "#0d9488",
-              ":hover": { backgroundColor: "#0f766e" },
-              textTransform: "none",
-            }}
-            onClick={saveFontSettings}
-          >
-            సేవ్
-          </Button>
-
-          <Button
-            variant="outlined"
-            size="small"
-            sx={{
-              color: "#0d9488",
-              borderColor: "#0d9488",
-              textTransform: "none",
-            }}
-            onClick={restoreDefaults}
-          >
-            డిఫాల్ట్
-          </Button>
-        </Box>
+        {/* 🔘 Reset */}
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={restoreDefaults}
+          sx={{ textTransform: "none" }}
+        >
+          డిఫాల్ట్
+        </Button>
       </Box>
 
-      {/* ✅ Feedback */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={2000}
@@ -199,7 +155,3 @@ export default function FontControlsTelugu({
     </>
   );
 }
-/* ---------- Initial Load ---------- */
-/* ---------- Debounced Preview ---------- */
-/* ---------- Apply & Save ---------- */
-/* ---------- Reset ---------- */

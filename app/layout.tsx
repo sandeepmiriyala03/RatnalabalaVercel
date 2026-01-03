@@ -15,45 +15,40 @@ export default function RootClientLayout({
 }: {
   children: React.ReactNode;
 }) {
-  /* 🌐 Global Telugu Font State */
   const [fontFamily, setFontFamily] = useState("Gurajada");
-  const [fontSize, setFontSize] = useState(1.0);
+  const [fontSize, setFontSize] = useState(1);
 
-  /* 🔧 Apply font globally */
-  const applyFontSettings = (family: string, size: number) => {
-    document.documentElement.style.setProperty(
-      "--telugu-font-family",
-      family
-    );
-    document.documentElement.style.setProperty(
-      "--telugu-font-size",
-      `${size}rem`
-    );
-
-    localStorage.setItem(
-      "teluguFontSettings",
-      JSON.stringify({ family, size })
-    );
-  };
-
-  /* 🔁 Restore saved settings */
+  /* 🔁 Restore saved */
   useEffect(() => {
     const saved = localStorage.getItem("teluguFontSettings");
     if (saved) {
       const { family, size } = JSON.parse(saved);
       setFontFamily(family);
       setFontSize(size);
-      applyFontSettings(family, size);
-    } else {
-      applyFontSettings(fontFamily, fontSize);
     }
   }, []);
+
+  /* ✅ APPLY FONT — SINGLE SOURCE OF TRUTH */
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--telugu-font-family",
+      `"${fontFamily}"`
+    );
+    document.documentElement.style.setProperty(
+      "--telugu-font-size",
+      `${fontSize}rem`
+    );
+
+    localStorage.setItem(
+      "teluguFontSettings",
+      JSON.stringify({ family: fontFamily, size: fontSize })
+    );
+  }, [fontFamily, fontSize]);
 
   return (
     <html lang="te">
       <body>
-        {/* 🔝 Top AppBar */}
-        <AppBar position="fixed" color="default" elevation={2}>
+        <AppBar position="fixed" color="default">
           <Toolbar>
             <Navbar />
           </Toolbar>
@@ -61,25 +56,21 @@ export default function RootClientLayout({
 
         <Toolbar />
 
-        {/* 🎛 Global Font Controls */}
         <Container sx={{ mt: 1 }}>
           <FontControlsTelugu
             fontFamily={fontFamily}
             setFontFamily={setFontFamily}
             fontSize={fontSize}
             setFontSize={setFontSize}
-            onApply={applyFontSettings}
           />
         </Container>
 
-        {/* 🧱 Main Content */}
         <Container sx={{ my: 3 }}>
           <Box sx={{ pb: { xs: 8, md: 0 } }}>
             <ClientWrapper>{children}</ClientWrapper>
           </Box>
         </Container>
 
-        {/* 📱 Utilities */}
         <MobileBottomNav />
         <PwaInstallPrompt />
         <FloatingAIButton />
