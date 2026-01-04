@@ -386,3 +386,55 @@ a:hover {
     animation: none !important;
   }
 }
+/* =====================================================
+   🧾 MUI LIST – MISSING / EDGE CLASSES
+   (Add this block separately at the END)
+   ===================================================== */
+
+/* List container variants */
+.MuiList-dense,
+.MuiList-padding {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* ListItem internal states */
+.MuiListItem-dense,
+.MuiListItem-gutters,
+.MuiListItem-padding {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* ListItemText internals */
+.MuiListItemText-primary,
+.MuiListItemText-secondary {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* ListItemIcon alignment text fallback */
+.MuiListItemIcon-root svg,
+.MuiListItemIcon-root span {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* List secondary action (rare but important) */
+.MuiListItemSecondaryAction-root {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* ListItemButton (if you ever use it) */
+.MuiListItemButton-root,
+.MuiListItemButton-dense {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
