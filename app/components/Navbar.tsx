@@ -36,7 +36,7 @@ export default function Navbar() {
           }}
         >
           <Image
-            src="/Images/Author.png"
+            src="/Images/CartoonStyle.png"
             alt="Website Logo"
             width={56}
             height={56}
