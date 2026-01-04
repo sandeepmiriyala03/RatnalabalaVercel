@@ -12,11 +12,17 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 
-/* 🔹 SINGLE SOURCE OF TRUTH */
+/* 🔹 SINGLE SOURCE OF TRUTH — FINAL */
 const WORDS = [
   "అసహనం",
-  "జ్ఞానం",
+  "ఆకలి",
+  "ఆనందం",
+  "ఋణము",
+  "క్రమశిక్షణ",
+  "గర్వం",
+  "గౌరవం",
   "జాప్యం",
+  "జ్ఞానం",
   "దయ",
   "దానం",
   "దారిద్య్రం",
@@ -24,17 +30,25 @@ const WORDS = [
   "ద్రోహం",
   "ధనం",
   "న్యాయం",
+  "పెద్దలు",
   "పొదుపు",
   "పౌరుషం",
-  "పెద్దలు",
   "బాల్యం",
-  "రత్నాలబాల",
-  "రామకృష్ణ",
+  "భారం",
+  "మంచితనం",
+  "మనసు",
+  "మనిషి",
+  "మాటలు",
+  "మైత్రి",
   "లోకం",
+  "విషం",
   "వైద్యం",
+  "వ్యసనం",
+  "శుచి",
+  "సాహసం",
   "సుఖం",
+  "సొగసు",
   "సౌజన్యం",
-  "గౌరవం",
 ];
 
 /* 🔹 English / phonetic aliases → MUST map ONLY to WORDS */
@@ -126,6 +140,88 @@ const NLP_DICT: Record<string, string> = {
   /* గౌరవం */
   gouravam: "గౌరవం",
   gauravam: "గౌరవం",
+
+    /* ఆకలి */
+  akali: "ఆకలి",
+  aakali: "ఆకలి",
+  hunger: "ఆకలి",
+
+  /* ఆనందం */
+  anandam: "ఆనందం",
+  aanandam: "ఆనందం",
+  ananda: "ఆనందం",
+  happiness: "ఆనందం",
+
+  /* ఋణము */
+  runamu: "ఋణము",
+  rinamu: "ఋణము",
+  rnamu: "ఋణము",
+  debt: "ఋణము",
+
+  /* క్రమశిక్షణ */
+  kramasikshana: "క్రమశిక్షణ",
+  kramashikshana: "క్రమశిక్షణ",
+  discipline: "క్రమశిక్షణ",
+
+  /* గర్వం */
+  garvam: "గర్వం",
+  garvamu: "గర్వం",
+  pride: "గర్వం",
+
+  /* భారం */
+  bharam: "భారం",
+  baaram: "భారం",
+  burden: "భారం",
+
+  /* మంచితనం */
+  manchitanam: "మంచితనం",
+  manchithanam: "మంచితనం",
+  goodness: "మంచితనం",
+
+  /* మనసు */
+  manasu: "మనసు",
+  manassu: "మనసు",
+  mind: "మనసు",
+  heart: "మనసు",
+
+  /* మనిషి */
+  manishi: "మనిషి",
+  manushya: "మనిషి",
+  human: "మనిషి",
+
+  /* మాటలు */
+  matalu: "మాటలు",
+  maatalu: "మాటలు",
+  words: "మాటలు",
+
+  /* మైత్రి */
+  maitri: "మైత్రి",
+  mitrata: "మైత్రి",
+  friendship: "మైత్రి",
+
+  /* విషం */
+  visham: "విషం",
+  poison: "విషం",
+
+  /* వ్యసనం */
+  vyasanam: "వ్యసనం",
+  addiction: "వ్యసనం",
+
+  /* శుచి */
+  shuchi: "శుచి",
+  suchi: "శుచి",
+  purity: "శుచి",
+
+  /* సాహసం */
+  sahasam: "సాహసం",
+  courage: "సాహసం",
+  bravery: "సాహసం",
+
+  /* సొగసు */
+  sogasu: "సొగసు",
+  sogasaina: "సొగసు",
+  beauty: "సొగసు",
+
 };
 
 /* 🔹 Resolver */
