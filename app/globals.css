@@ -1,18 +1,7 @@
-
-
-/* ==================== FONT FACES (Deferred) ==================== */
-/* All files are in: /public/Fonts/* */
-/* =========================
-   GOOGLE‑STYLE TELUGU FONTS (LOCAL)
-========================= */
-
-@font-face {
-  font-family: "NTR";
-  src: url("/Fonts/NTR-Regular.ttf") format("truetype");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
+/* =====================================================
+   🔤 TELUGU FONT FACES (LOCAL)
+   Location: /public/Fonts/
+   ===================================================== */
 
 @font-face {
   font-family: "Gurajada";
@@ -22,6 +11,13 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "NTR";
+  src: url("/Fonts/NTR-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 /* =========================
    OTHER TELUGU FONTS
 ========================= */
@@ -138,35 +134,32 @@
   font-display: swap;
 }
 
-/* ===============================
-   🌐 CSS Variables (Theme System)
-   =============================== */
+/* =====================================================
+   🌐 CSS VARIABLES (THEME + TYPOGRAPHY)
+   ===================================================== */
 
 :root {
-  /* Core colors */
+  /* Colors */
   --background: #ffffff;
   --foreground: #1a1a1a;
-
   --surface: #f7f7f8;
   --surface-elevated: #ffffff;
-
   --primary: #6200ee;
   --secondary: #03dac6;
-
   --border: #e5e7eb;
   --muted-text: #6b7280;
 
-  /* UI */
+  /* Radius */
   --radius: 12px;
   --radius-sm: 8px;
 
-  /* System fallback font */
+  /* System fallback */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-  /* ✅ TELUGU FONT CONTROLS (GLOBAL) */
-  --telugu-font-family: Gurajada;   /* default */
-  --telugu-font-size: 1rem;         /* default */
+  /* ✅ TELUGU GLOBAL CONTROLS */
+  --telugu-font-family: "Ramaneeya";
+  --telugu-font-size: 1rem;
 
   /* Motion */
   --transition-fast: 0.15s ease;
@@ -178,21 +171,18 @@
   :root {
     --background: #0b0b0d;
     --foreground: #e5e7eb;
-
     --surface: #16161a;
     --surface-elevated: #1f1f25;
-
     --primary: #bb86fc;
     --secondary: #03dac6;
-
     --border: #2d2d36;
     --muted-text: #9ca3af;
   }
 }
 
-/* ===============================
-   🧱 Base Reset & Layout
-   =============================== */
+/* =====================================================
+   🧱 RESET & BASE
+   ===================================================== */
 
 *,
 *::before,
@@ -206,34 +196,136 @@ body {
   padding: 0;
   max-width: 100vw;
   overflow-x: hidden;
-}
-
-html {
   scroll-behavior: smooth;
 }
 
-/* ✅ GLOBAL FONT APPLICATION */
+/* =====================================================
+   ✅ GLOBAL FONT APPLICATION
+   ===================================================== */
+
 body {
   font-family:
     var(--telugu-font-family),
     var(--font-sans);
 
   font-size: var(--telugu-font-size);
+  line-height: 1.6;
 
   background-color: var(--background);
   color: var(--foreground);
-  line-height: 1.6;
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* PWA Safe Area (iOS) */
+  /* PWA safe area */
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* ===============================
-   🔗 Links & Text
-   =============================== */
+/* =====================================================
+   🔒 FORCE TELUGU FONT — ALL MUI TYPOGRAPHY & TEXT
+   ===================================================== */
+
+.MuiTypography-root,
+.MuiTypography-h1,
+.MuiTypography-h2,
+.MuiTypography-h3,
+.MuiTypography-h4,
+.MuiTypography-h5,
+.MuiTypography-h6,
+.MuiTypography-subtitle1,
+.MuiTypography-subtitle2,
+.MuiTypography-body1,
+.MuiTypography-body2,
+.MuiTypography-caption,
+.MuiTypography-overline,
+
+/* Buttons */
+.MuiButton-root,
+.MuiButton-text,
+.MuiButton-contained,
+.MuiButton-outlined,
+.MuiIconButton-root,
+.MuiFab-root,
+
+/* Inputs & forms */
+.MuiInputBase-root,
+.MuiInput-root,
+.MuiOutlinedInput-root,
+.MuiFilledInput-root,
+.MuiInputLabel-root,
+.MuiFormLabel-root,
+.MuiFormHelperText-root,
+.MuiTextField-root,
+.MuiSelect-root,
+.MuiMenuItem-root,
+.MuiAutocomplete-root,
+.MuiAutocomplete-option,
+
+/* Lists & navigation */
+.MuiList-root,
+.MuiListItem-root,
+.MuiListItemText-root,
+.MuiListSubheader-root,
+.MuiMenu-root,
+.MuiMenu-list,
+.MuiBreadcrumbs-root,
+.MuiBottomNavigation-root,
+.MuiBottomNavigationAction-root,
+.MuiTabs-root,
+.MuiTab-root,
+
+/* Data display */
+.MuiChip-root,
+.MuiBadge-root,
+.MuiTooltip-tooltip,
+.MuiAvatar-root,
+.MuiDivider-root,
+.MuiPagination-root,
+.MuiPaginationItem-root,
+
+/* Tables */
+.MuiTable-root,
+.MuiTableHead-root,
+.MuiTableBody-root,
+.MuiTableRow-root,
+.MuiTableCell-root,
+.MuiTableSortLabel-root,
+
+/* Feedback */
+.MuiAlert-root,
+.MuiAlertTitle-root,
+.MuiSnackbar-root,
+.MuiSnackbarContent-root,
+
+/* Cards & surfaces */
+.MuiCard-root,
+.MuiCardHeader-root,
+.MuiCardHeader-title,
+.MuiCardHeader-subheader,
+.MuiCardContent-root,
+.MuiCardActions-root,
+.MuiPaper-root,
+.MuiAccordion-root,
+.MuiAccordionSummary-root,
+.MuiAccordionDetails-root,
+
+/* Dialogs & popups */
+.MuiDialog-root,
+.MuiDialogTitle-root,
+.MuiDialogContent-root,
+.MuiDialogContentText-root,
+.MuiDialogActions-root,
+.MuiPopover-root,
+.MuiDrawer-root {
+
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* =====================================================
+   🔗 LINKS
+   ===================================================== */
 
 a {
   color: inherit;
@@ -244,9 +336,9 @@ a:hover {
   opacity: 0.85;
 }
 
-/* ===============================
-   🧩 Cards / Surfaces
-   =============================== */
+/* =====================================================
+   🧩 SURFACES
+   ===================================================== */
 
 .surface {
   background: var(--surface);
@@ -262,46 +354,9 @@ a:hover {
     0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-/* ===============================
-   🔘 Buttons (Generic)
-   =============================== */
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  padding: 10px 16px;
-  border-radius: var(--radius-sm);
-  border: none;
-  cursor: pointer;
-
-  font-size: 14px;
-  font-weight: 500;
-
-  background: var(--primary);
-  color: #ffffff;
-
-  transition:
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast),
-    opacity var(--transition-fast);
-}
-
-.button:active {
-  transform: scale(0.97);
-}
-
-.button.secondary {
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid var(--border);
-}
-
-/* ===============================
-   📱 Mobile Optimizations
-   =============================== */
+/* =====================================================
+   📱 MOBILE TUNING
+   ===================================================== */
 
 @media (max-width: 768px) {
   body {
@@ -309,16 +364,15 @@ a:hover {
   }
 }
 
-/* ===============================
-   ♿ Accessibility
-   =============================== */
+/* =====================================================
+   ♿ ACCESSIBILITY
+   ===================================================== */
 
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 3px;
 }
 
-/* Reduce motion if user prefers */
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

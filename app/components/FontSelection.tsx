@@ -11,35 +11,30 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
+import type { TeluguFont } from "@/app/layout"; // adjust path if needed
 
 type Props = {
-  fontFamily: string;
-  setFontFamily: React.Dispatch<React.SetStateAction<string>>;
+  fontFamily: TeluguFont;
+  setFontFamily: React.Dispatch<React.SetStateAction<TeluguFont>>;
   fontSize: number;
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
 };
 
-/* 🔤 Telugu Fonts */
-const TELUGU_FONTS = [
-  { label: "ఎన్‌టిఆర్", value: "NTR" },
+const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
   { label: "గురజాడ", value: "Gurajada" },
-
+  { label: "ఎన్‌టిఆర్", value: "NTR" },
+  { label: "రమణీయ", value: "Ramaneeya" },
+  { label: "వేటూరి", value: "Veturi" },
+  { label: "సిరివెన్నెల", value: "Sirivennela" },
   { label: "చతుర (Regular)", value: "Chathura-Regular" },
-  { label: "చతుర (Light)", value: "Chathura-Light" },
   { label: "చతుర (Bold)", value: "Chathura-Bold" },
-  { label: "చతుర (ExtraBold)", value: "Chathura-ExtraBold" },
-
   { label: "రామరాజ", value: "Ramaraja" },
   { label: "రవి ప్రకాష్", value: "RaviPrakash" },
   { label: "తెనాలి రామకృష్ణ", value: "TenaliRamakrishna" },
   { label: "తిమ్మన", value: "Timmana" },
-  { label: "వేటూరి", value: "Veturi" },
-  { label: "సిరివెన్నెల", value: "Sirivennela" },
-  { label: "రమణీయ", value: "Ramaneeya" },
   { label: "టానా", value: "TANA" },
 ];
 
-/* 📱 Device bounds */
 function getDeviceBounds() {
   if (typeof window === "undefined") return { min: 1.0, max: 2.0 };
   return window.innerWidth < 960
@@ -56,27 +51,15 @@ export default function FontControlsTelugu({
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const { min, max } = getDeviceBounds();
 
-  /* 🔺 Increase size (LIVE PREVIEW) */
   const increase = () =>
     setFontSize((v) => Math.min(max, +(v + 0.2).toFixed(2)));
 
-  /* 🔻 Decrease size (LIVE PREVIEW) */
   const decrease = () =>
     setFontSize((v) => Math.max(min, +(v - 0.2).toFixed(2)));
 
-  /* 💾 SAVE SETTINGS */
-  const saveSettings = () => {
-    localStorage.setItem("teluguFontFamily", fontFamily);
-    localStorage.setItem("teluguFontSize", String(fontSize));
-    setSnackbarOpen(true);
-  };
-
-  /* ♻️ RESTORE DEFAULTS */
   const restoreDefaults = () => {
     setFontFamily("Gurajada");
     setFontSize(1.0);
-    localStorage.removeItem("teluguFontFamily");
-    localStorage.removeItem("teluguFontSize");
     setSnackbarOpen(true);
   };
 
@@ -90,7 +73,6 @@ export default function FontControlsTelugu({
         gap={2}
         sx={{ width: "100%", p: 1 }}
       >
-        {/* 🔤 Font Selector */}
         <Box display="flex" alignItems="center" gap={1} flex={1}>
           <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap" }}>
             తెలుగు ఫాంట్
@@ -99,18 +81,20 @@ export default function FontControlsTelugu({
           <Select
             size="small"
             value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value)}
+            onChange={(e) =>
+              setFontFamily(e.target.value as TeluguFont)
+            }
             sx={{
-              minWidth: 170,
+              minWidth: 180,
               height: 34,
-              fontFamily,
+              fontFamily: `${fontFamily}, system-ui`,
             }}
           >
             {TELUGU_FONTS.map((f) => (
               <MenuItem
                 key={f.value}
                 value={f.value}
-                sx={{ fontFamily: f.value }}
+                sx={{ fontFamily: `${f.value}, system-ui` }}
               >
                 {f.label}
               </MenuItem>
@@ -118,7 +102,6 @@ export default function FontControlsTelugu({
           </Select>
         </Box>
 
-        {/* 🔠 Font Size */}
         <Box display="flex" alignItems="center" gap={1}>
           <Typography sx={{ fontSize: "0.9rem" }}>సైజ్</Typography>
 
@@ -141,33 +124,16 @@ export default function FontControlsTelugu({
           </IconButton>
         </Box>
 
-        {/* 🔘 ACTIONS */}
-        <Box display="flex" gap={1}>
-          <Button
-            variant="contained"
-            size="small"
-            onClick={saveSettings}
-            sx={{
-              backgroundColor: "#0d9488",
-              ":hover": { backgroundColor: "#0f766e" },
-              textTransform: "none",
-            }}
-          >
-            సేవ్
-          </Button>
-
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={restoreDefaults}
-            sx={{ textTransform: "none" }}
-          >
-            డిఫాల్ట్
-          </Button>
-        </Box>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={restoreDefaults}
+          sx={{ textTransform: "none" }}
+        >
+          డిఫాల్ట్
+        </Button>
       </Box>
 
-      {/* ✅ Feedback */}
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={2000}

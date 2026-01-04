@@ -1,10 +1,7 @@
-
-
-/* ==================== FONT FACES (Deferred) ==================== */
-/* All files are in: /public/Fonts/* */
-/* =========================
-   GOOGLE‑STYLE TELUGU FONTS (LOCAL)
-========================= */
+/* ===============================
+   🔤 TELUGU FONT FACES (LOCAL)
+   /public/Fonts/
+   =============================== */
 
 @font-face {
   font-family: "NTR";
@@ -22,10 +19,6 @@
   font-display: swap;
 }
 
-/* =========================
-   OTHER TELUGU FONTS
-========================= */
-
 @font-face {
   font-family: "Veturi";
   src: url("/Fonts/Veturi.ttf") format("truetype");
@@ -42,9 +35,9 @@
   font-display: swap;
 }
 
-/* =========================
+/* ===============================
    CHATHURA FAMILY
-========================= */
+   =============================== */
 
 @font-face {
   font-family: "Chathura-Light";
@@ -86,9 +79,9 @@
   font-display: swap;
 }
 
-/* =========================
+/* ===============================
    REMAINING TELUGU FONTS
-========================= */
+   =============================== */
 
 @font-face {
   font-family: "Ramaneeya";
@@ -137,8 +130,9 @@
   font-style: normal;
   font-display: swap;
 }
+
 /* ===============================
-   🌐 Page Layout (FINAL)
+   🌐 PAGE LAYOUT (ALIGNED WITH globals.css)
    =============================== */
 
 .page {
@@ -153,7 +147,6 @@
   /* Layout */
   display: flex;
   flex-direction: column;
-
   min-height: 100svh;
   padding: 80px;
   gap: 64px;
@@ -161,9 +154,13 @@
   align-items: stretch;
   justify-content: flex-start;
 
-  /* ✅ GLOBAL TELUGU FONT */
-  font-family: var(--telugu-font-family), var(--font-sans);
+  /* ✅ GLOBAL TELUGU FONT (SINGLE SOURCE) */
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans);
+
   font-size: var(--telugu-font-size);
+  line-height: 1.6;
 }
 
 /* 🌙 Dark Mode */
@@ -179,7 +176,7 @@
 }
 
 /* ===============================
-   🧱 Main Content
+   🧱 MAIN CONTENT
    =============================== */
 
 .main {
@@ -188,11 +185,9 @@
   gap: 32px;
 }
 
-/* Lists */
 .main ol {
   padding-left: 0;
   margin: 0;
-
   font-size: 0.9em;
   line-height: 1.7;
   list-style-position: inside;
@@ -202,7 +197,6 @@
   margin-bottom: 8px;
 }
 
-/* Inline code */
 .main code {
   background: var(--gray-alpha-100);
   padding: 2px 6px;
@@ -211,7 +205,7 @@
 }
 
 /* ===============================
-   🔘 CTA Buttons
+   🔘 CTA BUTTONS
    =============================== */
 
 .ctas {
@@ -264,7 +258,7 @@ a.secondary {
 }
 
 /* ===============================
-   🧩 Footer
+   🧩 FOOTER
    =============================== */
 
 .footer {
@@ -292,13 +286,13 @@ a.secondary {
 }
 
 /* ===============================
-   📱 Mobile Adjustments
+   📱 MOBILE ADJUSTMENTS
    =============================== */
 
 @media (max-width: 600px) {
   .page {
     padding: 32px;
-    padding-bottom: 96px; /* space for bottom nav */
+    padding-bottom: 96px; /* bottom nav space */
   }
 
   .main {
@@ -326,11 +320,114 @@ a.secondary {
 }
 
 /* ===============================
-   🌙 Dark Mode Logo
+   🌙 DARK MODE LOGO
    =============================== */
 
 @media (prefers-color-scheme: dark) {
   .logo {
     filter: invert();
   }
+}
+/* =====================================================
+   🔒 FORCE TELUGU FONT FOR ALL MUI COMPONENTS
+   (Typography + ALL text rendering)
+   ===================================================== */
+
+/* ---- Typography (ALL variants) ---- */
+.MuiTypography-root,
+.MuiTypography-h1,
+.MuiTypography-h2,
+.MuiTypography-h3,
+.MuiTypography-h4,
+.MuiTypography-h5,
+.MuiTypography-h6,
+.MuiTypography-subtitle1,
+.MuiTypography-subtitle2,
+.MuiTypography-body1,
+.MuiTypography-body2,
+.MuiTypography-caption,
+.MuiTypography-overline,
+
+/* ---- Buttons & button text ---- */
+.MuiButton-root,
+.MuiButton-text,
+.MuiButton-contained,
+.MuiButton-outlined,
+.MuiIconButton-root,
+.MuiFab-root,
+
+/* ---- Inputs & forms ---- */
+.MuiInputBase-root,
+.MuiInput-root,
+.MuiOutlinedInput-root,
+.MuiFilledInput-root,
+.MuiInputLabel-root,
+.MuiFormLabel-root,
+.MuiFormHelperText-root,
+.MuiTextField-root,
+.MuiSelect-root,
+.MuiMenuItem-root,
+.MuiAutocomplete-root,
+.MuiAutocomplete-option,
+
+/* ---- Lists & navigation ---- */
+.MuiList-root,
+.MuiListItem-root,
+.MuiListItemText-root,
+.MuiListSubheader-root,
+.MuiMenu-root,
+.MuiMenu-list,
+.MuiBreadcrumbs-root,
+.MuiBottomNavigation-root,
+.MuiBottomNavigationAction-root,
+.MuiTabs-root,
+.MuiTab-root,
+
+/* ---- Data display ---- */
+.MuiChip-root,
+.MuiBadge-root,
+.MuiTooltip-tooltip,
+.MuiAvatar-root,
+.MuiDivider-root,
+.MuiPagination-root,
+.MuiPaginationItem-root,
+
+/* ---- Tables ---- */
+.MuiTable-root,
+.MuiTableHead-root,
+.MuiTableBody-root,
+.MuiTableRow-root,
+.MuiTableCell-root,
+.MuiTableSortLabel-root,
+
+/* ---- Feedback ---- */
+.MuiAlert-root,
+.MuiAlertTitle-root,
+.MuiSnackbar-root,
+.MuiSnackbarContent-root,
+
+/* ---- Cards & surfaces ---- */
+.MuiCard-root,
+.MuiCardHeader-root,
+.MuiCardHeader-title,
+.MuiCardHeader-subheader,
+.MuiCardContent-root,
+.MuiCardActions-root,
+.MuiPaper-root,
+.MuiAccordion-root,
+.MuiAccordionSummary-root,
+.MuiAccordionDetails-root,
+
+/* ---- Dialogs & overlays ---- */
+.MuiDialog-root,
+.MuiDialogTitle-root,
+.MuiDialogContent-root,
+.MuiDialogContentText-root,
+.MuiDialogActions-root,
+.MuiPopover-root,
+.MuiDrawer-root {
+
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
 }

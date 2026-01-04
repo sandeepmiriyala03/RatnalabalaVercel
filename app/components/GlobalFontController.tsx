@@ -6,46 +6,42 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import FontControlsTelugu from "./FontSelection";
 import ShowHideSection from "./ShowHideSection";
+import type { TeluguFont } from "@/app/layout"; // adjust path if needed
 
-const DEFAULT_FONT = "Gurajada";
+const DEFAULT_FONT: TeluguFont = "Gurajada";
 const DEFAULT_SIZE = 1.0;
 
 export default function GlobalFontController() {
-  const [fontFamily, setFontFamily] = useState(DEFAULT_FONT);
-  const [fontSize, setFontSize] = useState(DEFAULT_SIZE);
+  const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
+  const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
 
-  /* ✅ APPLY GLOBAL FONT (SINGLE SOURCE OF TRUTH) */
+  /* 🔁 Restore from storage (single source of truth) */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const saved = localStorage.getItem("teluguFontSettings");
+    if (saved) {
+      const { family, size } = JSON.parse(saved);
+      setFontFamily(family);
+      setFontSize(size);
+    }
+  }, []);
+
+  /* ✅ APPLY GLOBAL FONT & SIZE */
   useEffect(() => {
     if (typeof document === "undefined") return;
 
     const root = document.documentElement;
 
-    root.style.setProperty(
-      "--telugu-font-family",
-      `"${fontFamily}"`
-    );
-    root.style.setProperty(
-      "--telugu-font-size",
-      `${fontSize}rem`
-    );
+    // IMPORTANT: no quotes
+    root.style.setProperty("--telugu-font-family", fontFamily);
+    root.style.setProperty("--telugu-font-size", `${fontSize}rem`);
 
-    localStorage.setItem("teluguFontFamily", fontFamily);
-    localStorage.setItem("teluguFontSize", String(fontSize));
+    localStorage.setItem(
+      "teluguFontSettings",
+      JSON.stringify({ family: fontFamily, size: fontSize })
+    );
   }, [fontFamily, fontSize]);
-
-  /* ✅ LOAD FROM STORAGE ON FIRST MOUNT */
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const savedFont =
-      localStorage.getItem("teluguFontFamily") || DEFAULT_FONT;
-    const savedSize = parseFloat(
-      localStorage.getItem("teluguFontSize") || String(DEFAULT_SIZE)
-    );
-
-    setFontFamily(savedFont);
-    setFontSize(savedSize);
-  }, []);
 
   /* ♻️ RESET */
   const handleReset = () => {
@@ -55,20 +51,6 @@ export default function GlobalFontController() {
 
   return (
     <Box sx={{ maxWidth: 900, mx: "auto", px: 2, py: 1 }}>
-      {/* 🕉️ Shanti Mantra */}
-      <Typography
-        variant="body2"
-        sx={{
-          textAlign: "center",
-          mb: 1.5,
-          fontWeight: 500,
-          lineHeight: 1.9,
-          letterSpacing: "0.04em",
-        }}
-      >
-      
-      </Typography>
-
       {/* ℹ️ Helper */}
       <Typography
         variant="caption"
