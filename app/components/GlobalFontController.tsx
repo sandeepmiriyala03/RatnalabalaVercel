@@ -6,9 +6,9 @@ import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import FontControlsTelugu from "./FontSelection";
 import ShowHideSection from "./ShowHideSection";
-import type { TeluguFont } from "@/app/layout"; // adjust path if needed
+import type { TeluguFont } from "@/app/types/fonts"; // ✅ FIXED
 
-const DEFAULT_FONT: TeluguFont = "Gurajada";
+const DEFAULT_FONT: TeluguFont = "Ramaneeya";
 const DEFAULT_SIZE = 1.0;
 
 export default function GlobalFontController() {

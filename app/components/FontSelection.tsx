@@ -11,7 +11,7 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import type { TeluguFont } from "@/app/layout"; // adjust path if needed
+import type { TeluguFont } from "@/app/types/fonts"; // ✅ FIXED
 
 type Props = {
   fontFamily: TeluguFont;
@@ -73,6 +73,7 @@ export default function FontControlsTelugu({
         gap={2}
         sx={{ width: "100%", p: 1 }}
       >
+        {/* 🔤 Font Selector */}
         <Box display="flex" alignItems="center" gap={1} flex={1}>
           <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap" }}>
             తెలుగు ఫాంట్
@@ -102,6 +103,7 @@ export default function FontControlsTelugu({
           </Select>
         </Box>
 
+        {/* 🔠 Font Size */}
         <Box display="flex" alignItems="center" gap={1}>
           <Typography sx={{ fontSize: "0.9rem" }}>సైజ్</Typography>
 
@@ -124,6 +126,7 @@ export default function FontControlsTelugu({
           </IconButton>
         </Box>
 
+        {/* ♻️ Reset */}
         <Button
           variant="outlined"
           size="small"
