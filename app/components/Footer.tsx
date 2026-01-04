@@ -1,8 +1,7 @@
 'use client';
 
-import { Box, Container, Typography, useTheme } from "@mui/material";
+import { Box, Container, Typography, useTheme, Divider } from "@mui/material";
 import { useEffect, useState } from "react";
-
 
 export default function Footer() {
   const theme = useTheme();
@@ -15,14 +14,12 @@ export default function Footer() {
     return () => clearInterval(timer);
   }, []);
 
-  const formattedDate = dateTime.toLocaleDateString('te-IN', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  const formattedDate = dateTime.toLocaleDateString("te-IN", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
-
- 
 
   return (
     <Box
@@ -40,20 +37,43 @@ export default function Footer() {
       }}
     >
       <Container maxWidth="sm">
-        <Typography variant="body2" sx={{ fontWeight: "bold", mt: 2 }}>
-          రత్నాలబాల పద్యాలవాల భావాలమాల
+        {/* Title */}
+        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+          రత్నాలబాల – పద్యాలవాల • భావాలమాల
         </Typography>
 
+        {/* Tagline */}
+        <Typography
+          variant="body2"
+          sx={{ mt: 0.5, fontStyle: "italic" }}
+          color="text.secondary"
+        >
+          చదవండి • వినండి • పంచుకోండి
+        </Typography>
+
+        {/* Date */}
         <Typography variant="body2" sx={{ mt: 1 }}>
           ఈ రోజు: <strong>{formattedDate}</strong>
         </Typography>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-  © {new Date().getFullYear()} మిరియాల కుటుంబం రత్నాలబాల. అన్ని హక్కులు ప్రత్యేకించబడ్డాయి. <br />
-  అభివృద్ధి చేసినవారు: సందీప్ మిరియాల
-</Typography>
+        <Divider sx={{ my: 2 }} />
 
-    
+        {/* Credits */}
+        <Typography variant="body2" color="text.secondary">
+          © {new Date().getFullYear()} మిరియాల కుటుంబం – రత్నాలబాల  
+          <br />
+          అన్ని హక్కులు ప్రత్యేకించబడ్డాయి
+        </Typography>
+
+        <Typography
+          variant="body2"
+          sx={{ mt: 1, fontWeight: 500 }}
+          color="text.secondary"
+        >
+          అభివృద్ధి & రూపకల్పన: సందీప్ మిరియాల  
+          <br />
+          యుక్తిశాల AI
+        </Typography>
       </Container>
     </Box>
   );
