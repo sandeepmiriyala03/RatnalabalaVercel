@@ -38,8 +38,8 @@ export default function PoemCard({
     <Card sx={{ mb: 3 }}>
       <CardContent
         sx={{
-          fontFamily: "var(--telugu-font-family)",
-          fontSize: "var(--telugu-font-size)",
+          /* ✅ GLOBAL TELUGU FONT (from globals.css) */
+          lineHeight: 1.8,
         }}
       >
         {/* 🖼 IMAGE CAPTURE ROOT */}
@@ -51,7 +51,7 @@ export default function PoemCard({
             py: { xs: 3, sm: 4 },
           }}
         >
-          {/* 📜 POSTER BODY (COMPACT) */}
+          {/* 📜 POSTER BODY */}
           <Box data-poster-body>
             {/* 🔸 TITLE */}
             <Typography
@@ -69,7 +69,7 @@ export default function PoemCard({
 
             <Divider sx={{ mb: 2 }} />
 
-            {/* 📜 POEM CONTENT – EXACT LINES */}
+            {/* 📜 POEM CONTENT */}
             <Typography
               data-poster-poem
               sx={{
@@ -133,9 +133,12 @@ export default function PoemCard({
             gap: 1,
           }}
         >
+          {/* 🔊 Audio Controls */}
           <Box>
             <IconButton
-              onClick={() => speak(poem.content)}
+              onClick={() =>
+                speak(`${poem.title}. ${poem.content}`)
+              }
               disabled={!ready}
               aria-label="పద్యాన్ని వినండి"
             >
@@ -145,12 +148,13 @@ export default function PoemCard({
             <IconButton
               onClick={stopSpeech}
               disabled={!ready}
-              aria-label="ఆపండి"
+              aria-label="పఠనం ఆపండి"
             >
               <StopCircleIcon color="error" />
             </IconButton>
           </Box>
 
+          {/* 📤 Share */}
           <ShareButtons targetRef={poemRef} />
         </Box>
       </CardContent>
