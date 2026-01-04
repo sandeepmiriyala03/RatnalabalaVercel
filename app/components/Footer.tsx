@@ -50,30 +50,22 @@ export default function Footer() {
         >
           చదవండి • వినండి • పంచుకోండి
         </Typography>
-
-        {/* Date */}
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          ఈ రోజు: <strong>{formattedDate}</strong>
-        </Typography>
-
         <Divider sx={{ my: 2 }} />
 
         {/* Credits */}
-        <Typography variant="body2" color="text.secondary">
-          © {new Date().getFullYear()} మిరియాల కుటుంబం – రత్నాలబాల  
-          <br />
-          అన్ని హక్కులు ప్రత్యేకించబడ్డాయి
-        </Typography>
-
         <Typography
           variant="body2"
           sx={{ mt: 1, fontWeight: 500 }}
           color="text.secondary"
         >
           అభివృద్ధి & రూపకల్పన: సందీప్ మిరియాల  
-          <br />
           యుక్తిశాల AI
         </Typography>
+                {/* Date */}
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          ఈ రోజు: <strong>{formattedDate}</strong>
+        </Typography>
+
       </Container>
     </Box>
   );
