@@ -6,12 +6,12 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Ratnalabala",
   description: "Telugu Poems Platform",
-  manifest: "/manifest.json",          // ✅ THIS WAS MISSING
-  themeColor: "#1976d2",               // ✅ Required for PWA
+  manifest: "/manifest.json",   // ✅ THIS ENABLES PWA
+  themeColor: "#6A1B9A",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
     title: "Ratnalabala",
+    statusBarStyle: "default",
   },
 };
 
