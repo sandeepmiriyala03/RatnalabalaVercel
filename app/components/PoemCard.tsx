@@ -117,7 +117,7 @@ export default function PoemCard({
                   whiteSpace: "nowrap",
                 }}
               >
-                రత్నాలబాల
+                రత్నాలబాల పద్యాలవాల భావాలమాల
               </Typography>
             </Box>
           </Box>
