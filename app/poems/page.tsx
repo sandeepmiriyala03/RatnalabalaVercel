@@ -34,7 +34,19 @@ const PoemList: React.FC = () => {
       try {
         const res = await fetch("/api/poems");
         if (!res.ok) throw new Error();
-        setPoems(await res.json());
+
+        // ✅ API returns OBJECT → convert to ARRAY
+        const data: Record<string, string> = await res.json();
+
+        const poemArray: Poem[] = Object.entries(data).map(
+          ([title, content]) => ({
+            title,
+            content,
+            slug: title, // safe key
+          })
+        );
+
+        setPoems(poemArray);
       } catch {
         setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
       } finally {
@@ -72,9 +84,7 @@ const PoemList: React.FC = () => {
     u.rate = 0.8;
 
     const voice =
-      voices.find((v) => v.lang === "te-IN") ||
-      voices.find((v) => v.lang === "hi-IN") ||
-      voices.find((v) => v.lang.includes("en-IN"));
+      voices.find((v) => v.lang === "te-IN") ;
 
     if (voice) u.voice = voice;
     window.speechSynthesis.speak(u);
@@ -85,8 +95,8 @@ const PoemList: React.FC = () => {
     () =>
       poems.filter(
         (p) =>
-          p.title.toLowerCase().includes(search.toLowerCase()) ||
-          p.content.toLowerCase().includes(search.toLowerCase())
+          p.title.includes(search) ||
+          p.content.includes(search)
       ),
     [poems, search]
   );
@@ -109,8 +119,6 @@ const PoemList: React.FC = () => {
         p: { xs: 2, sm: 4 },
         maxWidth: 900,
         mx: "auto",
-
-        /* ✅ GLOBAL FONT APPLY */
         fontFamily: "var(--telugu-font-family)",
         fontSize: "var(--telugu-font-size)",
         lineHeight: 1.8,
@@ -150,7 +158,9 @@ const PoemList: React.FC = () => {
       </Box>
 
       {loading && (
-        <Typography align="center">పద్యాలు లోడ్ అవుతున్నాయి…</Typography>
+        <Typography align="center">
+          పద్యాలు లోడ్ అవుతున్నాయి…
+        </Typography>
       )}
 
       {error && (
@@ -161,9 +171,9 @@ const PoemList: React.FC = () => {
 
       {!loading &&
         !error &&
-        current.map((poem, i) => (
+        current.map((poem) => (
           <PoemCard
-            key={poem.slug || i}
+            key={poem.slug}
             poem={poem}
             ready={ready}
             speak={speak}
