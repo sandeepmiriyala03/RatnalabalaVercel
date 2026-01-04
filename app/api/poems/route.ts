@@ -3,37 +3,54 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 
+/**
+ * API: /api/poems
+ * Returns:
+ * {
+ *   "అసహనం": "poem content...",
+ *   "దయ": "poem content...",
+ *   ...
+ * }
+ */
 export async function GET() {
   try {
     const poemsDir = path.join(process.cwd(), "poems");
+
+    // Safety check
+    if (!fs.existsSync(poemsDir)) {
+      return NextResponse.json(
+        { error: "Poems directory not found" },
+        { status: 404 }
+      );
+    }
+
     const files = fs.readdirSync(poemsDir);
 
-    const uniquePoemsMap = new Map(); // Using a Map to store unique poems by title
+    const poemsMap: Record<string, string> = {};
 
     files.forEach((file) => {
+      if (!file.endsWith(".md")) return;
+
       const filePath = path.join(poemsDir, file);
       const fileContent = fs.readFileSync(filePath, "utf-8");
 
       const { data, content } = matter(fileContent);
 
-      const title = data.title || "అజ్ఞాత శీర్షిక";
-      const slug = file.replace(/\.md$/, "");
+      const title = (data.title || "").trim();
+      const poemText = content.trim();
 
-
-      uniquePoemsMap.set(title, {
-        title,
-        slug,
-        content,
-      });
+      // Only valid entries
+      if (title && poemText) {
+        poemsMap[title] = poemText;
+      }
     });
 
-    // Convert the Map values back to an array
-    const poems = Array.from(uniquePoemsMap.values());
-     poems.sort((a, b) => a.title.localeCompare(b.title, 'te', { sensitivity: 'base' }));
-
-    return NextResponse.json(poems);
+    return NextResponse.json(poemsMap);
   } catch (error) {
     console.error("Error loading poems:", error);
-    return NextResponse.json({ error: "Failed to load poems." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load poems" },
+      { status: 500 }
+    );
   }
 }

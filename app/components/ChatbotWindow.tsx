@@ -10,9 +10,10 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 
-/* 🔹 Suggested words (shown only once) */
-const words = [
+/* 🔹 SINGLE SOURCE OF TRUTH */
+const WORDS = [
   "అసహనం",
   "జ్ఞానం",
   "జాప్యం",
@@ -36,11 +37,116 @@ const words = [
   "గౌరవం",
 ];
 
+/* 🔹 English / phonetic aliases → MUST map ONLY to WORDS */
+const NLP_DICT: Record<string, string> = {
+  /* అసహనం */
+  asahanam: "అసహనం",
+  asahanamu: "అసహనం",
+  ashanam: "అసహనం",
+  asharanam: "అసహనం",
+  asharanamu: "అసహనం",
+
+  /* జ్ఞానం */
+  gnanam: "జ్ఞానం",
+  jnanam: "జ్ఞానం",
+  gyanam: "జ్ఞానం",
+
+  /* జాప్యం */
+  japyam: "జాప్యం",
+  jaapyam: "జాప్యం",
+
+  /* దయ */
+  daya: "దయ",
+  dhaya: "దయ",
+
+  /* దానం */
+  danam: "దానం",
+  daanam: "దానం",
+
+  /* దారిద్య్రం */
+  daridryam: "దారిద్య్రం",
+  daridram: "దారిద్య్రం",
+
+  /* దురాశ */
+  durasha: "దురాశ",
+  duraasha: "దురాశ",
+
+  /* ద్రోహం */
+  droham: "ద్రోహం",
+  drohham: "ద్రోహం",
+
+  /* ధనం */
+  dhanam: "ధనం",
+  dhanamu: "ధనం",
+
+  /* న్యాయం */
+  nyayam: "న్యాయం",
+  nyaayam: "న్యాయం",
+
+  /* పొదుపు */
+  podupu: "పొదుపు",
+
+  /* పౌరుషం */
+  pourusham: "పౌరుషం",
+  paurusham: "పౌరుషం",
+
+  /* పెద్దలు */
+  peddalu: "పెద్దలు",
+
+  /* బాల్యం */
+  balyam: "బాల్యం",
+  baalyam: "బాల్యం",
+
+  /* రత్నాలబాల */
+  ratnalabala: "రత్నాలబాల",
+  rathnalabala: "రత్నాలబాల",
+  ratnalaabala: "రత్నాలబాల",
+  bala: "రత్నాలబాల",
+
+  /* రామకృష్ణ */
+  ramakrishna: "రామకృష్ణ",
+  ramaakrishna: "రామకృష్ణ",
+  rama: "రామకృష్ణ",
+  krishna: "రామకృష్ణ",
+
+  /* లోకం */
+  lokam: "లోకం",
+
+  /* వైద్యం */
+  vaidyam: "వైద్యం",
+  vaidya: "వైద్యం",
+
+  /* సుఖం */
+  sukham: "సుఖం",
+
+  /* సౌజన్యం */
+  soujanyam: "సౌజన్యం",
+  saujanyam: "సౌజన్యం",
+
+  /* గౌరవం */
+  gouravam: "గౌరవం",
+  gauravam: "గౌరవం",
+};
+
+/* 🔹 Resolver */
+function resolveWord(input: string): string | null {
+  const raw = input.trim();
+  if (!raw) return null;
+
+  const teluguMatch = WORDS.find((w) => w.includes(raw));
+  if (teluguMatch) return teluguMatch;
+
+  const lower = raw.toLowerCase();
+  const key = Object.keys(NLP_DICT).find((k) =>
+    k.includes(lower)
+  );
+
+  return key ? NLP_DICT[key] : null;
+}
+
 interface Message {
   sender: "user" | "bot";
-  text?: string;
-  type?: "text" | "audio" | "video";
-  file?: string;
+  text: string;
 }
 
 export default function ChatbotWindow({
@@ -52,50 +158,78 @@ export default function ChatbotWindow({
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [poems, setPoems] = useState<Record<string, string>>({});
+  const [loadingPoems, setLoadingPoems] = useState(true);
 
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
 
-  /* 🔽 Auto scroll to latest message */
+  /* 🔹 Load poems once */
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    let mounted = true;
+
+    async function loadPoems() {
+      const res = await fetch("/api/poems");
+      const raw = await res.json();
+
+      const normalized: Record<string, string> = {};
+      Object.keys(raw).forEach((k) => {
+        normalized[k.trim()] = raw[k];
+      });
+
+      if (mounted) {
+        setPoems(normalized);
+        setLoadingPoems(false);
+      }
+    }
+
+    loadPoems();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* 🔹 Scroll to TOP (LIFO) */
+  useEffect(() => {
+    topRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   if (!open) return null;
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const handleClear = () => {
+    setMessages([]);
+    setInput("");
+  };
+
+  const handleSend = () => {
+    if (!input.trim()) return;
 
     const userText = input;
     setInput("");
-    setLoading(true);
 
-    setMessages((prev) => [
-      ...prev,
-      { sender: "user", text: userText, type: "text" },
-    ]);
-
-    try {
-      const res = await fetch("/api/chatbot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: userText }),
-      });
-
-      const botMessage: Message = await res.json();
-      setMessages((prev) => [...prev, botMessage]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
+    if (loadingPoems) {
+      setMessages((p) => [
         {
           sender: "bot",
-          text: "క్షమించండి, ఏదో సమస్య వచ్చింది. మళ్లీ ప్రయత్నించండి.",
-          type: "text",
+          text: "దయచేసి వేచిచూడండి… డేటా లోడ్ అవుతోంది.",
         },
+        ...p,
       ]);
-    } finally {
-      setLoading(false);
+      return;
     }
+
+    const matchedWord = resolveWord(userText);
+    const poem = matchedWord ? poems[matchedWord] : null;
+
+    setMessages((p) => [
+      {
+        sender: "bot",
+        text: poem
+          ? `📌 ${matchedWord}\n\n${poem}`
+          : "ఈ పదానికి సంబంధించిన భావం కనబడలేదు.",
+      },
+      { sender: "user", text: userText },
+      ...p,
+    ]);
   };
 
   return (
@@ -103,68 +237,49 @@ export default function ChatbotWindow({
       elevation={8}
       sx={{
         position: "fixed",
-        bottom: { xs: 80, md: 24 },
+        bottom: 24,
         right: 20,
-        width: { xs: "90%", sm: 360 },
+        width: 360,
         height: 520,
-        zIndex: 1700,
         display: "flex",
         flexDirection: "column",
         borderRadius: 3,
-        overflow: "hidden",
+        zIndex: 1700,
       }}
     >
-      {/* 🔝 Header */}
+      {/* Header */}
       <Box
         sx={{
           p: 1.5,
           bgcolor: "secondary.main",
           color: "secondary.contrastText",
           display: "flex",
-          alignItems: "center",
           justifyContent: "space-between",
         }}
       >
         <Typography fontWeight="bold">భావాలమాల</Typography>
-        <IconButton size="small" onClick={onClose} sx={{ color: "inherit" }}>
-          <CloseIcon />
-        </IconButton>
+        <Box>
+          <IconButton size="small" onClick={handleClear} sx={{ color: "inherit" }}>
+            <DeleteSweepIcon />
+          </IconButton>
+          <IconButton size="small" onClick={onClose} sx={{ color: "inherit" }}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
       </Box>
 
-      {/* 💬 Messages */}
+      {/* Messages */}
       <Box sx={{ flex: 1, p: 2, overflowY: "auto" }}>
-        {/* 🔹 One-time word suggestions */}
-        {messages.length === 0 && (
-          <Paper
-            variant="outlined"
-            sx={{ p: 1.5, mb: 2 }}
-          >
-            <Typography variant="subtitle2" gutterBottom>
-              ఈ పదాల నుండి ఎంచుకుని అడగండి:
-            </Typography>
-
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-              {words.map((word) => (
-                <Button
-                  key={word}
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setInput(word)}
-                >
-                  {word}
-                </Button>
-              ))}
-            </Box>
-          </Paper>
-        )}
-
+        <div ref={topRef} />
         {messages.map((msg, i) => (
           <Paper
             key={i}
             sx={{
               p: 1.5,
               mb: 1,
-              maxWidth: "80%",
+              maxWidth: "85%",
+              whiteSpace: "pre-line",
+              alignSelf: msg.sender === "user" ? "flex-end" : "flex-start",
               bgcolor:
                 msg.sender === "user"
                   ? "primary.main"
@@ -173,39 +288,25 @@ export default function ChatbotWindow({
                 msg.sender === "user"
                   ? "primary.contrastText"
                   : "text.primary",
-              alignSelf:
-                msg.sender === "user" ? "flex-end" : "flex-start",
             }}
           >
             {msg.text}
           </Paper>
         ))}
-
-        <div ref={bottomRef} />
       </Box>
 
-      {/* ✍️ Input */}
+      {/* Input */}
       <Box sx={{ p: 1.5, display: "flex", gap: 1 }}>
         <TextField
           fullWidth
           size="small"
-          placeholder="భావాలమాల అడగండి…"
+          placeholder="తెలుగు లేదా English phonetic టైప్ చేయండి…"
           value={input}
-          disabled={loading}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
         />
-        <Button
-          variant="contained"
-          onClick={handleSend}
-          disabled={loading}
-        >
-          {loading ? "..." : "పంపండి"}
+        <Button variant="contained" onClick={handleSend}>
+          పంపండి
         </Button>
       </Box>
     </Paper>
