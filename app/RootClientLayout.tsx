@@ -91,10 +91,10 @@ export default function RootClientLayout({
           <ClientWrapper>{children}</ClientWrapper>
         </Box>
       </Container>
-
-      <MobileBottomNav />
       <PwaInstallPrompt />
       <FloatingAIButton />
+      <MobileBottomNav />
+
     </>
   );
 }
