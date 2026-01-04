@@ -23,6 +23,7 @@ export type TeluguFont =
   | "RaviPrakash"
   | "TenaliRamakrishna"
   | "Timmana"
+  | "Ponnala-Regular"
   | "TANA";
 
 const DEFAULT_FONT: TeluguFont = "Ramaneeya";

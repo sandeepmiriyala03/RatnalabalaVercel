@@ -33,6 +33,7 @@ const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
   { label: "తెనాలి రామకృష్ణ", value: "TenaliRamakrishna" },
   { label: "తిమ్మన", value: "Timmana" },
   { label: "టానా", value: "TANA" },
+  { label: "పొన్నల", value: "Ponnala-Regular" },
 ];
 
 function getDeviceBounds() {
