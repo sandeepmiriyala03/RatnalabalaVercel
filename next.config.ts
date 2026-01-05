@@ -1,6 +1,7 @@
 // next.config.ts
 const withPWA = require("next-pwa")({
   dest: "public",
+   swSrc: "public/sw-custom.js", // 👈 THIS IS THE KEY
   register: true,
   skipWaiting: true,
   buildExcludes: [/middleware-manifest.json$/],
