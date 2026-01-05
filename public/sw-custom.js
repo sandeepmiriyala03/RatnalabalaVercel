@@ -46,7 +46,20 @@ registerRoute(
    4️⃣ API routes – Network first with short expiration
 -------------------------------------------------- */
 registerRoute(
-  ({ url }) => url.pathname.startsWith("/api/"),
+  ({ url }) => url.pathname.startsWith("/api/poems"),
+  new NetworkFirst({
+    cacheName: "api-cache",
+    networkTimeoutSeconds: 5,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24, // 1 day
+      }),
+    ],
+  })
+);
+registerRoute(
+  ({ url }) => url.pathname.startsWith("/api/miripoems"),
   new NetworkFirst({
     cacheName: "api-cache",
     networkTimeoutSeconds: 5,
