@@ -134,7 +134,7 @@ const PoemList: React.FC = () => {
           fontSize: "calc(var(--telugu-font-size) * 1.8)",
         }}
       >
-        మిరా పద్యాలు
+       రత్నాలబాల
       </Typography>
 
       <Typography align="center" sx={{ mb: 2 }}>
