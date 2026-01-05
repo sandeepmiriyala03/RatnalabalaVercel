@@ -1,76 +1,125 @@
-const CACHE_NAME = "ratnalabala-v2";
+/* eslint-disable no-undef */
+/* sw-custom.js – Ratnalabala */
 
-// 🔥 Install – cache shell only
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll(["/", "/manifest.json"])
-    )
-  );
+import { precacheAndRoute } from "workbox-precaching";
+import { registerRoute } from "workbox-routing";
+import {
+  CacheFirst,
+  NetworkFirst,
+  StaleWhileRevalidate,
+} from "workbox-strategies";
+import { ExpirationPlugin } from "workbox-expiration";
+import { CacheableResponsePlugin } from "workbox-cacheable-response";
+
+/**
+ * 🔴 THIS LINE IS MANDATORY
+ * Workbox injects build-time assets here
+ */
+precacheAndRoute(self.__WB_MANIFEST);
+
+/* =========================
+   📄 Pages / Navigation
+========================= */
+registerRoute(
+  ({ request }) => request.mode === "navigate",
+  new NetworkFirst({
+    cacheName: "pages-cache",
+    networkTimeoutSeconds: 5,
+  })
+);
+
+/* =========================
+   🎨 JS / CSS / Images
+========================= */
+registerRoute(
+  ({ request }) =>
+    request.destination === "script" ||
+    request.destination === "style" ||
+    request.destination === "image",
+  new StaleWhileRevalidate({
+    cacheName: "static-assets",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 200,
+        maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+      }),
+    ],
+  })
+);
+
+/* =========================
+   🔤 Fonts
+========================= */
+registerRoute(
+  ({ request }) => request.destination === "font",
+  new CacheFirst({
+    cacheName: "font-cache",
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({
+        maxEntries: 50,
+        maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+      }),
+    ],
+  })
+);
+
+/* =========================
+   🔊 Audio
+========================= */
+registerRoute(
+  ({ request }) => request.destination === "audio",
+  new CacheFirst({
+    cacheName: "audio-cache",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 30,
+        maxAgeSeconds: 60 * 60 * 24 * 30,
+      }),
+    ],
+  })
+);
+
+/* =========================
+   🎥 Video
+========================= */
+registerRoute(
+  ({ request }) => request.destination === "video",
+  new CacheFirst({
+    cacheName: "video-cache",
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 10,
+        maxAgeSeconds: 60 * 60 * 24 * 7,
+      }),
+    ],
+  })
+);
+
+/* =========================
+   🌐 APIs
+========================= */
+registerRoute(
+  ({ url }) => url.pathname.startsWith("/api/"),
+  new NetworkFirst({
+    cacheName: "api-cache",
+    networkTimeoutSeconds: 10,
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 100,
+        maxAgeSeconds: 60 * 60 * 24,
+      }),
+    ],
+  })
+);
+
+/* =========================
+   ⚡ Lifecycle
+========================= */
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
-// 🔄 Activate – clean old cache
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys.map((key) =>
-          key !== CACHE_NAME ? caches.delete(key) : null
-        )
-      )
-    )
-  );
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());
 });
-
-// 🌐 Fetch handler
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // 🧠 API – Network first (fresh data)
-  if (url.pathname.startsWith("/api/")) {
-    event.respondWith(networkFirst(request));
-    return;
-  }
-
-  // 🖼 Images / Fonts / CSS / JS / Audio / Video
-  if (
-    request.destination === "image" ||
-    request.destination === "style" ||
-    request.destination === "script" ||
-    request.destination === "font" ||
-    request.destination === "audio" ||
-    request.destination === "video"
-  ) {
-    event.respondWith(cacheFirst(request));
-    return;
-  }
-
-  // 📄 Pages / others
-  event.respondWith(cacheFirst(request));
-});
-
-// ---------- STRATEGIES ----------
-
-async function cacheFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-
-  const response = await fetch(request);
-  cache.put(request, response.clone());
-  return response;
-}
-
-async function networkFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
-  try {
-    const response = await fetch(request);
-    cache.put(request, response.clone());
-    return response;
-  } catch {
-    return cache.match(request);
-  }
-}
