@@ -2,17 +2,26 @@
 import "./globals.css";
 import RootClientLayout from "./RootClientLayout";
 import type { Metadata } from "next";
-import ServiceWorkerRegister from "./ServiceWorkerRegister"; // 👈 ADD
+
 export const metadata: Metadata = {
   title: "Ratnalabala",
-  description: "Telugu Poems Platform",
-  manifest: "/manifest.json",   // ✅ THIS ENABLES PWA
+  description: "Telugu Poems Platform by Sri Miriyala Venkata Ratnam.",
+  manifest: "/manifest.json",  // ✅ Auto-adds <link rel="manifest">
   themeColor: "#6A1B9A",
   appleWebApp: {
     capable: true,
     title: "Ratnalabala",
     statusBarStyle: "default",
+    startupImage: [
+      { url: "/icons/icon-192x192.png", media: "(device-width: 768px) and (device-height: 1024px)" },
+      { url: "/icons/icon-192x192.png" }
+    ]
   },
+  // Android Chrome PWA meta
+  other: {
+    "msapplication-TileColor": "#6A1B9A",
+    "msapplication-TileImage": "/icons/icon-192x192.png"
+  }
 };
 
 export default function RootLayout({
