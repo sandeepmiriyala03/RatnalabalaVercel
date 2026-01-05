@@ -34,39 +34,64 @@ export default function RootClientLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [mounted, setMounted] = useState(false); // ✅ FIX: Hydration protection
   const [fontFamily, setFontFamily] =
     useState<TeluguFont>(DEFAULT_FONT);
   const [fontSize, setFontSize] =
     useState<number>(DEFAULT_SIZE);
 
-  /* 🔁 Restore saved settings */
+  /* 🔁 Mount client only */
   useEffect(() => {
-    const saved = localStorage.getItem("teluguFontSettings");
-    if (saved) {
-      const { family, size } = JSON.parse(saved);
-      if (family) setFontFamily(family);
-      if (size) setFontSize(size);
-    }
+    setMounted(true);
   }, []);
 
-  /* ✅ APPLY FONT GLOBALLY */
+  /* 🔁 Restore saved settings (CLIENT ONLY) */
   useEffect(() => {
+    if (!mounted) return; // ✅ Skip SSR
+    const saved = localStorage.getItem("teluguFontSettings");
+    if (saved) {
+      try {
+        const { family, size } = JSON.parse(saved);
+        if (family) setFontFamily(family as TeluguFont);
+        if (size) setFontSize(size);
+      } catch (e) {
+        console.warn("Font settings parse error:", e);
+      }
+    }
+  }, [mounted]);
+
+  /* ✅ APPLY FONT GLOBALLY (CLIENT ONLY) */
+  useEffect(() => {
+    if (!mounted) return; // ✅ Skip SSR
     const root = document.documentElement;
-
-    root.style.setProperty(
-      "--telugu-font-family",
-      fontFamily
-    );
-    root.style.setProperty(
-      "--telugu-font-size",
-      `${fontSize}rem`
-    );
-
+    root.style.setProperty("--telugu-font-family", fontFamily);
+    root.style.setProperty("--telugu-font-size", `${fontSize}rem`);
     localStorage.setItem(
       "teluguFontSettings",
       JSON.stringify({ family: fontFamily, size: fontSize })
     );
-  }, [fontFamily, fontSize]);
+  }, [fontFamily, fontSize, mounted]);
+
+  // ✅ SSR-safe render (no hydration mismatch)
+  if (!mounted) {
+    return (
+      <>
+        <AppBar position="fixed" color="default">
+          <Toolbar>
+            <Navbar />
+          </Toolbar>
+        </AppBar>
+        <Toolbar />
+        <Container sx={{ mt: 1 }} />
+        <Container sx={{ my: 3 }}>
+          <Box sx={{ pb: { xs: 8, md: 0 } }}>
+            {children}
+          </Box>
+        </Container>
+        <MobileBottomNav />
+      </>
+    );
+  }
 
   return (
     <>
