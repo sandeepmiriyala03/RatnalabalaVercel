@@ -1,33 +1,40 @@
-/* sw-custom.js – FINAL, App Router safe */
+/* sw-custom.js – Smart, auto, future-proof Markdown offline */
 
+/* eslint-disable no-undef */
 import { precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { CacheFirst, NetworkFirst } from "workbox-strategies";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
+import { ExpirationPlugin } from "workbox-expiration";
 
-/* 🔑 PRECACHE */
-precacheAndRoute([
-  { url: "/offline.html", revision: null },
-  ...self.__WB_MANIFEST,
-]);
+/* -------------------------------------------------
+   1️⃣ Precache build assets (Next.js chunks, CSS)
+-------------------------------------------------- */
+precacheAndRoute(self.__WB_MANIFEST);
 
-/* 🔑 OFFLINE NAVIGATION HANDLER */
+/* -------------------------------------------------
+   2️⃣ Markdown files (.md) – AUTO cache on first use
+-------------------------------------------------- */
 registerRoute(
-  ({ request }) => request.mode === "navigate",
-  async () => {
-    try {
-      return await fetch(request);
-    } catch {
-      const cache = await caches.open("workbox-precache-v2");
-      return cache.match("/offline.html");
-    }
-  }
+  ({ url }) => url.pathname.endsWith(".md"),
+  new CacheFirst({
+    cacheName: "markdown-cache",
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [0, 200] }),
+      new ExpirationPlugin({
+        maxEntries: 5000,              // supports 1000+ files
+        maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+      }),
+    ],
+  })
 );
 
-/* 🎨 ASSETS */
+/* -------------------------------------------------
+   3️⃣ Static assets (fonts, css, js, images)
+-------------------------------------------------- */
 registerRoute(
   ({ request }) =>
-    ["image", "style", "script", "font"].includes(request.destination),
+    ["style", "script", "image", "font"].includes(request.destination),
   new CacheFirst({
     cacheName: "asset-cache",
     plugins: [
@@ -36,14 +43,21 @@ registerRoute(
   })
 );
 
-/* 🌐 API */
+/* -------------------------------------------------
+   4️⃣ API (if used)
+-------------------------------------------------- */
 registerRoute(
   ({ url }) => url.pathname.startsWith("/api/"),
-  new NetworkFirst({ cacheName: "api-cache" })
+  new NetworkFirst({
+    cacheName: "api-cache",
+    networkTimeoutSeconds: 5,
+  })
 );
 
-/* ⚡ LIFECYCLE */
+/* -------------------------------------------------
+   5️⃣ Lifecycle (MANDATORY)
+-------------------------------------------------- */
 self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (e) =>
-  e.waitUntil(self.clients.claim())
+self.addEventListener("activate", (event) =>
+  event.waitUntil(self.clients.claim())
 );
