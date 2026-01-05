@@ -19,7 +19,7 @@ interface Poem {
 const ITEMS_PER_PAGE = 3;
 
 /* 🔖 SINGLE SOURCE OF TRUTH */
-const POETRY_NAME = " పద్యాలవాల";
+const POETRY_NAME = " మిరా పద్యాలు";
 const AUTHORS: string | string[] = "డాక్టర్ మిరియాల రామకృష్ణ";
 
 const PoemList: React.FC = () => {
