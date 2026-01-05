@@ -46,7 +46,7 @@ export default function Navbar() {
             variant="h5"
             sx={{ fontWeight: "bold", color: "white" }}
           >
-            రత్నాలబాల – పద్యాలవాల – భావాలమాల
+            రత్నాలబాల 
           </Typography>
         </Link>
 
