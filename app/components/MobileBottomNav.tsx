@@ -9,6 +9,7 @@ const items = [
   { label: "మిరా", path: "/", icon: <HomeIcon /> },
   { label: "రత్నభావాలు", path: "/AboutAuthor" , icon: <InfoIcon /> },
   { label: "పద్యాలు", path: "/poems", icon: <MenuBookIcon /> },
+  { label: "మిరా పద్యాలు", path: "/mirapoems" },
   { label: "అంకితం", path: "/Dedication", icon: <InfoIcon /> },
 ];
 

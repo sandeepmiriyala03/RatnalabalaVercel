@@ -24,6 +24,10 @@ type Props = {
   ready: boolean;
   speak: (text: string) => void;
   stopSpeech: () => void;
+
+  /** 🔮 Future ready */
+  authors?: string | string[];     // 👈 supports 1 or many
+  poetryName?: string;             // optional collection / flag
 };
 
 export default function PoemCard({
@@ -31,17 +35,19 @@ export default function PoemCard({
   ready,
   speak,
   stopSpeech,
+  authors,
+  poetryName,
 }: Props) {
   const poemRef = useRef<HTMLDivElement>(null);
 
+  /** Normalize authors */
+  const authorText = Array.isArray(authors)
+    ? authors.join(", ")
+    : authors;
+
   return (
     <Card sx={{ mb: 3 }}>
-      <CardContent
-        sx={{
-          /* ✅ GLOBAL TELUGU FONT (from globals.css) */
-          lineHeight: 1.8,
-        }}
-      >
+      <CardContent sx={{ lineHeight: 1.8 }}>
         {/* 🖼 IMAGE CAPTURE ROOT */}
         <Box
           ref={poemRef}
@@ -53,6 +59,8 @@ export default function PoemCard({
         >
           {/* 📜 POSTER BODY */}
           <Box data-poster-body>
+           
+
             {/* 🔸 TITLE */}
             <Typography
               data-poster-title
@@ -82,44 +90,48 @@ export default function PoemCard({
               {poem.content}
             </Typography>
 
-            {/* ✍️ AUTHOR */}
-            <Typography
-              data-poster-author
-              sx={{
-                mt: 2.5,
-                textAlign: "right",
-                fontWeight: 500,
-                fontSize: "0.9em",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              — మిరియాల వెంకటరత్నం
-            </Typography>
-
-            {/* 🧾 FOOTER */}
-            <Box
-              sx={{
-                mt: 4,
-                pt: 2,
-                borderTop: "1px solid #ddd",
-                display: "flex",
-                justifyContent: "center",
-              }}
-            >
+            {/* ✍️ AUTHOR(S) */}
+            {authorText && (
               <Typography
-                data-poster-footer
+                data-poster-author
                 sx={{
-                  fontSize: "0.8em",
-                  fontWeight: 600,
-                  opacity: 0.85,
+                  mt: 2.5,
+                  textAlign: "right",
+                  fontWeight: 500,
+                  fontSize: "0.9em",
                   whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 }}
               >
-                రత్నాలబాల పద్యాలవాల భావాలమాల
+                — {authorText}
               </Typography>
-            </Box>
+            )}
+
+            {/* 🧾 FOOTER */}
+            {poetryName && (
+              <Box
+                sx={{
+                  mt: 4,
+                  pt: 2,
+                  borderTop: "1px solid #ddd",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <Typography
+                  data-poster-footer
+                  sx={{
+                    fontSize: "0.8em",
+                    fontWeight: 600,
+                    opacity: 0.85,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {poetryName}
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Box>
 
@@ -136,9 +148,7 @@ export default function PoemCard({
           {/* 🔊 Audio Controls */}
           <Box>
             <IconButton
-              onClick={() =>
-                speak(`${poem.title}. ${poem.content}`)
-              }
+              onClick={() => speak(`${poem.title}. ${poem.content}`)}
               disabled={!ready}
               aria-label="పద్యాన్ని వినండి"
             >

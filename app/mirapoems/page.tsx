@@ -19,8 +19,8 @@ interface Poem {
 const ITEMS_PER_PAGE = 3;
 
 /* 🔖 SINGLE SOURCE OF TRUTH */
-const POETRY_NAME = "రత్నాలబాల — పద్యాలవాల • భావాలమాల";
-const AUTHORS: string | string[] = "మిరియాల వెంకటరత్నం";
+const POETRY_NAME = " పద్యాలవాల";
+const AUTHORS: string | string[] = "డాక్టర్ మిరియాల రామకృష్ణ";
 
 const PoemList: React.FC = () => {
   const [poems, setPoems] = useState<Poem[]>([]);
@@ -36,7 +36,7 @@ const PoemList: React.FC = () => {
   useEffect(() => {
     const fetchPoems = async () => {
       try {
-        const res = await fetch("/api/poems");
+        const res = await fetch("/api/mirapoems");
         if (!res.ok) throw new Error();
 
         const data: Record<string, string> = await res.json();
