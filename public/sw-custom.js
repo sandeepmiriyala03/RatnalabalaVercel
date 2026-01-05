@@ -1,112 +1,74 @@
-/* sw-custom.js – Smart, auto, future-proof Markdown offline for Ratnalabala PWA */
-/* eslint-disable no-undef */
+/* sw-custom.js – Ratnalabala Offline PWA */
 import { precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import { CacheFirst, NetworkFirst } from "workbox-strategies";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 import { ExpirationPlugin } from "workbox-expiration";
 
-/* -------------------------------------------------
-   1️⃣ Precache build assets (Next.js chunks, CSS, offline.html, manifest)
--------------------------------------------------- */
+// 1. Precache Next.js + offline.html
 precacheAndRoute(self.__WB_MANIFEST);
 
-/* -------------------------------------------------
-   2️⃣ Markdown files (.md) – AUTO cache on first use (Telugu poems)
--------------------------------------------------- */
+// 2. Telugu poems (.md) cache
 registerRoute(
   ({ url }) => url.pathname.endsWith(".md"),
   new CacheFirst({
     cacheName: "markdown-cache",
     plugins: [
       new CacheableResponsePlugin({ statuses: [0, 200] }),
-      new ExpirationPlugin({
-        maxEntries: 5000,              // supports 1000+ poem files
-        maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
-      }),
+      new ExpirationPlugin({ maxEntries: 5000, maxAgeSeconds: 31536000 }),
     ],
   })
 );
 
-/* -------------------------------------------------
-   3️⃣ Static assets (fonts, css, js, images)
--------------------------------------------------- */
+// 3. Static assets
 registerRoute(
-  ({ request }) =>
-    ["style", "script", "image", "font"].includes(request.destination),
+  ({ request }) => ["style", "script", "image", "font"].includes(request.destination),
   new CacheFirst({
     cacheName: "asset-cache",
-    plugins: [
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
-    ],
+    plugins: [new CacheableResponsePlugin({ statuses: [0, 200] })],
   })
 );
 
-/* -------------------------------------------------
-   4️⃣ API routes – Network first with short expiration
--------------------------------------------------- */
+// 4. API cache
 registerRoute(
-  ({ url }) => url.pathname.startsWith("/api/poems"),
+  ({ url }) => url.pathname.startsWith("/api/"),
   new NetworkFirst({
     cacheName: "api-cache",
     networkTimeoutSeconds: 5,
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-        maxAgeSeconds: 60 * 60 * 24, // 1 day
-      }),
-    ],
-  })
-);
-registerRoute(
-  ({ url }) => url.pathname.startsWith("/api/miripoems"),
-  new NetworkFirst({
-    cacheName: "api-cache",
-    networkTimeoutSeconds: 5,
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-        maxAgeSeconds: 60 * 60 * 24, // 1 day
-      }),
-    ],
+    plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 86400 })],
   })
 );
 
-/* -------------------------------------------------
-   5️⃣ Navigation routes – Pages with offline fallback
--------------------------------------------------- */
+// 5. Navigation fallback → offline.html
 registerRoute(
   ({ request }) => request.mode === "navigate",
   new NetworkFirst({
     cacheName: "pages-cache",
-    plugins: [
-      new CacheableResponsePlugin({ statuses: [0, 200] }),
-    ],
+    plugins: [new CacheableResponsePlugin({ statuses: [0, 200] })],
   })
 );
 
-/* -------------------------------------------------
-   6️⃣ Offline fallback to offline.html for uncached navigations
--------------------------------------------------- */
+// 6. LIFECYCLE (single source of truth)
+self.addEventListener("install", event => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", event => {
+  event.waitUntil(self.clients.claim());
+});
+
+// 7. EXPLICIT offline.html fallback
 self.addEventListener("fetch", event => {
-  if (event.request.mode === "navigate" && !event.request.url.includes("localhost")) {
+  if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request).catch(async () => {
         const cache = await caches.open("pages-cache");
-        return cache.match("/offline.html") || 
-               new Response("Offline mode: Poems available via search", {
-                 status: 200,
-                 headers: { "Content-Type": "text/html" }
-               });
+        const offline = await cache.match("/offline.html");
+        return offline || new Response("Offline: Connect to read poems", {
+          status: 200,
+          headers: { "Content-Type": "text/html" }
+        });
       })
     );
   }
 });
-
-/* -------------------------------------------------
-   7️⃣ Lifecycle (MANDATORY for instant updates)
--------------------------------------------------- */
-self.addEventListener("install", () => self.skipWaiting());
-self.addEventListener("activate", (event) =>
-  event.waitUntil(self.clients.claim())
-);
