@@ -9,10 +9,8 @@ import Image from "next/image";
 
 const navItems = [
   { label: "మిరా", path: "/" },
-  { label: "మిరా క్విజ్", path: "/MIRIAQuiz" },
   { label: "రత్నభావాలు", path: "/AboutAuthor" },
   { label: "పద్యాలవాల", path: "/poems" },
-
   { label: "అంకితం", path: "/Dedication" },
 ];
 
@@ -46,7 +44,7 @@ export default function Navbar() {
             variant="h5"
             sx={{ fontWeight: "bold", color: "white" }}
           >
-            మేధో సృష్టి
+            రత్నాలబాల – పద్యాలవాల – భావాలమాల
           </Typography>
         </Link>
 
