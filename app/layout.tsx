@@ -2,7 +2,7 @@
 import "./globals.css";
 import RootClientLayout from "./RootClientLayout";
 import type { Metadata } from "next";
-
+import ServiceWorkerRegister from "./ServiceWorkerRegister"; // 👈 ADD
 export const metadata: Metadata = {
   title: "Ratnalabala",
   description: "Telugu Poems Platform",
