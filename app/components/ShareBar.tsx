@@ -120,24 +120,30 @@ export default function ShareButtons({ targetRef }: Props) {
     }
   };
 
-  /* 🐦 X (Twitter) Share */
-  const shareOnX = async () => {
-    const img = await generateImage("social");
-    if (!img) return;
+const shareOnX = async () => {
+  const img = await generateImage("social");
+  if (!img) return;
 
-    // Image download (X web limitation)
-    const link = document.createElement("a");
-    link.href = img;
-    link.download = "telugu-padyam.png";
-    link.click();
+  // 1️⃣ Download image (mandatory for X)
+  const link = document.createElement("a");
+  link.href = img;
+  link.download = "ratnalabala.png";
+  link.click();
 
-    const text = encodeURIComponent(SHARE_TEXT);
+  // 2️⃣ Open X with text
+  const text = encodeURIComponent(
+    "రత్నాలబాల – పద్యాలవాల – భావాలమాల\n" +
+    "చదవండి – వినండి – పంచుకోండి\n\n" +
+    "© సృష్టి : యుక్తిశాల AI"
+  );
 
-    window.open(
-      `https://twitter.com/intent/tweet?text=${text}`,
-      "_blank"
-    );
-  };
+  window.open(
+    `https://twitter.com/intent/tweet?text=${text}`,
+    "_blank",
+    "noopener,noreferrer"
+  );
+};
+
 
   return (
     <Stack direction="row" spacing={1}>
