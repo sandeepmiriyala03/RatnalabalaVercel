@@ -2,10 +2,12 @@
 
 import React, { useCallback } from "react";
 import { IconButton, Stack, Tooltip } from "@mui/material";
+
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import TelegramIcon from "@mui/icons-material/Telegram";
+import XIcon from "@mui/icons-material/X";
 import DownloadIcon from "@mui/icons-material/Download";
 import PrintIcon from "@mui/icons-material/Print";
+
 import html2canvas from "html2canvas";
 
 type Props = {
@@ -13,11 +15,20 @@ type Props = {
 };
 
 /* Sizes */
-const SOCIAL_SIZE = 1080;          // Instagram / WhatsApp
-const A4_WIDTH = 2480;             // 300 DPI
+const SOCIAL_SIZE = 1080;
+const A4_WIDTH = 2480;
 const A4_HEIGHT = 3508;
 
 export default function ShareButtons({ targetRef }: Props) {
+
+  /* 🔹 Shared Telugu Text */
+  const SHARE_TEXT =
+    "రత్నాలబాల – పద్యాలవాల – భావాలమాల\n" +
+    "చదవండి – వినండి – పంచుకోండి\n\n" +
+    "© సృష్టి : యుక్తిశాల AI\n" +
+    "https://ratnalabala.vercel.app";
+
+  /* 🖼 Generate Image */
   const generateImage = useCallback(
     async (mode: "social" | "a4") => {
       if (!targetRef.current) return null;
@@ -46,19 +57,15 @@ export default function ShareButtons({ targetRef }: Props) {
 
           if (!root || !body) return;
 
-          /* 🖼 FULL CANVAS */
           Object.assign(root.style, {
             width: isA4 ? `${A4_WIDTH}px` : `${SOCIAL_SIZE}px`,
             height: isA4 ? `${A4_HEIGHT}px` : `${SOCIAL_SIZE}px`,
-            margin: "0",
-            padding: "0",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             background: "#ffffff",
           });
 
-          /* 📜 BODY */
           Object.assign(body.style, {
             width: "100%",
             height: "100%",
@@ -71,43 +78,6 @@ export default function ShareButtons({ targetRef }: Props) {
             alignItems: "center",
             textAlign: "center",
             fontFamily: "var(--telugu-font-family)",
-          });
-
-          /* 🔸 TITLE */
-          body.querySelectorAll("[data-poster-title]").forEach(el => {
-            Object.assign((el as HTMLElement).style, {
-              fontSize: isA4 ? "96px" : "42px",
-              fontWeight: "700",
-              marginBottom: isA4 ? "48px" : "24px",
-            });
-          });
-
-          /* 📜 POEM */
-          body.querySelectorAll("[data-poster-poem]").forEach(el => {
-            Object.assign((el as HTMLElement).style, {
-              fontSize: isA4 ? "72px" : "34px",
-              lineHeight: "1.9",
-              margin: isA4 ? "64px 0" : "32px 0",
-              whiteSpace: "pre-line",
-            });
-          });
-
-          /* ✍️ AUTHOR */
-          body.querySelectorAll("[data-poster-author]").forEach(el => {
-            Object.assign((el as HTMLElement).style, {
-              fontSize: isA4 ? "44px" : "22px",
-              alignSelf: "flex-end",
-              marginTop: isA4 ? "48px" : "24px",
-            });
-          });
-
-          /* 🧾 FOOTER */
-          body.querySelectorAll("[data-poster-footer]").forEach(el => {
-            Object.assign((el as HTMLElement).style, {
-              fontSize: isA4 ? "38px" : "20px",
-              opacity: "0.85",
-              marginTop: isA4 ? "72px" : "48px",
-            });
           });
         },
       });
@@ -129,7 +99,7 @@ export default function ShareButtons({ targetRef }: Props) {
     link.click();
   };
 
-  /* 📤 Share (social only) */
+  /* 📤 Share (WhatsApp / Telegram / System Share) */
   const share = async () => {
     const img = await generateImage("social");
     if (!img) return;
@@ -142,11 +112,31 @@ export default function ShareButtons({ targetRef }: Props) {
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: "తెలుగు పద్యం",
+        title: "రత్నాలబాల",
+        text: SHARE_TEXT,
       });
     } else {
       download("social");
     }
+  };
+
+  /* 🐦 X (Twitter) Share */
+  const shareOnX = async () => {
+    const img = await generateImage("social");
+    if (!img) return;
+
+    // Image download (X web limitation)
+    const link = document.createElement("a");
+    link.href = img;
+    link.download = "telugu-padyam.png";
+    link.click();
+
+    const text = encodeURIComponent(SHARE_TEXT);
+
+    window.open(
+      `https://twitter.com/intent/tweet?text=${text}`,
+      "_blank"
+    );
   };
 
   return (
@@ -154,6 +144,12 @@ export default function ShareButtons({ targetRef }: Props) {
       <Tooltip title="వాట్సాప్ / టెలిగ్రామ్">
         <IconButton color="success" onClick={share}>
           <WhatsAppIcon />
+        </IconButton>
+      </Tooltip>
+
+      <Tooltip title="X (Twitter)">
+        <IconButton onClick={shareOnX}>
+          <XIcon />
         </IconButton>
       </Tooltip>
 
