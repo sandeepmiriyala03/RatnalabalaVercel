@@ -19,7 +19,7 @@ interface Poem {
 const ITEMS_PER_PAGE = 3;
 
 /* 🔖 SINGLE SOURCE OF TRUTH */
-const POETRY_NAME = "రత్నాలబాల — పద్యాలవాల • భావాలమాల";
+const POETRY_NAME = "రత్నాలబాల — పద్యాలవాల — భావాలమాల";
 const AUTHORS: string | string[] = "మిరియాల వెంకటరత్నం";
 
 const PoemList: React.FC = () => {

@@ -39,7 +39,7 @@ export default function Footer() {
       <Container maxWidth="sm">
         {/* Title */}
         <Typography variant="body2" sx={{ fontWeight: 700 }}>
-          రత్నాలబాల – పద్యాలవాల • భావాలమాల
+          రత్నాలబాల –పద్యాలవాల –భావాలమాల
         </Typography>
 
         {/* Tagline */}
@@ -48,7 +48,7 @@ export default function Footer() {
           sx={{ mt: 0.5, fontStyle: "italic" }}
           color="text.secondary"
         >
-          చదవండి • వినండి • పంచుకోండి
+          చదవండి –వినండి – పంచుకోండి
         </Typography>
         <Divider sx={{ my: 2 }} />
 
