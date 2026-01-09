@@ -3,8 +3,8 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "vemanapoems.txt");
-    const outputDir = path.join(process.cwd(), "vemanapoems");
+    const inputFile = path.join(process.cwd(), "Jandhyala.txt");
+    const outputDir = path.join(process.cwd(), "Jandhyala");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -12,38 +12,40 @@ export async function GET() {
 
     const content = fs.readFileSync(inputFile, "utf-8");
 
-    // Split by ॥ 1 ॥, ॥ 2 ॥ ...
-    const parts = content.split(/॥\s*(\d+)\s*॥/);
+    // 🔥 Match each poem ending with "!! number"
+    const regex = /(.*?లలితసుగుణజాల!\s*తెలుగుబాల!!\s*(\d+))/gs;
 
-    for (let i = 1; i < parts.length; i += 2) {
-      const num = parts[i]; // 1, 2, 3...
-      let body = parts[i + 1]?.trim();
-      if (!body) continue;
+    let match;
+    let count = 0;
 
-      // 🔥 REMOVE trailing number line if exists
-      body = body.replace(/\s*॥\s*\d+\s*॥\s*$/, "");
+    while ((match = regex.exec(content)) !== null) {
+      let fullPoem = match[1].trim();
+      const num = match[2];
 
-      // ✅ FILE NAME = ONLY NUMBER
-      const fileName = `${num}.md`;
+      // 🔥 remove trailing number
+      const body = fullPoem.replace(/\s*\d+\s*$/, "");
 
       const md = `---
-title: వేమన శతకం పద్యం ${num}
+title: తెలుగుబాల! పద్యం ${num}
 ---
 
 ${body}
 `;
 
       fs.writeFileSync(
-        path.join(outputDir, fileName),
+        path.join(outputDir, `${num}.md`),
         md,
         "utf-8"
       );
+
+      count++;
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: "MD files created as 1.md, 2.md, 3.md … (number removed from poem body)",
+        poems: count,
+        message: "MD files generated successfully",
       }),
       { status: 200 }
     );
