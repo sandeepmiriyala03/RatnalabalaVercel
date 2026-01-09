@@ -13,7 +13,8 @@ export async function GET() {
     const content = fs.readFileSync(inputFile, "utf-8");
 
     // 🔥 Match each poem ending with "!! number"
-    const regex = /(.*?లలితసుగుణజాల!\s*తెలుగుబాల!!\s*(\d+))/gs;
+  const regex = /([\s\S]*?లలితసుగుణజాల!\s*తెలుగుబాల!!\s*(\d+))/g;
+
 
     let match;
     let count = 0;
