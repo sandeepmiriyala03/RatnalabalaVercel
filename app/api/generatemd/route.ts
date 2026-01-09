@@ -16,9 +16,12 @@ export async function GET() {
     const parts = content.split(/॥\s*(\d+)\s*॥/);
 
     for (let i = 1; i < parts.length; i += 2) {
-      const num = parts[i];              // 1, 2, 3...
-      const body = parts[i + 1]?.trim();
+      const num = parts[i]; // 1, 2, 3...
+      let body = parts[i + 1]?.trim();
       if (!body) continue;
+
+      // 🔥 REMOVE trailing number line if exists
+      body = body.replace(/\s*॥\s*\d+\s*॥\s*$/, "");
 
       // ✅ FILE NAME = ONLY NUMBER
       const fileName = `${num}.md`;
@@ -27,7 +30,7 @@ export async function GET() {
 title: వేమన శతకం పద్యం ${num}
 ---
 
-${body} ॥ ${num} ॥
+${body}
 `;
 
       fs.writeFileSync(
@@ -40,7 +43,7 @@ ${body} ॥ ${num} ॥
     return new Response(
       JSON.stringify({
         success: true,
-        message: "MD files created as 1.md, 2.md, 3.md …",
+        message: "MD files created as 1.md, 2.md, 3.md … (number removed from poem body)",
       }),
       { status: 200 }
     );

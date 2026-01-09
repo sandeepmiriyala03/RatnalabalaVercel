@@ -415,46 +415,7 @@ export default function MiryalaLifeJourney() {
         </CardContent>
       </Card>
 
-      {/* Audio Section */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            మిరియాల రామకృష్ణ గారి ఆడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
-          </Typography>
-          <audio controls style={{ width: "100%" }} preload="metadata">
-            <source src={audioSrc} type="audio/mp3" />
-            <track kind="captions" />
-            మీ బ్రౌజర్ ఆడియో అదేవిధంగా వినగలదు.
-          </audio>
-        </CardContent>
-      </Card>
-
-      {/* Video Section */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h5" gutterBottom sx={{ fontWeight: "medium" }}>
-            మిరియాల రామకృష్ణ గారి వీడియో Google NotebookLM ద్వారా తయారు చేయబడింది.
-          </Typography>
-          <video controls style={{ width: "100%" }} preload="metadata">
-            <source src={videoSrc} type="video/mp4" />
-            మీ బ్రౌజర్ వీడియో ఆడలేదని చెప్పింది.
-          </video>
-        </CardContent>
-      </Card>
-
-      {/* WhatsApp Share Button */}
-      <Box textAlign="center" sx={{ mt: 4 }}>
-        <Button
-          variant="contained"
-          color="success"
-          onClick={handleWhatsAppShare}
-          size={isMobile ? "medium" : "large"}
-          sx={{ px: 4, py: 1.5 }}
-          aria-label="WhatsApp ద్వారా పంచుకోండి"
-        >
-          వాట్సాప్ ద్వారా పంచుకోండి
-        </Button>
-      </Box>
+     
     </Container>
   );
 }

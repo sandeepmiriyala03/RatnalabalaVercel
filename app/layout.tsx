@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Ratnalabala",
-  description: "Telugu Poems Platform by Sri Miriyala Venkata Ratnam.",
+  description: "Telugu Poems Platform .",
   manifest: "/manifest.json",  // ✅ Auto-adds <link rel="manifest">
   themeColor: "#6A1B9A",
   appleWebApp: {

@@ -9,11 +9,9 @@ import Image from "next/image";
 
 const navItems = [
   { label: "మిరా", path: "/" },
-  { label: "రత్నభావాలు", path: "/AboutAuthor" },
   { label: "పద్యాలవాల", path: "/poems" },
    { label: "మిరా పద్యాలు", path: "/mirapoems" },
-  
-  { label: "అంకితం", path: "/Dedication" },
+  { label: "వేమన పద్యాలు", path: "/vemana" },
 ];
 
 export default function Navbar() {

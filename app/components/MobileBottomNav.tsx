@@ -3,14 +3,13 @@
 import { BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
-import InfoIcon from "@mui/icons-material/Info";
 import { usePathname, useRouter } from "next/navigation";
 const items = [
   { label: "మిరా", path: "/", icon: <HomeIcon /> },
-  { label: "రత్నభావాలు", path: "/AboutAuthor" , icon: <InfoIcon /> },
+
   { label: "పద్యాలు", path: "/poems", icon: <MenuBookIcon /> },
-  { label: "మిరా పద్యాలు", path: "/mirapoems" },
-  { label: "అంకితం", path: "/Dedication", icon: <InfoIcon /> },
+  { label: "మిరా పద్యాలు", path: "/mirapoems", icon: <MenuBookIcon /> },
+{ label: "వేమన పద్యాలు", path: "/vemana" ,icon: <MenuBookIcon /> },
 ];
 
 export default function MobileBottomNav() {
