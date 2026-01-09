@@ -16,25 +16,32 @@ export async function GET() {
     const parts = content.split(/॥\s*(\d+)\s*॥/);
 
     for (let i = 1; i < parts.length; i += 2) {
-      const num = parts[i];
+      const num = parts[i];              // 1, 2, 3...
       const body = parts[i + 1]?.trim();
       if (!body) continue;
 
-      const fileName = `ratnala_bala_${num.padStart(3, "0")}.md`;
+      // ✅ FILE NAME = ONLY NUMBER
+      const fileName = `${num}.md`;
 
-      const md = `# వేమన  – పద్యం ${num}
-
-${body}
-
+      const md = `---
+title: వేమన శతకం పద్యం ${num}
 ---
-**చదవండి –వినండి – పంచుకోండి**
+
+${body} ॥ ${num} ॥
 `;
 
-      fs.writeFileSync(path.join(outputDir, fileName), md, "utf-8");
+      fs.writeFileSync(
+        path.join(outputDir, fileName),
+        md,
+        "utf-8"
+      );
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "146 MD files created" }),
+      JSON.stringify({
+        success: true,
+        message: "MD files created as 1.md, 2.md, 3.md …",
+      }),
       { status: 200 }
     );
   } catch (err: any) {
