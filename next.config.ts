@@ -1,14 +1,9 @@
-import withPWA from "next-pwa";
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  reactStrictMode: true,
-
-  // 🔥 VERY IMPORTANT FOR VERCEL
-  output: "standalone",
-};
-
-export default withPWA({
+// 🔥 next-pwa has no types → require() is correct
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+/// addddsdf
+const withPWA = require("next-pwa")({
   dest: "public",
   swSrc: "public/sw-custom.js",
   register: true,
@@ -21,4 +16,15 @@ export default withPWA({
     "middleware.js",
     "pages-manifest.json",
   ],
-})(nextConfig);
+});
+
+const nextConfig: NextConfig = {
+  reactStrictMode: true,
+
+  // 🔥 REQUIRED for Vercel + PWA
+  output: "standalone",
+};
+
+module.exports = withPWA(nextConfig);
+
+

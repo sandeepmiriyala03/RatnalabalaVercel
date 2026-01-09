@@ -44,3 +44,4 @@ next-env.d.ts
 public/sw.js
 public/workbox-58cdce56.js
 .env*.local
+vercel
