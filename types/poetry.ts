@@ -2,7 +2,8 @@
 export type PoetryKey =
   | "Jandhyala"
   | "Sumati"
-    | "SriKalahastheeswara";
+    | "SriKalahastheeswara"
+    | "KrishnaSatakam";
   ;
 
 /* 📘 Poetry Meta */
@@ -31,6 +32,11 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
     key: "SriKalahastheeswara",
     label: "శ్రీకాళహస్తీశ్వర",
     authors: " ధూర్జటి",
+  },
+   {
+    key: "KrishnaSatakam",
+    label: "కృష్ణ శతకము",
+    authors: "నరసింహ కవి",
   },
 ];
 

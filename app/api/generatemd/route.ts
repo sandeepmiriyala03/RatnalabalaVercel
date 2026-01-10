@@ -3,61 +3,38 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "శ్రీకాళహస్తీశ్వరా.txt");
-    const outputDir = path.join(process.cwd(), "శ్రీకాళహస్తీశ్వర");
+    const inputFile = path.join(process.cwd(), "KrishnaSatakam.txt");
+    const outputDir = path.join(process.cwd(), "KrishnaSatakam");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const lines = fs.readFileSync(inputFile, "utf-8").split(/\r?\n/);
+    const content = fs.readFileSync(inputFile, "utf-8");
 
-    let poems: string[] = [];
-    let current: string[] = [];
-    let started = false;
+    // 🔥 Forgiving marker: |56|, ||56||, |56||, ||56|
+    const regex = /([\s\S]*?)(\|{1,2}\s*\d+\s*\|{1,2}|$)/g;
 
-    for (const raw of lines) {
-      const line = raw.trimEnd();
+    const poems: string[] = [];
 
-      // ✅ Detect Telugu numeral line ONLY
-      if (/^[౦-౯]+$/.test(line)) {
-        // save previous poem
-        if (
-          current.length &&
-          current.join("\n").includes("శ్రీకాళహస్తీశ్వరా!") &&
-          current.join("\n").includes("తాత్పర్యము")
-        ) {
-          poems.push(current.join("\n").trim());
-        }
+    for (const match of content.matchAll(regex)) {
+      const body = match[1]?.trim();
 
-        // start new poem
-        current = [];
-        started = true;
-        continue;
-      }
+      // skip junk / empty blocks
+      if (!body || body.length < 40) continue;
 
-      if (!started) continue;
-
-      current.push(line);
+      // ✅ DO NOT append marker to poem body
+      poems.push(body);
     }
 
-    // push last poem
-    if (
-      current.length &&
-      current.join("\n").includes("శ్రీకాళహస్తీశ్వరా!") &&
-      current.join("\n").includes("తాత్పర్యము")
-    ) {
-      poems.push(current.join("\n").trim());
-    }
-
-    // write MD files
     poems.forEach((poem, i) => {
       const num = i + 1;
 
       const md = `---
-title: "శ్రీకాళహస్తీశ్వర శతకం – పద్యం ${num}"
+title: "కృష్ణ శతకము – పద్యం ${num}"
 verse: ${num}
-author: "ధూర్జటి"
+author: "నృసింహ్వాయు"
+deity: "Sri Krishna"
 ---
 
 ${poem}
@@ -74,11 +51,11 @@ ${poem}
       JSON.stringify({
         success: true,
         poems: poems.length,
-        expected: 110,
+        expected: 101,
         message:
-          poems.length === 110
-            ? "✅ PERFECT: 110 poems generated"
-            : "⚠️ Count mismatch – check input formatting",
+          poems.length === 101
+            ? "✅ PERFECT: markers removed, 101 poems generated cleanly"
+            : "⚠️ Count mismatch – check input",
       }),
       { status: 200 }
     );
