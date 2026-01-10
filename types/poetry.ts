@@ -2,8 +2,8 @@
 export type PoetryKey =
   | "Jandhyala"
   | "Sumati"
-    | "SriKalahastheeswara"
-    | "KrishnaSatakam";
+  | "SriKalahastheeswara"
+  | "KrishnaSatakam";
   ;
 
 /* 📘 Poetry Meta */
@@ -21,8 +21,6 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
     label: "తెలుగుబాల",
     authors: "జంధ్యాల పాపయ్య శాస్త్రి",
   },
-
-  
   {
     key: "Sumati",
     label: "సుమతీ",
