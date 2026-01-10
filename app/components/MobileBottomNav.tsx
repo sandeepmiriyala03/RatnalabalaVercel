@@ -1,17 +1,24 @@
 "use client";
 
-import { BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
+import {
+  BottomNavigation,
+  BottomNavigationAction,
+  Paper,
+} from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
+import ImageIcon from "@mui/icons-material/Image";
 import { usePathname, useRouter } from "next/navigation";
 
 const items = [
   { label: "మిరా", path: "/", icon: <HomeIcon /> },
-  { label: "పద్యాలు", path: "/poems", icon: <MenuBookIcon /> },
-  { label: "మిరా పద్యాలు", path: "/mirapoems", icon: <MenuBookIcon /> },
-   { label: "శతకాలు", path: "/shatakamu" , icon: <MenuBookIcon /> },
-  { label: "చిత్రమాల", path: "/chitramala" },
-];  
+  { label: "పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
+  { label: "మిరా పద్యాలు", path: "/mirapoems", icon: <AutoStoriesIcon /> },
+  { label: "శతకాలమాల", path: "/shatakamu", icon: <LibraryBooksIcon /> },
+  { label: "చిత్రమాల", path: "/chitramala", icon: <ImageIcon /> },
+];
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -33,7 +40,12 @@ export default function MobileBottomNav() {
         value={pathname}
         onChange={(_, value) => router.push(value)}
         showLabels
-        sx={{ padding: "4px 0" }}
+        sx={{
+          padding: "4px 0",
+          "& .Mui-selected": {
+            color: "primary.main",
+          },
+        }}
       >
         {items.map((item) => (
           <BottomNavigationAction

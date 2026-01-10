@@ -11,7 +11,7 @@ const navItems = [
   { label: "మిరా", path: "/" },
   { label: "పద్యాలవాల", path: "/poems" },
    { label: "మిరా పద్యాలు", path: "/mirapoems" },
-    { label: "శతకాలు", path: "/shatakamu" },
+    { label: "శతకాలమాల", path: "/shatakamu" },
   { label: "చిత్రమాల", path: "/chitramala" },
 ];
 
