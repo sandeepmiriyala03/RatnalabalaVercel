@@ -3,34 +3,61 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "Jandhyala.txt");
-    const outputDir = path.join(process.cwd(), "Jandhyala");
+    const inputFile = path.join(process.cwd(), "సుమతీ.txt");
+    const outputDir = path.join(process.cwd(), "Sumati");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const content = fs.readFileSync(inputFile, "utf-8");
+    const lines = fs.readFileSync(inputFile, "utf-8").split(/\r?\n/);
 
-    // 🔥 Match each poem ending with "!! number"
-  const regex = /([\s\S]*?లలితసుగుణజాల!\s*తెలుగుబాల!!\s*(\d+))/g;
+    let poems: string[] = [];
+    let currentPoem: string[] = [];
+    let skippingBhava = false;
 
+    for (const rawLine of lines) {
+      const line = rawLine.trimEnd();
 
-    let match;
-    let count = 0;
+      // 🔥 New poem number line (001–110, with optional spaces)
+      if (/^\s*\d{2,3}\s*$/.test(line)) {
+        if (currentPoem.length > 0) {
+          poems.push(currentPoem.join("\n").trim());
+          currentPoem = [];
+        }
+        skippingBhava = false;
+        continue;
+      }
 
-    while ((match = regex.exec(content)) !== null) {
-      let fullPoem = match[1].trim();
-      const num = match[2];
+      // 🔥 Start of Bhava → skip everything after this
+      if (/^భావం\s*:/.test(line)) {
+        skippingBhava = true;
+        continue;
+      }
 
-      // 🔥 remove trailing number
-      const body = fullPoem.replace(/\s*\d+\s*$/, "");
+      if (skippingBhava) continue;
+
+      // Ignore empty lines at poem start
+      if (currentPoem.length === 0 && line.trim() === "") continue;
+
+      currentPoem.push(line);
+    }
+
+    // Push last poem
+    if (currentPoem.length > 0) {
+      poems.push(currentPoem.join("\n").trim());
+    }
+
+    // 🔥 Write markdown files
+    poems.forEach((poem, index) => {
+      const num = index + 1;
 
       const md = `---
-title: తెలుగుబాల! పద్యం ${num}
+title: "పద్యం ${num}"
+
 ---
 
-${body}
+${poem}
 `;
 
       fs.writeFileSync(
@@ -38,15 +65,13 @@ ${body}
         md,
         "utf-8"
       );
-
-      count++;
-    }
+    });
 
     return new Response(
       JSON.stringify({
         success: true,
-        poems: count,
-        message: "MD files generated successfully",
+        poems: poems.length,
+        message: `Sumati Satakam ${poems.length} poems generated successfully`,
       }),
       { status: 200 }
     );

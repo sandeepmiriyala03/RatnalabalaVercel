@@ -1,6 +1,7 @@
 /* 🔑 Poetry Keys */
 export type PoetryKey =
-  | "Jandhyala";
+  | "Jandhyala"
+  | "Sumati";
 
 /* 📘 Poetry Meta */
 export interface PoetryMeta {
@@ -16,6 +17,13 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
     key: "Jandhyala",
     label: "తెలుగుబాల శతకం",
     authors: "జంధ్యాల పాపయ్య శాస్త్రి",
+  },
+
+  
+  {
+    key: "Sumati",
+    label: "సుమతీ శతకము",
+    authors: "బద్దెన",
   },
 ];
 
