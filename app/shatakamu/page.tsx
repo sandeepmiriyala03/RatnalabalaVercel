@@ -28,12 +28,19 @@ export default function PoemsPage() {
     (p) => p.key === selectedKey
   )!;
 
+  // 📊 Platform totals
+  const totalCollections = POETRY_COLLECTIONS.length;
+  const totalPoemsAll = POETRY_COLLECTIONS.reduce(
+    (sum, p) => sum + (p.totalPoems ?? 0),
+    0
+  );
+
   return (
     <Box sx={{ py: { xs: 3, md: 5 }, px: 2, maxWidth: 1100, mx: "auto" }}>
       {/* 🌺 Title */}
       <Typography
         align="center"
-        fontSize={{ xs: "1.6rem", md: "2.2rem" }}
+        fontSize={{ xs: "1.6rem", md: "2.3rem" }}
         fontWeight={900}
       >
         తెలుగు శతకాలు
@@ -51,17 +58,41 @@ export default function PoemsPage() {
       <Typography
         align="center"
         sx={{
-          maxWidth: 700,
+          maxWidth: 720,
           mx: "auto",
-          mb: 4,
+          mb: 3,
           fontSize: "0.95rem",
           opacity: 0.75,
         }}
       >
-        రత్నాలబాల అనేది కృత్రిమ మేధ (AI) సహాయంతో రూపొందించిన తెలుగు శతకాల
+        శతకాలమాల అనేది కృత్రిమ మేధ (AI) సహాయంతో రూపొందించిన తెలుగు శతకాల
         డిజిటల్ వేదిక. సంప్రదాయ సాహిత్యాన్ని ఆధునిక సాంకేతికతతో
         చదవడానికి, వినడానికి, పంచుకోవడానికి ఇది సహాయపడుతుంది.
       </Typography>
+
+      {/* 📈 Platform Summary */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        justifyContent="center"
+        alignItems="center"
+        sx={{ mb: 4 }}
+      >
+        <Chip
+          label={`📚 శతకములు: ${totalCollections}`}
+          color="primary"
+          variant="outlined"
+        />
+        <Chip
+          label={`🧮 మొత్తం పద్యాలు: ${totalPoemsAll}`}
+          color="success"
+          variant="outlined"
+        />
+        <Chip
+          label="✨ సంప్రదాయం × సాంకేతికత"
+          variant="outlined"
+        />
+      </Stack>
 
       {/* 🎛 Controls */}
       <Stack
@@ -95,7 +126,7 @@ export default function PoemsPage() {
         </Button>
       </Stack>
 
-      {/* 📊 Selected Info */}
+      {/* 📊 Selected Collection Info */}
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={1.5}
@@ -104,7 +135,7 @@ export default function PoemsPage() {
         sx={{ mb: 3 }}
       >
         <Chip
-          label={`📚 మొత్తం పద్యాలు: ${selected.totalPoems}`}
+          label={`📘 ఈ శతకంలో పద్యాలు: ${selected.totalPoems}`}
           color="primary"
           variant="outlined"
         />
@@ -120,7 +151,7 @@ export default function PoemsPage() {
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* 📜 Poems */}
+      {/* 📜 Poems List */}
       <PoemListByKey
         apiKey={selected.key}
         poetryName={selected.label}
