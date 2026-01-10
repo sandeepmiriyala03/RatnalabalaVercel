@@ -438,3 +438,72 @@ a:hover {
     var(--telugu-font-family),
     var(--font-sans) !important;
 }
+
+MuiTypography-root 
+/* ==============================.MuiTypography-root,=======================
+   🔤 INDIVIDUAL FONT CLASSES
+   (For specific use-cases)
+   ===================================================== */
+.chitramala-font-gurajada {
+  font-family: "Gurajada", system-ui;
+}
+
+.chitramala-font-ntr {
+  font-family: "NTR", system-ui;
+}
+
+.chitramala-font-veturi {
+  font-family: "Veturi", system-ui;
+}
+
+.chitramala-font-sirivennela {
+  font-family: "Sirivennela", system-ui;
+}
+
+.chitramala-font-chathura-light {
+  font-family: "Chathura-Light", system-ui;
+}
+
+.chitramala-font-chathura-regular {
+  font-family: "Chathura-Regular", system-ui;
+}
+
+.chitramala-font-chathura-thin {
+  font-family: "Chathura-Thin", system-ui;
+}
+
+.chitramala-font-chathura-bold {
+  font-family: "Chathura-Bold", system-ui;
+}
+
+.chitramala-font-chathura-extrabold {
+  font-family: "Chathura-ExtraBold", system-ui;
+}
+
+.chitramala-font-ramaneeya {
+  font-family: "Ramaneeya", system-ui;
+}
+
+.chitramala-font-ramaraja {
+  font-family: "Ramaraja", system-ui;
+}
+
+.chitramala-font-raviprakash {
+  font-family: "RaviPrakash", system-ui;
+}
+
+.chitramala-font-tana {
+  font-family: "TANA", system-ui;
+}
+
+.chitramala-font-tenali {
+  font-family: "TenaliRamakrishna", system-ui;
+}
+
+.chitramala-font-timmana {
+  font-family: "Timmana", system-ui;
+}
+
+.chitramala-font-ponnala {
+  font-family: "Ponnala-Regular", system-ui;
+}

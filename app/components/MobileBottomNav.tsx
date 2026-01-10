@@ -10,8 +10,8 @@ const items = [
   { label: "పద్యాలు", path: "/poems", icon: <MenuBookIcon /> },
   { label: "మిరా పద్యాలు", path: "/mirapoems", icon: <MenuBookIcon /> },
    { label: "శతకాలు", path: "/shatakamu" , icon: <MenuBookIcon /> },
-  { label: "వేమన పద్యాలు", path: "/vemana", icon: <MenuBookIcon /> },
-];
+  { label: "చిత్రమాల", path: "/chitramala" },
+];  
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
