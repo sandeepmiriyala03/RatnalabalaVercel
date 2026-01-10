@@ -9,6 +9,8 @@ import {
   MenuItem,
   Button,
   Stack,
+  Chip,
+  Divider,
 } from "@mui/material";
 import PoemListByKey from "@/app/components/PoemListByKey";
 
@@ -27,22 +29,49 @@ export default function PoemsPage() {
   )!;
 
   return (
-    <Box sx={{ py: 4 }}>
-      <Typography align="center" fontSize="2rem" fontWeight={800}>
+    <Box sx={{ py: { xs: 3, md: 5 }, px: 2, maxWidth: 1100, mx: "auto" }}>
+      {/* 🌺 Title */}
+      <Typography
+        align="center"
+        fontSize={{ xs: "1.6rem", md: "2.2rem" }}
+        fontWeight={900}
+      >
         తెలుగు శతకాలు
       </Typography>
 
-      <Typography align="center" sx={{ mb: 4, opacity: 0.8 }}>
-        మీకు నచ్చిన శతకాన్ని ఎంచుకోండి
+      {/* 🌼 Tagline */}
+      <Typography
+        align="center"
+        sx={{ mt: 1, mb: 2, opacity: 0.85 }}
+      >
+        📖 చదవండి &nbsp;–&nbsp; 🎧 వినండి &nbsp;–&nbsp; 📤 పంచుకోండి
       </Typography>
 
+      {/* 🧠 Platform description */}
+      <Typography
+        align="center"
+        sx={{
+          maxWidth: 700,
+          mx: "auto",
+          mb: 4,
+          fontSize: "0.95rem",
+          opacity: 0.75,
+        }}
+      >
+        రత్నాలబాల అనేది కృత్రిమ మేధ (AI) సహాయంతో రూపొందించిన తెలుగు శతకాల
+        డిజిటల్ వేదిక. సంప్రదాయ సాహిత్యాన్ని ఆధునిక సాంకేతికతతో
+        చదవడానికి, వినడానికి, పంచుకోవడానికి ఇది సహాయపడుతుంది.
+      </Typography>
+
+      {/* 🎛 Controls */}
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={2}
         justifyContent="center"
-        sx={{ mb: 4 }}
+        alignItems="center"
+        sx={{ mb: 3 }}
       >
-        <FormControl size="small" sx={{ minWidth: 220 }}>
+        <FormControl size="small" sx={{ minWidth: 240 }}>
           <Select
             value={selectedKey}
             onChange={(e) =>
@@ -59,12 +88,39 @@ export default function PoemsPage() {
 
         <Button
           variant="outlined"
+          size="small"
           onClick={() => setSelectedKey(DEFAULT_POETRY_KEY)}
         >
           డీఫాల్ట్
         </Button>
       </Stack>
 
+      {/* 📊 Selected Info */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        justifyContent="center"
+        alignItems="center"
+        sx={{ mb: 3 }}
+      >
+        <Chip
+          label={`📚 మొత్తం పద్యాలు: ${selected.totalPoems}`}
+          color="primary"
+          variant="outlined"
+        />
+        <Chip
+          label={`✍️ కవి: ${
+            Array.isArray(selected.authors)
+              ? selected.authors.join(", ")
+              : selected.authors
+          }`}
+          variant="outlined"
+        />
+      </Stack>
+
+      <Divider sx={{ mb: 3 }} />
+
+      {/* 📜 Poems */}
       <PoemListByKey
         apiKey={selected.key}
         poetryName={selected.label}
