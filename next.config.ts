@@ -5,13 +5,14 @@ const nextConfig: NextConfig = {
   output: "standalone", 
 };
 
-// Use require here to bypass the missing ESM type declarations
 const withPWA = require("next-pwa")({
   dest: "public",
   swSrc: "public/sw-custom.js",
   register: true,
   skipWaiting: true,
-  disable: process.env.NODE_ENV === "development" || process.env.VERCEL === "1",
+  // ONLY disable in development. DO NOT disable on Vercel.
+  disable: process.env.NODE_ENV === "development", 
 });
 
 export default withPWA(nextConfig);
+
