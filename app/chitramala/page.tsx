@@ -43,6 +43,17 @@ export default function ChitramalaPage() {
   }}
 >
   {/* 🔰 Title */}
+<Box
+  sx={{
+    mb: 3,
+    p: 2,
+    border: "1px dashed #cfcfcf",
+    borderRadius: 2,
+    backgroundColor: "#fafafa",
+    fontSize: "0.95rem",
+  }}
+>
+  {/* 🔰 Title */}
   <Box sx={{ mb: 1 }}>
     <strong style={{ fontSize: "1.05rem" }}>
       చిత్రమాల పద్య యంత్రం
@@ -51,6 +62,29 @@ export default function ChitramalaPage() {
       పద్యాన్ని రాయండి • చిత్రంగా మార్చండి • పంచుకోండి
     </div>
   </Box>
+
+  {/* 📘 How to use */}
+  <strong>చిత్రమాల ఎలా ఉపయోగించాలి?</strong>
+
+  <ol style={{ paddingLeft: 18, marginTop: 8 }}>
+    <li>ముందుగా <b>కవి పేరు</b> నమోదు చేయండి</li>
+    <li><b>పాదాల సంఖ్య (1 – 6)</b> ఎంచుకోండి</li>
+    <li>ప్రతి పాదాన్ని విడిగా టైప్ చేయండి</li>
+    <li>కావాలంటే <b>పద్య శీర్షిక</b> ఇవ్వండి</li>
+    <li>
+      <b>“పోస్టర్ చూపించండి”</b> బటన్‌పై క్లిక్ చేయండి
+    </li>
+    <li>
+      ఫాంట్ / థీమ్ మార్చి <b>చిత్రాన్ని డౌన్‌లోడ్</b> చేయండి
+    </li>
+    <li>
+      🔒 <b>గోప్యత గమనిక:</b> మీ పద్యాలు, చిత్రాలు మేము
+      <b> ఎక్కడా సేవ్ చేయము</b>. మీ డేటా పూర్తిగా
+      <b> మీ డివైస్‌లోనే ఉంటుంది</b> — మీ గోప్యతే మా
+      <b> మొదటి ప్రాధాన్యత</b>.
+    </li>
+  </ol>
+</Box>
 
         {/* 📘 How to use */}
         <strong>చిత్రమాల ఎలా ఉపయోగించాలి?</strong>
