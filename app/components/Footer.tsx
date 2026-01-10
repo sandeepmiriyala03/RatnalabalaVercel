@@ -1,6 +1,12 @@
-'use client';
+"use client";
 
-import { Box, Container, Typography, useTheme, Divider } from "@mui/material";
+import {
+  Box,
+  Container,
+  Typography,
+  Divider,
+  useTheme,
+} from "@mui/material";
 import { useEffect, useState } from "react";
 
 export default function Footer() {
@@ -10,7 +16,7 @@ export default function Footer() {
   useEffect(() => {
     const timer = setInterval(() => {
       setDateTime(new Date());
-    }, 1000);
+    }, 60000); // ⏱ minute update is enough for footer
     return () => clearInterval(timer);
   }, []);
 
@@ -26,46 +32,55 @@ export default function Footer() {
       component="footer"
       sx={{
         mt: 4,
-        py: 3,
-        px: 2,
+        py: 1.5,          // ⬇️ reduced height
+        px: 1,
         backgroundColor:
           theme.palette.mode === "light"
-            ? theme.palette.grey[200]
-            : theme.palette.grey[800],
+            ? theme.palette.grey[50]
+            : theme.palette.grey[900],
+        borderTop: "1px solid",
+        borderColor: "divider",
         textAlign: "center",
-        borderRadius: "8px",
+        fontSize: "0.8rem",
       }}
     >
-      <Container maxWidth="sm">
-        {/* Title */}
-        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-          రత్నాలబాల –పద్యాలవాల –భావాలమాల
+      <Container maxWidth="md">
+        {/* Identity */}
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block" }}
+        >
+          రత్నాలబాల • పద్యాలవాల • భావాలమాల • శతకాలమాల • చిత్రమాల
         </Typography>
 
         {/* Tagline */}
         <Typography
-          variant="body2"
-          sx={{ mt: 0.5, fontStyle: "italic" }}
+          variant="caption"
           color="text.secondary"
+          sx={{ fontStyle: "italic", display: "block", mt: 0.3 }}
         >
-          చదవండి –వినండి – పంచుకోండి
+          చదవండి • వినండి • రాయండి • చిత్రీకరించండి • పంచుకోండి
         </Typography>
-        <Divider sx={{ my: 2 }} />
 
-        {/* Credits */}
+        <Divider sx={{ my: 0.8 }} />
+
+        {/* Credits + Date */}
         <Typography
-          variant="body2"
-          sx={{ mt: 1, fontWeight: 500 }}
+          variant="caption"
           color="text.secondary"
+          sx={{ display: "block" }}
         >
-          అభివృద్ధి & రూపకల్పన: సందీప్ మిరియాల  
-          యుక్తిశాల AI
-        </Typography>
-                {/* Date */}
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          ఈ రోజు: <strong>{formattedDate}</strong>
+          © {new Date().getFullYear()} సందీప్ మిరియాల — యుక్తిశాల AI
         </Typography>
 
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", mt: 0.2 }}
+        >
+          🔒 గోప్యత మొదటి ప్రాధాన్యత • {formattedDate}
+        </Typography>
       </Container>
     </Box>
   );
