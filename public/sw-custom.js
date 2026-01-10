@@ -1,22 +1,27 @@
-/* sw-custom.js – Ratnalabala Offline PWA (Next.js 16 Safe) */
+/* sw-custom.js – Ratnalabala Offline PWA (STABLE) */
 
-// 1. Load Workbox
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/7.0.0/workbox-sw.js");
+
+const CACHE_VERSION = "v1";
+const PAGE_CACHE = `pages-cache-${CACHE_VERSION}`;
+const ASSET_CACHE = `asset-cache-${CACHE_VERSION}`;
+const MARKDOWN_CACHE = `markdown-cache-${CACHE_VERSION}`;
+const OFFLINE_URL = "/offline.html";
 
 if (workbox) {
   console.log("✅ Workbox loaded");
 
   const { registerRoute } = workbox.routing;
-  const { CacheFirst, NetworkFirst } = workbox.strategies;
+  const { CacheFirst, StaleWhileRevalidate } = workbox.strategies;
   const { CacheableResponsePlugin } = workbox.cacheable_response;
   const { ExpirationPlugin } = workbox.expiration;
 
-  // 2. Static assets (CSS, JS, Images, Fonts)
+  // 1️⃣ Static assets
   registerRoute(
     ({ request }) =>
       ["style", "script", "image", "font"].includes(request.destination),
     new CacheFirst({
-      cacheName: "asset-cache",
+      cacheName: ASSET_CACHE,
       plugins: [
         new CacheableResponsePlugin({ statuses: [0, 200] }),
         new ExpirationPlugin({ maxEntries: 300 }),
@@ -24,41 +29,26 @@ if (workbox) {
     })
   );
 
-  // 3. Telugu poems (.md)
+  // 2️⃣ Markdown poems
   registerRoute(
     ({ url }) => url.pathname.endsWith(".md"),
     new CacheFirst({
-      cacheName: "markdown-cache",
+      cacheName: MARKDOWN_CACHE,
       plugins: [
         new CacheableResponsePlugin({ statuses: [0, 200] }),
         new ExpirationPlugin({
-          maxEntries: 5000,
-          maxAgeSeconds: 31536000, // 1 year
+          maxEntries: 6000,
+          maxAgeSeconds: 31536000,
         }),
       ],
     })
   );
 
-  // 4. API routes
-  registerRoute(
-    ({ url }) => url.pathname.startsWith("/api/"),
-    new NetworkFirst({
-      cacheName: "api-cache",
-      networkTimeoutSeconds: 5,
-      plugins: [
-        new ExpirationPlugin({
-          maxEntries: 100,
-          maxAgeSeconds: 86400, // 24h
-        }),
-      ],
-    })
-  );
-
-  // 5. Page navigation (HTML)
+  // 3️⃣ HTML navigation — OFFLINE FIRST (KEY FIX)
   registerRoute(
     ({ request }) => request.mode === "navigate",
-    new NetworkFirst({
-      cacheName: "pages-cache",
+    new StaleWhileRevalidate({
+      cacheName: PAGE_CACHE,
       plugins: [
         new CacheableResponsePlugin({ statuses: [0, 200] }),
       ],
@@ -66,31 +56,32 @@ if (workbox) {
   );
 }
 
-// 6. Offline fallback
+// 4️⃣ Pre-cache offline page (CRITICAL FIX)
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(PAGE_CACHE).then((cache) =>
+      cache.addAll([OFFLINE_URL])
+    )
+  );
+  self.skipWaiting();
+});
+
+// 5️⃣ Offline fallback (NO conflict now)
 self.addEventListener("fetch", (event) => {
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request).catch(async () => {
-        const cache = await caches.open("pages-cache");
-        const offline = await cache.match("/offline.html");
-
+        const cache = await caches.open(PAGE_CACHE);
         return (
-          offline ||
-          new Response("Offline: Connect to read poems", {
-            status: 200,
-            headers: { "Content-Type": "text/html" },
-          })
+          (await cache.match(event.request)) ||
+          (await cache.match(OFFLINE_URL))
         );
       })
     );
   }
 });
 
-// 7. Lifecycle
-self.addEventListener("install", () => {
-  self.skipWaiting();
-});
-
+// 6️⃣ Activate
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
