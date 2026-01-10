@@ -85,19 +85,19 @@ type FontKey =
 
 const FONTS: { key: FontKey; label: string; className: string }[] =
   [
-    { key: "gurajada", label: "Gurajada", className: "chitramala-font-gurajada" },
-    { key: "ntr", label: "NTR", className: "chitramala-font-ntr" },
-    { key: "veturi", label: "Veturi", className: "chitramala-font-veturi" },
-    { key: "sirivennela", label: "Sirivennela", className: "chitramala-font-sirivennela" },
-    { key: "chathura-regular", label: "Chathura Regular", className: "chitramala-font-chathura-regular" },
-    { key: "chathura-bold", label: "Chathura Bold", className: "chitramala-font-chathura-bold" },
-    { key: "ramaneeya", label: "Ramaneeya", className: "chitramala-font-ramaneeya" },
-    { key: "ramaraja", label: "Ramaraja", className: "chitramala-font-ramaraja" },
-    { key: "raviprakash", label: "RaviPrakash", className: "chitramala-font-raviprakash" },
-    { key: "tana", label: "TANA", className: "chitramala-font-tana" },
-    { key: "tenali", label: "Tenali Ramakrishna", className: "chitramala-font-tenali" },
-    { key: "timmana", label: "Timmana", className: "chitramala-font-timmana" },
-    { key: "ponnala", label: "Ponnala", className: "chitramala-font-ponnala" },
+    { key: "gurajada", label: "గురజాడ", className: "chitramala-font-gurajada" },
+    { key: "ntr", label: "ఎన్‌టిఆర్", className: "chitramala-font-ntr" },
+    { key: "veturi", label: "వేటూరి", className: "chitramala-font-veturi" },
+    { key: "sirivennela", label: "సిరివెన్నెల", className: "chitramala-font-sirivennela" },
+    { key: "chathura-regular", label: "చతుర (Regular) ", className: "chitramala-font-chathura-regular" },
+    { key: "chathura-bold", label: "చతుర (Bold)", className: "chitramala-font-chathura-bold" },
+    { key: "ramaneeya", label: "రమణీయ", className: "chitramala-font-ramaneeya" },
+    { key: "ramaraja", label: "రామరాజ", className: "chitramala-font-ramaraja" },
+    { key: "raviprakash", label: "రవి ప్రకాష్", className: "chitramala-font-raviprakash" },
+    { key: "tana", label: "టానా", className: "chitramala-font-tana" },
+    { key: "tenali", label: "తెనాలి రామకృష్ణ", className: "chitramala-font-tenali" },
+    { key: "timmana", label: "తిమ్మన", className: "chitramala-font-timmana" },
+    { key: "ponnala", label: "పొన్నల", className: "chitramala-font-ponnala" },
   ];
 
 /* =========================
