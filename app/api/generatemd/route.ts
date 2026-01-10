@@ -3,8 +3,8 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "సుమతీ.txt");
-    const outputDir = path.join(process.cwd(), "Sumati");
+    const inputFile = path.join(process.cwd(), "శ్రీకాళహస్తీశ్వరా.txt");
+    const outputDir = path.join(process.cwd(), "శ్రీకాళహస్తీశ్వర");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -13,48 +13,51 @@ export async function GET() {
     const lines = fs.readFileSync(inputFile, "utf-8").split(/\r?\n/);
 
     let poems: string[] = [];
-    let currentPoem: string[] = [];
-    let skippingBhava = false;
+    let current: string[] = [];
+    let started = false;
 
-    for (const rawLine of lines) {
-      const line = rawLine.trimEnd();
+    for (const raw of lines) {
+      const line = raw.trimEnd();
 
-      // 🔥 New poem number line (001–110, with optional spaces)
-      if (/^\s*\d{2,3}\s*$/.test(line)) {
-        if (currentPoem.length > 0) {
-          poems.push(currentPoem.join("\n").trim());
-          currentPoem = [];
+      // ✅ Detect Telugu numeral line ONLY
+      if (/^[౦-౯]+$/.test(line)) {
+        // save previous poem
+        if (
+          current.length &&
+          current.join("\n").includes("శ్రీకాళహస్తీశ్వరా!") &&
+          current.join("\n").includes("తాత్పర్యము")
+        ) {
+          poems.push(current.join("\n").trim());
         }
-        skippingBhava = false;
+
+        // start new poem
+        current = [];
+        started = true;
         continue;
       }
 
-      // 🔥 Start of Bhava → skip everything after this
-      if (/^భావం\s*:/.test(line)) {
-        skippingBhava = true;
-        continue;
-      }
+      if (!started) continue;
 
-      if (skippingBhava) continue;
-
-      // Ignore empty lines at poem start
-      if (currentPoem.length === 0 && line.trim() === "") continue;
-
-      currentPoem.push(line);
+      current.push(line);
     }
 
-    // Push last poem
-    if (currentPoem.length > 0) {
-      poems.push(currentPoem.join("\n").trim());
+    // push last poem
+    if (
+      current.length &&
+      current.join("\n").includes("శ్రీకాళహస్తీశ్వరా!") &&
+      current.join("\n").includes("తాత్పర్యము")
+    ) {
+      poems.push(current.join("\n").trim());
     }
 
-    // 🔥 Write markdown files
-    poems.forEach((poem, index) => {
-      const num = index + 1;
+    // write MD files
+    poems.forEach((poem, i) => {
+      const num = i + 1;
 
       const md = `---
-title: "పద్యం ${num}"
-
+title: "శ్రీకాళహస్తీశ్వర శతకం – పద్యం ${num}"
+verse: ${num}
+author: "ధూర్జటి"
 ---
 
 ${poem}
@@ -71,7 +74,11 @@ ${poem}
       JSON.stringify({
         success: true,
         poems: poems.length,
-        message: `Sumati Satakam ${poems.length} poems generated successfully`,
+        expected: 110,
+        message:
+          poems.length === 110
+            ? "✅ PERFECT: 110 poems generated"
+            : "⚠️ Count mismatch – check input formatting",
       }),
       { status: 200 }
     );
