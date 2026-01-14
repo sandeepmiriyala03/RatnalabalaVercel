@@ -8,8 +8,9 @@ import {
   Button,
   Pagination,
 } from "@mui/material";
-import PoemCardNew from "@/app/components/PoemCardNew";
 
+import PoemCardNew from "@/app/components/PoemCardNew";
+import { POETRY_COLLECTIONS } from "@/types/poetry";
 
 interface Poem {
   title: string;
@@ -18,8 +19,8 @@ interface Poem {
 }
 
 interface Props {
-  apiKey: string;          // 👈 vemana | sumati | jandhyala
-  poetryName: string;      // 👈 "వేమన పద్యాలు"
+  apiKey: string;          // "all" | Jandhyala | Sumati | ...
+  poetryName: string;
   authors: string | string[];
 }
 
@@ -37,30 +38,67 @@ const PoemListByKey: React.FC<Props> = ({
   const [page, setPage] = useState(1);
   const [viewAll, setViewAll] = useState(false);
 
+  /* 🔢 Numeric sort helper */
+  const sortPoems = (list: Poem[]) =>
+    list.sort((a, b) => {
+      const n = (t: string) => {
+        const m = t.match(/\d+/);
+        return m ? parseInt(m[0], 10) : 0;
+      };
+      return n(a.title) - n(b.title);
+    });
+
   /* 📥 Load poems */
   useEffect(() => {
     const fetchPoems = async () => {
+      setLoading(true);
+      setError(null);
+
       try {
+        // ✅ CASE 1: ALL poems
+        if (apiKey === "all") {
+          const collections = POETRY_COLLECTIONS.filter(
+            (p) => p.key !== "all"
+          );
+
+          const responses = await Promise.all(
+            collections.map((c) =>
+              fetch(`/api/shatakamu?key=${c.key}`).then((r) => {
+                if (!r.ok) throw new Error();
+                return r.json();
+              })
+            )
+          );
+
+          const merged: Poem[] = responses.flatMap((data, idx) =>
+            Object.entries(data.poems || data).map(
+              ([title, content]: any) => ({
+                title: `${collections[idx].label} – ${title}`,
+                content,
+                slug: `${collections[idx].key}-${title}`,
+              })
+            )
+          );
+
+          setPoems(sortPoems(merged));
+          return;
+        }
+
+        // ✅ CASE 2: Single collection (existing behavior)
         const res = await fetch(`/api/shatakamu?key=${apiKey}`);
         if (!res.ok) throw new Error();
 
         const data = await res.json();
 
-        const poemArray: Poem[] = Object.entries(data.poems || data)
-          .map(([title, content]: any) => ({
+        const poemArray: Poem[] = Object.entries(data.poems || data).map(
+          ([title, content]: any) => ({
             title,
             content,
             slug: title,
-          }))
-          .sort((a, b) => {
-            const n = (t: string) => {
-              const m = t.match(/\d+/);
-              return m ? parseInt(m[0], 10) : 0;
-            };
-            return n(a.title) - n(b.title);
-          });
+          })
+        );
 
-        setPoems(poemArray);
+        setPoems(sortPoems(poemArray));
       } catch {
         setError("పద్యాలను లోడ్ చేయడంలో లోపం వచ్చింది.");
       } finally {
@@ -91,7 +129,7 @@ const PoemListByKey: React.FC<Props> = ({
 
   useEffect(() => {
     setPage(1);
-  }, [search, viewAll]);
+  }, [search, viewAll, apiKey]);
 
   return (
     <Box sx={{ p: 3, maxWidth: 900, mx: "auto" }}>
@@ -120,8 +158,15 @@ const PoemListByKey: React.FC<Props> = ({
         </Button>
       </Box>
 
-      {loading && <Typography align="center">లోడ్ అవుతోంది…</Typography>}
-      {error && <Typography align="center" color="error">{error}</Typography>}
+      {loading && (
+        <Typography align="center">లోడ్ అవుతోంది…</Typography>
+      )}
+
+      {error && (
+        <Typography align="center" color="error">
+          {error}
+        </Typography>
+      )}
 
       {!loading &&
         !error &&

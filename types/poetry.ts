@@ -1,5 +1,6 @@
 /* 🔑 Poetry Keys */
 export type PoetryKey =
+  | "all"
   | "Jandhyala"
   | "Sumati"
   | "SriKalahastheeswara"
@@ -15,6 +16,13 @@ export interface PoetryMeta {
 
 /* 📚 All Poetry Collections */
 export const POETRY_COLLECTIONS: PoetryMeta[] = [
+  {
+    key: "all",
+    label: "📚 అన్ని శతకాలు",
+    authors: "అనేక కవులు",
+    totalPoems: 426,
+  },
+  
   {
     key: "Jandhyala",
     label: "తెలుగుబాల",
@@ -42,4 +50,4 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
 ];
 
 /* ⭐ Default */
-export const DEFAULT_POETRY_KEY: PoetryKey = "Jandhyala";
+export const DEFAULT_POETRY_KEY: PoetryKey = "all";

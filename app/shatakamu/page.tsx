@@ -29,12 +29,13 @@ export default function PoemsPage() {
   )!;
 
   // 📊 Platform totals
-  const totalCollections = POETRY_COLLECTIONS.length;
-  const totalPoemsAll = POETRY_COLLECTIONS.reduce(
-    (sum, p) => sum + (p.totalPoems ?? 0),
-    0
-  );
+ const totalCollections = POETRY_COLLECTIONS.filter(
+  (p) => p.key !== "all"
+).length;
 
+const totalPoemsAll = POETRY_COLLECTIONS
+  .filter((p) => p.key !== "all")
+  .reduce((sum, p) => sum + (p.totalPoems ?? 0), 0);
   return (
     <Box sx={{ py: { xs: 3, md: 5 }, px: 2, maxWidth: 1100, mx: "auto" }}>
       {/* 🌺 Title */}
