@@ -12,237 +12,94 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 
-/* 🔹 SINGLE SOURCE OF TRUTH — FINAL */
-const WORDS = [
-  "అసహనం",
-  "ఆకలి",
-  "ఆనందం",
-  "ఋణము",
-  "క్రమశిక్షణ",
-  "గర్వం",
-  "గౌరవం",
-  "జాప్యం",
-  "జ్ఞానం",
-  "దయ",
-  "దానం",
-  "దారిద్య్రం",
-  "దురాశ",
-  "ద్రోహం",
-  "ధనం",
-  "న్యాయం",
-  "పెద్దలు",
-  "పొదుపు",
-  "పౌరుషం",
-  "బాల్యం",
-  "భారం",
-  "మంచితనం",
-  "మనసు",
-  "మనిషి",
-  "మాటలు",
-  "మైత్రి",
-  "లోకం",
-  "విషం",
-  "వైద్యం",
-  "వ్యసనం",
-  "శుచి",
-  "సాహసం",
-  "సుఖం",
-  "సొగసు",
-  "సౌజన్యం",
-];
-
-/* 🔹 English / phonetic aliases → MUST map ONLY to WORDS */
-const NLP_DICT: Record<string, string> = {
-  /* అసహనం */
-  asahanam: "అసహనం",
-  asahanamu: "అసహనం",
-  ashanam: "అసహనం",
-  asharanam: "అసహనం",
-  asharanamu: "అసహనం",
-
-  /* జ్ఞానం */
-  gnanam: "జ్ఞానం",
-  jnanam: "జ్ఞానం",
-  gyanam: "జ్ఞానం",
-
-  /* జాప్యం */
-  japyam: "జాప్యం",
-  jaapyam: "జాప్యం",
-
-  /* దయ */
-  daya: "దయ",
-  dhaya: "దయ",
-
-  /* దానం */
-  danam: "దానం",
-  daanam: "దానం",
-
-  /* దారిద్య్రం */
-  daridryam: "దారిద్య్రం",
-  daridram: "దారిద్య్రం",
-
-  /* దురాశ */
-  durasha: "దురాశ",
-  duraasha: "దురాశ",
-
-  /* ద్రోహం */
-  droham: "ద్రోహం",
-  drohham: "ద్రోహం",
-
-  /* ధనం */
-  dhanam: "ధనం",
-  dhanamu: "ధనం",
-
-  /* న్యాయం */
-  nyayam: "న్యాయం",
-  nyaayam: "న్యాయం",
-
-  /* పొదుపు */
-  podupu: "పొదుపు",
-
-  /* పౌరుషం */
-  pourusham: "పౌరుషం",
-  paurusham: "పౌరుషం",
-
-  /* పెద్దలు */
-  peddalu: "పెద్దలు",
-
-  /* బాల్యం */
-  balyam: "బాల్యం",
-  baalyam: "బాల్యం",
-
-  /* రత్నాలబాల */
-  ratnalabala: "రత్నాలబాల",
-  rathnalabala: "రత్నాలబాల",
-  ratnalaabala: "రత్నాలబాల",
-  bala: "రత్నాలబాల",
-
-  /* రామకృష్ణ */
-  ramakrishna: "రామకృష్ణ",
-  ramaakrishna: "రామకృష్ణ",
-  rama: "రామకృష్ణ",
-  krishna: "రామకృష్ణ",
-
-  /* లోకం */
-  lokam: "లోకం",
-
-  /* వైద్యం */
-  vaidyam: "వైద్యం",
-  vaidya: "వైద్యం",
-
-  /* సుఖం */
-  sukham: "సుఖం",
-
-  /* సౌజన్యం */
-  soujanyam: "సౌజన్యం",
-  saujanyam: "సౌజన్యం",
-
-  /* గౌరవం */
-  gouravam: "గౌరవం",
-  gauravam: "గౌరవం",
-
-    /* ఆకలి */
-  akali: "ఆకలి",
-  aakali: "ఆకలి",
-  hunger: "ఆకలి",
-
-  /* ఆనందం */
-  anandam: "ఆనందం",
-  aanandam: "ఆనందం",
-  ananda: "ఆనందం",
-  happiness: "ఆనందం",
-
-  /* ఋణము */
-  runamu: "ఋణము",
-  rinamu: "ఋణము",
-  rnamu: "ఋణము",
-  debt: "ఋణము",
-
-  /* క్రమశిక్షణ */
-  kramasikshana: "క్రమశిక్షణ",
-  kramashikshana: "క్రమశిక్షణ",
-  discipline: "క్రమశిక్షణ",
-
-  /* గర్వం */
-  garvam: "గర్వం",
-  garvamu: "గర్వం",
-  pride: "గర్వం",
-
-  /* భారం */
-  bharam: "భారం",
-  baaram: "భారం",
-  burden: "భారం",
-
-  /* మంచితనం */
-  manchitanam: "మంచితనం",
-  manchithanam: "మంచితనం",
-  goodness: "మంచితనం",
-
-  /* మనసు */
-  manasu: "మనసు",
-  manassu: "మనసు",
-  mind: "మనసు",
-  heart: "మనసు",
-
-  /* మనిషి */
-  manishi: "మనిషి",
-  manushya: "మనిషి",
-  human: "మనిషి",
-
-  /* మాటలు */
-  matalu: "మాటలు",
-  maatalu: "మాటలు",
-  words: "మాటలు",
-
-  /* మైత్రి */
-  maitri: "మైత్రి",
-  mitrata: "మైత్రి",
-  friendship: "మైత్రి",
-
-  /* విషం */
-  visham: "విషం",
-  poison: "విషం",
-
-  /* వ్యసనం */
-  vyasanam: "వ్యసనం",
-  addiction: "వ్యసనం",
-
-  /* శుచి */
-  shuchi: "శుచి",
-  suchi: "శుచి",
-  purity: "శుచి",
-
-  /* సాహసం */
-  sahasam: "సాహసం",
-  courage: "సాహసం",
-  bravery: "సాహసం",
-
-  /* సొగసు */
-  sogasu: "సొగసు",
-  sogasaina: "సొగసు",
-  beauty: "సొగసు",
-
-};
-
-/* 🔹 Resolver */
-function resolveWord(input: string): string | null {
-  const raw = input.trim();
-  if (!raw) return null;
-
-  const teluguMatch = WORDS.find((w) => w.includes(raw));
-  if (teluguMatch) return teluguMatch;
-
-  const lower = raw.toLowerCase();
-  const key = Object.keys(NLP_DICT).find((k) =>
-    k.includes(lower)
-  );
-
-  return key ? NLP_DICT[key] : null;
-}
-
 interface Message {
   sender: "user" | "bot";
   text: string;
+}
+
+/* 🔑 Collection aliases */
+const COLLECTION_ALIASES: Record<string, string> = {
+  // Telugu
+  "తెలుగుబాల": "Jandhyala",
+  "సుమతి": "Sumati",
+  "శ్రీకాళహస్తీశ్వర": "SriKalahastheeswara",
+  "కృష్ణ": "KrishnaSatakam",
+  "నారాయణ": "NarayanaSatakam",
+
+  // English shortcuts
+  jan: "Jandhyala",
+  j: "Jandhyala",
+  ja: "Jandhyala",
+
+  sumati: "Sumati",
+  s: "Sumati",
+
+  krishna: "KrishnaSatakam",
+  kr: "KrishnaSatakam",
+
+  narayana: "NarayanaSatakam",
+  na: "NarayanaSatakam",
+
+  kalahasti: "SriKalahastheeswara",
+  sk: "SriKalahastheeswara",
+};
+
+/* 🔤 Normalize */
+function normalize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+/* 🧠 Parse intent */
+function parseIntent(input: string) {
+  const parts = normalize(input);
+
+  let collection: string | null = null;
+  let number: number | null = null;
+
+  parts.forEach((p) => {
+    if (COLLECTION_ALIASES[p]) {
+      collection = COLLECTION_ALIASES[p];
+    }
+    if (!isNaN(Number(p))) {
+      number = Number(p);
+    }
+  });
+
+  // support j1 / s5 / kr100
+  if (!collection && parts.length === 1) {
+    const m = parts[0].match(/^([a-z]+)(\d+)$/);
+    if (m && COLLECTION_ALIASES[m[1]]) {
+      collection = COLLECTION_ALIASES[m[1]];
+      number = Number(m[2]);
+    }
+  }
+
+  return { collection, number };
+}
+
+/* 🔍 Keyword search */
+function searchPoems(query: string, poems: Record<string, string>, limit = 3) {
+  const qWords = normalize(query);
+
+  const scored = Object.entries(poems).map(([title, content]) => {
+    const pWords = normalize(content);
+    let score = 0;
+
+    qWords.forEach((qw) => {
+      if (pWords.some((pw) => pw.includes(qw))) score++;
+    });
+
+    return { title, content, score };
+  });
+
+  return scored
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }
 
 export default function ChatbotWindow({
@@ -255,26 +112,21 @@ export default function ChatbotWindow({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [poems, setPoems] = useState<Record<string, string>>({});
-  const [loadingPoems, setLoadingPoems] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   const topRef = useRef<HTMLDivElement>(null);
 
-  /* 🔹 Load poems once */
+  /* 📥 Load ALL poems */
   useEffect(() => {
     let mounted = true;
 
     async function loadPoems() {
-      const res = await fetch("/api/poems");
-      const raw = await res.json();
+      const res = await fetch("/api/shatakamu?key=all");
+      const data = await res.json();
 
-      const normalized: Record<string, string> = {};
-      Object.keys(raw).forEach((k) => {
-        normalized[k.trim()] = raw[k];
-      });
-
-      if (mounted) {
-        setPoems(normalized);
-        setLoadingPoems(false);
+      if (mounted && data.success) {
+        setPoems(data.poems || {});
+        setLoading(false);
       }
     }
 
@@ -284,7 +136,6 @@ export default function ChatbotWindow({
     };
   }, []);
 
-  /* 🔹 Scroll to TOP (LIFO) */
   useEffect(() => {
     topRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -299,31 +150,67 @@ export default function ChatbotWindow({
   const handleSend = () => {
     if (!input.trim()) return;
 
-    const userText = input;
+    const question = input;
     setInput("");
 
-    if (loadingPoems) {
+    if (loading) {
       setMessages((p) => [
-        {
-          sender: "bot",
-          text: "దయచేసి వేచిచూడండి… డేటా లోడ్ అవుతోంది.",
-        },
+        { sender: "bot", text: "దయచేసి వేచిచూడండి… పద్యాలు లోడ్ అవుతున్నాయి." },
         ...p,
       ]);
       return;
     }
 
-    const matchedWord = resolveWord(userText);
-    const poem = matchedWord ? poems[matchedWord] : null;
+    const { collection, number } = parseIntent(question);
+    let reply = "";
+
+    /* 🎯 CASE 0: only number → all collections */
+    if (!collection && number) {
+      const matches = Object.keys(poems).filter((t) =>
+        t.match(new RegExp(`\\b${number}\\b`))
+      );
+
+      reply =
+        matches.length > 0
+          ? matches
+              .map(
+                (k, i) =>
+                  `📜 ${i + 1}. ${k}\n\n${poems[k]}`
+              )
+              .join("\n\n────────────\n\n")
+          : "ఈ సంఖ్యకు సంబంధించిన పద్యాలు ఏ శతకంలోనూ లభించలేదు.";
+    }
+
+    /* 🎯 CASE 1: collection + number */
+    else if (collection && number) {
+      const key = Object.keys(poems).find(
+        (t) =>
+          t.includes(collection) &&
+          t.match(new RegExp(`\\b${number}\\b`))
+      );
+
+      reply = key
+        ? `📜 ${key}\n\n${poems[key]}`
+        : "ఈ సంఖ్యకు సంబంధించిన పద్యం కనబడలేదు.";
+    }
+
+    /* 🎯 CASE 2: keyword search */
+    else {
+      const results = searchPoems(question, poems, 3);
+      reply =
+        results.length > 0
+          ? results
+              .map(
+                (r, i) =>
+                  `📜 ${i + 1}. ${r.title}\n\n${r.content}`
+              )
+              .join("\n\n────────────\n\n")
+          : "ఈ ప్రశ్నకు సంబంధించిన పద్యాలు లభించలేదు.";
+    }
 
     setMessages((p) => [
-      {
-        sender: "bot",
-        text: poem
-          ? `📌 ${matchedWord}\n\n${poem}`
-          : "ఈ పదానికి సంబంధించిన భావం కనబడలేదు.",
-      },
-      { sender: "user", text: userText },
+      { sender: "bot", text: reply },
+      { sender: "user", text: question },
       ...p,
     ]);
   };
@@ -376,14 +263,6 @@ export default function ChatbotWindow({
               maxWidth: "85%",
               whiteSpace: "pre-line",
               alignSelf: msg.sender === "user" ? "flex-end" : "flex-start",
-              bgcolor:
-                msg.sender === "user"
-                  ? "primary.main"
-                  : "background.paper",
-              color:
-                msg.sender === "user"
-                  ? "primary.contrastText"
-                  : "text.primary",
             }}
           >
             {msg.text}
@@ -396,7 +275,7 @@ export default function ChatbotWindow({
         <TextField
           fullWidth
           size="small"
-          placeholder="తెలుగు లేదా English phonetic టైప్ చేయండి…"
+          placeholder="1 / j1 / jan 10 / sumati5 / kr100 / na50"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
