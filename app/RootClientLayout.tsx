@@ -34,20 +34,38 @@ export default function RootClientLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [mounted, setMounted] = useState(false); // ✅ FIX: Hydration protection
-  const [fontFamily, setFontFamily] =
-    useState<TeluguFont>(DEFAULT_FONT);
-  const [fontSize, setFontSize] =
-    useState<number>(DEFAULT_SIZE);
+  const [mounted, setMounted] = useState(false); // ✅ FIXED: Added ;
+  const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
+  const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
 
-  /* 🔁 Mount client only */
+  /* 🔁 1. MOUNT FIRST - Makes mounted=true */
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  /* 🔁 Restore saved settings (CLIENT ONLY) */
+  /* ✅ 2. SERVICE WORKER - AFTER mounted=true */
   useEffect(() => {
-    if (!mounted) return; // ✅ Skip SSR
+    if (!mounted || !("serviceWorker" in navigator)) return;
+
+    const handleLoad = () => {
+      navigator.serviceWorker.register("/sw.js").then((registration) => {
+        console.log("✅ SW registered: ", registration.scope);
+      }).catch((error) => {
+        console.log("❌ SW registration failed: ", error);
+      });
+    };
+
+    if (document.readyState === "complete") {
+      handleLoad();
+    } else {
+      window.addEventListener("load", handleLoad);
+      return () => window.removeEventListener("load", handleLoad);
+    }
+  }, [mounted]);
+
+  /* 🔁 3. Restore saved settings */
+  useEffect(() => {
+    if (!mounted) return;
     const saved = localStorage.getItem("teluguFontSettings");
     if (saved) {
       try {
@@ -60,9 +78,9 @@ export default function RootClientLayout({
     }
   }, [mounted]);
 
-  /* ✅ APPLY FONT GLOBALLY (CLIENT ONLY) */
+  /* ✅ 4. APPLY FONT GLOBALLY */
   useEffect(() => {
-    if (!mounted) return; // ✅ Skip SSR
+    if (!mounted) return;
     const root = document.documentElement;
     root.style.setProperty("--telugu-font-family", fontFamily);
     root.style.setProperty("--telugu-font-size", `${fontSize}rem`);
@@ -72,7 +90,7 @@ export default function RootClientLayout({
     );
   }, [fontFamily, fontSize, mounted]);
 
-  // ✅ SSR-safe render (no hydration mismatch)
+  // ✅ SSR-safe render
   if (!mounted) {
     return (
       <>
