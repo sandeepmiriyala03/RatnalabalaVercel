@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Typography, Button, Paper, Fab } from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
+import InstallMobileIcon from '@mui/icons-material/InstallMobile';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -16,26 +16,35 @@ export default function PwaInstallPrompt() {
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [ready, setReady] = useState(false); // 👈 KEY CHANGE
 
   useEffect(() => {
-    // Detect iOS
+    /* 🍎 Detect iOS */
     const ua = navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(ua));
+    const ios = /iphone|ipad|ipod/.test(ua);
+    setIsIOS(ios);
 
-    // Detect already installed
+    /* ✅ Detect installed PWA */
     const installed =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as any).standalone === true;
 
     setIsInstalled(installed);
 
-    // Capture install prompt (Android / Desktop)
+    /* 📦 Capture install prompt (Android / Desktop) */
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
+      setReady(true); // 👈 FAB can now be shown
     };
 
     window.addEventListener('beforeinstallprompt', handler);
+
+    /* 🍎 iOS has no event → show FAB immediately */
+    if (ios && !installed) {
+      setReady(true);
+    }
+
     return () =>
       window.removeEventListener('beforeinstallprompt', handler);
   }, []);
@@ -50,37 +59,42 @@ export default function PwaInstallPrompt() {
     setOpen(false);
   };
 
-  // ❌ Already installed → show nothing
-  if (isInstalled) return null;
+  /* ❌ Already installed OR not ready → show nothing */
+  if (isInstalled || !ready) return null;
 
   return (
     <>
-      {/* 🔽 ALWAYS visible install button */}
+      {/* 📲 Floating Install FAB (ONLY when ready) */}
       <Fab
-        color="primary"
+        size="small"
         aria-label="Install App"
         onClick={() => setOpen(true)}
         sx={{
           position: 'fixed',
-          bottom: { xs: 90, md: 24 },
-          left: 20,
-          zIndex: 1500,
+          right: 12,
+          bottom: 80,
+          zIndex: 1600,
+          background: 'linear-gradient(135deg, #00c6ff, #0072ff)',
+          color: '#fff',
+          '&:hover': {
+            background: 'linear-gradient(135deg, #00b7f0, #0066e0)',
+          },
         }}
       >
-        <DownloadIcon />
+        <InstallMobileIcon fontSize="small" />
       </Fab>
 
-      {/* 📦 Install popup */}
+      {/* 📦 Install Popup */}
       {open && (
         <Paper
           elevation={8}
           sx={{
             position: 'fixed',
-            bottom: { xs: 160, md: 90 },
-            left: 16,
+            bottom: { xs: 140, md: 100 },
+            right: 16,
             maxWidth: 320,
             p: 2,
-            zIndex: 1500,
+            zIndex: 1600,
           }}
         >
           <Typography fontWeight="bold">
@@ -89,7 +103,10 @@ export default function PwaInstallPrompt() {
 
           {/* 🍎 iOS */}
           {isIOS ? (
-            <Typography variant="body2" sx={{ mt: 1 }}>
+            <Typography
+              variant="body2"
+              sx={{ mt: 1, lineHeight: 1.6 }}
+            >
               1. Safari లో ఈ సైట్ ఓపెన్ చేయండి<br />
               2. Share బటన్ నొక్కండి<br />
               3. “Add to Home Screen” ఎంచుకోండి
@@ -104,13 +121,7 @@ export default function PwaInstallPrompt() {
             >
               Install App
             </Button>
-          ) : (
-            /* ⚠️ Browser blocked install */
-            <Typography variant="body2" sx={{ mt: 2 }}>
-              Install ప్రస్తుతం అందుబాటులో లేదు.<br />
-              Chrome rules ప్రకారం enable అవుతుంది.
-            </Typography>
-          )}
+          ) : null}
         </Paper>
       )}
     </>
