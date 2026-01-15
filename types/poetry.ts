@@ -7,7 +7,8 @@ export type PoetryKey =
   | "KrishnaSatakam"
   | "NarayanaSatakam"
   | "Annamacharya"
-  | "ShivanandaLahari";
+  | "ShivanandaLahari"
+   | "RamachandraPrabhu";
 
 /* 📘 Poetry Meta */
 export interface PoetryMeta {
@@ -58,14 +59,20 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
   {
     key: "Annamacharya",
     label: "శ్రీ వేంకటేశ్వరశతకము",
-    authors: "శ్రీ తాళ్లపాక అన్నమాచార్యుఁడు",
+    authors: "శ్రీ తాళ్లపాక అన్నమాచార్యుఁడు గారు",
     totalPoems: 91,
   },
   {
     key: "ShivanandaLahari",
     label: "శివానందలహరి",
-    authors: "ఆది శంకరాచార్యులు",
+    authors: "శ్రీ ఆది శంకరాచార్యులు గారు",
     totalPoems: 100,
+  },
+   {
+    key: "RamachandraPrabhu",
+    label: "రామచంద్రప్రభు",
+    authors: "శ్రీ కూచి నరసింహము గారు",
+    totalPoems: 99,
   },
 ];
 

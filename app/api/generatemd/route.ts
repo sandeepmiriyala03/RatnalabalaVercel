@@ -3,8 +3,12 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "ShivanandaLahari.txt");
-    const outputDir = path.join(process.cwd(), "ShivanandaLahari");
+    const inputFile = path.join(process.cwd(), "RamachandraSatakam.txt");
+    const outputDir = path.join(process.cwd(), "RamachandraSatakam");
+
+    if (!fs.existsSync(inputFile)) {
+      throw new Error("Input file not found");
+    }
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -12,32 +16,43 @@ export async function GET() {
 
     let content = fs.readFileSync(inputFile, "utf-8");
 
-    /* Normalize line endings */
-    content = content.replace(/\r/g, "");
+    // Normalize line endings
+    content = content.replace(/\r/g, "").trim();
 
     /**
-     * 🔥 Split ONLY by verse numbers (ROBUST)
-     * Handles:
-     *  - ।।1।।
-     *  - ।। 1 ।।
-     *  - ॥1॥
-     *  - 1.
+     * ✅ STEP 1: Split ONLY by 'ప్రభూ!'
      */
-    const poems = content
-      .split(/\n?\s*(?:।।|॥)?\s*\d+\s*(?:।।|॥|\.)\s*/g)
+    let poems = content
+      .split("ప్రభూ!")
       .map(p => p.trim())
-      .filter(p => p.length > 0); // ONLY remove empty blocks
+      .filter(Boolean);
 
+    /**
+     * ✅ STEP 2: Remove leading numbers like:
+     * 1.
+     * 21.మ.
+     * 21. మ.
+     * 21)
+     */
+    poems = poems.map(p =>
+      p.replace(/^\s*\d+\s*[.)]?\s*[శామ.]*\s*/u, "").trim()
+    );
+
+    /**
+     * ✅ STEP 3: Write MD files
+     */
     poems.forEach((poem, index) => {
       const verse = index + 1;
 
       const md = `---
-title: "శివానందలహరి – పద్యం ${verse}"
+title: "రామచంద్రప్రభు – పద్యం ${verse}"
 verse: ${verse}
-author: "ఆది శంకరాచార్యులు"
+author: "కూచి నరసింహము"
 ---
 
 ${poem}
+
+రామచంద్రప్రభూ!
 `;
 
       fs.writeFileSync(
@@ -51,10 +66,11 @@ ${poem}
       JSON.stringify({
         success: true,
         poemsGenerated: poems.length,
-        message: "✅ Each poem correctly split & written to separate MD files",
+        message: "✅ 100 poems cleaned, numbers removed & written as safe MD files"
       }),
       { status: 200 }
     );
+
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
