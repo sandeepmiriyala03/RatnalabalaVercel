@@ -53,7 +53,7 @@ function normalize(text: string): string[] {
     .filter(Boolean);
 }
 
-/* 🧠 Parse intent */
+/* 🧠 Parse user intent */
 function parseIntent(input: string) {
   const parts = normalize(input);
 
@@ -61,12 +61,8 @@ function parseIntent(input: string) {
   let number: number | null = null;
 
   parts.forEach((p) => {
-    if (COLLECTION_ALIASES[p]) {
-      collection = COLLECTION_ALIASES[p];
-    }
-    if (!isNaN(Number(p))) {
-      number = Number(p);
-    }
+    if (COLLECTION_ALIASES[p]) collection = COLLECTION_ALIASES[p];
+    if (!isNaN(Number(p))) number = Number(p);
   });
 
   // support j1 / s5 / kr100
@@ -81,25 +77,21 @@ function parseIntent(input: string) {
   return { collection, number };
 }
 
-/* 🔍 Keyword search */
-function searchPoems(query: string, poems: Record<string, string>, limit = 3) {
-  const qWords = normalize(query);
+/* 🔍 SIMPLE search (grid filter style) */
+function searchPoems(
+  query: string,
+  poems: Record<string, string>,
+  limit = 3
+) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
 
-  const scored = Object.entries(poems).map(([title, content]) => {
-    const pWords = normalize(content);
-    let score = 0;
-
-    qWords.forEach((qw) => {
-      if (pWords.some((pw) => pw.includes(qw))) score++;
-    });
-
-    return { title, content, score };
-  });
-
-  return scored
-    .filter((s) => s.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+  return Object.entries(poems)
+    .filter(([_, content]) =>
+      content.toLowerCase().includes(q)
+    )
+    .slice(0, limit)
+    .map(([title, content]) => ({ title, content }));
 }
 
 export default function ChatbotWindow({
@@ -116,7 +108,7 @@ export default function ChatbotWindow({
 
   const topRef = useRef<HTMLDivElement>(null);
 
-  /* 📥 Load ALL poems */
+  /* 📥 Load ALL poems once */
   useEffect(() => {
     let mounted = true;
 
@@ -164,7 +156,7 @@ export default function ChatbotWindow({
     const { collection, number } = parseIntent(question);
     let reply = "";
 
-    /* 🎯 CASE 0: only number → all collections */
+    /* 🎯 CASE 0: only number → all shatakams */
     if (!collection && number) {
       const matches = Object.keys(poems).filter((t) =>
         t.match(new RegExp(`\\b${number}\\b`))
@@ -194,9 +186,10 @@ export default function ChatbotWindow({
         : "ఈ సంఖ్యకు సంబంధించిన పద్యం కనబడలేదు.";
     }
 
-    /* 🎯 CASE 2: keyword search */
+    /* 🎯 CASE 2: keyword search (DEFAULT) */
     else {
       const results = searchPoems(question, poems, 3);
+
       reply =
         results.length > 0
           ? results
@@ -275,7 +268,7 @@ export default function ChatbotWindow({
         <TextField
           fullWidth
           size="small"
-          placeholder="1 / j1 / jan 10 / sumati5 / kr100 / na50"
+          placeholder="1 / j1 / jan 10 / sumati5 / kr100 / na50/ పద్యం... "
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
