@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -24,24 +24,37 @@ export default function PoemsPage() {
   const [selectedKey, setSelectedKey] =
     useState<PoetryKey>(DEFAULT_POETRY_KEY);
 
-  const selected = POETRY_COLLECTIONS.find(
-    (p) => p.key === selectedKey
-  )!;
+  /* ✅ Safe selected collection */
+  const selected =
+    POETRY_COLLECTIONS.find((p) => p.key === selectedKey) ??
+    POETRY_COLLECTIONS.find(
+      (p) => p.key === DEFAULT_POETRY_KEY
+    )!;
 
   /* 📊 Platform totals */
-  const totalCollections = POETRY_COLLECTIONS.filter(
-    (p) => p.key !== "all"
-  ).length;
+  const totalCollections = useMemo(
+    () => POETRY_COLLECTIONS.filter((p) => p.key !== "all").length,
+    []
+  );
 
-  const totalPoemsAll = POETRY_COLLECTIONS
-    .filter((p) => p.key !== "all")
-    .reduce((sum, p) => sum + (p.totalPoems ?? 0), 0);
+  const totalPoemsAll = useMemo(
+    () =>
+      POETRY_COLLECTIONS.filter((p) => p.key !== "all").reduce(
+        (sum, p) => sum + (p.totalPoems ?? 0),
+        0
+      ),
+    []
+  );
 
-  /* ✅ FIX: display poems count correctly */
+  /* ✅ Display poems count */
   const displayTotalPoems =
     selected.key === "all"
       ? totalPoemsAll
       : selected.totalPoems;
+
+  const authorsText = Array.isArray(selected.authors)
+    ? selected.authors.join(", ")
+    : selected.authors;
 
   return (
     <Box sx={{ py: { xs: 3, md: 5 }, px: 2, maxWidth: 1100, mx: "auto" }}>
@@ -55,14 +68,11 @@ export default function PoemsPage() {
       </Typography>
 
       {/* 🌼 Tagline */}
-      <Typography
-        align="center"
-        sx={{ mt: 1, mb: 2, opacity: 0.85 }}
-      >
+      <Typography align="center" sx={{ mt: 1, mb: 2, opacity: 0.85 }}>
         📖 చదవండి &nbsp;–&nbsp; 🎧 వినండి &nbsp;–&nbsp; 📤 పంచుకోండి
       </Typography>
 
-      {/* 🧠 Platform description */}
+      {/* 🧠 Description */}
       <Typography
         align="center"
         sx={{
@@ -86,20 +96,13 @@ export default function PoemsPage() {
         alignItems="center"
         sx={{ mb: 4 }}
       >
-        <Chip
-          label={`📚 శతకములు: ${totalCollections}`}
-          color="primary"
-          variant="outlined"
-        />
+        <Chip label={`📚 శతకములు: ${totalCollections}`} variant="outlined" />
         <Chip
           label={`🧮 మొత్తం పద్యాలు: ${totalPoemsAll}`}
           color="success"
           variant="outlined"
         />
-        <Chip
-          label="✨ సంప్రదాయం × సాంకేతికత"
-          variant="outlined"
-        />
+        <Chip label="✨ సంప్రదాయం × సాంకేతికత" variant="outlined" />
       </Stack>
 
       {/* 🎛 Controls */}
@@ -111,11 +114,16 @@ export default function PoemsPage() {
         sx={{ mb: 3 }}
       >
         <FormControl size="small" sx={{ minWidth: 240 }}>
+          <Typography sx={{ fontSize: "0.8rem", mb: 0.5, opacity: 0.8 }}>
+            శతకము ఎంచుకోండి
+          </Typography>
+
           <Select
             value={selectedKey}
             onChange={(e) =>
               setSelectedKey(e.target.value as PoetryKey)
             }
+            aria-label="శతకము ఎంచుకోండి"
           >
             {POETRY_COLLECTIONS.map((p) => (
               <MenuItem key={p.key} value={p.key}>
@@ -128,13 +136,14 @@ export default function PoemsPage() {
         <Button
           variant="outlined"
           size="small"
+          disabled={selectedKey === DEFAULT_POETRY_KEY}
           onClick={() => setSelectedKey(DEFAULT_POETRY_KEY)}
         >
           డీఫాల్ట్
         </Button>
       </Stack>
 
-      {/* 📊 Selected Collection Info */}
+      {/* 📊 Selected Info */}
       <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={1.5}
@@ -147,14 +156,7 @@ export default function PoemsPage() {
           color="primary"
           variant="outlined"
         />
-        <Chip
-          label={`✍️ కవి: ${
-            Array.isArray(selected.authors)
-              ? selected.authors.join(", ")
-              : selected.authors
-          }`}
-          variant="outlined"
-        />
+        <Chip label={`✍️ కవి: ${authorsText}`} variant="outlined" />
       </Stack>
 
       <Divider sx={{ mb: 3 }} />
