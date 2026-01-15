@@ -3,8 +3,8 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "KrishnaSatakam.txt");
-    const outputDir = path.join(process.cwd(), "KrishnaSatakam");
+    const inputFile = path.join(process.cwd(), "NarayanaShatakam.txt");
+    const outputDir = path.join(process.cwd(), "NarayanaSatakam");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -12,29 +12,22 @@ export async function GET() {
 
     const content = fs.readFileSync(inputFile, "utf-8");
 
-    // 🔥 Forgiving marker: |56|, ||56||, |56||, ||56|
-    const regex = /([\s\S]*?)(\|{1,2}\s*\d+\s*\|{1,2}|$)/g;
+    // 🔥 Marker format: 1 - శా. / 2 - మ.
+    const regex = /(?:^|\n)\s*\d+\s*-\s*[^\n]+\n/g;
 
-    const poems: string[] = [];
-
-    for (const match of content.matchAll(regex)) {
-      const body = match[1]?.trim();
-
-      // skip junk / empty blocks
-      if (!body || body.length < 40) continue;
-
-      // ✅ DO NOT append marker to poem body
-      poems.push(body);
-    }
+    const poems = content
+      .split(regex)
+      .map(p => p.trim())
+      .filter(p => p.length > 40);
 
     poems.forEach((poem, i) => {
       const num = i + 1;
 
       const md = `---
-title: "కృష్ణ శతకము – పద్యం ${num}"
+title: "నారాయణ  శతకము – పద్యం ${num}"
 verse: ${num}
-author: "నృసింహ్వాయు"
-deity: "Sri Krishna"
+author: "శ్రీ బమ్మెర పోతన"
+
 ---
 
 ${poem}
@@ -51,10 +44,10 @@ ${poem}
       JSON.stringify({
         success: true,
         poems: poems.length,
-        expected: 101,
+        expected: 105,
         message:
-          poems.length === 101
-            ? "✅ PERFECT: markers removed, 101 poems generated cleanly"
+          poems.length === 105
+            ? "✅ PERFECT: markers removed, 105 poems generated cleanly"
             : "⚠️ Count mismatch – check input",
       }),
       { status: 200 }

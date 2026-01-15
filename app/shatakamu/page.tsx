@@ -28,14 +28,21 @@ export default function PoemsPage() {
     (p) => p.key === selectedKey
   )!;
 
-  // 📊 Platform totals
- const totalCollections = POETRY_COLLECTIONS.filter(
-  (p) => p.key !== "all"
-).length;
+  /* 📊 Platform totals */
+  const totalCollections = POETRY_COLLECTIONS.filter(
+    (p) => p.key !== "all"
+  ).length;
 
-const totalPoemsAll = POETRY_COLLECTIONS
-  .filter((p) => p.key !== "all")
-  .reduce((sum, p) => sum + (p.totalPoems ?? 0), 0);
+  const totalPoemsAll = POETRY_COLLECTIONS
+    .filter((p) => p.key !== "all")
+    .reduce((sum, p) => sum + (p.totalPoems ?? 0), 0);
+
+  /* ✅ FIX: display poems count correctly */
+  const displayTotalPoems =
+    selected.key === "all"
+      ? totalPoemsAll
+      : selected.totalPoems;
+
   return (
     <Box sx={{ py: { xs: 3, md: 5 }, px: 2, maxWidth: 1100, mx: "auto" }}>
       {/* 🌺 Title */}
@@ -136,7 +143,7 @@ const totalPoemsAll = POETRY_COLLECTIONS
         sx={{ mb: 3 }}
       >
         <Chip
-          label={`📘 ఈ శతకంలో పద్యాలు: ${selected.totalPoems}`}
+          label={`📘 ఈ శతకంలో పద్యాలు: ${displayTotalPoems}`}
           color="primary"
           variant="outlined"
         />
