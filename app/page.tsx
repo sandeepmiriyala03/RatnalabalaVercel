@@ -1,10 +1,15 @@
 "use client";
 import { Box } from "@mui/material";
-import MiraLifeJourneyCard from "@/app/components/miraLifeJounery";
+
+import RatnalabalaHighlights from "@/app/components/Ratnalabala";
+import RatnalabalaBackground from "./components/RatnalabalaBackground";
+import MiraIntro from "./components/MiraIntro";
 export default function Page() {
   return (
     <Box>
-      <MiraLifeJourneyCard />
+      <RatnalabalaBackground/>
+      <MiraIntro/>
+      <RatnalabalaHighlights/>
     </Box>
   );
 }
