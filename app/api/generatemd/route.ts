@@ -3,12 +3,8 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "RamachandraSatakam.txt");
-    const outputDir = path.join(process.cwd(), "RamachandraSatakam");
-
-    if (!fs.existsSync(inputFile)) {
-      throw new Error("Input file not found");
-    }
+    const inputFile = path.join(process.cwd(), "GnanaBhaskara.txt");
+    const outputDir = path.join(process.cwd(), "YajnavalkyaSatakam");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -16,43 +12,28 @@ export async function GET() {
 
     let content = fs.readFileSync(inputFile, "utf-8");
 
-    // Normalize line endings
+    // normalize line endings
     content = content.replace(/\r/g, "").trim();
 
     /**
-     * ✅ STEP 1: Split ONLY by 'ప్రభూ!'
+     * 🔑 Split AFTER ending invocation
      */
-    let poems = content
-      .split("ప్రభూ!")
+    const poems = content
+      .split(/(?<=భాస్కరా\s*!)/g)
       .map(p => p.trim())
-      .filter(Boolean);
+      .filter(p => p.length > 30);
 
-    /**
-     * ✅ STEP 2: Remove leading numbers like:
-     * 1.
-     * 21.మ.
-     * 21. మ.
-     * 21)
-     */
-    poems = poems.map(p =>
-      p.replace(/^\s*\d+\s*[.)]?\s*[శామ.]*\s*/u, "").trim()
-    );
-
-    /**
-     * ✅ STEP 3: Write MD files
-     */
     poems.forEach((poem, index) => {
       const verse = index + 1;
 
       const md = `---
-title: "రామచంద్రప్రభు – పద్యం ${verse}"
+title: "శ్రీ యాజ్ఞవల్క్య శతకం – పద్యం ${verse}"
 verse: ${verse}
-author: "కూచి నరసింహము"
+author: "చింతా రామకృష్ణారావు"
+collection: "శ్రీ యాజ్ఞవల్క్య శతకము"
 ---
 
 ${poem}
-
-రామచంద్రప్రభూ!
 `;
 
       fs.writeFileSync(
@@ -66,11 +47,13 @@ ${poem}
       JSON.stringify({
         success: true,
         poemsGenerated: poems.length,
-        message: "✅ 100 poems cleaned, numbers removed & written as safe MD files"
+        message:
+          poems.length === 108
+            ? "✅ PERFECT: 108 poems generated correctly"
+            : `⚠️ Generated ${poems.length}, expected 108`,
       }),
       { status: 200 }
     );
-
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err.message }),

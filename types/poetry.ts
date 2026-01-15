@@ -8,7 +8,8 @@ export type PoetryKey =
   | "NarayanaSatakam"
   | "Annamacharya"
   | "ShivanandaLahari"
-   | "RamachandraPrabhu";
+  | "RamachandraPrabhu"
+  | "YajnavalkyaSatakam"; 
 
 /* 📘 Poetry Meta */
 export interface PoetryMeta {
@@ -70,10 +71,16 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
   },
    {
     key: "RamachandraPrabhu",
-    label: "రామచంద్రప్రభు",
+    label: "రామచంద్ర ప్రభు",
     authors: "శ్రీ కూచి నరసింహము గారు",
     totalPoems: 99,
   },
+    {
+    key: "YajnavalkyaSatakam",
+    label: "శ్రీ యాజ్ఞవల్క్య శతకము",
+    authors: "శ్రీ చింతా రామకృష్ణారావు గారు",
+    totalPoems: 108,
+  }
 ];
 
 /* ⭐ Default */
