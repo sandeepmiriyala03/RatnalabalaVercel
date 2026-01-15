@@ -3,17 +3,24 @@ import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
 
+/**
+ * @typedef {import("serwist").PrecacheEntry} PrecacheEntry
+ * @typedef {import("serwist").SerwistGlobalConfig} SerwistGlobalConfig
+ */
+
+/** @type {ServiceWorkerGlobalScope} */
+declare const self;
+
 // --- Types ---
 declare global {
+  /** @type {SerwistGlobalConfig} */
   interface WorkerGlobalScope extends SerwistGlobalConfig {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
   }
 }
 
-declare const self: ServiceWorkerGlobalScope;
-
 // --- Cache names ---
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const PAGE_CACHE = `pages-cache-${CACHE_VERSION}`;
 const ASSET_CACHE = `asset-cache-${CACHE_VERSION}`;
 const MARKDOWN_CACHE = `markdown-cache-${CACHE_VERSION}`;
@@ -21,7 +28,6 @@ const OFFLINE_URL = "/offline.html";
 
 // --- Serwist config ---
 const serwist = new Serwist({
-  // Precache all static assets (JS, CSS, images, fonts, icons) from Next.js build
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
