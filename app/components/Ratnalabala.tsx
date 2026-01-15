@@ -171,6 +171,59 @@ export default function RatnalabalaHighlights() {
         </CardContent>
       </Card>
 
+
+      {/* =========================
+    🧠 BHAVAMALA BOT
+   ========================= */}
+<Card sx={{ mb: 4 }}>
+  <CardContent>
+    <Typography fontWeight={700} sx={{ mb: 2 }}>
+      🧠 భావాలమాల –  పద్య అన్వేషణ
+    </Typography>
+
+    <Typography sx={{ mb: 2, opacity: 0.85, fontSize: "0.95rem" }}>
+      భావాలమాల అనేది రత్నాలబాలలోని ఒక తెలివైన సహాయకుడు.  
+      ఇది మీ ప్రశ్నలకు, పదాలకు, సంఖ్యలకు అనుగుణంగా సరైన పద్యాలను చూపిస్తుంది.
+    </Typography>
+
+    <List dense>
+      <ListItem>
+        <ListItemText primary="శతకం పేరు + పద్యం సంఖ్య ఇవ్వడం ద్వారా వెంటనే పద్యం పొందవచ్చు" />
+      </ListItem>
+
+      <ListItem>
+        <ListItemText primary="తెలుగు లేదా English లో చిన్నగా టైప్ చేసినా అర్థం చేసుకుంటుంది" />
+      </ListItem>
+
+      <ListItem>
+        <ListItemText primary="కేవలం పదం లేదా భావం ఇవ్వగానే సంబంధిత పద్యాలను చూపిస్తుంది" />
+      </ListItem>
+
+      <ListItem>
+        <ListItemText primary="jan 10, sumati 5, kr 100, na 50 వంటి సరళమైన కమాండ్లు సరిపోతాయి" />
+      </ListItem>
+
+      <ListItem>
+        <ListItemText primary="ఒక్క సంఖ్య (ఉదా: 1) ఇస్తే అన్ని శతకాలలో శోధన చేస్తుంది" />
+      </ListItem>
+    </List>
+
+    <Box sx={{ mt: 2, p: 2, bgcolor: "#f9f9f9", borderRadius: 2 }}>
+      <Typography fontWeight={600} sx={{ mb: 1 }}>
+        ✨ ఉపయోగించే విధానం (సరళంగా)
+      </Typography>
+
+      <Typography sx={{ fontSize: "0.9rem" }}>
+        • <b>jan 10</b> → తెలుగుబాల 10వ పద్యం<br />
+        • <b>సుమతి 5</b> → సుమతీ 5వ పద్యం<br />
+        • <b>దయ</b> → దయ భావానికి సంబంధించిన పద్యాలు<br />
+        • <b>1</b> → అన్ని శతకాలలో శోధన
+      </Typography>
+    </Box>
+  </CardContent>
+</Card>
+
+
       {/* =========================
           🤖 AI NOTE
          ========================= */}
