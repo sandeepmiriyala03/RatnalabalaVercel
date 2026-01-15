@@ -2,9 +2,9 @@ import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
 const withSerwist = withSerwistInit({
-  swSrc: "public/sw-custom.js",
-  swDest: "public/sw.js",
-  additionalPrecacheEntries: [
+  swSrc: "public/sw-custom.js",     
+  swDest: "public/sw.js",           
+  additionalPrecacheEntries: [   
     { url: "/" },
     { url: "/offline.html" },
   ],
@@ -12,8 +12,7 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Keep turbopack enabled (default in Next.js 16)
-  turbopack: {},
+  turbopack: {},                   
 };
 
-export default withSerwist(nextConfig);
+export default withSerwist(nextConfig);  

@@ -34,16 +34,16 @@ export default function RootClientLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [mounted, setMounted] = useState(false); // ✅ FIXED: Added ;
+  const [mounted, setMounted] = useState(false);
   const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
   const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
 
-  /* 🔁 1. MOUNT FIRST - Makes mounted=true */
+  /* 🔁 1. MOUNT FIRST */
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  /* ✅ 2. SERVICE WORKER - AFTER mounted=true */
+  /* ✅ 2. SERVICE WORKER */
   useEffect(() => {
     if (!mounted || !("serviceWorker" in navigator)) return;
 
@@ -63,7 +63,7 @@ export default function RootClientLayout({
     }
   }, [mounted]);
 
-  /* 🔁 3. Restore saved settings */
+  /* 🔁 3. Restore settings */
   useEffect(() => {
     if (!mounted) return;
     const saved = localStorage.getItem("teluguFontSettings");
@@ -78,7 +78,7 @@ export default function RootClientLayout({
     }
   }, [mounted]);
 
-  /* ✅ 4. APPLY FONT GLOBALLY */
+  /* ✅ 4. Apply fonts */
   useEffect(() => {
     if (!mounted) return;
     const root = document.documentElement;
@@ -90,24 +90,19 @@ export default function RootClientLayout({
     );
   }, [fontFamily, fontSize, mounted]);
 
-  // ✅ SSR-safe render
+  // ✅ FIXED SSR - SIMPLE LOADING SCREEN (No Client Components)
   if (!mounted) {
     return (
-      <>
-        <AppBar position="fixed" color="default">
-          <Toolbar>
-            <Navbar />
-          </Toolbar>
-        </AppBar>
-        <Toolbar />
-        <Container sx={{ mt: 1 }} />
-        <Container sx={{ my: 3 }}>
-          <Box sx={{ pb: { xs: 8, md: 0 } }}>
-            {children}
-          </Box>
-        </Container>
-        <MobileBottomNav />
-      </>
+      <div 
+        style={{ 
+          minHeight: '100vh', 
+          padding: '64px 16px', 
+          fontFamily: 'system-ui, sans-serif',
+          opacity: 0.01 
+        }}
+      >
+        {/* Empty - prevents hydration mismatch */}
+      </div>
     );
   }
 
