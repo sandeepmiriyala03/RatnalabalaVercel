@@ -3,34 +3,37 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "NarayanaShatakam.txt");
-    const outputDir = path.join(process.cwd(), "NarayanaSatakam");
+    const inputFile = path.join(process.cwd(), "Annamacharya.txt");
+    const outputDir = path.join(process.cwd(), "Annamacharya");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const content = fs.readFileSync(inputFile, "utf-8");
+    let content = fs.readFileSync(inputFile, "utf-8");
 
-    // 🔥 Marker format: 1 - శా. / 2 - మ.
-    const regex = /(?:^|\n)\s*\d+\s*-\s*[^\n]+\n/g;
+    // Normalize line endings
+    content = content.replace(/\r/g, "");
 
+    // 🔥 Split poems at: 1. ఉ. / 2. చ.
     const poems = content
-      .split(regex)
+      .split(/\n(?=\d+\.\s*(ఉ\.|చ\.))/g)
       .map(p => p.trim())
-      .filter(p => p.length > 40);
+      .filter(p => /^\d+\.\s*(ఉ\.|చ\.)/.test(p));
 
-    poems.forEach((poem, i) => {
-      const num = i + 1;
+    poems.forEach((poem, index) => {
+      const num = index + 1;
+
+      // ✅ REMOVE leading numbering like "1. ", "23. "
+      const cleanPoem = poem.replace(/^\d+\.\s*/,"");
 
       const md = `---
-title: "నారాయణ  శతకము – పద్యం ${num}"
+title: "శ్రీ (అలమేలుమంగా) వేంకటేశ్వరశతకము – పద్యం ${num}"
 verse: ${num}
-author: "శ్రీ బమ్మెర పోతన"
-
+author: "తాళ్లపాక అన్నమాచార్యుఁడు"
 ---
 
-${poem}
+${cleanPoem}
 `;
 
       fs.writeFileSync(
@@ -43,12 +46,8 @@ ${poem}
     return new Response(
       JSON.stringify({
         success: true,
-        poems: poems.length,
-        expected: 105,
-        message:
-          poems.length === 105
-            ? "✅ PERFECT: markers removed, 105 poems generated cleanly"
-            : "⚠️ Count mismatch – check input",
+        poemsGenerated: poems.length,
+        message: "✅ Poems split correctly & numbering removed from content",
       }),
       { status: 200 }
     );

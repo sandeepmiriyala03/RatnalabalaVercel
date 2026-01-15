@@ -5,7 +5,8 @@ export type PoetryKey =
   | "Sumati"
   | "SriKalahastheeswara"
   | "KrishnaSatakam"
-  | "NarayanaSatakam";
+  | "NarayanaSatakam"
+  | "Annamacharya";
 
 /* 📘 Poetry Meta */
 export interface PoetryMeta {
@@ -20,9 +21,9 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
   {
     key: "all",
     label: "📚 అన్ని శతకాలు",
-    authors: "అనేక కవులు"
+    authors: "అనేక కవులు",
   },
-  
+
   {
     key: "Jandhyala",
     label: "తెలుగుబాల",
@@ -43,15 +44,21 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
   },
   {
     key: "KrishnaSatakam",
-    label: "కృష్ణ ",
+    label: "కృష్ణ",
     authors: "శ్రీ నరసింహ కవి గారు",
     totalPoems: 101,
   },
-   {
+  {
     key: "NarayanaSatakam",
-    label: "నారాయణ ",
+    label: "నారాయణ",
     authors: "శ్రీ బమ్మెర పోతన గారు",
     totalPoems: 105,
+  },
+  {
+    key: "Annamacharya",
+    label: "శ్రీ  వేంకటేశ్వరశతకము",
+    authors: "శ్రీ తాళ్లపాక అన్నమాచార్యుఁడు",
+    totalPoems: 91,
   },
 ];
 

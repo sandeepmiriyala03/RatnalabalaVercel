@@ -10,6 +10,7 @@ const POETRY_FOLDERS = [
   "SriKalahastheeswara",
   "KrishnaSatakam",
   "NarayanaSatakam",
+  "Annamacharya"
 ];
 
 export async function GET(request: Request) {
