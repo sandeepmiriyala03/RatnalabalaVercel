@@ -16,31 +16,27 @@ export default function PwaInstallPrompt() {
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [open, setOpen] = useState(false);
-  const [ready, setReady] = useState(false); // 👈 KEY CHANGE
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    /* 🍎 Detect iOS */
     const ua = navigator.userAgent.toLowerCase();
     const ios = /iphone|ipad|ipod/.test(ua);
     setIsIOS(ios);
 
-    /* ✅ Detect installed PWA */
     const installed =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as any).standalone === true;
 
     setIsInstalled(installed);
 
-    /* 📦 Capture install prompt (Android / Desktop) */
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setReady(true); // 👈 FAB can now be shown
+      setReady(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
 
-    /* 🍎 iOS has no event → show FAB immediately */
     if (ios && !installed) {
       setReady(true);
     }
@@ -59,19 +55,18 @@ export default function PwaInstallPrompt() {
     setOpen(false);
   };
 
-  /* ❌ Already installed OR not ready → show nothing */
   if (isInstalled || !ready) return null;
 
   return (
     <>
-      {/* 📲 Floating Install FAB (ONLY when ready) */}
+      {/* 📲 Floating Install FAB – LEFT SIDE */}
       <Fab
         size="small"
         aria-label="Install App"
         onClick={() => setOpen(true)}
         sx={{
           position: 'fixed',
-          right: 12,
+          left: 12,
           bottom: 80,
           zIndex: 1600,
           background: 'linear-gradient(135deg, #00c6ff, #0072ff)',
@@ -84,14 +79,14 @@ export default function PwaInstallPrompt() {
         <InstallMobileIcon fontSize="small" />
       </Fab>
 
-      {/* 📦 Install Popup */}
+      {/* 📦 Install Popup – LEFT SIDE */}
       {open && (
         <Paper
           elevation={8}
           sx={{
             position: 'fixed',
             bottom: { xs: 140, md: 100 },
-            right: 16,
+            left: 16,
             maxWidth: 320,
             p: 2,
             zIndex: 1600,
@@ -101,7 +96,6 @@ export default function PwaInstallPrompt() {
             App Install చేయండి
           </Typography>
 
-          {/* 🍎 iOS */}
           {isIOS ? (
             <Typography
               variant="body2"
@@ -112,7 +106,6 @@ export default function PwaInstallPrompt() {
               3. “Add to Home Screen” ఎంచుకోండి
             </Typography>
           ) : deferredPrompt ? (
-            /* 🤖 Android / Desktop */
             <Button
               fullWidth
               variant="contained"
