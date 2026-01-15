@@ -3,8 +3,8 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "Annamacharya.txt");
-    const outputDir = path.join(process.cwd(), "Annamacharya");
+    const inputFile = path.join(process.cwd(), "ShivanandaLahari.txt");
+    const outputDir = path.join(process.cwd(), "ShivanandaLahari");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -12,32 +12,36 @@ export async function GET() {
 
     let content = fs.readFileSync(inputFile, "utf-8");
 
-    // Normalize line endings
+    /* Normalize line endings */
     content = content.replace(/\r/g, "");
 
-    // 🔥 Split poems at: 1. ఉ. / 2. చ.
+    /**
+     * 🔥 Split ONLY by verse numbers (ROBUST)
+     * Handles:
+     *  - ।।1।।
+     *  - ।। 1 ।।
+     *  - ॥1॥
+     *  - 1.
+     */
     const poems = content
-      .split(/\n(?=\d+\.\s*(ఉ\.|చ\.))/g)
+      .split(/\n?\s*(?:।।|॥)?\s*\d+\s*(?:।।|॥|\.)\s*/g)
       .map(p => p.trim())
-      .filter(p => /^\d+\.\s*(ఉ\.|చ\.)/.test(p));
+      .filter(p => p.length > 0); // ONLY remove empty blocks
 
     poems.forEach((poem, index) => {
-      const num = index + 1;
-
-      // ✅ REMOVE leading numbering like "1. ", "23. "
-      const cleanPoem = poem.replace(/^\d+\.\s*/,"");
+      const verse = index + 1;
 
       const md = `---
-title: "శ్రీ (అలమేలుమంగా) వేంకటేశ్వరశతకము – పద్యం ${num}"
-verse: ${num}
-author: "తాళ్లపాక అన్నమాచార్యుఁడు"
+title: "శివానందలహరి – పద్యం ${verse}"
+verse: ${verse}
+author: "ఆది శంకరాచార్యులు"
 ---
 
-${cleanPoem}
+${poem}
 `;
 
       fs.writeFileSync(
-        path.join(outputDir, `${num}.md`),
+        path.join(outputDir, `${verse}.md`),
         md,
         "utf-8"
       );
@@ -47,7 +51,7 @@ ${cleanPoem}
       JSON.stringify({
         success: true,
         poemsGenerated: poems.length,
-        message: "✅ Poems split correctly & numbering removed from content",
+        message: "✅ Each poem correctly split & written to separate MD files",
       }),
       { status: 200 }
     );
