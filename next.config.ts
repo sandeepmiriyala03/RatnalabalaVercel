@@ -2,17 +2,14 @@ import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
 const withSerwist = withSerwistInit({
-  swSrc: "public/sw-custom.js",     
-  swDest: "public/sw.js",           
-  additionalPrecacheEntries: [   
-    { url: "/" },
-    { url: "/offline.html" },
-  ],
+  swSrc: "sw-custom.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV !== "production",
 });
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  turbopack: {},                   
+  turbopack: {},
 };
 
-export default withSerwist(nextConfig);  
+export default withSerwist(nextConfig);
