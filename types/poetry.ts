@@ -59,7 +59,7 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
   },
   {
     key: "Annamacharya",
-    label: "శ్రీ వేంకటేశ్వరశతకము",
+    label: "శ్రీ వేంకటేశ్వర",
     authors: "శ్రీ తాళ్లపాక అన్నమాచార్యుఁడు గారు",
     totalPoems: 91,
   },
