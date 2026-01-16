@@ -5,10 +5,10 @@
       "dom",
       "dom.iterable",
       "esnext",
-      "webworker" 
+      "webworker"
     ],
     "types": [
-      "@serwist/next/typings"  
+      "@serwist/next/typings"
     ],
     "allowJs": true,
     "skipLibCheck": true,
@@ -19,7 +19,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "incremental": true,
     "plugins": [
       {
@@ -42,6 +42,6 @@
   ],
   "exclude": [
     "node_modules",
-    "public/sw.js"  // ← Exclude generated sw.js
+    "public/sw.js" // ← Exclude generated sw.js
   ]
 }

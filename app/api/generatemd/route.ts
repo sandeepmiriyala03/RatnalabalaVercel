@@ -3,8 +3,8 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "GnanaBhaskara.txt");
-    const outputDir = path.join(process.cwd(), "YajnavalkyaSatakam");
+    const inputFile = path.join(process.cwd(), "DasarathiKaruNapaYonidhi.txt");
+    const outputDir = path.join(process.cwd(), "DasarathiKaruNapaYonidhi");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -16,21 +16,22 @@ export async function GET() {
     content = content.replace(/\r/g, "").trim();
 
     /**
-     * 🔑 Split AFTER ending invocation
+     * 🔑 Split by verse numbers like 001, 002, ... 103
+     * Keep the number with the poem
      */
     const poems = content
-      .split(/(?<=భాస్కరా\s*!)/g)
+      .split(/\n(?=\d{3}\n)/g)
       .map(p => p.trim())
-      .filter(p => p.length > 30);
+      .filter(p => p.length > 50);
 
     poems.forEach((poem, index) => {
-      const verse = index + 1;
+      const verseNumberMatch = poem.match(/^(\d{3})/);
+      const verse = verseNumberMatch ? verseNumberMatch[1] : `${index + 1}`;
 
       const md = `---
-title: "శ్రీ యాజ్ఞవల్క్య శతకం – పద్యం ${verse}"
+title: " దాశరథీ శతకము  – పద్యం ${verse}"
 verse: ${verse}
-author: "చింతా రామకృష్ణారావు"
-collection: "శ్రీ యాజ్ఞవల్క్య శతకము"
+author: "భద్రాచల రామదాసు"
 ---
 
 ${poem}
@@ -48,9 +49,9 @@ ${poem}
         success: true,
         poemsGenerated: poems.length,
         message:
-          poems.length === 108
-            ? "✅ PERFECT: 108 poems generated correctly"
-            : `⚠️ Generated ${poems.length}, expected 108`,
+          poems.length === 103
+            ? "✅ PERFECT: 103 పద్యాలు సరిగా జనరేట్ అయ్యాయి"
+            : `⚠️ Generated ${poems.length}, expected 103`,
       }),
       { status: 200 }
     );

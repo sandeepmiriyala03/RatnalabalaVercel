@@ -9,7 +9,8 @@ export type PoetryKey =
   | "Annamacharya"
   | "ShivanandaLahari"
   | "RamachandraPrabhu"
-  | "YajnavalkyaSatakam"; 
+  | "YajnavalkyaSatakam"
+  |"DasarathiKaruNapaYonidhi"  ; 
 
 /* 📘 Poetry Meta */
 export interface PoetryMeta {
@@ -79,6 +80,12 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
     key: "YajnavalkyaSatakam",
     label: "శ్రీ యాజ్ఞవల్క్య ",
     authors: "శ్రీ చింతా రామకృష్ణారావు గారు",
+    totalPoems: 108,
+  },
+   {
+    key: "DasarathiKaruNapaYonidhi",
+    label: "శ్రీ దాశరథీ కరుణాపయోనిధీ ",
+    authors: "శ్రీ భద్రాచల రామదాసు గారు",
     totalPoems: 108,
   }
 ];

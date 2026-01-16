@@ -1,23 +1,13 @@
 /// <reference lib="webworker" />
+
 import { defaultCache } from "@serwist/next/worker";
-import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
 
 /**
- * @typedef {import("serwist").PrecacheEntry} PrecacheEntry
- * @typedef {import("serwist").SerwistGlobalConfig} SerwistGlobalConfig
+ * NOTE:
+ * Service workers MUST be plain JavaScript.
+ * No TypeScript, no `declare`, no `import type`.
  */
-
-/** @type {ServiceWorkerGlobalScope} */
-declare const self;
-
-// --- Types ---
-declare global {
-  /** @type {SerwistGlobalConfig} */
-  interface WorkerGlobalScope extends SerwistGlobalConfig {
-    __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
-  }
-}
 
 // --- Cache names ---
 const CACHE_VERSION = "v2";
@@ -28,12 +18,13 @@ const OFFLINE_URL = "/offline.html";
 
 // --- Serwist config ---
 const serwist = new Serwist({
-  precacheEntries: self.__SW_MANIFEST,
+  precacheEntries: self.__SW_MANIFEST || [],
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
+
   runtimeCaching: [
-    // 1️⃣ Static assets (JS, CSS, images, fonts, icons from public/)
+    // 1️⃣ Static assets (JS, CSS, images, fonts)
     {
       matcher: ({ request }) =>
         ["style", "script", "image", "font"].includes(request.destination),
@@ -44,17 +35,22 @@ const serwist = new Serwist({
         expiration: { maxEntries: 300 },
       },
     },
-    // 2️⃣ Markdown poems (all .md files in poems/, mirapoems/, content/, etc.)
+
+    // 2️⃣ Markdown files (.md)
     {
       matcher: ({ url }) => url.pathname.endsWith(".md"),
       handler: "CacheFirst",
       options: {
         cacheName: MARKDOWN_CACHE,
         cacheableResponse: { statuses: [0, 200] },
-        expiration: { maxEntries: 6000, maxAgeSeconds: 31536000 }, // 1 year
+        expiration: {
+          maxEntries: 6000,
+          maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+        },
       },
     },
-    // 3️⃣ HTML navigation (all pages: /, /poems, /mirapoems, /shatakamu, /chitramala, etc.)
+
+    // 3️⃣ HTML navigation
     {
       matcher: ({ request }) => request.mode === "navigate",
       handler: "StaleWhileRevalidate",
@@ -64,7 +60,8 @@ const serwist = new Serwist({
       },
     },
   ],
-  // 4️⃣ Offline fallback: any HTML page that fails → offline.html
+
+  // 4️⃣ Offline fallback
   fallbacks: {
     entries: [
       {
@@ -79,14 +76,14 @@ const serwist = new Serwist({
 
 serwist.addEventListeners();
 
-// --- Install: pre-cache offline.html ---
+// --- Install: cache offline page ---
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(PAGE_CACHE).then((cache) => cache.addAll([OFFLINE_URL]))
+    caches.open(PAGE_CACHE).then((cache) => cache.add(OFFLINE_URL))
   );
 });
 
-// --- Activate: claim all clients ---
+// --- Activate: claim clients ---
 self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
