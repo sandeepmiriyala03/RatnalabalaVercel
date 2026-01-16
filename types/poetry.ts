@@ -10,7 +10,7 @@ export type PoetryKey =
   | "ShivanandaLahari"
   | "RamachandraPrabhu"
   | "YajnavalkyaSatakam"
-  |"DasarathiKaruNapaYonidhi"  ; 
+  | "DasarathiKaruNapaYonidhi"  ; 
 
 /* 📘 Poetry Meta */
 export interface PoetryMeta {
@@ -84,7 +84,7 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
   },
    {
     key: "DasarathiKaruNapaYonidhi",
-    label: "శ్రీ దాశరథీ కరుణాపయోనిధీ ",
+    label: "శ్రీ దాశరథీ కరుణాపయోనిధీ",
     authors: "శ్రీ భద్రాచల రామదాసు గారు",
     totalPoems: 108,
   }
