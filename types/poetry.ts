@@ -77,7 +77,7 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
   },
     {
     key: "YajnavalkyaSatakam",
-    label: "శ్రీ యాజ్ఞవల్క్య శతకము",
+    label: "శ్రీ యాజ్ఞవల్క్య ",
     authors: "శ్రీ చింతా రామకృష్ణారావు గారు",
     totalPoems: 108,
   }
