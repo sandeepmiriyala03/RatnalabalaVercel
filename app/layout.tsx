@@ -1,6 +1,7 @@
 // app/layout.tsx
 import "./globals.css";
 import RootClientLayout from "./RootClientLayout";
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="te">
       <body>
         <RootClientLayout>{children}</RootClientLayout>
+        <Analytics />
       </body>
     </html>
   );
