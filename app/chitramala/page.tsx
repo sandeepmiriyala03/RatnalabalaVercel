@@ -68,7 +68,7 @@ export default function ChitramalaPage() {
 
  <ol style={{ paddingLeft: 18, marginTop: 8 }}>
   <li>ముందుగా <b>కవి పేరు</b> నమోదు చేయండి</li>
-  <li><b>పాదాల సంఖ్య (1 – 6)</b> ఎంచుకోండి</li>
+  <li><b>పాదాల సంఖ్య (1 – 8)</b> ఎంచుకోండి</li>
   <li>ప్రతి పాదాన్ని విడిగా టైప్ చేయండి</li>
   <li>కావాలంటే <b>పద్య శీర్షిక</b> ఇవ్వండి</li>
   <li>

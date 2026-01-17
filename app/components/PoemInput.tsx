@@ -19,7 +19,7 @@ type Props = {
 };
 
 const MIN_LINES = 1;
-const MAX_LINES = 6;
+const MAX_LINES = 8;
 
 export default function PoemInput({
   onGenerate,
@@ -117,7 +117,7 @@ export default function PoemInput({
             setLines([]);
           }
         }}
-        placeholder="1 – 6"
+        placeholder="1 – 8 మధ్య సంఖ్య ఇవ్వండి"
         style={inputStyle}
       />
 
