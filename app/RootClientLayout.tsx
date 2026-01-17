@@ -42,12 +42,12 @@ export default function RootClientLayout({
   useEffect(() => {
     setMounted(true);
   }, []);
-
-   /* 📊 1. SIMPLE ANALYTICS (PAGE VIEW) */
-  useEffect(() => {
-    if (!mounted) return;
-    fetch("/api/views", { method: "POST" }).catch(() => {});
-  }, [mounted]);
+  
+/* 📊 SIMPLE ANALYTICS (PAGE VIEW) */
+useEffect(() => {
+  if (!mounted) return;
+  fetch("/api/pageview", { method: "POST" }).catch(() => {});
+}, [mounted]);
 
   /* ✅ 2. SERVICE WORKER */
   useEffect(() => {
