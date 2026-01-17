@@ -12,11 +12,21 @@ import { useEffect, useState } from "react";
 export default function Footer() {
   const theme = useTheme();
   const [dateTime, setDateTime] = useState(new Date());
+  const [views, setViews] = useState<number | null>(null); // ✅ FIX 1
 
+  /* 📊 Fetch analytics (page views) */
+  useEffect(() => {
+    fetch("/api/pageview")
+      .then((res) => res.json())
+      .then((data) => setViews(data.views)) // ✅ FIX 2
+      .catch(() => {});
+  }, []);
+
+  /* ⏱ Date update */
   useEffect(() => {
     const timer = setInterval(() => {
       setDateTime(new Date());
-    }, 60000); // ⏱ minute update is enough for footer
+    }, 60000);
     return () => clearInterval(timer);
   }, []);
 
@@ -32,7 +42,7 @@ export default function Footer() {
       component="footer"
       sx={{
         mt: 4,
-        py: 1.5,          // ⬇️ reduced height
+        py: 1.5,
         px: 1,
         backgroundColor:
           theme.palette.mode === "light"
@@ -65,7 +75,7 @@ export default function Footer() {
 
         <Divider sx={{ my: 0.8 }} />
 
-        {/* Credits + Date */}
+        {/* Credits */}
         <Typography
           variant="caption"
           color="text.secondary"
@@ -74,11 +84,15 @@ export default function Footer() {
           © {new Date().getFullYear()} సందీప్ మిరియాల — యుక్తిశాల AI
         </Typography>
 
+        {/* ✅ Analytics + Date */}
         <Typography
           variant="caption"
           color="text.secondary"
           sx={{ display: "block", mt: 0.2 }}
         >
+          👁️ మొత్తం సందర్శనలు:{" "}
+          {views !== null ? views.toLocaleString("te-IN") : "…"}
+          {" • "}
           🔒 గోప్యత మొదటి ప్రాధాన్యత • {formattedDate}
         </Typography>
       </Container>
