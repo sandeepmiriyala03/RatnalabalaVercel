@@ -17,14 +17,47 @@ export type TeluguFont =
   | "Ramaneeya"
   | "Veturi"
   | "Sirivennela"
+
+  | "Chathura-Thin"
+  | "Chathura-Light"
   | "Chathura-Regular"
   | "Chathura-Bold"
+  | "Chathura-ExtraBold"
+
   | "Ramaraja"
   | "RaviPrakash"
   | "TenaliRamakrishna"
   | "Timmana"
+  | "TANA"
   | "Ponnala-Regular"
-  | "TANA";
+
+  | "Gidugu"
+  | "Gidugu-Italic"
+
+  | "LakkiReddy"
+
+  | "Nandakam"
+  | "Nandakam-Italic"
+
+  | "Peddana"
+
+  | "Purushothamaa"
+  | "Purushothamaa-Italic"
+
+  | "Ramabhadra"
+  | "Ramabhadra-Italic"
+
+  | "SreeKrushnadevaraya"
+  | "SreeKrushnadevaraya-Italic"
+
+  | "Suranna-Regular"
+  | "Suranna-Bold"
+  | "Suranna-Italic"
+  | "Suranna-BoldItalic"
+
+  | "Suravaram"
+  | "Suravaram-Italic";
+
 
 const DEFAULT_FONT: TeluguFont = "Ramaneeya";
 const DEFAULT_SIZE = 1;
