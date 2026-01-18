@@ -68,37 +68,101 @@ const THEMES: Record<
    🔤 FONT CLASSES (CSS)
    ========================= */
 
-type FontKey =
+export type FontKey =
   | "gurajada"
   | "ntr"
+  | "ramaneeya"
   | "veturi"
   | "sirivennela"
+
+  | "chathura-thin"
+  | "chathura-light"
   | "chathura-regular"
   | "chathura-bold"
-  | "ramaneeya"
+  | "chathura-extrabold"
+
   | "ramaraja"
   | "raviprakash"
-  | "tana"
-  | "tenali"
+  | "tenaliramakrishna"
   | "timmana"
-  | "ponnala";
+  | "tana"
+  | "ponnala-regular"
 
-const FONTS: { key: FontKey; label: string; className: string }[] =
-  [
-    { key: "gurajada", label: "గురజాడ", className: "chitramala-font-gurajada" },
-    { key: "ntr", label: "ఎన్‌టిఆర్", className: "chitramala-font-ntr" },
-    { key: "veturi", label: "వేటూరి", className: "chitramala-font-veturi" },
-    { key: "sirivennela", label: "సిరివెన్నెల", className: "chitramala-font-sirivennela" },
-    { key: "chathura-regular", label: "చతుర (Regular) ", className: "chitramala-font-chathura-regular" },
-    { key: "chathura-bold", label: "చతుర (Bold)", className: "chitramala-font-chathura-bold" },
-    { key: "ramaneeya", label: "రమణీయ", className: "chitramala-font-ramaneeya" },
-    { key: "ramaraja", label: "రామరాజ", className: "chitramala-font-ramaraja" },
-    { key: "raviprakash", label: "రవి ప్రకాష్", className: "chitramala-font-raviprakash" },
-    { key: "tana", label: "టానా", className: "chitramala-font-tana" },
-    { key: "tenali", label: "తెనాలి రామకృష్ణ", className: "chitramala-font-tenali" },
-    { key: "timmana", label: "తిమ్మన", className: "chitramala-font-timmana" },
-    { key: "ponnala", label: "పొన్నల", className: "chitramala-font-ponnala" },
-  ];
+  | "gidugu"
+  | "gidugu-italic"
+
+  | "lakkireddy"
+
+  | "nandakam"
+  | "nandakam-italic"
+
+  | "peddana"
+
+  | "purushothamaa"
+  | "purushothamaa-italic"
+
+  | "ramabhadra"
+  | "ramabhadra-italic"
+
+  | "sreekrushnadevaraya"
+  | "sreekrushnadevaraya-italic"
+
+  | "suranna-regular"
+  | "suranna-bold"
+  | "suranna-italic"
+  | "suranna-bolditalic"
+
+  | "suravaram"
+  | "suravaram-italic";
+
+const FONTS: { key: FontKey; label: string; className: string }[] = [
+  { key: "gurajada", label: "గురజాడ", className: "chitramala-font-gurajada" },
+  { key: "ntr", label: "ఎన్‌టిఆర్", className: "chitramala-font-ntr" },
+  { key: "ramaneeya", label: "రమణీయ", className: "chitramala-font-ramaneeya" },
+  { key: "veturi", label: "వేటూరి", className: "chitramala-font-veturi" },
+  { key: "sirivennela", label: "సిరివెన్నెల", className: "chitramala-font-sirivennela" },
+
+  { key: "chathura-thin", label: "చతుర (Thin)", className: "chitramala-font-chathura-thin" },
+  { key: "chathura-light", label: "చతుర (Light)", className: "chitramala-font-chathura-light" },
+  { key: "chathura-regular", label: "చతుర (Regular)", className: "chitramala-font-chathura-regular" },
+  { key: "chathura-bold", label: "చతుర (Bold)", className: "chitramala-font-chathura-bold" },
+  { key: "chathura-extrabold", label: "చతుర (ExtraBold)", className: "chitramala-font-chathura-extrabold" },
+
+  { key: "ramaraja", label: "రామరాజ", className: "chitramala-font-ramaraja" },
+  { key: "raviprakash", label: "రవి ప్రకాష్", className: "chitramala-font-raviprakash" },
+  { key: "tenaliramakrishna", label: "తెనాలి రామకృష్ణ", className: "chitramala-font-tenali" },
+  { key: "timmana", label: "తిమ్మన", className: "chitramala-font-timmana" },
+  { key: "tana", label: "టానా", className: "chitramala-font-tana" },
+  { key: "ponnala-regular", label: "పొన్నల", className: "chitramala-font-ponnala" },
+
+  { key: "gidugu", label: "గిడుగు", className: "chitramala-font-gidugu" },
+  { key: "gidugu-italic", label: "గిడుగు (ఇటాలిక్)", className: "chitramala-font-gidugu-italic" },
+
+  { key: "lakkireddy", label: "లక్కిరెడ్డి", className: "chitramala-font-lakkireddy" },
+
+  { key: "nandakam", label: "నందకం", className: "chitramala-font-nandakam" },
+  { key: "nandakam-italic", label: "నందకం (ఇటాలిక్)", className: "chitramala-font-nandakam-italic" },
+
+  { key: "peddana", label: "పెద్దన", className: "chitramala-font-peddana" },
+
+  { key: "purushothamaa", label: "పురుషోత్తమ", className: "chitramala-font-purushothamaa" },
+  { key: "purushothamaa-italic", label: "పురుషోత్తమ (ఇటాలిక్)", className: "chitramala-font-purushothamaa-italic" },
+
+  { key: "ramabhadra", label: "రామభద్ర", className: "chitramala-font-ramabhadra" },
+  { key: "ramabhadra-italic", label: "రామభద్ర (ఇటాలిక్)", className: "chitramala-font-ramabhadra-italic" },
+
+  { key: "sreekrushnadevaraya", label: "శ్రీ కృష్ణదేవరాయ", className: "chitramala-font-sreekrushnadevaraya" },
+  { key: "sreekrushnadevaraya-italic", label: "శ్రీ కృష్ణదేవరాయ (ఇటాలిక్)", className: "chitramala-font-sreekrushnadevaraya-italic" },
+
+  { key: "suranna-regular", label: "సురన్న (Regular)", className: "chitramala-font-suranna" },
+  { key: "suranna-bold", label: "సురన్న (Bold)", className: "chitramala-font-suranna-bold" },
+  { key: "suranna-italic", label: "సురన్న (Italic)", className: "chitramala-font-suranna-italic" },
+  { key: "suranna-bolditalic", label: "సురన్న (Bold Italic)", className: "chitramala-font-suranna-bolditalic" },
+
+  { key: "suravaram", label: "సురవరం", className: "chitramala-font-suravaram" },
+  { key: "suravaram-italic", label: "సురవరం (ఇటాలిక్)", className: "chitramala-font-suravaram-italic" },
+];
+
 
 /* =========================
    📦 PROPS
