@@ -20,21 +20,57 @@ type Props = {
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
 };
 
-const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
+
+ const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
   { label: "గురజాడ", value: "Gurajada" },
   { label: "ఎన్‌టిఆర్", value: "NTR" },
   { label: "రమణీయ", value: "Ramaneeya" },
   { label: "వేటూరి", value: "Veturi" },
   { label: "సిరివెన్నెల", value: "Sirivennela" },
+
+  { label: "చతుర (Thin)", value: "Chathura-Thin" },
+  { label: "చతుర (Light)", value: "Chathura-Light" },
   { label: "చతుర (Regular)", value: "Chathura-Regular" },
   { label: "చతుర (Bold)", value: "Chathura-Bold" },
+  { label: "చతుర (ExtraBold)", value: "Chathura-ExtraBold" },
+
   { label: "రామరాజ", value: "Ramaraja" },
   { label: "రవి ప్రకాష్", value: "RaviPrakash" },
   { label: "తెనాలి రామకృష్ణ", value: "TenaliRamakrishna" },
   { label: "తిమ్మన", value: "Timmana" },
   { label: "టానా", value: "TANA" },
+
+  { label: "గిడుగు", value: "Gidugu" },
+  { label: "గిడుగు (ఇటాలిక్)", value: "Gidugu-Italic" },
+
+  { label: "లక్కిరెడ్డి", value: "LakkiReddy" },
+
+  { label: "నందకం", value: "Nandakam" },
+  { label: "నందకం (ఇటాలిక్)", value: "Nandakam-Italic" },
+
+  { label: "పెద్దన", value: "Peddana" },
+
+  { label: "పురుషోత్తమ", value: "Purushothamaa" },
+  { label: "పురుషోత్తమ (ఇటాలిక్)", value: "Purushothamaa-Italic" },
+
+  { label: "రామభద్ర", value: "Ramabhadra" },
+  { label: "రామభద్ర (ఇటాలిక్)", value: "Ramabhadra-Italic" },
+
+  { label: "శ్రీ కృష్ణదేవరాయ", value: "SreeKrushnadevaraya" },
+  { label: "శ్రీ కృష్ణదేవరాయ (ఇటాలిక్)", value: "SreeKrushnadevaraya-Italic" },
+
+  { label: "సురన్న (Regular)", value: "Suranna-Regular" },
+  { label: "సురన్న (Bold)", value: "Suranna-Bold" },
+  { label: "సురన్న (Italic)", value: "Suranna-Italic" },
+  { label: "సురన్న (Bold Italic)", value: "Suranna-BoldItalic" },
+
+  { label: "సురవరం", value: "Suravaram" },
+  { label: "సురవరం (ఇటాలిక్)", value: "Suravaram-Italic" },
+
   { label: "పొన్నల", value: "Ponnala-Regular" },
 ];
+
+
 
 function getDeviceBounds() {
   if (typeof window === "undefined") return { min: 1.0, max: 2.0 };

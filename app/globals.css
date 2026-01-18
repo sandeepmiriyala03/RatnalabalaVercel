@@ -507,3 +507,293 @@ MuiTypography-root
 .chitramala-font-ponnala {
   font-family: "Ponnala-Regular", system-ui;
 }
+
+
+/* =========================
+   GIDUGU
+========================= */
+
+.chitramala-font-gidugu {
+  font-family: "Gidugu", system-ui;
+}
+
+.chitramala-font-gidugu-italic {
+  font-family: "Gidugu-Italic", system-ui;
+}
+
+/* =========================
+   LAKKI REDDY
+========================= */
+
+.chitramala-font-lakkireddy {
+  font-family: "LakkiReddy", system-ui;
+}
+
+/* =========================
+   NANDakam
+========================= */
+
+.chitramala-font-nandakam {
+  font-family: "Nandakam", system-ui;
+}
+
+.chitramala-font-nandakam-italic {
+  font-family: "Nandakam-Italic", system-ui;
+}
+
+/* =========================
+   PEDDANA
+========================= */
+
+.chitramala-font-peddana {
+  font-family: "Peddana", system-ui;
+}
+
+/* =========================
+   PURUSHOTHAMAA
+========================= */
+
+.chitramala-font-purushothamaa {
+  font-family: "Purushothamaa", system-ui;
+}
+
+.chitramala-font-purushothamaa-italic {
+  font-family: "Purushothamaa-Italic", system-ui;
+}
+
+/* =========================
+   RAMABHADRA
+========================= */
+
+.chitramala-font-ramabhadra {
+  font-family: "Ramabhadra", system-ui;
+}
+
+.chitramala-font-ramabhadra-italic {
+  font-family: "Ramabhadra-Italic", system-ui;
+}
+
+/* =========================
+   SREE KRUSHNADEVARAYA
+========================= */
+
+.chitramala-font-sreekrushnadevaraya {
+  font-family: "SreeKrushnadevaraya", system-ui;
+}
+
+.chitramala-font-sreekrushnadevaraya-italic {
+  font-family: "SreeKrushnadevaraya-Italic", system-ui;
+}
+
+/* =========================
+   SURANNA
+========================= */
+
+.chitramala-font-suranna {
+  font-family: "Suranna-Regular", system-ui;
+}
+
+.chitramala-font-suranna-bold {
+  font-family: "Suranna-Bold", system-ui;
+}
+
+.chitramala-font-suranna-italic {
+  font-family: "Suranna-Italic", system-ui;
+}
+
+.chitramala-font-suranna-bolditalic {
+  font-family: "Suranna-BoldItalic", system-ui;
+}
+
+/* =========================
+   SURAVARAM
+========================= */
+
+.chitramala-font-suravaram {
+  font-family: "Suravaram", system-ui;
+}
+
+.chitramala-font-suravaram-italic {
+  font-family: "Suravaram-Italic", system-ui;
+}
+
+
+/* =========================
+   GIDUGU
+========================= */
+
+@font-face {
+  font-family: "Gidugu";
+  src: url("/Fonts/Gidugu.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gidugu-Italic";
+  src: url("/Fonts/Gidugu-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   LAKKI REDDY
+========================= */
+
+@font-face {
+  font-family: "LakkiReddy";
+  src: url("/Fonts/LakkiReddy.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================
+   NANDakam
+========================= */
+
+@font-face {
+  font-family: "Nandakam";
+  src: url("/Fonts/Nandakam.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nandakam-Italic";
+  src: url("/Fonts/Nandakam-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   PEDDANA
+========================= */
+
+@font-face {
+  font-family: "Peddana";
+  src: url("/Fonts/Peddana-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================
+   PURUSHOTHAMAA
+========================= */
+
+@font-face {
+  font-family: "Purushothamaa";
+  src: url("/Fonts/Purushothamaa.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Purushothamaa-Italic";
+  src: url("/Fonts/Purushothamaa-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   RAMABHADRA
+========================= */
+
+@font-face {
+  font-family: "Ramabhadra";
+  src: url("/Fonts/Ramabhadra.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ramabhadra-Italic";
+  src: url("/Fonts/Ramabhadra-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   SREE KRUSHNADEVARAYA
+========================= */
+
+@font-face {
+  font-family: "SreeKrushnadevaraya";
+  src: url("/Fonts/Sree Krushnadevaraya.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SreeKrushnadevaraya-Italic";
+  src: url("/Fonts/Sree Krushnadevaraya-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   SURANNA
+========================= */
+
+@font-face {
+  font-family: "Suranna-Regular";
+  src: url("/Fonts/Suranna Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suranna-Bold";
+  src: url("/Fonts/Suranna Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suranna-Italic";
+  src: url("/Fonts/Suranna-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suranna-BoldItalic";
+  src: url("/Fonts/Suranna Bold Italic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   SURAVARAM
+========================= */
+
+@font-face {
+  font-family: "Suravaram";
+  src: url("/Fonts/Suravaram.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suravaram-Italic";
+  src: url("/Fonts/Suravaram-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
