@@ -943,3 +943,98 @@ MuiTypography-root
   font-style: normal;
   font-display: swap;
 }
+/* =========================
+   🆕 ANNAMAYYA
+========================= */
+
+.chitramala-font-annamayya {
+  font-family: "Annamayya", system-ui;
+}
+
+.chitramala-font-annamayya-bold {
+  font-family: "Annamayya-Bold", system-ui;
+}
+
+.chitramala-font-annamayya-italic {
+  font-family: "Annamayya-Italic", system-ui;
+}
+
+.chitramala-font-annamayya-bolditalic {
+  font-family: "Annamayya-BoldItalic", system-ui;
+}
+
+/* =========================
+   DHURJATI
+========================= */
+
+.chitramala-font-dhurjati {
+  font-family: "Dhurjati", system-ui;
+}
+
+.chitramala-font-dhurjati-italic {
+  font-family: "Dhurjati-Italic", system-ui;
+}
+
+/* =========================
+   JIMS
+========================= */
+
+.chitramala-font-jims {
+  font-family: "JIMS", system-ui;
+}
+
+.chitramala-font-jims-italic {
+  font-family: "JIMS-Italic", system-ui;
+}
+
+/* =========================
+   KANAKADURGA
+========================= */
+
+.chitramala-font-kanakadurga {
+  font-family: "KanakaDurga", system-ui;
+}
+
+.chitramala-font-kanakadurga-italic {
+  font-family: "KanakaDurga-Italic", system-ui;
+}
+
+/* =========================
+   MANDALI
+========================= */
+
+.chitramala-font-mandali {
+  font-family: "Mandali-Regular", system-ui;
+}
+
+.chitramala-font-mandali-bold {
+  font-family: "Mandali-Bold", system-ui;
+}
+
+.chitramala-font-mandali-italic {
+  font-family: "Mandali-Italic", system-ui;
+}
+
+.chitramala-font-mandali-bolditalic {
+  font-family: "Mandali-BoldItalic", system-ui;
+}
+
+/* =========================
+   NANDACAM
+========================= */
+
+.chitramala-font-nandakam {
+  font-family: "Nandakam", system-ui;
+}
+
+.chitramala-font-nandakam-italic {
+  font-family: "Nandakam-Italic", system-ui;
+}
+
+/* =========================
+   POTTI SREERAMULU
+========================= */
+
+.chitramala-font-pottisreeramulu {
+  font-family: "PottiSreeramulu", system-ui;
+}
