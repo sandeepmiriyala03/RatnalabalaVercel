@@ -113,7 +113,33 @@ export type FontKey =
   | "suranna-bolditalic"
 
   | "suravaram"
-  | "suravaram-italic";
+  | "suravaram-italic"
+
+  /* =========================
+     🆕 Newly Added (1/19/2026)
+     ========================= */
+
+  | "annamayya"
+  | "annamayya-bold"
+  | "annamayya-italic"
+  | "annamayya-bolditalic"
+
+  | "dhurjati"
+  | "dhurjati-italic"
+
+  | "jims"
+  | "jims-italic"
+
+  | "kanakadurga"
+  | "kanakadurga-italic"
+
+  | "mandali-regular"
+  | "mandali-bold"
+  | "mandali-italic"
+  | "mandali-bolditalic"
+
+  | "pottisreeramulu";
+
 
 const FONTS: { key: FontKey; label: string; className: string }[] = [
   { key: "gurajada", label: "గురజాడ", className: "chitramala-font-gurajada" },
@@ -161,6 +187,31 @@ const FONTS: { key: FontKey; label: string; className: string }[] = [
 
   { key: "suravaram", label: "సురవరం", className: "chitramala-font-suravaram" },
   { key: "suravaram-italic", label: "సురవరం (ఇటాలిక్)", className: "chitramala-font-suravaram-italic" },
+  /* =========================
+   🆕 Newly Added Fonts (1/19/2026)
+   ========================= */
+
+{ key: "annamayya", label: "అన్నమయ్య", className: "chitramala-font-annamayya" },
+{ key: "annamayya-bold", label: "అన్నమయ్య (Bold)", className: "chitramala-font-annamayya-bold" },
+{ key: "annamayya-italic", label: "అన్నమయ్య (ఇటాలిక్)", className: "chitramala-font-annamayya-italic" },
+{ key: "annamayya-bolditalic", label: "అన్నమయ్య (Bold Italic)", className: "chitramala-font-annamayya-bolditalic" },
+
+{ key: "dhurjati", label: "ధూర్జటి", className: "chitramala-font-dhurjati" },
+{ key: "dhurjati-italic", label: "ధూర్జటి (ఇటాలిక్)", className: "chitramala-font-dhurjati-italic" },
+
+{ key: "jims", label: "జిమ్స్", className: "chitramala-font-jims" },
+{ key: "jims-italic", label: "జిమ్స్ (ఇటాలిక్)", className: "chitramala-font-jims-italic" },
+
+{ key: "kanakadurgA", label: "కనకదుర్గ", className: "chitramala-font-kanakadurgA" },
+{ key: "kanakadurgA-italic", label: "కనకదుర్గ (ఇటాలిక్)", className: "chitramala-font-kanakadurgA-italic" },
+
+{ key: "mandali-regular", label: "మండలి (Regular)", className: "chitramala-font-mandali" },
+{ key: "mandali-bold", label: "మండలి (Bold)", className: "chitramala-font-mandali-bold" },
+{ key: "mandali-italic", label: "మండలి (Italic)", className: "chitramala-font-mandali-italic" },
+{ key: "mandali-bolditalic", label: "మండలి (Bold Italic)", className: "chitramala-font-mandali-bolditalic" },
+
+{ key: "pottisreeramulu", label: "పొట్టి శ్రీరాములు", className: "chitramala-font-pottisreeramulu" },
+
 ];
 
 
