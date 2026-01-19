@@ -165,7 +165,10 @@ export default function FontControlsTelugu({
             ))}
           </Select>
         </Box>
-
+<Typography variant="caption" sx={{ opacity: 0.8 }}>
+  ప్రస్తుతం <strong>{TELUGU_FONTS.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
+</Typography>
+    
         {/* 🔠 Font Size */}
         <Box display="flex" alignItems="center" gap={1}>
           <Typography sx={{ fontSize: "0.9rem" }}>సైజ్</Typography>
