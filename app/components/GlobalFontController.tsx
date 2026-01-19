@@ -48,7 +48,7 @@ export default function GlobalFontController() {
     setFontFamily(DEFAULT_FONT);
     setFontSize(DEFAULT_SIZE);
   };
-
+ const TOTAL_TELUGU_FONTS = 53;
   return (
     <Box sx={{ maxWidth: 900, mx: "auto", px: 2, py: 1 }}>
       {/* ℹ️ Helper */}
@@ -57,6 +57,8 @@ export default function GlobalFontController() {
         sx={{ textAlign: "center", mb: 1, opacity: 0.75 }}
       >
         సౌకర్యవంతమైన తెలుగు పఠనం కోసం ఫాంట్ మరియు అక్షర పరిమాణాన్ని మీకు నచ్చినట్లు మార్చుకోండి.
+        <br />
+  <strong>  ప్రస్తుతం {TOTAL_TELUGU_FONTS} తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.</strong>
       </Typography>
 
       {/* 🔽 Controls */}
