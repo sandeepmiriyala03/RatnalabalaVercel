@@ -56,7 +56,32 @@ export type TeluguFont =
   | "Suranna-BoldItalic"
 
   | "Suravaram"
-  | "Suravaram-Italic";
+  | "Suravaram-Italic"
+    /* =========================
+     🆕 Newly Added Fonts
+     ========================= */
+
+  | "Annamayya"
+  | "Annamayya-Bold"
+  | "Annamayya-Italic"
+  | "Annamayya-BoldItalic"
+
+  | "Dhurjati"
+  | "Dhurjati-Italic"
+
+  | "JIMS"
+  | "JIMS-Italic"
+
+  | "KanakaDurga"
+  | "KanakaDurga-Italic"
+
+  | "Mandali-Regular"
+  | "Mandali-Bold"
+  | "Mandali-Italic"
+  | "Mandali-BoldItalic"
+
+  | "PottiSreeramulu";
+  ;
 
 
 const DEFAULT_FONT: TeluguFont = "Ramaneeya";

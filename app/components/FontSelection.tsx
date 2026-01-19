@@ -21,7 +21,7 @@ type Props = {
 };
 
 
- const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
+const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
   { label: "గురజాడ", value: "Gurajada" },
   { label: "ఎన్‌టిఆర్", value: "NTR" },
   { label: "రమణీయ", value: "Ramaneeya" },
@@ -68,7 +68,33 @@ type Props = {
   { label: "సురవరం (ఇటాలిక్)", value: "Suravaram-Italic" },
 
   { label: "పొన్నల", value: "Ponnala-Regular" },
+
+  /* =========================
+     🆕 Newly Added (1/19/2026)
+     ========================= */
+
+  { label: "అన్నమయ్య", value: "Annamayya" },
+  { label: "అన్నమయ్య (Bold)", value: "Annamayya-Bold" },
+  { label: "అన్నమయ్య (Italic)", value: "Annamayya-Italic" },
+  { label: "అన్నమయ్య (Bold Italic)", value: "Annamayya-BoldItalic" },
+
+  { label: "ధూర్జటి", value: "Dhurjati" },
+  { label: "ధూర్జటి (ఇటాలిక్)", value: "Dhurjati-Italic" },
+
+  { label: "జిమ్స్", value: "JIMS" },
+  { label: "జిమ్స్ (ఇటాలిక్)", value: "JIMS-Italic" },
+
+  { label: "కనకదుర్గ", value: "KanakaDurga" },
+  { label: "కనకదుర్గ (ఇటాలిక్)", value: "KanakaDurga-Italic" },
+
+  { label: "మండలి (Regular)", value: "Mandali-Regular" },
+  { label: "మండలి (Bold)", value: "Mandali-Bold" },
+  { label: "మండలి (Italic)", value: "Mandali-Italic" },
+  { label: "మండలి (Bold Italic)", value: "Mandali-BoldItalic" },
+
+  { label: "పొట్టి శ్రీరాములు", value: "PottiSreeramulu" },
 ];
+
 
 
 

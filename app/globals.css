@@ -797,3 +797,149 @@ MuiTypography-root
   font-style: italic;
   font-display: swap;
 }
+/* =========================
+   🆕 Fonts added on 1/19/2026
+   ========================= */
+
+/* Annamayya */
+@font-face {
+  font-family: "Annamayya";
+  src: url("/Fonts/Annamayya.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Annamayya-Bold";
+  src: url("/Fonts/AnnamayyaBold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Annamayya-Italic";
+  src: url("/Fonts/AnnamayyaItalic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Annamayya-BoldItalic";
+  src: url("/Fonts/AnnamayyaBoldItalic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Dhurjati */
+@font-face {
+  font-family: "Dhurjati";
+  src: url("/Fonts/Dhurjati.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Dhurjati-Italic";
+  src: url("/Fonts/Dhurjati-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* JIMS */
+@font-face {
+  font-family: "JIMS";
+  src: url("/Fonts/JIMS.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JIMS-Italic";
+  src: url("/Fonts/JIMSItalic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* KanakaDurga */
+@font-face {
+  font-family: "KanakaDurga";
+  src: url("/Fonts/KanakaDurga.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "KanakaDurga-Italic";
+  src: url("/Fonts/KanakaDurga-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Mandali */
+@font-face {
+  font-family: "Mandali-Regular";
+  src: url("/Fonts/Mandali-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mandali-Bold";
+  src: url("/Fonts/Mandali-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mandali-Italic";
+  src: url("/Fonts/Mandali-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mandali-BoldItalic";
+  src: url("/Fonts/Mandali-Bold Italic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Nandakam */
+@font-face {
+  font-family: "Nandakam";
+  src: url("/Fonts/Nandakam.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nandakam-Italic";
+  src: url("/Fonts/Nandakam-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Potti Sreeramulu */
+@font-face {
+  font-family: "PottiSreeramulu";
+  src: url("/Fonts/Potti Sreeramulu.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
