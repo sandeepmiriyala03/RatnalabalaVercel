@@ -187,9 +187,7 @@ const FONTS: { key: FontKey; label: string; className: string }[] = [
 
   { key: "suravaram", label: "సురవరం", className: "chitramala-font-suravaram" },
   { key: "suravaram-italic", label: "సురవరం (ఇటాలిక్)", className: "chitramala-font-suravaram-italic" },
-  /* =========================
-   🆕 Newly Added Fonts (1/19/2026)
-   ========================= */
+
 
 { key: "annamayya", label: "అన్నమయ్య", className: "chitramala-font-annamayya" },
 { key: "annamayya-bold", label: "అన్నమయ్య (Bold)", className: "chitramala-font-annamayya-bold" },
@@ -202,8 +200,8 @@ const FONTS: { key: FontKey; label: string; className: string }[] = [
 { key: "jims", label: "జిమ్స్", className: "chitramala-font-jims" },
 { key: "jims-italic", label: "జిమ్స్ (ఇటాలిక్)", className: "chitramala-font-jims-italic" },
 
-{ key: "kanakadurgA", label: "కనకదుర్గ", className: "chitramala-font-kanakadurgA" },
-{ key: "kanakadurgA-italic", label: "కనకదుర్గ (ఇటాలిక్)", className: "chitramala-font-kanakadurgA-italic" },
+{ key: "kanakadurga", label: "కనకదుర్గ", className: "chitramala-font-kanakadurgA" },
+{ key: "kanakadurga-italic", label: "కనకదుర్గ (ఇటాలిక్)", className: "chitramala-font-kanakadurgA-italic" },
 
 { key: "mandali-regular", label: "మండలి (Regular)", className: "chitramala-font-mandali" },
 { key: "mandali-bold", label: "మండలి (Bold)", className: "chitramala-font-mandali-bold" },
