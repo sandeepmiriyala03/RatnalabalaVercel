@@ -1,6 +1,5 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
-import path from "path";
 
 const withSerwist = withSerwistInit({
   swSrc: "app/sw.ts",
@@ -13,9 +12,6 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-
-  // ✅ FIX for Next.js 16 + Vercel + Serwist
-  outputFileTracingRoot: path.join(__dirname),
 };
 
 export default withSerwist(nextConfig);
