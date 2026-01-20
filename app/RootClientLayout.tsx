@@ -17,72 +17,50 @@ export type TeluguFont =
   | "Ramaneeya"
   | "Veturi"
   | "Sirivennela"
-
   | "Chathura-Thin"
   | "Chathura-Light"
   | "Chathura-Regular"
   | "Chathura-Bold"
   | "Chathura-ExtraBold"
-
   | "Ramaraja"
   | "RaviPrakash"
   | "TenaliRamakrishna"
   | "Timmana"
   | "TANA"
   | "Ponnala-Regular"
-
   | "Gidugu"
   | "Gidugu-Italic"
-
   | "LakkiReddy"
-
   | "Nandakam"
   | "Nandakam-Italic"
-
   | "Peddana"
-
   | "Purushothamaa"
   | "Purushothamaa-Italic"
-
   | "Ramabhadra"
   | "Ramabhadra-Italic"
-
   | "SreeKrushnadevaraya"
   | "SreeKrushnadevaraya-Italic"
-
   | "Suranna-Regular"
   | "Suranna-Bold"
   | "Suranna-Italic"
   | "Suranna-BoldItalic"
-
   | "Suravaram"
   | "Suravaram-Italic"
-    /* =========================
-     🆕 Newly Added Fonts
-     ========================= */
-
   | "Annamayya"
   | "Annamayya-Bold"
   | "Annamayya-Italic"
   | "Annamayya-BoldItalic"
-
   | "Dhurjati"
   | "Dhurjati-Italic"
-
   | "JIMS"
   | "JIMS-Italic"
-
   | "KanakaDurga"
   | "KanakaDurga-Italic"
-
   | "Mandali-Regular"
   | "Mandali-Bold"
   | "Mandali-Italic"
   | "Mandali-BoldItalic"
-
   | "PottiSreeramulu";
-  ;
-
 
 const DEFAULT_FONT: TeluguFont = "Ramaneeya";
 const DEFAULT_SIZE = 1;
@@ -96,78 +74,69 @@ export default function RootClientLayout({
   const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
   const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
 
-  /* 🔁 1. MOUNT FIRST */
+  /* 1️⃣ Mount */
   useEffect(() => {
     setMounted(true);
   }, []);
-  
-/* 📊 SIMPLE ANALYTICS (PAGE VIEW) */
-useEffect(() => {
-  if (!mounted) return;
-  fetch("/api/pageview", { method: "POST" }).catch(() => {});
-}, [mounted]);
 
-  /* ✅ 2. SERVICE WORKER */
+  /* 2️⃣ Simple analytics */
+  useEffect(() => {
+    if (!mounted) return;
+    fetch("/api/pageview", { method: "POST" }).catch(() => {});
+  }, [mounted]);
+
+  /* 3️⃣ Service Worker */
   useEffect(() => {
     if (!mounted || !("serviceWorker" in navigator)) return;
 
-    const handleLoad = () => {
-      navigator.serviceWorker.register("/sw.js").then((registration) => {
-        console.log("✅ SW registered: ", registration.scope);
-      }).catch((error) => {
-        console.log("❌ SW registration failed: ", error);
-      });
+    const registerSW = () => {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => console.log("✅ SW registered:", reg.scope))
+        .catch((err) => console.error("❌ SW failed:", err));
     };
 
     if (document.readyState === "complete") {
-      handleLoad();
+      registerSW();
     } else {
-      window.addEventListener("load", handleLoad);
-      return () => window.removeEventListener("load", handleLoad);
+      window.addEventListener("load", registerSW);
+      return () => window.removeEventListener("load", registerSW);
     }
   }, [mounted]);
 
-  /* 🔁 3. Restore settings */
+  /* 4️⃣ Restore font settings */
   useEffect(() => {
     if (!mounted) return;
+
     const saved = localStorage.getItem("teluguFontSettings");
-    if (saved) {
-      try {
-        const { family, size } = JSON.parse(saved);
-        if (family) setFontFamily(family as TeluguFont);
-        if (size) setFontSize(size);
-      } catch (e) {
-        console.warn("Font settings parse error:", e);
-      }
+    if (!saved) return;
+
+    try {
+      const { family, size } = JSON.parse(saved);
+      if (family) setFontFamily(family as TeluguFont);
+      if (size) setFontSize(size);
+    } catch {
+      /* ignore */
     }
   }, [mounted]);
 
-  /* ✅ 4. Apply fonts */
+  /* 5️⃣ Apply font settings */
   useEffect(() => {
     if (!mounted) return;
+
     const root = document.documentElement;
     root.style.setProperty("--telugu-font-family", fontFamily);
     root.style.setProperty("--telugu-font-size", `${fontSize}rem`);
+
     localStorage.setItem(
       "teluguFontSettings",
       JSON.stringify({ family: fontFamily, size: fontSize })
     );
   }, [fontFamily, fontSize, mounted]);
 
-  // ✅ FIXED SSR - SIMPLE LOADING SCREEN (No Client Components)
+  /* ⛔ Prevent hydration mismatch */
   if (!mounted) {
-    return (
-      <div 
-        style={{ 
-          minHeight: '100vh', 
-          padding: '64px 16px', 
-          fontFamily: 'system-ui, sans-serif',
-          opacity: 0.01 
-        }}
-      >
-        {/* Empty - prevents hydration mismatch */}
-      </div>
-    );
+    return <div style={{ minHeight: "100vh", opacity: 0 }} />;
   }
 
   return (
@@ -194,6 +163,7 @@ useEffect(() => {
           <ClientWrapper>{children}</ClientWrapper>
         </Box>
       </Container>
+
       <PwaInstallPrompt />
       <FloatingAIButton />
       <MobileBottomNav />
