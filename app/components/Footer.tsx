@@ -56,22 +56,23 @@ export default function Footer() {
     >
       <Container maxWidth="md">
         {/* Identity */}
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block" }}
-        >
-          రత్నాలబాల • పద్యాలవాల • భావాలమాల • శతకాలమాల • చిత్రమాల
-        </Typography>
+      <Typography
+  variant="caption"
+  color="text.secondary"
+  sx={{ display: "block" }}
+>
+  రత్నాలబాల - పద్యాలవాల - భావాలమాల - శతకాలమాల - చిత్రమాల - కథామాల - సామెతలమాల - లిపిమాల
+</Typography>
 
-        {/* Tagline */}
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ fontStyle: "italic", display: "block", mt: 0.3 }}
-        >
-          చదవండి • వినండి • రాయండి • చిత్రీకరించండి • పంచుకోండి
-        </Typography>
+{/* Tagline */}
+<Typography
+  variant="caption"
+  color="text.secondary"
+  sx={{ fontStyle: "italic", display: "block", mt: 0.3 }}
+>
+  చదవండి - వినండి - రాయండి - చిత్రీకరించండి - పంచుకోండి - నేర్చుకోండి - అన్వేషించండి - భద్రపరచండి
+</Typography>
+
 
         <Divider sx={{ my: 0.8 }} />
 
