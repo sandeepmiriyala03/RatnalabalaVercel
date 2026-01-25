@@ -13,9 +13,8 @@ import ImageIcon from "@mui/icons-material/Image";
 import { usePathname, useRouter } from "next/navigation";
 
 const items = [
-  { label: "మిరా", path: "/", icon: <HomeIcon /> },
-  { label: "పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
-  { label: "మిరా ", path: "/mirapoems", icon: <AutoStoriesIcon /> },
+  { label: "మిరా", path: "/mirapoems", icon: <AutoStoriesIcon /> },
+   { label: "పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
   { label: "శతకాలమాల", path: "/shatakamu", icon: <LibraryBooksIcon /> },
   { label: "చిత్రమాల", path: "/chitramala", icon: <ImageIcon /> },
   { label: "కథామాల", path: "/kathamala", icon: <AutoStoriesIcon /> },
