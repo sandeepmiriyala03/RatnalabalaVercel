@@ -14,6 +14,7 @@ const navItems = [
     { label: "శతకాలమాల", path: "/shatakamu" },
   { label: "చిత్రమాల", path: "/chitramala" },
   { label: "కథామాల", path: "/kathamala" },
+  { label: "సామెతలమాల", path: "/sametalu" },
 ];
 
 export default function Navbar() {
