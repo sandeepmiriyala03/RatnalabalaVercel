@@ -5,6 +5,8 @@ import {
   Stack,
   Typography,
   TextField,
+  Chip,
+  Box,
 } from "@mui/material";
 
 import type {
@@ -81,20 +83,43 @@ export default function SametaluList({ letter }: Props) {
     );
   }, [sametalu, search]);
 
+  const totalCount = sametalu.length;
+  const visibleCount = filtered.length;
+
+  /* ⏳ Loading */
   if (loading) {
     return <Typography align="center">లోడ్ అవుతోంది…</Typography>;
   }
 
-  if (filtered.length === 0) {
+  /* 🚫 Empty */
+  if (totalCount === 0) {
     return (
       <Typography align="center" sx={{ opacity: 0.7 }}>
-        సరిపోయే సామెతలు లేవు
+        ఈ అక్షరానికి సామెతలు లేవు
       </Typography>
     );
   }
 
   return (
     <Stack spacing={2}>
+      {/* 🔢 Counts */}
+      <Box
+        display="flex"
+        gap={1}
+        justifyContent="center"
+        flexWrap="wrap"
+      >
+        <Chip
+          label={`📚 మొత్తం: ${totalCount}`}
+          variant="outlined"
+        />
+        <Chip
+          label={`🔍 చూపిస్తున్నవి: ${visibleCount}`}
+          color="primary"
+          variant="outlined"
+        />
+      </Box>
+
       {/* 🔍 Search */}
       <TextField
         size="small"
@@ -102,6 +127,13 @@ export default function SametaluList({ letter }: Props) {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
+
+      {/* 🚫 No match */}
+      {visibleCount === 0 && (
+        <Typography align="center" sx={{ opacity: 0.7 }}>
+          సరిపోయే సామెతలు లేవు
+        </Typography>
+      )}
 
       {/* 📜 List */}
       {filtered.map((s, i) => (
