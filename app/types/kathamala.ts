@@ -16,4 +16,5 @@ export interface KathamalaStory {
   age_group: AgeKey;
   author?: string;
   illustrator?: string;
+  moral: string;
 }

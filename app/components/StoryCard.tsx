@@ -13,7 +13,7 @@ import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
 
 import ShareButtons from "@/app/components/ShareBar";
-import type { KathamalaStory } from "@/app/types/kathamala"; // ✅ FIXED
+import type { KathamalaStory } from "@/app/types/kathamala"; 
 type Props = {
   story: KathamalaStory;
 
@@ -27,7 +27,8 @@ type Props = {
 const StoryCard: React.FC<Props> = ({
   story,
   enableRead = true,
-  seriesName = "కథామాల (Kathamala)",
+  seriesName = "కథామాల ",
+
 }) => {
   const storyRef = useRef<HTMLDivElement>(null);
 
