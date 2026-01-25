@@ -138,8 +138,7 @@ export default function SametaluList({ letter }: Props) {
       {letterHeader && (
         <SametaCard
           sameta={letterHeader}
-          isHeader
-          enableRead={false}
+          
         />
       )}
 
