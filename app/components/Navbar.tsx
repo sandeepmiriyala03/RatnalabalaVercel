@@ -13,6 +13,7 @@ const navItems = [
    { label: "మిరా పద్యాలు", path: "/mirapoems" },
     { label: "శతకాలమాల", path: "/shatakamu" },
   { label: "చిత్రమాల", path: "/chitramala" },
+  { label: "కథామాల", path: "/kathamala" },
 ];
 
 export default function Navbar() {

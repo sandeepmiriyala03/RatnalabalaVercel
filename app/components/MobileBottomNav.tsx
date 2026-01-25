@@ -18,6 +18,7 @@ const items = [
   { label: "మిరా పద్యాలు", path: "/mirapoems", icon: <AutoStoriesIcon /> },
   { label: "శతకాలమాల", path: "/shatakamu", icon: <LibraryBooksIcon /> },
   { label: "చిత్రమాల", path: "/chitramala", icon: <ImageIcon /> },
+  { label: "కథామాల", path: "/kathamala", icon: <AutoStoriesIcon /> },
 ];
 
 export default function MobileBottomNav() {
