@@ -19,18 +19,19 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+
+    /* 🔥 THIS LINE WAS MISSING */
+    "baseUrl": ".",
+
     "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+      "@/*": ["./*"]
+    },
+
+    "plugins": [
+      { "name": "next" }
+    ]
   },
   "include": [
     "next-env.d.ts",
@@ -42,6 +43,6 @@
   ],
   "exclude": [
     "node_modules",
-    "public/sw.js" // ← Exclude generated sw.js
+    "public/sw.js"
   ]
 }
