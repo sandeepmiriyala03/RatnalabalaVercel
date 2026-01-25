@@ -7,6 +7,7 @@ import {
   Card,
   CardContent,
   IconButton,
+  Divider,
 } from "@mui/material";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
@@ -16,11 +17,16 @@ import type { Sameta } from "@/app/types/sametalu";
 
 type Props = {
   sameta: Sameta;
+
+  /* 🔠 Letter header card? */
+  isHeader?: boolean;
+
   enableRead?: boolean;
 };
 
 const SametaCard: React.FC<Props> = ({
   sameta,
+  isHeader = false,
   enableRead = true,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -56,39 +62,57 @@ const SametaCard: React.FC<Props> = ({
       }}
     >
       <CardContent>
+        {/* 📜 Content (poster root) */}
         <Box ref={ref} data-poster-root>
           <Typography
             sx={{
               textAlign: "center",
               lineHeight: 2,
-              fontSize: "1.05rem",
+              fontSize: isHeader ? "1.4rem" : "1.05rem",
+              fontWeight: isHeader ? 800 : 400,
             }}
           >
             {sameta.text}
           </Typography>
+
+          {/* 📌 Footer for image/share */}
+          <Divider sx={{ my: 2 }} />
+
+          <Typography
+            sx={{
+              textAlign: "center",
+              fontSize: "0.8rem",
+              opacity: 0.75,
+              fontWeight: 600,
+            }}
+          >
+            సామెతల మాల
+          </Typography>
         </Box>
 
-        {/* Controls */}
-        <Box
-          sx={{
-            mt: 2,
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
-          {enableRead && (
-            <Box>
-              <IconButton onClick={speak}>
-                <VolumeUpIcon color="primary" />
-              </IconButton>
-              <IconButton onClick={stop}>
-                <StopCircleIcon color="error" />
-              </IconButton>
-            </Box>
-          )}
+        {/* 🎛 Controls (skip for header) */}
+        {!isHeader && (
+          <Box
+            sx={{
+              mt: 2,
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            {enableRead && (
+              <Box>
+                <IconButton onClick={speak}>
+                  <VolumeUpIcon color="primary" />
+                </IconButton>
+                <IconButton onClick={stop}>
+                  <StopCircleIcon color="error" />
+                </IconButton>
+              </Box>
+            )}
 
-          <ShareButtons targetRef={ref} />
-        </Box>
+            <ShareButtons targetRef={ref} />
+          </Box>
+        )}
       </CardContent>
     </Card>
   );
