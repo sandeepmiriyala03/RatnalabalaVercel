@@ -220,7 +220,7 @@ export default function TeluguOcrPage() {
 
   return (
     <div style={{ padding: 20, maxWidth: 760, margin: "auto" }}>
-      <h1 style={{ textAlign: "center" }}>యథాక్షర పఠనం</h1>
+      <h1 style={{ textAlign: "center" }}>లిపిమాల</h1>
 
       <TeluguOcrExplanation />
 
