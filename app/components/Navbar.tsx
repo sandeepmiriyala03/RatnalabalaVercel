@@ -6,7 +6,6 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { Box } from "@mui/material";
 import Image from "next/image";
-
 const navItems = [
   { label: "మిరా", path: "/" },
   { label: "పద్యాలవాల", path: "/poems" },
@@ -15,6 +14,7 @@ const navItems = [
   { label: "చిత్రమాల", path: "/chitramala" },
   { label: "కథామాల", path: "/kathamala" },
   { label: "సామెతలమాల", path: "/sametalu" },
+  { label: "లిపిమాల ", path: "/lipimala" },
 ];
 
 export default function Navbar() {

@@ -19,6 +19,7 @@ const items = [
   { label: "చిత్రమాల", path: "/chitramala", icon: <ImageIcon /> },
   { label: "కథామాల", path: "/kathamala", icon: <AutoStoriesIcon /> },
   { label: "సామెతలమాల", path: "/sametalu", icon: <MenuBookIcon /> },
+  { label: "లిపిమాల ", path: "/lipimala", icon: <HomeIcon /> },
 ];
 
 export default function MobileBottomNav() {

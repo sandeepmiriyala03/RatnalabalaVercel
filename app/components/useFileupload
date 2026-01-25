@@ -1,0 +1,157 @@
+"use client";
+
+import { useState, useRef, ChangeEvent } from "react";
+
+/* ================= TYPES ================= */
+
+interface Analysis {
+  chunk_number: number;
+  keywords: string[];
+  summary: string[];
+}
+
+interface Result {
+  total_chunks: number;
+  file_type?: string;
+  analysis: Analysis[];
+}
+
+/* ================= HOOK ================= */
+
+export function useFileUpload() {
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<Result | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState<number | null>(null);
+
+  const startTimeRef = useRef<number | null>(null);
+
+  /* ========== RESET ========== */
+
+  const resetState = () => {
+    setError("");
+    setResult(null);
+    setElapsedTime(null);
+  };
+
+  /* ========== VALIDATION ========== */
+
+  const validatePdf = (selected: File): boolean => {
+    if (selected.type !== "application/pdf") {
+      setError("📄 దయచేసి PDF ఫైల్‌ను మాత్రమే అప్లోడ్ చేయండి");
+      return false;
+    }
+
+    if (selected.size > 10 * 1024 * 1024) {
+      setError("📄 PDF ఫైల్ 10MB కంటే చిన్నదిగా ఉండాలి");
+      return false;
+    }
+
+    return true;
+  };
+
+  /* ========== FILE SELECT ========== */
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+
+    resetState();
+
+    if (!validatePdf(selected)) return;
+
+    setFile(selected);
+    setDragOver(false);
+  };
+
+  /* ========== DRAG & DROP ========== */
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+
+    const dropped = e.dataTransfer.files?.[0];
+    if (!dropped) return;
+
+    resetState();
+
+    if (!validatePdf(dropped)) return;
+
+    setFile(dropped);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setDragOver(false);
+  };
+
+  /* ========== UPLOAD ========== */
+
+  const handleUpload = async () => {
+    if (!file) {
+      setError("📄 ముందుగా PDF ఫైల్‌ను ఎంచుకోండి");
+      return;
+    }
+
+    setLoading(true);
+    resetState();
+    startTimeRef.current = Date.now();
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const raw = await res.text();
+      const data = JSON.parse(raw);
+
+      if (!res.ok) {
+        setError(data?.error || "📄 PDF ప్రాసెస్ చేయడంలో లోపం జరిగింది");
+        return;
+      }
+
+      setResult(data);
+
+      if (startTimeRef.current) {
+        setElapsedTime(
+          (Date.now() - startTimeRef.current) / 1000
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "📄 సర్వర్ లోపం జరిగింది"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ========== RETURN ========== */
+
+  return {
+    file,
+    error,
+    result,
+    loading,
+    dragOver,
+    elapsedTime,
+
+    handleFileChange,
+    handleDrop,
+    handleDragOver,
+    handleDragLeave,
+    handleUpload,
+  };
+}
