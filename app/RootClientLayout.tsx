@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState,useRef } from "react";
 import ClientWrapper from "@/app/components/ClientWrapper";
 import Navbar from "@/app/components/Navbar";
 import MobileBottomNav from "@/app/components/MobileBottomNav";
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
 import FloatingAIButton from "@/app/components/FloatingAIButton";
 import FontControlsTelugu from "@/app/components/FontSelection";
-
+import { cacheAllPoems } from "@/lib/cachePoems";
 import { AppBar, Toolbar, Container, Box } from "@mui/material";
+
 
 /* 🔤 Allowed Telugu Fonts */
 export type TeluguFont =
@@ -86,6 +87,8 @@ export type TeluguFont =
 
 const DEFAULT_FONT: TeluguFont = "Ramaneeya";
 const DEFAULT_SIZE = 1;
+const CACHE_VERSION_KEY = "bhavalamala_cache_v1";
+
 
 export default function RootClientLayout({
   children,
@@ -95,11 +98,53 @@ export default function RootClientLayout({
   const [mounted, setMounted] = useState(false);
   const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
   const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
+const bootstrapRef = useRef(false);
+/* 🔁 1. MOUNT FIRST */
+useEffect(() => {
+  setMounted(true);
+}, []);
 
-  /* 🔁 1. MOUNT FIRST */
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+
+
+  /* 🧠 0. BOOTSTRAP INDEXEDDB (FIRST LOAD ONLY) */
+useEffect(() => {
+  if (!mounted) return;
+
+  // 🚫 Prevent double execution (StrictMode)
+  if (bootstrapRef.current) return;
+  bootstrapRef.current = true;
+
+  async function bootstrapIndexedDB() {
+    if (localStorage.getItem(CACHE_VERSION_KEY) === "done") {
+      console.log("✅ IndexedDB already initialized");
+      return;
+    }
+
+    try {
+      console.log("⏳ Fetching all poems from API...");
+      const res = await fetch("/api/shatakamu?key=all");
+
+      if (!res.ok) {
+        throw new Error("API failed");
+      }
+
+      const data = await res.json();
+
+      if (data.success) {
+        console.log("⏳ Writing poems to IndexedDB...");
+        await cacheAllPoems(data.poems);
+        localStorage.setItem(CACHE_VERSION_KEY, "done");
+        console.log("✅ IndexedDB bootstrap completed");
+      }
+    } catch (err) {
+      console.error("❌ IndexedDB bootstrap failed:", err);
+      bootstrapRef.current = false; // allow retry
+    }
+  }
+
+  bootstrapIndexedDB();
+}, [mounted]);
+
   
 /* 📊 SIMPLE ANALYTICS (PAGE VIEW) */
 useEffect(() => {
