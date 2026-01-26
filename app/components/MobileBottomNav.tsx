@@ -5,21 +5,22 @@ import {
   BottomNavigationAction,
   Paper,
 } from "@mui/material";
-import HomeIcon from "@mui/icons-material/Home";
+
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import ImageIcon from "@mui/icons-material/Image";
 import { usePathname, useRouter } from "next/navigation";
+import DocumentScannerIcon from "@mui/icons-material/DocumentScanner";
 
 const items = [
   { label: "మిరా", path: "/mirapoems", icon: <AutoStoriesIcon /> },
-   { label: "పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
-  { label: "శతకాలమాల", path: "/shatakamu", icon: <LibraryBooksIcon /> },
-  { label: "చిత్రమాల", path: "/chitramala", icon: <ImageIcon /> },
-  { label: "కథామాల", path: "/kathamala", icon: <AutoStoriesIcon /> },
-  { label: "సామెతలమాల", path: "/sametalu", icon: <MenuBookIcon /> },
-  { label: "లిపిమాల ", path: "/lipimala", icon: <HomeIcon /> },
+  { label: "పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
+  { label: "శతకామాల", path: "/shatakamu", icon: <LibraryBooksIcon /> },
+  { label: "చిత్రామాల", path: "/chitramala", icon: <ImageIcon /> },
+  { label: "కథమాల", path: "/kathamala", icon: <AutoStoriesIcon /> },
+  { label: "సామెతమాల", path: "/sametalu", icon: <MenuBookIcon /> },
+  { label: "లిపిమాల", path: "/lipimala", icon: <DocumentScannerIcon /> },
 ];
 
 export default function MobileBottomNav() {
@@ -28,14 +29,17 @@ export default function MobileBottomNav() {
 
   return (
     <Paper
-      elevation={8}
+      elevation={12}
       sx={{
         position: "fixed",
         bottom: 0,
         left: 0,
         right: 0,
         display: { xs: "block", md: "none" },
-        zIndex: 1300,
+        zIndex: 1400,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        overflow: "hidden",
       }}
     >
       <BottomNavigation
@@ -43,9 +47,21 @@ export default function MobileBottomNav() {
         onChange={(_, value) => router.push(value)}
         showLabels
         sx={{
-          padding: "4px 0",
+          height: 64,
+          px: 0.5,
+          "& .MuiBottomNavigationAction-root": {
+            minWidth: 0,
+            px: 0.5,
+            py: 0.5,
+            borderRadius: 2,
+          },
           "& .Mui-selected": {
             color: "primary.main",
+            backgroundColor: "rgba(25, 118, 210, 0.12)",
+          },
+          "& .MuiBottomNavigationAction-label": {
+            fontSize: "0.7rem",
+            lineHeight: 1.2,
           },
         }}
       >
@@ -55,14 +71,6 @@ export default function MobileBottomNav() {
             label={item.label}
             value={item.path}
             icon={item.icon}
-            sx={{
-              minWidth: 0,
-              padding: "6px 8px",
-              "& .MuiBottomNavigationAction-label": {
-                fontSize: "0.7rem",
-                marginTop: "2px",
-              },
-            }}
           />
         ))}
       </BottomNavigation>
