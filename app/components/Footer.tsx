@@ -15,21 +15,29 @@ export default function Footer() {
   const [views, setViews] = useState<number | null>(null);
 
   /* 📊 Increment + Fetch analytics */
-  useEffect(() => {
-    const loadViews = async () => {
-      try {
-        // ✅ increment counter
-        await fetch("/api/pageview", { method: "POST" });
+useEffect(() => {
+  const loadViews = async () => {
+    try {
+      // increment counter
+      await fetch("/api/pageview", { method: "POST" });
 
-        // ✅ fetch updated value
-        const res = await fetch("/api/pageview");
-        const data = await res.json();
+      // fetch updated value
+      const res = await fetch("/api/pageview");
+      const data = await res.json();
+
+      if (typeof data.views === "number") {
         setViews(data.views);
-      } catch {}
-    };
+      } else {
+        setViews(null); // API error case
+      }
+    } catch {
+      setViews(null);
+    }
+  };
 
-    loadViews();
-  }, []);
+  loadViews();
+}, []);
+
 
   /* ⏱ Date update */
   useEffect(() => {
