@@ -12,14 +12,23 @@ import { useEffect, useState } from "react";
 export default function Footer() {
   const theme = useTheme();
   const [dateTime, setDateTime] = useState(new Date());
-  const [views, setViews] = useState<number | null>(null); // ✅ FIX 1
+  const [views, setViews] = useState<number | null>(null);
 
-  /* 📊 Fetch analytics (page views) */
+  /* 📊 Increment + Fetch analytics */
   useEffect(() => {
-    fetch("/api/pageview")
-      .then((res) => res.json())
-      .then((data) => setViews(data.views)) // ✅ FIX 2
-      .catch(() => {});
+    const loadViews = async () => {
+      try {
+        // ✅ increment counter
+        await fetch("/api/pageview", { method: "POST" });
+
+        // ✅ fetch updated value
+        const res = await fetch("/api/pageview");
+        const data = await res.json();
+        setViews(data.views);
+      } catch {}
+    };
+
+    loadViews();
   }, []);
 
   /* ⏱ Date update */
@@ -55,37 +64,24 @@ export default function Footer() {
       }}
     >
       <Container maxWidth="md">
-        {/* Identity */}
-      <Typography
-  variant="caption"
-  color="text.secondary"
-  sx={{ display: "block" }}
->
-  రత్నాలబాల - పద్యాలవాల - భావాలమాల - శతకాలమాల - చిత్రమాల - కథామాల - సామెతలమాల - లిపిమాల
-</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+          రత్నాలబాల - పద్యాలవాల - భావాలమాల - శతకాలమాల - చిత్రమాల - కథామాల - సామెతలమాల - లిపిమాల
+        </Typography>
 
-{/* Tagline */}
-<Typography
-  variant="caption"
-  color="text.secondary"
-  sx={{ fontStyle: "italic", display: "block", mt: 0.3 }}
->
-  చదవండి - వినండి - రాయండి - చిత్రీకరించండి - పంచుకోండి - నేర్చుకోండి - అన్వేషించండి - భద్రపరచండి
-</Typography>
-
-
-        <Divider sx={{ my: 0.8 }} />
-
-        {/* Credits */}
         <Typography
           variant="caption"
           color="text.secondary"
-          sx={{ display: "block" }}
+          sx={{ fontStyle: "italic", display: "block", mt: 0.3 }}
         >
+          చదవండి - వినండి - రాయండి - చిత్రీకరించండి - పంచుకోండి - నేర్చుకోండి - అన్వేషించండి - భద్రపరచండి
+        </Typography>
+
+        <Divider sx={{ my: 0.8 }} />
+
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
           © {new Date().getFullYear()} సందీప్ మిరియాల — యుక్తిశాల AI
         </Typography>
 
-        {/* ✅ Analytics + Date */}
         <Typography
           variant="caption"
           color="text.secondary"
