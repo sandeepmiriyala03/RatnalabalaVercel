@@ -100,7 +100,7 @@ const SametaPosterCard: React.FC<Props> = ({
               fontWeight: 600,
             }}
           >
-            📖 చదవచ్చు | 🎧 వినచ్చు | 📤 పంచుకోవచ్చు
+             తెలుగు సామెతలు
           </Typography>
         </Box>
 
