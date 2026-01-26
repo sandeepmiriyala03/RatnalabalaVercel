@@ -1,42 +1,34 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { Redis } from "@upstash/redis";
+import { createClient } from "redis";
 
-const url = process.env.UPSTASH_REDIS_REST_URL;
-const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-
-if (!url || !token) {
-  console.error("❌ Upstash env vars missing", { url, token });
-}
-
-const redis = new Redis({
-  url: url!,
-  token: token!,
+const client = createClient({
+  url: process.env.REDIS_URL,
 });
 
-export async function GET() {
-  try {
-    const views = (await redis.get<number>("ratnalabala:views")) ?? 0;
-    return NextResponse.json({ views });
-  } catch (e: any) {
-    console.error("GET error", e);
-    return NextResponse.json(
-      { error: e?.message ?? "redis_get_failed" },
-      { status: 500 }
-    );
+client.on("error", (err) => {
+  console.error("Redis error:", err);
+});
+
+let connected = false;
+
+async function getRedis() {
+  if (!connected) {
+    await client.connect();
+    connected = true;
   }
+  return client;
 }
 
 export async function POST() {
-  try {
-    await redis.incr("ratnalabala:views");
-    return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    console.error("POST error", e);
-    return NextResponse.json(
-      { error: e?.message ?? "redis_incr_failed" },
-      { status: 500 }
-    );
-  }
+  const redis = await getRedis();
+  await redis.incr("ratnalabala:views");
+  return NextResponse.json({ ok: true });
+}
+
+export async function GET() {
+  const redis = await getRedis();
+  const views = Number(await redis.get("ratnalabala:views")) || 0;
+  return NextResponse.json({ views });
 }
