@@ -11,24 +11,23 @@ client.on("error", (err) => {
   console.error("Redis error:", err);
 });
 
-let connected = false;
-
-async function getRedis() {
-  if (!connected) {
+let ready = false;
+async function redis() {
+  if (!ready) {
     await client.connect();
-    connected = true;
+    ready = true;
   }
   return client;
 }
 
-export async function POST() {
-  const redis = await getRedis();
-  await redis.incr("ratnalabala:views");
-  return NextResponse.json({ ok: true });
+export async function GET() {
+  const r = await redis();
+  const views = Number(await r.get("ratnalabala:views")) || 0;
+  return NextResponse.json({ views });
 }
 
-export async function GET() {
-  const redis = await getRedis();
-  const views = Number(await redis.get("ratnalabala:views")) || 0;
-  return NextResponse.json({ views });
+export async function POST() {
+  const r = await redis();
+  await r.incr("ratnalabala:views");
+  return NextResponse.json({ ok: true });
 }
