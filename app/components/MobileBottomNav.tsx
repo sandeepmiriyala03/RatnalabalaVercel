@@ -15,7 +15,8 @@ import DocumentScannerIcon from "@mui/icons-material/DocumentScanner";
 
 const items = [
   { label: "మిరా", path: "/mirapoems", icon: <AutoStoriesIcon /> },
-  { label: "పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
+    { label:"అక్షరమాల", path: "/aksharamala", icon: <LibraryBooksIcon /> },
+    { label: "పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
   { label: "శతకామాల", path: "/shatakamu", icon: <LibraryBooksIcon /> },
   { label: "చిత్రామాల", path: "/chitramala", icon: <ImageIcon /> },
   { label: "కథమాల", path: "/kathamala", icon: <AutoStoriesIcon /> },
