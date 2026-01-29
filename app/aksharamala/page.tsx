@@ -28,7 +28,7 @@ export default function AksharamalaPage() {
         fontSize={{ xs: "1.8rem", sm: "2.2rem" }}
         fontWeight={900}
       >
-        🌸 తెలుగు అక్షరమాల 🌸
+         తెలుగు అక్షరమాల 
       </Typography>
 
       <Typography
