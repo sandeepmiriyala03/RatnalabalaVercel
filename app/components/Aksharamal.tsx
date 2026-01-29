@@ -1,0 +1,200 @@
+"use client";
+
+import React, { useMemo, useState } from "react";
+import {
+  Stack,
+  Typography,
+  TextField,
+  Chip,
+  Box,
+  Button, Pagination
+} from "@mui/material";
+
+import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
+
+/* ================= TYPE ================= */
+
+type Akshara = {
+  id: string;
+  type: "swaralu" | "vyanjanalu" | "gunintalu";
+  letter: string;
+  word?: string;
+};
+
+/* ================= INLINE DATA (HERE ONLY) ================= */
+
+const AKSHARALU: Akshara[] = [
+   { "id": "s1", "type": "swaralu", "letter": "అ", "word": "అమ్మ" },
+    { "id": "s2", "type": "swaralu", "letter": "ఆ", "word": "ఆవు" },
+    { "id": "s3", "type": "swaralu", "letter": "ఇ", "word": "ఇల్లు" },
+    { "id": "s4", "type": "swaralu", "letter": "ఈ", "word": "ఈగ" },
+    { "id": "s5", "type": "swaralu", "letter": "ఉ", "word": "ఉల్లి" },
+    { "id": "s6", "type": "swaralu", "letter": "ఊ", "word": "ఊయల" },
+    { "id": "s7", "type": "swaralu", "letter": "ఋ", "word": "ఋషి" },
+    { "id": "s8", "type": "swaralu", "letter": "ఎ", "word": "ఎలుక" },
+    { "id": "s9", "type": "swaralu", "letter": "ఏ", "word": "ఏనుగు" },
+    { "id": "s10", "type": "swaralu", "letter": "ఐ", "word": "ఐదు" },
+    { "id": "s11", "type": "swaralu", "letter": "ఒ", "word": "ఒంటె" },
+    { "id": "s12", "type": "swaralu", "letter": "ఓ", "word": "ఓడ" },
+    { "id": "s13", "type": "swaralu", "letter": "ఔ", "word": "ఔషధం" },
+    { "id": "s14", "type": "swaralu", "letter": "అం", "word": "అంబరం" },
+    { "id": "s15", "type": "swaralu", "letter": "అః", "word": "అఃహా" },
+
+    { "id": "v1", "type": "vyanjanalu", "letter": "క", "word": "కలం" },
+    { "id": "v2", "type": "vyanjanalu", "letter": "ఖ", "word": "ఖడ్గం" },
+    { "id": "v3", "type": "vyanjanalu", "letter": "గ", "word": "గడియారం" },
+    { "id": "v4", "type": "vyanjanalu", "letter": "ఘ", "word": "ఘంట" },
+    { "id": "v5", "type": "vyanjanalu", "letter": "చ", "word": "చేప" },
+    { "id": "v6", "type": "vyanjanalu", "letter": "ఛ", "word": "ఛత్రం" },
+    { "id": "v7", "type": "vyanjanalu", "letter": "జ", "word": "జెండా" },
+    { "id": "v8", "type": "vyanjanalu", "letter": "ఝ", "word": "ఝరీ" },
+
+    { "id": "v9", "type": "vyanjanalu", "letter": "ట", "word": "టమాటా" },
+    { "id": "v10", "type": "vyanjanalu", "letter": "ఠ", "word": "ఠీవి" },
+    { "id": "v11", "type": "vyanjanalu", "letter": "డ", "word": "డబ్బు" },
+    { "id": "v12", "type": "vyanjanalu", "letter": "ఢ", "word": "ఢమరుకం" },
+    { "id": "v13", "type": "vyanjanalu", "letter": "ణ", "word": "ణాదం" },
+
+    { "id": "v14", "type": "vyanjanalu", "letter": "త", "word": "తల" },
+    { "id": "v15", "type": "vyanjanalu", "letter": "థ", "word": "థాలం" },
+    { "id": "v16", "type": "vyanjanalu", "letter": "ద", "word": "దీపం" },
+    { "id": "v17", "type": "vyanjanalu", "letter": "ధ", "word": "ధనం" },
+    { "id": "v18", "type": "vyanjanalu", "letter": "న", "word": "నది" },
+
+    { "id": "v19", "type": "vyanjanalu", "letter": "ప", "word": "పలక" },
+    { "id": "v20", "type": "vyanjanalu", "letter": "ఫ", "word": "ఫలం" },
+    { "id": "v21", "type": "vyanjanalu", "letter": "బ", "word": "బడి" },
+    { "id": "v22", "type": "vyanjanalu", "letter": "భ", "word": "భారం" },
+    { "id": "v23", "type": "vyanjanalu", "letter": "మ", "word": "మరము" },
+
+    { "id": "v24", "type": "vyanjanalu", "letter": "య", "word": "యానం" },
+    { "id": "v25", "type": "vyanjanalu", "letter": "ర", "word": "రథం" },
+    { "id": "v26", "type": "vyanjanalu", "letter": "ల", "word": "లత" },
+    { "id": "v27", "type": "vyanjanalu", "letter": "వ", "word": "వనం" },
+
+    { "id": "v28", "type": "vyanjanalu", "letter": "శ", "word": "శివుడు" },
+    { "id": "v29", "type": "vyanjanalu", "letter": "ష", "word": "షడ్జం" },
+    { "id": "v30", "type": "vyanjanalu", "letter": "స", "word": "సూర్యుడు" },
+    { "id": "v31", "type": "vyanjanalu", "letter": "హ", "word": "హంస" },
+    { "id": "v32", "type": "vyanjanalu", "letter": "ళ", "word": "ళత" },
+    { "id": "v33", "type": "vyanjanalu", "letter": "క్ష", "word": "క్షీరము" },
+    { "id": "v34", "type": "vyanjanalu", "letter": "జ్ఞ", "word": "జ్ఞానం" },
+    { "id": "v35", "type": "vyanjanalu", "letter": "ఱ", "word": "ఱాగి" },
+];
+
+/* ================= LIST ITEM ================= */
+
+function AksharaListCard({
+  akshara,
+  onSelect,
+}: {
+  akshara: Akshara;
+  onSelect: (a: Akshara) => void;
+}) {
+  return (
+    <Box
+      onClick={() => onSelect(akshara)}
+      sx={{
+        p: 2,
+        borderRadius: 2,
+        border: "1px solid #ddd",
+        textAlign: "center",
+        cursor: "pointer",
+        "&:hover": { backgroundColor: "#f7fbff" },
+      }}
+    >
+      <Typography sx={{ fontSize: "2.4rem", fontWeight: 900 }}>
+        {akshara.letter}
+      </Typography>
+      {akshara.word && (
+        <Typography sx={{ fontSize: "1.1rem", fontWeight: 600 }}>
+          {akshara.word}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+/* ================= MAIN PARENT ================= */
+
+const PAGE_SIZE = 5;
+
+export default function AksharamalaParent() {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  /* 🔍 Filter */
+  const filtered = useMemo(() => {
+    if (!search.trim()) return AKSHARALU;
+    return AKSHARALU.filter(
+      (a) =>
+        a.letter.includes(search) ||
+        a.word?.includes(search)
+    );
+  }, [search]);
+
+  /* 📄 Pagination slice */
+  const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
+
+  const visible = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filtered.slice(start, start + PAGE_SIZE);
+  }, [filtered, page]);
+
+  /* 🚫 Empty state */
+  if (filtered.length === 0) {
+    return (
+      <Typography align="center" sx={{ opacity: 0.7, mt: 4 }}>
+        సరిపోయే అక్షరాలు లేవు
+      </Typography>
+    );
+  }
+
+  return (
+    <Stack spacing={3}>
+      {/* 🔢 COUNTS */}
+      <Box display="flex" gap={1} justifyContent="center">
+        <Chip label={`🔤 మొత్తం: ${filtered.length}`} />
+        <Chip
+          label={`📄 పేజీ: ${page} / ${pageCount}`}
+          color="primary"
+        />
+      </Box>
+
+      {/* 🔍 SEARCH */}
+      <TextField
+        size="small"
+        placeholder="అక్షరం లేదా పదం వెతకండి…"
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          setPage(1); // reset page on search
+        }}
+      />
+
+      {/* 📜 LIST (each card has Share + Sound) */}
+      <Stack spacing={3}>
+        {visible.map((a) => (
+          <AksharaPosterCard
+            key={a.id}
+            akshara={a}
+            enableRead={true}
+          />
+        ))}
+      </Stack>
+
+      {/* 🔢 PAGINATION NUMBERS */}
+      {pageCount > 1 && (
+        <Box display="flex" justifyContent="center" mt={2}>
+          <Pagination
+            count={pageCount}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+            size="large"
+          />
+        </Box>
+      )}
+    </Stack>
+  );
+}

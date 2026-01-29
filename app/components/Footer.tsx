@@ -73,7 +73,7 @@ useEffect(() => {
     >
       <Container maxWidth="md">
         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-          రత్నాలబాల - పద్యాలవాల - భావాలమాల - శతకాలమాల - చిత్రమాల - కథామాల - సామెతలమాల - లిపిమాల
+          రత్నాలబాల - పద్యాలవాల - భావాలమాల - అక్షరమాల- శతకాలమాల - చిత్రమాల - కథామాల - సామెతలమాల - లిపిమాల
         </Typography>
 
         <Typography

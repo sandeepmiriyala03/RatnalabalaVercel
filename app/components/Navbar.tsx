@@ -8,13 +8,14 @@ import { Box } from "@mui/material";
 import Image from "next/image";
 const navItems = [
   { label: "మిరా", path: "/" },
-  { label: "పద్యాలవాల", path: "/poems" },
    { label: "మిరా పద్యాలు", path: "/mirapoems" },
+   { label: "అక్షరమాల ", path: "/aksharamala" },
+   { label: "పద్యాలవాల", path: "/poems" },
     { label: "శతకాలమాల", path: "/shatakamu" },
   { label: "చిత్రమాల", path: "/chitramala" },
   { label: "కథామాల", path: "/kathamala" },
   { label: "సామెతలమాల", path: "/sametalu" },
-  { label: "లిపిమాల ", path: "/lipimala" },
+  { label: "లిపిమాల", path: "/lipimala" },
 ];
 
 export default function Navbar() {
