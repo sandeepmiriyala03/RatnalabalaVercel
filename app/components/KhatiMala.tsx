@@ -492,7 +492,7 @@ export default function KhatiMala() {
     <Card>
       <CardContent>
         <Typography variant="h6" mb={2}>
-          ఖతి మాల – సరళ ఎడిటర్
+          ఖతి మాల 
         </Typography>
 
         <Box
@@ -599,9 +599,7 @@ export default function KhatiMala() {
               {text || "ఇక్కడ మీ పాఠ్యం ప్రదర్శించబడుతుంది"}
             </div>
 
-            <Box sx={{ textAlign: "center", opacity: 0.4 }}>
-              ఖతి మాల
-            </Box>
+            
           </Box>
         </Box>
 
