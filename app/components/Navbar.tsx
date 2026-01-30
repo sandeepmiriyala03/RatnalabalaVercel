@@ -6,12 +6,13 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { Box } from "@mui/material";
 import Image from "next/image";
+
 const navItems = [
   { label: "మిరా", path: "/" },
-   { label: "మిరా పద్యాలు", path: "/mirapoems" },
-   { label: "అక్షరమాల ", path: "/aksharamala" },
-   { label: "పద్యాలవాల", path: "/poems" },
-    { label: "శతకాలమాల", path: "/shatakamu" },
+  { label: "మిరా పద్యాలు", path: "/mirapoems" },
+  { label: "అక్షరమాల", path: "/aksharamala" },
+  { label: "పద్యాలవాల", path: "/poems" },
+  { label: "శతకాలమాల", path: "/shatakamu" },
   { label: "చిత్రమాల", path: "/chitramala" },
   { label: "కథామాల", path: "/kathamala" },
   { label: "సామెతలమాల", path: "/sametalu" },
@@ -20,61 +21,91 @@ const navItems = [
 
 export default function Navbar() {
   return (
-    <AppBar position="sticky" color="secondary">
+    <AppBar position="sticky" color="secondary" elevation={3}>
       <Toolbar
         sx={{
-          justifyContent: "space-between",
-          alignItems: "center",
+          flexDirection: "column",
+          alignItems: "stretch",
+          px: { xs: 2, md: 4 },
           py: 1,
         }}
       >
-        {/* Logo + Title */}
-        <Link
-          href="/"
-          style={{
-            textDecoration: "none",
+        {/* Top Row: Logo + Menu */}
+        <Box
+          sx={{
             display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
           }}
         >
-          <Image
-            src="/Images/CartoonStyle.png"
-            alt="Website Logo"
-            width={56}
-            height={56}
-            style={{ borderRadius: "8px", marginRight: "12px" }}
-          />
-          <Typography
-            variant="h5"
-            sx={{ fontWeight: "bold", color: "white" }}
+          {/* Logo + Title */}
+          <Link
+            href="/"
+            style={{
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}
           >
-            రత్నాలబాల 
-          </Typography>
-        </Link>
+            <Image
+              src="/images/cartoonstyle.png"
+              alt="రత్నాలబాల లోగో"
+              width={52}
+              height={52}
+              priority
+              style={{ borderRadius: "10px" }}
+            />
 
-        {/* Desktop Menu ONLY */}
-        <Box sx={{ display: { xs: "none", md: "flex" }, gap: 2 }}>
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.path}
-              style={{ textDecoration: "none" }}
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: 700,
+                color: "white",
+                letterSpacing: "0.5px",
+              }}
             >
-              <Typography
-                variant="button"
-                sx={{
-                  color: "white",
-                  "&:hover": {
-                    textDecoration: "underline",
-                    textUnderlineOffset: "4px",
-                  },
-                }}
+            రత్నాలబాల – జ్ఞానమాల
+            </Typography>
+             {/* Motto Row */}
+      
+          </Link>
+
+          {/* Desktop Menu */}
+          <Box
+            sx={{
+              display: { xs: "none", md: "flex" },
+              gap: 1,
+              alignItems: "center",
+            }}
+          >
+            {navItems.map((item) => (
+              <Link
+                key={item.label}
+                href={item.path}
+                style={{ textDecoration: "none" }}
               >
-                {item.label}
-              </Typography>
-            </Link>
-          ))}
+                <Typography
+                  sx={{
+                    color: "white",
+                    fontSize: "0.95rem",
+                    px: 1.5,
+                    py: 0.75,
+                    borderRadius: "999px",
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      backgroundColor: "rgba(255,255,255,0.18)",
+                    },
+                  }}
+                >
+                  {item.label}
+                </Typography>
+              </Link>
+            ))}
+          </Box>
         </Box>
+
+       
       </Toolbar>
     </AppBar>
   );
