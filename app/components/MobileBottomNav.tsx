@@ -22,6 +22,7 @@ const items = [
   { label: "కథ", path: "/kathamala", icon: <AutoStoriesIcon /> },
   { label: "సామెత", path: "/sametalu", icon: <MenuBookIcon /> },
   { label: "లిపి", path: "/lipimala", icon: <DocumentScannerIcon /> },
+  { label: "ఖతి", path: "/khatimala" , icon: <LibraryBooksIcon /> },
 ];
 
 export default function MobileBottomNav() {
