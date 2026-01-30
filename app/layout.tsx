@@ -6,24 +6,37 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Ratnalabala",
-  description: "Telugu Poems Platform .",
-  manifest: "/manifest.json",  // ✅ Auto-adds <link rel="manifest">
-  themeColor: "#6A1B9A",
+  title: "రత్నాలబాల – జ్ఞానమాల",
+  description:
+    "AI ఆధారిత తెలుగు జ్ఞానమాల | పద్యాలు, కథలు, అక్షరాలు, చిత్రాలు & సంస్కృతి",
+
+  // ✅ PWA
+  manifest: "/manifest.json",
+
+  // ✅ WCAG AA/AAA safe purple
+  themeColor: "#4A148C",
+
+  // 🍎 Apple PWA
   appleWebApp: {
     capable: true,
-    title: "Ratnalabala",
-    statusBarStyle: "default",
+    title: "రత్నాలబాల – జ్ఞానమాల",
+    statusBarStyle: "black-translucent",
     startupImage: [
-      { url: "/icons/icon-192x192.png", media: "(device-width: 768px) and (device-height: 1024px)" },
-      { url: "/icons/icon-192x192.png" }
-    ]
+      {
+        url: "/icons/icon-192x192.png",
+        media: "(device-width: 768px) and (device-height: 1024px)",
+      },
+      {
+        url: "/icons/icon-192x192.png",
+      },
+    ],
   },
-  // Android Chrome PWA meta
+
+  // 🤖 Windows / Android tiles
   other: {
-    "msapplication-TileColor": "#6A1B9A",
-    "msapplication-TileImage": "/icons/icon-192x192.png"
-  }
+    "msapplication-TileColor": "#4A148C",
+    "msapplication-TileImage": "/icons/icon-192x192.png",
+  },
 };
 
 export default function RootLayout({

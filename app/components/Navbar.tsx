@@ -48,15 +48,7 @@ export default function Navbar() {
               gap: "12px",
             }}
           >
-            <Image
-              src="/images/cartoonstyle.png"
-              alt="రత్నాలబాల లోగో"
-              width={52}
-              height={52}
-              priority
-              style={{ borderRadius: "10px" }}
-            />
-
+            
             <Typography
               variant="h5"
               sx={{
