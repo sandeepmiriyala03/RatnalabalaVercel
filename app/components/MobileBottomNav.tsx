@@ -15,13 +15,13 @@ import DocumentScannerIcon from "@mui/icons-material/DocumentScanner";
 
 const items = [
   { label: "మిరా", path: "/mirapoems", icon: <AutoStoriesIcon /> },
-    { label:"అక్షరమాల", path: "/aksharamala", icon: <LibraryBooksIcon /> },
-    { label: "పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
-  { label: "శతకామాల", path: "/shatakamu", icon: <LibraryBooksIcon /> },
-  { label: "చిత్రామాల", path: "/chitramala", icon: <ImageIcon /> },
-  { label: "కథమాల", path: "/kathamala", icon: <AutoStoriesIcon /> },
-  { label: "సామెతమాల", path: "/sametalu", icon: <MenuBookIcon /> },
-  { label: "లిపిమాల", path: "/lipimala", icon: <DocumentScannerIcon /> },
+    { label:"అక్షర", path: "/aksharamala", icon: <LibraryBooksIcon /> },
+    { label:"పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
+  { label: "శతక", path: "/shatakamu", icon: <LibraryBooksIcon /> },
+  { label: "చిత్ర", path: "/chitramala", icon: <ImageIcon /> },
+  { label: "కథ", path: "/kathamala", icon: <AutoStoriesIcon /> },
+  { label: "సామెత", path: "/sametalu", icon: <MenuBookIcon /> },
+  { label: "లిపి", path: "/lipimala", icon: <DocumentScannerIcon /> },
 ];
 
 export default function MobileBottomNav() {
