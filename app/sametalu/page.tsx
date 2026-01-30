@@ -27,7 +27,7 @@ export default function SametaluPage() {
     <Box sx={{ maxWidth: 900, mx: "auto", p: 3 }}>
       {/* 🌼 Title */}
       <Typography align="center" fontSize="2rem" fontWeight={900}>
-        📜 సామెతల మాల
+         సామెతల మాల
       </Typography>
 
       <Typography align="center" sx={{ opacity: 0.8, mb: 3 }}>
