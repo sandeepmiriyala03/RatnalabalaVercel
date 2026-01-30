@@ -13,15 +13,12 @@ const navItems = [
   { label: "అక్షరమాల", path: "/aksharamala" },
   { label: "పద్యాలవాల", path: "/poems" },
   { label: "శతకాలమాల", path: "/shatakamu" },
- { label: "ఖతిమాల", path: "/khatimala" },
+ { label: "ఖతిమాల", path: "/khatiMala" },
   { label: "చిత్రమాల", path: "/chitramala" },
   { label: "కథామాల", path: "/kathamala" },
   { label: "సామెతలమాల", path: "/sametalu" },
   { label: "లిపిమాల", path: "/lipimala" },
 ];
-
-
-
 
 export default function Navbar() {
   return (
