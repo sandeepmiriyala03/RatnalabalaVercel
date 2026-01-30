@@ -12,7 +12,6 @@ import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import ImageIcon from "@mui/icons-material/Image";
 import { usePathname, useRouter } from "next/navigation";
 import DocumentScannerIcon from "@mui/icons-material/DocumentScanner";
-
 const items = [
   { label: "మిరా", path: "/mirapoems", icon: <AutoStoriesIcon /> },
   { label:"పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
@@ -24,11 +23,9 @@ const items = [
   { label: "లిపి", path: "/lipimala", icon: <DocumentScannerIcon /> },
   { label: "ఖతి", path: "/khatimala" , icon: <LibraryBooksIcon /> },
 ];
-
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-
   return (
     <Paper
       elevation={12}

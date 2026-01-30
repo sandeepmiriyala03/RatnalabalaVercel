@@ -20,6 +20,9 @@ const navItems = [
   { label: "లిపిమాల", path: "/lipimala" },
 ];
 
+
+
+
 export default function Navbar() {
   return (
     <AppBar position="sticky" color="secondary" elevation={3}>
