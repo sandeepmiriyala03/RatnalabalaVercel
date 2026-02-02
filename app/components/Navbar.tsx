@@ -6,6 +6,7 @@ import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import { Box } from "@mui/material";
 import Image from "next/image";
+import AudioPlayer from "@/app/components/AudioPlayer";
 
 const navItems = [
   { label: "మిరా", path: "/" },
@@ -97,8 +98,7 @@ export default function Navbar() {
             ))}
           </Box>
         </Box>
-
-       
+     
       </Toolbar>
     </AppBar>
   );
