@@ -9,8 +9,7 @@ import FloatingAIButton from "@/app/components/FloatingAIButton";
 import FontControlsTelugu from "@/app/components/FontSelection";
 import { cacheAllPoems } from "@/lib/cachePoems";
 import { AppBar, Toolbar, Container, Box } from "@mui/material";
-
-
+import AudioPlayer from "@/app/components/AudioPlayer";
 /* 🔤 Allowed Telugu Fonts */
 export type TeluguFont =
   | "Gurajada"
@@ -232,6 +231,22 @@ useEffect(() => {
           fontSize={fontSize}
           setFontSize={setFontSize}
         />
+
+ {/* 🔊 Intro Audio */}
+    <Box
+      sx={{
+        mt: 2,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 1,
+        textAlign: "center",
+      }}
+    >
+      <strong>🎧 రత్నాలబాల పరిచయ ఆడియో</strong>
+      <AudioPlayer src="/audio/Intro.m4a" />
+    </Box>
+
       </Container>
 
       <Container sx={{ my: 3 }}>
