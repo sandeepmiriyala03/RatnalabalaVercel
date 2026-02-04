@@ -9,16 +9,17 @@ import Image from "next/image";
 
 
 const navItems = [
-  { label: "మిరా", path: "/" },
-  { label: "మిరా పద్యాలు", path: "/mirapoems" },
+  { label: "రత్నాలబాల", path: "/" },
+  { label: "మిరా", path: "/mirapoems" },
+    { label: "పద్యాలవాల", path: "/poems" },
   { label: "అక్షరమాల", path: "/aksharamala" },
-  { label: "పద్యాలవాల", path: "/poems" },
   { label: "శతకాలమాల", path: "/shatakamu" },
- { label: "ఖతిమాల", path: "/khatiMala" },
-  { label: "చిత్రమాల", path: "/chitramala" },
   { label: "కథామాల", path: "/kathamala" },
-  { label: "సామెతలమాల", path: "/sametalu" },
+   { label: "సామెతలమాల", path: "/sametalu" },
+  { label: "చిత్రమాల", path: "/chitramala" },
+  { label: "స్వరమాల", path: "/swaramala" },
   { label: "లిపిమాల", path: "/lipimala" },
+  { label: "ఖతిమాల", path: "/khatiMala" },
 ];
 
 export default function Navbar() {

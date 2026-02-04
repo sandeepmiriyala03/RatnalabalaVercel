@@ -12,14 +12,17 @@ import LibraryBooksIcon from "@mui/icons-material/LibraryBooks";
 import ImageIcon from "@mui/icons-material/Image";
 import { usePathname, useRouter } from "next/navigation";
 import DocumentScannerIcon from "@mui/icons-material/DocumentScanner";
+
+
 const items = [
-  { label: "మిరా", path: "/mirapoems", icon: <AutoStoriesIcon /> },
+ { label: "మిరా ", path: "/mirapoems" },
   { label:"పద్యాలవాల", path: "/poems", icon: <MenuBookIcon /> },
   { label:"అక్షర", path: "/aksharamala", icon: <LibraryBooksIcon /> },
   { label: "శతక", path: "/shatakamu", icon: <LibraryBooksIcon /> },
-  { label: "చిత్ర", path: "/chitramala", icon: <ImageIcon /> },
   { label: "కథ", path: "/kathamala", icon: <AutoStoriesIcon /> },
   { label: "సామెత", path: "/sametalu", icon: <MenuBookIcon /> },
+  { label: "చిత్ర", path: "/chitramala", icon: <ImageIcon /> },
+  { label: "స్వర", path: "/swaramala" , icon: <MenuBookIcon /> },
   { label: "లిపి", path: "/lipimala", icon: <DocumentScannerIcon /> },
   { label: "ఖతి", path: "/khatiMala" , icon: <LibraryBooksIcon /> },
 ];
