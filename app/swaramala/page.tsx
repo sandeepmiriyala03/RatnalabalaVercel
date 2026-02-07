@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box } from "@mui/material";
+import { Box,Typography } from "@mui/material";
 import Swaramala from "@/app/components/swaramala";
 
 
@@ -24,34 +24,28 @@ export default function SwaramalaPage() {
   const [resetKey, setResetKey] = useState(0);
 
   return (
-    <Box
-      sx={{
-        maxWidth: 900,
-        mx: "auto",
-        p: { xs: 1.5, sm: 2.5 },
-      }}
-    >
+<>
       {/* =========================
          📘 HOW TO USE
          ========================= */}
-      <Box
-        sx={{
-          mb: 3,
-          p: 2,
-          border: "1px dashed #cfcfcf",
-          borderRadius: 2,
-          backgroundColor: "#fafafa",
-          fontSize: "0.95rem",
-        }}
-      >
-        <Box sx={{ mb: 1 }}>
-          <strong style={{ fontSize: "1.05rem" }}>
-            స్వరమాల — మాటలతో అక్షరాలు
-          </strong>
+    
+          <Typography
+                         variant="h3"
+                         fontWeight={800}
+                         sx={{
+                           letterSpacing: "-0.5px",
+                           background: "linear-gradient(90deg, #0f172a, #2563eb)",
+                           WebkitBackgroundClip: "text",
+                           WebkitTextFillColor: "transparent",       fontWeight: 700,
+                   fontSize: "calc(var(--telugu-font-size) * 1.8)",
+                      textAlign: "center",  // ✅ Centers the text
+                         }}>
+                   🎙️ స్వరమాల — మాటలతో అక్షరాలు
+                 </Typography>
           <div style={{ fontSize: "0.85rem", color: "#555" }}>
             మాట్లాడండి • ఎడిట్ చేయండి • చిత్రంగా మార్చండి
           </div>
-        </Box>
+       
 
         <strong>స్వరమాల ఎలా ఉపయోగించాలి?</strong>
 
@@ -66,11 +60,11 @@ export default function SwaramalaPage() {
             అన్నీ <b>మీ డివైస్‌లోనే</b> జరుగుతాయి.
           </li>
         </ol>
-      </Box>
+   
 
      <Swaramala/>
-        
-        </Box>
+     </>   
+    
   
   );
 }

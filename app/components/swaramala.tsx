@@ -209,21 +209,8 @@ export default function Swaramala() {
     "chitramala-font-gurajada";
 
   return (
-    <Card>
-      <CardContent>
-      <Typography
-                variant="h3"
-                fontWeight={800}
-                sx={{
-                  letterSpacing: "-0.5px",
-                  background: "linear-gradient(90deg, #0f172a, #2563eb)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",       fontWeight: 700,
-          fontSize: "calc(var(--telugu-font-size) * 1.8)",
-             textAlign: "center",  // ✅ Centers the text
-                }}>
-          🎙️ స్వరమాల — మాటలతో అక్షరాలు
-        </Typography>
+ <>
+     
 
         {/* ✍️ TEXT INPUT */}
         <TextField
@@ -324,7 +311,6 @@ export default function Swaramala() {
             డౌన్‌లోడ్
           </Button>
         </Box>
-      </CardContent>
-    </Card>
+    </>
   );
 }

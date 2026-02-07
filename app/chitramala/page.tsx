@@ -22,39 +22,7 @@ export default function ChitramalaPage() {
   const [resetKey, setResetKey] = useState(0);
 
   return (
-    <Box
-      sx={{
-        maxWidth: 900,
-        mx: "auto",
-        p: { xs: 1.5, sm: 2.5 },
-      }}
-    >
-      {/* =========================
-         📘 HOW TO USE – STEPS
-         ========================= */}
-     <Box
-  sx={{
-    mb: 3,
-    p: 2,
-    border: "1px dashed #cfcfcf",
-    borderRadius: 2,
-    backgroundColor: "#fafafa",
-    fontSize: "0.95rem",
-  }}
->
-  {/* 🔰 Title */}
-<Box
-  sx={{
-    mb: 3,
-    p: 2,
-    border: "1px dashed #cfcfcf",
-    borderRadius: 2,
-    backgroundColor: "#fafafa",
-    fontSize: "0.95rem",
-  }}
->
-  {/* 🔰 Title */}
-  <Box sx={{ mb: 1 }}>
+ <>
   <Typography
           variant="h3"
           fontWeight={800}
@@ -75,7 +43,7 @@ export default function ChitramalaPage() {
     <div style={{ fontSize: "0.85rem", color: "#555" }}>
       పద్యాన్ని రాయండి • చిత్రంగా మార్చండి • పంచుకోండి
     </div>
-  </Box>
+
 
   {/* 📘 How to use */}
   <strong>చిత్రమాల ఎలా ఉపయోగించాలి?</strong>
@@ -106,10 +74,6 @@ export default function ChitramalaPage() {
   </li>
 </ol>
 
-</Box>
-
-       
-      </Box>
 
       {/* =========================
          📝 INPUT SECTION
@@ -142,8 +106,8 @@ export default function ChitramalaPage() {
             lines={poem.lines}
             enableRead
           />
-        </Box>
+    
       )}
-    </Box>
+  </>
   );
 }
