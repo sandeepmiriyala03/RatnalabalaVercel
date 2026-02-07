@@ -84,7 +84,7 @@ export default function ChitramalaPage() {
           setPoem(data);
         }}
         onReset={() => {
-          setPoem(null);           // 🔥 clear preview
+          setPoem(null);          
           setResetKey((k) => k + 1); // 🔄 reset inputs
         }}
       />
@@ -93,21 +93,14 @@ export default function ChitramalaPage() {
          🖼 PREVIEW SECTION
          ========================= */}
       {poem && (
-        <Box
-          sx={{
-            mt: 4,
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
           <ChitramalaPreviewCard
             title={poem.title}
             poet={poem.poet}
             lines={poem.lines}
             enableRead
           />
-    
-      )}
+  
+      )}  
   </>
   );
 }
