@@ -7,9 +7,9 @@ import MiraIntro from "./components/MiraIntro";
 export default function Page() {
   return (
     <Box>
+       <RatnalabalaHighlights/>
       <RatnalabalaBackground/>
       <MiraIntro/>
-      <RatnalabalaHighlights/>
     </Box>
   );
 }

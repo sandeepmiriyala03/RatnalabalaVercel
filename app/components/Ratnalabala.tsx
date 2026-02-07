@@ -12,6 +12,8 @@ import {
   ListItemText,
   Button,
   Stack,
+  Chip,
+  Divider,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +22,7 @@ export default function RatnalabalaHighlights() {
 
   return (
     <Container maxWidth="md" sx={{ py: { xs: 4, md: 6 } }}>
+
       {/* =========================
           🌟 TITLE
          ========================= */}
@@ -29,84 +32,112 @@ export default function RatnalabalaHighlights() {
         fontWeight={900}
         sx={{ mb: 1 }}
       >
-        🌟 రత్నాలబాల – ముఖ్య హైలైట్ పాయింట్లు
+         రత్నాలబాల – జ్ఞానమాల
       </Typography>
 
       <Typography
         align="center"
-        sx={{ mb: 4, opacity: 0.75, fontSize: "0.95rem" }}
+        sx={{ mb: 3, opacity: 0.75, fontSize: "0.95rem" }}
       >
         తెలుగు సాహిత్యం × ఆధునిక సాంకేతికత
       </Typography>
 
+      {/* =========================
+          📚 MODULES + ACTIONS (NEW)
+         ========================= */}
+      <Box
+        sx={{
+          p: { xs: 2, md: 2.5 },
+          mb: 4,
+          borderRadius: 3,
+          background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+          border: "1px solid #e5e7eb",
+        }}
+      >
+        <Typography fontWeight={800} sx={{ mb: 1 }}>
+          📚 అందుబాటులో ఉన్న మాలలు
+        </Typography>
 
+        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
+          {[
+            "రత్నాలబాల",
+            "పద్యాలవాల",
+            "భావాలమాల",
+            "అక్షరమాల",
+            "శతకాలమాల",
+            "చిత్రమాల",
+            "కథామాల",
+            "సామెతలమాల",
+            "లిపిమాల",
+            "ఖతిమాల",
+            "స్వరమాల",
+          ].map((item) => (
+            <Chip key={item} label={item} variant="outlined" />
+          ))}
+        </Stack>
 
+        <Typography fontWeight={800} sx={{ mb: 1 }}>
+          ✨ మీరు ఇక్కడ చేయగలవి
+        </Typography>
+
+        <Stack direction="row" flexWrap="wrap" gap={1}>
+          {[
+            "చదవండి",
+            "వినండి",
+            "రాయండి",
+            "చిత్రీకరించండి",
+            "పంచుకోండి",
+            "నేర్చుకోండి",
+            "అన్వేషించండి",
+            "భద్రపరచండి",
+          ].map((action) => (
+            <Chip key={action} color="secondary" label={action} />
+          ))}
+        </Stack>
+
+        <Typography
+          sx={{
+            mt: 2,
+            fontSize: "0.8rem",
+            opacity: 0.7,
+            textAlign: "center",
+          }}
+        >
+          🔒 మీ గోప్యతే మా మొదటి ప్రాధాన్యత
+        </Typography>
+      </Box>
 
       {/* =========================
           📚 MODULE 1
          ========================= */}
-    <Card sx={{ mb: 4 }}>
-  <CardContent>
-    <Typography fontWeight={700} sx={{ mb: 2 }}>
-      📚 మాడ్యూల్ 1: శతకాలమాల
-    </Typography>
+      <Card sx={{ mb: 4 }}>
+        <CardContent>
+          <Typography fontWeight={700} sx={{ mb: 2 }}>
+            📚 మాడ్యూల్ 1: శతకాలమాల
+          </Typography>
 
-    <List dense>
-      <ListItem>
-        <ListItemText primary="తెలుగు శతకాలను ఒకే వేదికపై సమగ్రంగా చదవచ్చు" />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="అన్ని శతకాలు / ఒక్కో శతకం సులభంగా ఎంపిక చేసుకునే సౌకర్యం" />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="పద్యాల సంఖ్య, శతకాల గణాంకాలు స్పష్టంగా చూపింపు" />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="మొబైల్ & డెస్క్‌టాప్‌కు అనుకూలమైన స్పష్టమైన పఠన అనుభూతి" />
-      </ListItem>
-      <ListItem>
-        <ListItemText primary="తెలుగు సాహిత్యాన్ని ఆధునిక డిజిటల్ రూపంలో అందించే వేదిక" />
-      </ListItem>
-    </List>
+          <List dense>
+            <ListItem>
+              <ListItemText primary="తెలుగు శతకాలను ఒకే వేదికపై సమగ్రంగా చదవచ్చు" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="అన్ని శతకాలు / ఒక్కో శతకం సులభంగా ఎంపిక" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="పద్యాల సంఖ్య, గణాంకాలు స్పష్టంగా చూపింపు" />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="మొబైల్ & డెస్క్‌టాప్‌కు అనుకూల UI" />
+            </ListItem>
+          </List>
 
-    {/* 🔤 Telugu Fonts Support – inside Module 1 */}
-    <Box sx={{ mt: 3 }}>
-      <Typography fontWeight={600} sx={{ mb: 1 }}>
-        🔤 తెలుగు ఫాంట్లు & ఫాంట్ సైజ్ మద్దతు
-      </Typography>
-
-      <List dense>
-        <ListItem>
-          <ListItemText
-            primary="రత్నాలబాల లోని చిత్రమాల మాడ్యూల్‌లో గురజాడ, ఎన్‌టిఆర్, వేటూరి, సిరివెన్నెల, చతుర, రమణీయ, రామరాజ, రవి ప్రకాష్, టానా, తెనాలి రామకృష్ణ, తిమ్మన, పొన్నల వంటి విభిన్న తెలుగు యూనికోడ్ ఫాంట్లు అందుబాటులో ఉన్నాయి."
-          />
-        </ListItem>
-
-        <ListItem>
-          <ListItemText
-            primary="వాడుకరి తన అవసరానికి అనుగుణంగా ఫాంట్‌ను ఎంపిక చేసుకోవచ్చు. అలాగే ఫాంట్ సైజ్‌ను కూడా మార్చుకునే సౌకర్యం ఉండటంతో పద్యాలను పఠనానికి అనుకూలంగా, ఆకర్షణీయంగా రూపకల్పన చేయవచ్చు."
-          />
-        </ListItem>
-
-        <ListItem>
-          <ListItemText
-            primary="ఈ ఫాంట్లు శ్రీ అప్పాజీ అంబరీష్ దర్భా గారి సృజనాత్మక కృషి ఫలితం. ఆయన డిజిటల్ మీడియా నిపుణుడు, సినిమా నటుడు, అలాగే తెలుగు యూనికోడ్ ఫాంట్ల రూపకర్తగా తెలుగు భాషను డిజిటల్ ప్రపంచానికి చేరువ చేశారు."
-          />
-        </ListItem>
-      </List>
-    </Box>
-
-    {/* 🔗 Navigate Button */}
-    <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-      <Button
-        variant="contained"
-        onClick={() => router.push("/shatakamu")}
-      >
-        శతకాలమాల చూడండి →
-      </Button>
-    </Stack>
-  </CardContent>
-</Card>
+          <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
+            <Button variant="contained" onClick={() => router.push("/shatakamu")}>
+              శతకాలమాల చూడండి →
+            </Button>
+          </Stack>
+        </CardContent>
+      </Card>
 
       {/* =========================
           🎨 MODULE 2
@@ -114,28 +145,21 @@ export default function RatnalabalaHighlights() {
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography fontWeight={700} sx={{ mb: 2 }}>
-            🎨 మాడ్యూల్ 2: చిత్రమాల – పద్య యంత్రం 
+            🎨 మాడ్యూల్ 2: చిత్రమాల – పద్య యంత్రం
           </Typography>
 
           <List dense>
             <ListItem>
-              <ListItemText primary="వాడుకరి తానే పద్యం రాయగలిగే సౌకర్యం" />
+              <ListItemText primary="వాడుకరి తానే పద్యం రాయగలడు" />
             </ListItem>
             <ListItem>
-              <ListItemText primary="పద్యాన్ని అందమైన పోస్టర్ చిత్రంగా మార్చుకోవచ్చు" />
+              <ListItemText primary="పద్యాన్ని పోస్టర్ చిత్రంగా మార్చుకోవచ్చు" />
             </ListItem>
             <ListItem>
-              <ListItemText primary="వివిధ తెలుగు ఫాంట్లు & ఫాంట్ సైజ్ మద్దతు" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="లైవ్ ప్రీవ్యూ తో చిత్ర రూపం వెంటనే చూడగలగడం" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="పోస్టర్‌ను డౌన్‌లోడ్ చేసి పంచుకునే అవకాశం" />
+              <ListItemText primary="లైవ్ ప్రీవ్యూ & డౌన్‌లోడ్" />
             </ListItem>
           </List>
 
-          {/* 🔗 Navigate Button */}
           <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
             <Button
               variant="contained"
@@ -149,80 +173,26 @@ export default function RatnalabalaHighlights() {
       </Card>
 
       {/* =========================
-          🔒 PRIVACY
+          🧠 BHAVAMALA
          ========================= */}
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Typography fontWeight={700} sx={{ mb: 2 }}>
-            🔒 గోప్యత & విశ్వసనీయత
+            🧠 భావాలమాల – పద్య అన్వేషణ
           </Typography>
 
-          <List dense>
-            <ListItem>
-              <ListItemText primary="పద్యాలు, చిత్రాలు ఎక్కడా సేవ్ చేయబడవు" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="మొత్తం డేటా వాడుకరి డివైస్‌లోనే ఉంటుంది" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="మీ గోప్యతే మా మొదటి ప్రాధాన్యత" />
-            </ListItem>
-          </List>
+          <Typography sx={{ mb: 2, fontSize: "0.95rem" }}>
+            భావం, పదం లేదా సంఖ్య ఆధారంగా సరైన పద్యాన్ని
+            వెంటనే కనుగొనే తెలివైన సహాయకుడు.
+          </Typography>
+
+          <Divider sx={{ my: 2 }} />
+
+          <Typography sx={{ fontSize: "0.9rem" }}>
+            jan 10 • సుమతి 5 • దయ • 1
+          </Typography>
         </CardContent>
       </Card>
-
-
-      {/* =========================
-    🧠 BHAVAMALA BOT
-   ========================= */}
-<Card sx={{ mb: 4 }}>
-  <CardContent>
-    <Typography fontWeight={700} sx={{ mb: 2 }}>
-      🧠 భావాలమాల –  పద్య అన్వేషణ
-    </Typography>
-
-    <Typography sx={{ mb: 2, opacity: 0.85, fontSize: "0.95rem" }}>
-      భావాలమాల అనేది రత్నాలబాలలోని ఒక తెలివైన సహాయకుడు.  
-      ఇది మీ ప్రశ్నలకు, పదాలకు, సంఖ్యలకు అనుగుణంగా సరైన పద్యాలను చూపిస్తుంది.
-    </Typography>
-
-    <List dense>
-      <ListItem>
-        <ListItemText primary="శతకం పేరు + పద్యం సంఖ్య ఇవ్వడం ద్వారా వెంటనే పద్యం పొందవచ్చు" />
-      </ListItem>
-
-      <ListItem>
-        <ListItemText primary="తెలుగు లేదా English లో చిన్నగా టైప్ చేసినా అర్థం చేసుకుంటుంది" />
-      </ListItem>
-
-      <ListItem>
-        <ListItemText primary="కేవలం పదం లేదా భావం ఇవ్వగానే సంబంధిత పద్యాలను చూపిస్తుంది" />
-      </ListItem>
-
-      <ListItem>
-        <ListItemText primary="jan 10, sumati 5, kr 100, na 50 వంటి సరళమైన కమాండ్లు సరిపోతాయి" />
-      </ListItem>
-
-      <ListItem>
-        <ListItemText primary="ఒక్క సంఖ్య (ఉదా: 1) ఇస్తే అన్ని శతకాలలో శోధన చేస్తుంది" />
-      </ListItem>
-    </List>
-
-    <Box sx={{ mt: 2, p: 2, bgcolor: "#f9f9f9", borderRadius: 2 }}>
-      <Typography fontWeight={600} sx={{ mb: 1 }}>
-        ✨ ఉపయోగించే విధానం (సరళంగా)
-      </Typography>
-
-      <Typography sx={{ fontSize: "0.9rem" }}>
-        • <b>jan 10</b> → తెలుగుబాల 10వ పద్యం<br />
-        • <b>సుమతి 5</b> → సుమతీ 5వ పద్యం<br />
-        • <b>దయ</b> → దయ భావానికి సంబంధించిన పద్యాలు<br />
-        • <b>1</b> → అన్ని శతకాలలో శోధన
-      </Typography>
-    </Box>
-  </CardContent>
-</Card>
-
 
       {/* =========================
           🤖 AI NOTE
@@ -235,13 +205,10 @@ export default function RatnalabalaHighlights() {
 
           <List dense>
             <ListItem>
-              <ListItemText primary="తెలుగు సాహిత్యానికి AI ఆధారిత డిజిటల్ మద్దతు" />
+              <ListItemText primary="AI ఆధారిత తెలుగు సాహిత్య వేదిక" />
             </ListItem>
             <ListItem>
-              <ListItemText primary="పరిశోధన, అభ్యాసం, భాషాభివృద్ధి లక్ష్యంగా రూపొందింపు" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="సంప్రదాయ సాహిత్యాన్ని కొత్త తరం దగ్గరికి తీసుకెళ్లే ప్రయత్నం" />
+              <ListItemText primary="పరిశోధన & అభ్యాసానికి అనుకూలంగా రూపకల్పన" />
             </ListItem>
           </List>
         </CardContent>
