@@ -423,73 +423,93 @@ function estimatePdfPages(text: string, fontSize: number) {
      - Visual fidelity 100%
      - Text not selectable
   ========================= */
-  const downloadPDFImage = async () => {
-    if (!previewRef.current) return;
+const downloadPDFImage = async () => {
+  if (!previewRef.current) return;
 
-    const dataUrl = await toPng(previewRef.current, {
-      pixelRatio: 3,
-      backgroundColor: "#ffffff",
-    });
+  const dataUrl = await toPng(previewRef.current, {
+    pixelRatio: 3,
+    backgroundColor: "#ffffff",
+  });
 
-    const pdf =
-      canvasSize === "a4"
-        ? new jsPDF("p", "mm", "a4")
-        : new jsPDF("p", "px", [800, 800]);
+  const pdf = new jsPDF("p", "mm", "a4");
 
-    if (canvasSize === "a4") {
-      pdf.addImage(dataUrl, "PNG", 10, 10, 190, 0);
-    } else {
-      pdf.addImage(dataUrl, "PNG", 0, 0, 800, 800);
-    }
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
 
-    pdf.save("khati-mala-design.pdf");
-  };
+  const margin = 10;
+  const imgWidth = pageWidth - margin * 2;
+
+  const img = new Image();
+  img.src = dataUrl;
+  await new Promise(resolve => (img.onload = resolve));
+
+  const imgHeight = (img.height * imgWidth) / img.width;
+
+  let positionY = margin;
+  let remainingHeight = imgHeight;
+
+  // 🔹 First page
+  pdf.addImage(dataUrl, "PNG", margin, positionY, imgWidth, imgHeight);
+  remainingHeight -= pageHeight;
+
+  // 🔹 Next pages
+  while (remainingHeight > 0) {
+    positionY = remainingHeight - imgHeight + margin;
+    pdf.addPage();
+    pdf.addImage(dataUrl, "PNG", margin, positionY, imgWidth, imgHeight);
+    remainingHeight -= pageHeight;
+  }
+
+  pdf.save("khati-mala-design.pdf");
+
+  // ✅ Clear IndexedDB + UI
+  await clearDraft();
+};
+
 
   /* =========================
      🔤 PDF – TEXT WITH EMBEDDED FONT
      MEMORY FILE → jsPDF VFS → PDF
   ========================= */
-  const downloadPDFText = async () => {
-    const pdf = new jsPDF("p", "mm", "a4");
-    const fontInfo = FONT_FILES[fontKey];
+const downloadPDFText = async () => {
+  const pdf = new jsPDF("p", "mm", "a4");
+  const fontInfo = FONT_FILES[fontKey];
 
-    /*
-      1️⃣ Load .ttf into browser memory (RAM)
-    */
-    const base64Font = await loadFontAsBase64(fontInfo.file);
+  const base64Font = await loadFontAsBase64(fontInfo.file);
+  pdf.addFileToVFS(`${fontInfo.name}.ttf`, base64Font);
+  pdf.addFont(`${fontInfo.name}.ttf`, fontInfo.name, "normal");
+  pdf.setFont(fontInfo.name);
+  pdf.setFontSize(fontSize);
 
-    /*
-      2️⃣ Add font to jsPDF Virtual File System (VFS)
-         This is an IN-MEMORY file only.
-    */
-    pdf.addFileToVFS(`${fontInfo.name}.ttf`, base64Font);
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const marginX = 20;
+  let y = 25;
 
-    /*
-      3️⃣ Register font → becomes part of PDF binary
-    */
-    pdf.addFont(`${fontInfo.name}.ttf`, fontInfo.name, "normal");
-    pdf.setFont(fontInfo.name);
-    pdf.setFontSize(fontSize);
+  // 👉 TITLE
+  if (title) {
+    pdf.text(title, marginX, y);
+   y += fontSize * 0.9;
+ // 🔴 important
+  }
 
-    let y = 30;
-    const marginX = 20;
+  // 👉 BODY TEXT (line-by-line)
+  const lines = pdf.splitTextToSize(text || "", 170);
 
-    if (title) {
-      pdf.text(title, marginX, y);
-      y += 12;
+  lines.forEach(line => {
+    if (y + fontSize > pageHeight - 20) {
+      pdf.addPage();
+      y = 25;
     }
+    pdf.text(line, marginX, y);
+    y += fontSize * 1.6;
+  });
 
-    const lines = pdf.splitTextToSize(text || "", 170);
-    pdf.text(lines, marginX, y, { lineHeightFactor: 1.6 });
+  pdf.save("khati-mala-text.pdf");
 
-    /*
-      4️⃣ Save PDF
-         - Font embedded
-         - No .ttf saved to disk
-         - Fully portable PDF
-    */
-    pdf.save("khati-mala-text.pdf");
-  };
+  // ✅ clear IndexedDB after download
+  await clearDraft();
+};
+
 
   /* =========================
      📝 WORD EXPORT (TEXT ONLY)
@@ -664,7 +684,6 @@ useEffect(() => {
           >
             <Box sx={{ display: "flex", justifyContent: "space-between" }}>
               <span>{title || "శీర్షిక"}</span>
-              <span style={{ opacity: 0.6 }}>{activeFontLabel}</span>
             </Box>
 
             <div style={{ whiteSpace: "pre-line", textAlign: "center" }}>
