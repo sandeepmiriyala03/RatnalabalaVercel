@@ -26,7 +26,16 @@ export default function SametaluPage() {
   return (
     <Box sx={{ maxWidth: 900, mx: "auto", p: 3 }}>
       {/* 🌼 Title */}
-      <Typography align="center" fontSize="2rem" fontWeight={900}>
+   <Typography
+                variant="h3"
+                fontWeight={800}
+                sx={{
+                  letterSpacing: "-0.5px",
+                  background: "linear-gradient(90deg, #0f172a, #2563eb)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                     textAlign: "center",  // ✅ Centers the text
+                }}>
          సామెతల మాల
       </Typography>
 

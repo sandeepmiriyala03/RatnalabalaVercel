@@ -21,12 +21,19 @@ export default function AksharamalaPage() {
       }}
     >
       {/* 🌼 TITLE */}
-      <Typography
-        align="center"
-        fontSize={{ xs: "1.8rem", sm: "2.2rem" }}
-        fontWeight={900}
-      >
-         తెలుగు అక్షరమాల 
+        <Typography  
+                           variant="h3"
+                           fontWeight={800}
+                           sx={{
+                             letterSpacing: "-0.5px",
+                             background: "linear-gradient(90deg, #0f172a, #2563eb)",
+                             WebkitBackgroundClip: "text",
+                             WebkitTextFillColor: "transparent", 
+                               fontWeight: 700,
+                         fontSize: "calc(var(--telugu-font-size) * 1.8)" ,
+                            textAlign: "center",  
+                           }}>
+          అక్షరమాల 
       </Typography>
 
       <Typography

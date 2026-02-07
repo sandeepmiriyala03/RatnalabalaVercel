@@ -35,12 +35,19 @@ export default function KathamalaPage() {
   return (
     <Box sx={{ py: { xs: 3, md: 5 }, px: 2, maxWidth: 1100, mx: "auto" }}>
       {/* 🌙 Title */}
-      <Typography
-        align="center"
-        fontSize={{ xs: "1.6rem", md: "2.3rem" }}
-        fontWeight={900}
-      >
-        🌙 కథామాల (Kathamala)
+       <Typography
+          variant="h3"
+          fontWeight={800}
+          sx={{
+            letterSpacing: "-0.5px",
+            background: "linear-gradient(90deg, #0f172a, #2563eb)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",       fontWeight: 700,
+          fontSize: "calc(var(--telugu-font-size) * 1.8)",
+             textAlign: "center",  // ✅ Centers the text
+          }}
+        >
+         కథామాల
       </Typography>
       {/* 🌼 Tagline */}
       <Typography align="center" sx={{ mt: 1, mb: 2, opacity: 0.85 }}>

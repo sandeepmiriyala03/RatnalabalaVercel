@@ -38,7 +38,7 @@ export default function MusicPlayer() {
   return (
     <Box sx={{ mt: 6, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 3, textAlign: 'center' }}>
       <Typography variant="h5" component="h3" gutterBottom>
-        నేపథ్య సంగీతం (Background Music)
+        నేపథ్య సంగీతం
       </Typography>
       
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>

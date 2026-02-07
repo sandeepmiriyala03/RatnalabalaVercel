@@ -170,9 +170,6 @@ const authorInfo = [
   `హిమబిందు అకాడమీ ఆఫ్ ఆర్ట్స్ అండ్ లిటరేచర్ సంస్థను స్థాపించి, మంచి రచనల కోసం అవార్డులు ఇచ్చుతూ రచయితలను ప్రోత్సహిస్తున్నారు.`,
 ];
 
-const audioSrc = "/MusicPlayer/mira.mp4"; // Replace with your audio file URL
-const videoSrc = "/video/mira.mp4"; // Replace with your video file URL
-
 export default function MiryalaLifeJourney() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -222,12 +219,17 @@ export default function MiryalaLifeJourney() {
   return (
     <Container maxWidth="md" sx={{ py: 4, px: { xs: 2, sm: 3 } }}>
       <Typography
-        variant={isMobile ? "h4" : "h3"}
-        component="h1"
-        gutterBottom
-        align="center"
-        sx={{ fontWeight: "bold" }}
-      >
+          variant="h3"
+          fontWeight={800}
+          sx={{
+            letterSpacing: "-0.5px",
+            background: "linear-gradient(90deg, #0f172a, #2563eb)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",       fontWeight: 700,
+          fontSize: "calc(var(--telugu-font-size) * 1.8)",
+             textAlign: "center",  // ✅ Centers the text
+          }}
+        >
         మిరా ప్రస్థానం
       </Typography>
 

@@ -126,14 +126,15 @@ const PoemList: React.FC = () => {
         lineHeight: 1.8,
       }}
     >
-      <Typography
-        align="center"
-        gutterBottom
-        sx={{
-          fontWeight: 700,
-          fontSize: "calc(var(--telugu-font-size) * 1.8)",
-        }}
-      >
+       <Typography
+                          variant="h3"
+                          fontWeight={800}
+                          sx={{
+                            letterSpacing: "-0.5px",
+                            background: "linear-gradient(90deg, #0f172a, #2563eb)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                          }}>
        రత్నాలబాల
       </Typography>
 

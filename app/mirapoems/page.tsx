@@ -127,13 +127,19 @@ const PoemList: React.FC = () => {
       }}
     >
       <Typography
-        align="center"
-        gutterBottom
-        sx={{
-          fontWeight: 700,
-          fontSize: "calc(var(--telugu-font-size) * 1.8)",
+
+       variant="h3" fontWeight={800}
+                          sx={{
+                            letterSpacing: "-0.5px",
+                            background: "linear-gradient(90deg, #0f172a, #2563eb)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                               textAlign: "center",  // ✅ Centers the text
+       
         }}
       >
+
+        
         మిరా పద్యాలు
       </Typography>
 

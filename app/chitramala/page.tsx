@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box } from "@mui/material";
+import { Box,Typography } from "@mui/material";
 import PoemInput from "@/app/components/PoemInput";
 import ChitramalaPreviewCard from "@/app/components/ChitramalaCard";
 
@@ -55,9 +55,23 @@ export default function ChitramalaPage() {
 >
   {/* 🔰 Title */}
   <Box sx={{ mb: 1 }}>
-    <strong style={{ fontSize: "1.05rem" }}>
-      చిత్రమాల పద్య యంత్రం
-    </strong>
+  <Typography
+          variant="h3"
+          fontWeight={800}
+          sx={{
+            letterSpacing: "-0.5px",
+            background: "linear-gradient(90deg, #0f172a, #2563eb)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent", 
+          
+          fontWeight: 700,
+          fontSize: "calc(var(--telugu-font-size) * 1.8)",
+         textAlign: "center",  // ✅ Centers the text
+          }}>
+    చిత్రమాల పద్య యంత్రం
+          </Typography>
+  
+  
     <div style={{ fontSize: "0.85rem", color: "#555" }}>
       పద్యాన్ని రాయండి • చిత్రంగా మార్చండి • పంచుకోండి
     </div>

@@ -3,8 +3,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import Tesseract from "tesseract.js";
 import Image from "next/image";
-import html2canvas from "html2canvas";
-
+import {  Typography } from "@mui/material";
 import { FileUploadComponent } from "./FileUploadComponent";
 import FileUploadManager from "./FileUploadManager";
 import { ActionsComponent } from "./ActionsComponent";
@@ -220,7 +219,18 @@ export default function TeluguOcrPage() {
 
   return (
     <div style={{ padding: 20, maxWidth: 760, margin: "auto" }}>
-      <h1 style={{ textAlign: "center" }}>లిపిమాల</h1>
+       <Typography
+          variant="h3"
+          fontWeight={800}
+          sx={{
+            letterSpacing: "-0.5px",
+            background: "linear-gradient(90deg, #0f172a, #2563eb)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",        fontWeight: 700,
+          fontSize: "calc(var(--telugu-font-size) * 1.8)",
+             textAlign: "center",  // ✅ Centers the text
+          }}
+        >లిపిమాల</Typography>
 
       <TeluguOcrExplanation />
 
