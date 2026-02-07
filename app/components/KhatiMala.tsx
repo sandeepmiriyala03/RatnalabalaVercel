@@ -466,51 +466,6 @@ const downloadPDFImage = async () => {
   await clearDraft();
 };
 
-
-  /* =========================
-     🔤 PDF – TEXT WITH EMBEDDED FONT
-     MEMORY FILE → jsPDF VFS → PDF
-  ========================= */
-const downloadPDFText = async () => {
-  const pdf = new jsPDF("p", "mm", "a4");
-  const fontInfo = FONT_FILES[fontKey];
-
-  const base64Font = await loadFontAsBase64(fontInfo.file);
-  pdf.addFileToVFS(`${fontInfo.name}.ttf`, base64Font);
-  pdf.addFont(`${fontInfo.name}.ttf`, fontInfo.name, "normal");
-  pdf.setFont(fontInfo.name);
-  pdf.setFontSize(fontSize);
-
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const marginX = 20;
-  let y = 25;
-
-  // 👉 TITLE
-  if (title) {
-    pdf.text(title, marginX, y);
-   y += fontSize * 0.9;
- // 🔴 important
-  }
-
-  // 👉 BODY TEXT (line-by-line)
-  const lines = pdf.splitTextToSize(text || "", 170);
-
-  lines.forEach(line => {
-    if (y + fontSize > pageHeight - 20) {
-      pdf.addPage();
-      y = 25;
-    }
-    pdf.text(line, marginX, y);
-    y += fontSize * 1.6;
-  });
-
-  pdf.save("khati-mala-text.pdf");
-
-  // ✅ clear IndexedDB after download
-  await clearDraft();
-};
-
-
   /* =========================
      📝 WORD EXPORT (TEXT ONLY)
      Uses system Telugu fonts
