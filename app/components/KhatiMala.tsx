@@ -686,9 +686,23 @@ useEffect(() => {
               <span>{title || "శీర్షిక"}</span>
             </Box>
 
-            <div style={{ whiteSpace: "pre-line", textAlign: "center" }}>
-              {text || "ఇక్కడ మీ పాఠ్యం ప్రదర్శించబడుతుంది"}
-            </div>
+                  <div
+          style={{
+            whiteSpace: "pre-wrap",
+            textAlign: "justify",
+            wordBreak: "break-word",
+            lineHeight: 1.9,
+            paddingTop: "0.5em",
+            paddingBottom: "0.5em",
+          }}
+        >
+          {text || (
+            <span style={{ opacity: 0.4 }}>
+              ఇక్కడ మీ పాఠ్యం ప్రదర్శించబడుతుంది
+            </span>
+          )}
+        </div>
+
 
             
           </Box>
