@@ -620,47 +620,53 @@ useEffect(() => {
 
           {/* RIGHT – PREVIEW */}
           <Box
-            ref={previewRef}
-            onContextMenu={handleContextMenu}
-            className={activeFont}
-            sx={{
-              aspectRatio: CANVAS[canvasSize].aspect,
-              border: "1px solid #ddd",
-              borderRadius: 2,
-              p: 3,
-              fontSize: `${fontSize}px`,
-              lineHeight: 1.8,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              bgcolor: "#fff",
-              cursor: "context-menu",
-            }}
-          >
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-              <span>{title || "శీర్షిక"}</span>
-            </Box>
+  ref={previewRef}
+  onContextMenu={handleContextMenu}
+  className={activeFont}
+  sx={{
+    aspectRatio: CANVAS[canvasSize].aspect,
+    border: "1px solid #ddd",
+    borderRadius: 2,
+    p: 3,
+    fontSize: `${fontSize}px`,
+    lineHeight: 1.8,
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-start", 
+    bgcolor: "#fff",
+    cursor: "context-menu",
+  }}
+>
+  {/* TITLE */}
+  <Typography
+    sx={{
+      textAlign: "center",
+      fontWeight: 600,
+      mb: 1,              // 🔑 small controlled gap
+    }}
+  >
+    {title || "శీర్షిక"}
+  </Typography>
 
-                  <div
-          style={{
-            whiteSpace: "pre-wrap",
-            textAlign: "justify",
-            wordBreak: "break-word",
-            lineHeight: 1.9,
-            paddingTop: "0.5em",
-            paddingBottom: "0.5em",
-          }}
-        >
-          {text || (
-            <span style={{ opacity: 0.4 }}>
-              ఇక్కడ మీ పాఠ్యం ప్రదర్శించబడుతుంది
-            </span>
-          )}
-        </div>
+  {/* BODY */}
+  <Box
+    sx={{
+      whiteSpace: "pre-wrap",
+      textAlign: "justify",
+      wordBreak: "break-word",
+      lineHeight: 1.9,
+    }}
+  >
+    {text ? (
+      text
+    ) : (
+      <Typography component="span" sx={{ opacity: 0.4 }}>
+        ఇక్కడ మీ పాఠ్యం ప్రదర్శించబడుతుంది
+      </Typography>
+    )}
+  </Box>
+</Box>
 
-
-            
-          </Box>
         </Box>
     <Typography variant="caption" sx={{ opacity: 0.7 }}>
       📄 అంచనా PDF పేజీలు: <b>{estimatedPages}</b>
