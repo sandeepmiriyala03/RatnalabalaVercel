@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState,useEffect} from "react";
+
 import {
   Box,
   Card,
@@ -340,6 +341,38 @@ async function loadFontAsBase64(url: string): Promise<string> {
   );
 }
 
+const DB_NAME = "ratnalabala-db";
+const STORE = "khati-mala";
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveDraft(data: any) {
+  const db = await openDB();
+  db.transaction(STORE, "readwrite").objectStore(STORE).put(data, "draft");
+}
+
+async function loadDraft(): Promise<any> {
+  const db = await openDB();
+  return new Promise(resolve => {
+    const req = db.transaction(STORE).objectStore(STORE).get("draft");
+    req.onsuccess = () => resolve(req.result || null);
+  });
+}
+
+async function clearDraft() {
+  const db = await openDB();
+  db.transaction(STORE, "readwrite").objectStore(STORE).delete("draft");
+}
+
+
+
 /* =========================
    COMPONENT
 ========================= */
@@ -369,13 +402,20 @@ export default function KhatiMala() {
      ACTIONS
   ========================= */
 
-  const resetForm = () => {
-    setTitle("");
-    setText("");
-    setFontKey("gurajada");
-    setFontSize(22);
-    setCanvasSize("a4");
-  };
+  const resetForm = async () => {
+  setTitle("");
+  setText("");
+  setFontKey("gurajada");
+  setFontSize(22);
+  setCanvasSize("a4");
+  await clearDraft();
+};
+
+function estimatePdfPages(text: string, fontSize: number) {
+  const charsPerPage = Math.floor(1800 * (22 / fontSize));
+  return Math.max(1, Math.ceil(text.length / charsPerPage));
+}
+
 
   /* =========================
      🖼 PDF – IMAGE (EXACT DESIGN)
@@ -483,12 +523,36 @@ export default function KhatiMala() {
   };
 
   const closeMenu = () => setMenuPos(null);
+const estimatedPages = estimatePdfPages(text, fontSize);
+
+  useEffect(() => {
+  saveDraft({
+    title,
+    text,
+    fontKey,
+    fontSize,
+    canvasSize,
+    updatedAt: Date.now(),
+  });
+}, [title, text, fontKey, fontSize, canvasSize]);
+
+useEffect(() => {
+  loadDraft().then(d => {
+    if (!d) return;
+    setTitle(d.title || "");
+    setText(d.text || "");
+    setFontKey(d.fontKey || "gurajada");
+    setFontSize(d.fontSize || 22);
+    setCanvasSize(d.canvasSize || "a4");
+  });
+}, []);
 
   /* =========================
      RENDER
   ========================= */
 
   return (
+    
     <Card>
       <CardContent>
         <Typography variant="h6" mb={2}>
@@ -568,6 +632,14 @@ export default function KhatiMala() {
               <Button variant="contained" onClick={downloadWord}>
                 Word
               </Button>
+                    <Button variant="contained" color="secondary" onClick={downloadPDFImage}>
+        PDF
+      </Button>
+<Typography variant="caption" sx={{ opacity: 0.6 }}>
+  💾 ఆటో సేవ్ — ఈ డివైస్‌లోనే (Offline)
+</Typography>
+
+
             </Stack>
           </Box>
 
@@ -602,12 +674,15 @@ export default function KhatiMala() {
             
           </Box>
         </Box>
+    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+      📄 అంచనా PDF పేజీలు: <b>{estimatedPages}</b>
+    </Typography>
 
         <Typography variant="caption" sx={{ mt: 1, opacity: 0.6 }}>
           Preview పై right-click చేసి PDF ఎంపిక చేయండి
         </Typography>
 
-        {/* RIGHT-CLICK CONTEXT MENU */}
+        {/* RIGHT-CLICK CONTEXT MENU
         <Menu
           open={menuPos !== null}
           onClose={closeMenu}
@@ -641,6 +716,7 @@ export default function KhatiMala() {
             🧹 Clear
           </MenuItem>
         </Menu>
+         */}
       </CardContent>
     </Card>
   );
