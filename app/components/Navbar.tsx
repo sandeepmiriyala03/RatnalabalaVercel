@@ -1,21 +1,32 @@
 "use client";
 
-import AppBar from "@mui/material/AppBar";
-import Toolbar from "@mui/material/Toolbar";
-import Typography from "@mui/material/Typography";
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Box,
+  IconButton,
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  Switch,
+  Button,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
 import Link from "next/link";
-import { Box } from "@mui/material";
-import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 
-
+/* ================= NAV ITEMS ================= */
 const navItems = [
   { label: "రత్నాలబాల", path: "/" },
   { label: "మిరా", path: "/mirapoems" },
-    { label: "పద్యాలవాల", path: "/poems" },
+  { label: "పద్యాలవాల", path: "/poems" },
   { label: "అక్షరమాల", path: "/aksharamala" },
   { label: "శతకాలమాల", path: "/shatakamu" },
   { label: "కథామాల", path: "/kathamala" },
-   { label: "సామెతలమాల", path: "/sametalu" },
+  { label: "సామెతలమాల", path: "/sametalu" },
   { label: "చిత్రమాల", path: "/chitramala" },
   { label: "స్వరమాల", path: "/swaramala" },
   { label: "లిపిమాల", path: "/lipimala" },
@@ -23,84 +34,160 @@ const navItems = [
 ];
 
 export default function Navbar() {
+  const pathname = usePathname();
+
+  const [open, setOpen] = useState(false);
+  const [fontScale, setFontScale] = useState(1);
+  const [highContrast, setHighContrast] = useState(false);
+
+  const bgColor = highContrast ? "#0B3C5D" : "#1E5A8A";
+  const textColor = "#FFFFFF";
+  const highlightColor = "#FFD166";
+
   return (
-    <AppBar position="sticky" color="secondary" elevation={3}>
-      <Toolbar
-        sx={{
-          flexDirection: "column",
-          alignItems: "stretch",
-          px: { xs: 2, md: 4 },
-          py: 1,
+    <>
+      {/* ===== Skip to Content (WCAG) ===== */}
+      <a
+        href="#main-content"
+        style={{
+          position: "absolute",
+          left: "-999px",
+          top: "auto",
+          width: "1px",
+          height: "1px",
+          overflow: "hidden",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.left = "16px";
+          e.currentTarget.style.top = "16px";
+          e.currentTarget.style.width = "auto";
+          e.currentTarget.style.height = "auto";
+          e.currentTarget.style.padding = "8px 12px";
+          e.currentTarget.style.background = highlightColor;
+          e.currentTarget.style.color = "#000";
+          e.currentTarget.style.zIndex = "2000";
         }}
       >
-        {/* Top Row: Logo + Menu */}
-        <Box
+        Skip to content
+      </a>
+
+      <AppBar position="sticky" elevation={2} sx={{ bgcolor: bgColor }}>
+        <Toolbar
           sx={{
+            px: { xs: 2, md: 4 },
             display: "flex",
-            alignItems: "center",
             justifyContent: "space-between",
           }}
         >
-          {/* Logo + Title */}
-          <Link
-            href="/"
-            style={{
-              textDecoration: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-            }}
-          >
-            
+          {/* ===== Brand ===== */}
+          <Link href="/" style={{ textDecoration: "none" }}>
             <Typography
-              variant="h5"
               sx={{
-                fontWeight: 700,
-                color: "white",
-                letterSpacing: "0.5px",
+                fontWeight: 800,
+                fontSize: `${1.2 * fontScale}rem`,
+                color: textColor,
               }}
             >
-            రత్నాలబాల – జ్ఞానమాల
+              రత్నాలబాల – జ్ఞానమాల
             </Typography>
-             {/* Motto Row */}
-      
+            <Typography
+              sx={{
+                fontSize: `${0.75 * fontScale}rem`,
+                color: "rgba(255,255,255,0.85)",
+              }}
+            >
+              తెలుగు సాహిత్యానికి డిజిటల్ వేదిక
+            </Typography>
           </Link>
 
-          {/* Desktop Menu */}
-          <Box
-            sx={{
-              display: { xs: "none", md: "flex" },
-              gap: 1,
-              alignItems: "center",
-            }}
-          >
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.path}
-                style={{ textDecoration: "none" }}
-              >
-                <Typography
-                  sx={{
-                    color: "white",
-                    fontSize: "0.95rem",
-                    px: 1.5,
-                    py: 0.75,
-                    borderRadius: "999px",
-                    transition: "all 0.2s ease",
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.18)",
-                    },
-                  }}
+          {/* ===== Desktop Nav ===== */}
+          <Box sx={{ display: { xs: "none", md: "flex" }, gap: 0.5 }}>
+            {navItems.map((item) => {
+              const active = pathname === item.path;
+              return (
+                <Link
+                  key={item.label}
+                  href={item.path}
+                  style={{ textDecoration: "none" }}
                 >
-                  {item.label}
-                </Typography>
-              </Link>
+                  <Typography
+                    tabIndex={0}
+                    sx={{
+                      color: active ? bgColor : textColor,
+                      backgroundColor: active
+                        ? highlightColor
+                        : "transparent",
+                      px: 1.6,
+                      py: 0.8,
+                      borderRadius: "999px",
+                      fontSize: `${0.9 * fontScale}rem`,
+                      fontWeight: active ? 700 : 500,
+                      "&:hover": {
+                        backgroundColor: "rgba(255,255,255,0.18)",
+                      },
+                      "&:focus-visible": {
+                        outline: `2px solid ${highlightColor}`,
+                      },
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
+                </Link>
+              );
+            })}
+          </Box>
+
+          {/* ===== Mobile Menu Button ===== */}
+          <IconButton
+            sx={{ display: { xs: "flex", md: "none" }, color: textColor }}
+            aria-label="Open menu"
+            onClick={() => setOpen(true)}
+          >
+            <MenuIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+
+      {/* ================= Mobile Drawer ================= */}
+      <Drawer open={open} onClose={() => setOpen(false)}>
+        <Box sx={{ width: 260, p: 2 }}>
+          <List>
+            {navItems.map((item) => (
+              <ListItem
+                key={item.label}
+                component={Link}
+                href={item.path}
+                onClick={() => setOpen(false)}
+                sx={{
+                  bgcolor:
+                    pathname === item.path ? highlightColor : "transparent",
+                  borderRadius: 1,
+                }}
+              >
+                <ListItemText primary={item.label} />
+              </ListItem>
             ))}
+          </List>
+
+          {/* ===== Accessibility Controls ===== */}
+          <Box sx={{ mt: 2 }}>
+            <Typography fontWeight={700}>అక్షర పరిమాణం</Typography>
+            <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
+              <Button onClick={() => setFontScale(1)}>A</Button>
+              <Button onClick={() => setFontScale(1.15)}>A+</Button>
+              <Button onClick={() => setFontScale(1.3)}>A++</Button>
+            </Box>
+
+            <Box sx={{ mt: 2 }}>
+              <Typography fontWeight={700}>High Contrast</Typography>
+              <Switch
+                checked={highContrast}
+                onChange={() => setHighContrast(!highContrast)}
+              />
+            </Box>
           </Box>
         </Box>
-     
-      </Toolbar>
-    </AppBar>
+      </Drawer>
+    </>
   );
 }

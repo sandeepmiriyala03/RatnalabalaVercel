@@ -256,7 +256,7 @@ useEffect(() => {
       </Container>
       <PwaInstallPrompt />
       <FloatingAIButton />
-      <MobileBottomNav />
+
     </>
   );
 }
