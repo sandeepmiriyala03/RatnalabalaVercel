@@ -64,7 +64,7 @@ const navItems = [
   {
     label: "లిపిమాల",
     path: "/lipimala",
-    intro: "తెలుగు లిపుల పరిచయం & రూపాంతరం",
+    intro: "తెలుగు లిపుల పరిచయం & రూపాంతరం OCR తో",
   },
   {
     label: "ఖతిమాల",
@@ -95,7 +95,7 @@ export default function RatnalabalaHighlights() {
         align="center"
         sx={{ mb: 3, opacity: 0.75, fontSize: "0.95rem" }}
       >
-       తెలుగు సాహిత్యానికి సంపూర్ణ సాంకేతిక వేదిక | పద్యాలు, కథలు, అక్షరాలు
+       తెలుగు సాహిత్యానికి సంపూర్ణ సాంకేతిక వేదిక 
       </Typography>
 
       {/* =========================
