@@ -88,16 +88,9 @@ export default function Navbar() {
                 color: textColor,
               }}
             >
-              రత్నాలబాల – జ్ఞానమాల
+              రత్నాలబాల–జ్ఞానమాల
             </Typography>
-            <Typography
-              sx={{
-                fontSize: `${0.75 * fontScale}rem`,
-                color: "rgba(255,255,255,0.85)",
-              }}
-            >
-              తెలుగు సాహిత్యానికి డిజిటల్ వేదిక
-            </Typography>
+           
           </Link>
 
           {/* ===== Desktop Nav ===== */}
@@ -169,23 +162,7 @@ export default function Navbar() {
             ))}
           </List>
 
-          {/* ===== Accessibility Controls ===== */}
-          <Box sx={{ mt: 2 }}>
-            <Typography fontWeight={700}>అక్షర పరిమాణం</Typography>
-            <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
-              <Button onClick={() => setFontScale(1)}>A</Button>
-              <Button onClick={() => setFontScale(1.15)}>A+</Button>
-              <Button onClick={() => setFontScale(1.3)}>A++</Button>
-            </Box>
-
-            <Box sx={{ mt: 2 }}>
-              <Typography fontWeight={700}>High Contrast</Typography>
-              <Switch
-                checked={highContrast}
-                onChange={() => setHighContrast(!highContrast)}
-              />
-            </Box>
-          </Box>
+       
         </Box>
       </Drawer>
     </>
