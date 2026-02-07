@@ -1,6 +1,4 @@
 "use client";
-
-import React from "react";
 import {
   Box,
   Container,
@@ -16,6 +14,64 @@ import {
   Divider,
 } from "@mui/material";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+const navItems = [
+  {
+    label: "రత్నాలబాల",
+    path: "/",
+    intro: "తెలుగు సాహిత్యానికి సమగ్ర డిజిటల్ వేదిక",
+  },
+  {
+    label: "మిరా",
+    path: "/mirapoems",
+    intro: "డాక్టర్ శ్రీ మిరియాల రామకృష్ణ గారు పద్యాలు",
+  },
+  {
+    label: "పద్యాలవాల",
+    path: "/poems",
+    intro: " మిరియాల వెంకటరత్నం  గారి పద్యాలు",
+  },
+  {
+    label: "అక్షరమాల",
+    path: "/aksharamala",
+    intro: "తెలుగు అక్షరాల అభ్యాసం మరియు అన్వేషణ",
+  },
+  {
+    label: "శతకాలమాల",
+    path: "/shatakamu",
+    intro: "ప్రసిద్ధ తెలుగు శతకాల సేకరణ",
+  },
+  {
+    label: "కథామాల",
+    path: "/kathamala",
+    intro: "నీతికథలు, చిన్న కథల డిజిటల్ సంగ్రహం",
+  },
+  {
+    label: "సామెతలమాల",
+    path: "/sametalu",
+    intro: "తెలుగు సామెతలు",
+  },
+  {
+    label: "చిత్రమాల",
+    path: "/chitramala",
+    intro: "పద్యాలను చిత్రాలుగా మార్చే యంత్రం",
+  },
+  {
+    label: "స్వరమాల",
+    path: "/swaramala",
+    intro: "చదవండి, వినండి – తెలుగు స్వరాల అనుభవం",
+  },
+  {
+    label: "లిపిమాల",
+    path: "/lipimala",
+    intro: "తెలుగు లిపుల పరిచయం & రూపాంతరం",
+  },
+  {
+    label: "ఖతిమాల",
+    path: "/khatiMala",
+    intro: "50+ తెలుగు ఫాంట్లతో పాఠ్య రచన",
+  },
+];
 
 export default function RatnalabalaHighlights() {
   const router = useRouter();
@@ -57,24 +113,57 @@ export default function RatnalabalaHighlights() {
         <Typography fontWeight={800} sx={{ mb: 1 }}>
           📚 అందుబాటులో ఉన్న మాలలు
         </Typography>
+                  <Stack direction="column" gap={1.5}>
+              {navItems.map((item) => (
+                <Box
+                  key={item.label}
+                  component={Link}
+                  href={item.path}
+                  sx={{
+                    textDecoration: "none",
+                    borderRadius: 2,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    p: 1.2,
+                    transition: "all 0.2s ease",
+                    "&:hover": {
+                      bgcolor: "primary.main",
+                      color: "#fff",
+                      transform: "translateX(4px)",
+                      "& .intro": {
+                        color: "rgba(255,255,255,0.85)",
+                      },
+                    },
+                  }}
+                >
+                  {/* Title */}
+                  <Typography
+                    sx={{
+                      fontWeight: 600,
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
 
-        <Stack direction="row" flexWrap="wrap" gap={1} sx={{ mb: 2 }}>
-          {[
-            "రత్నాలబాల",
-            "పద్యాలవాల",
-            "భావాలమాల",
-            "అక్షరమాల",
-            "శతకాలమాల",
-            "చిత్రమాల",
-            "కథామాల",
-            "సామెతలమాల",
-            "లిపిమాల",
-            "ఖతిమాల",
-            "స్వరమాల",
-          ].map((item) => (
-            <Chip key={item} label={item} variant="outlined" />
-          ))}
-        </Stack>
+                  {/* Intro */}
+                  <Typography
+                    className="intro"
+                    variant="caption"
+                    sx={{
+                      display: "block",
+                      mt: 0.2,
+                      opacity: 0.75,
+                    }}
+                  >
+                    {item.intro}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+
+
+  
 
         <Typography fontWeight={800} sx={{ mb: 1 }}>
           ✨ మీరు ఇక్కడ చేయగలవి
@@ -106,71 +195,6 @@ export default function RatnalabalaHighlights() {
           🔒 మీ గోప్యతే మా మొదటి ప్రాధాన్యత
         </Typography>
       </Box>
-
-      {/* =========================
-          📚 MODULE 1
-         ========================= */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography fontWeight={700} sx={{ mb: 2 }}>
-            📚 మాడ్యూల్ 1: శతకాలమాల
-          </Typography>
-
-          <List dense>
-            <ListItem>
-              <ListItemText primary="తెలుగు శతకాలను ఒకే వేదికపై సమగ్రంగా చదవచ్చు" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="అన్ని శతకాలు / ఒక్కో శతకం సులభంగా ఎంపిక" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="పద్యాల సంఖ్య, గణాంకాలు స్పష్టంగా చూపింపు" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="మొబైల్ & డెస్క్‌టాప్‌కు అనుకూల UI" />
-            </ListItem>
-          </List>
-
-          <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-            <Button variant="contained" onClick={() => router.push("/shatakamu")}>
-              శతకాలమాల చూడండి →
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
-
-      {/* =========================
-          🎨 MODULE 2
-         ========================= */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography fontWeight={700} sx={{ mb: 2 }}>
-            🎨 మాడ్యూల్ 2: చిత్రమాల – పద్య యంత్రం
-          </Typography>
-
-          <List dense>
-            <ListItem>
-              <ListItemText primary="వాడుకరి తానే పద్యం రాయగలడు" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="పద్యాన్ని పోస్టర్ చిత్రంగా మార్చుకోవచ్చు" />
-            </ListItem>
-            <ListItem>
-              <ListItemText primary="లైవ్ ప్రీవ్యూ & డౌన్‌లోడ్" />
-            </ListItem>
-          </List>
-
-          <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => router.push("/chitramala")}
-            >
-              చిత్రమాల ప్రారంభించండి →
-            </Button>
-          </Stack>
-        </CardContent>
-      </Card>
 
       {/* =========================
           🧠 BHAVAMALA
