@@ -10,8 +10,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Switch,
-  Button,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Link from "next/link";
@@ -31,14 +29,21 @@ const navItems = [
   { label: "స్వరమాల", path: "/swaramala" },
   { label: "లిపిమాల", path: "/lipimala" },
   { label: "ఖతిమాల", path: "/khatiMala" },
+
+  // ✅ Google Feedback Form
+  {
+    label: "అభిప్రాయం",
+    path: "https://forms.gle/z4zugcnmZrW9d9cR9",
+    external: true,
+  },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
 
   const [open, setOpen] = useState(false);
-  const [fontScale, setFontScale] = useState(1);
-  const [highContrast, setHighContrast] = useState(false);
+  const [fontScale] = useState(1);
+  const [highContrast] = useState(false);
 
   const bgColor = highContrast ? "#0B3C5D" : "#1E5A8A";
   const textColor = "#FFFFFF";
@@ -46,7 +51,7 @@ export default function Navbar() {
 
   return (
     <>
-      {/* ===== Skip to Content (WCAG) ===== */}
+      {/* ===== Skip to Content ===== */}
       <a
         href="#main-content"
         style={{
@@ -71,6 +76,7 @@ export default function Navbar() {
         Skip to content
       </a>
 
+      {/* ================= APP BAR ================= */}
       <AppBar position="sticky" elevation={2} sx={{ bgcolor: bgColor }}>
         <Toolbar
           sx={{
@@ -90,13 +96,43 @@ export default function Navbar() {
             >
               రత్నాలబాల–జ్ఞానమాల
             </Typography>
-           
           </Link>
 
-          {/* ===== Desktop Nav ===== */}
+          {/* ===== Desktop Navigation ===== */}
           <Box sx={{ display: { xs: "none", md: "flex" }, gap: 0.5 }}>
             {navItems.map((item) => {
               const active = pathname === item.path;
+
+              // ✅ External Link (Google Form)
+              if (item.external) {
+                return (
+                  <a
+                    key={item.label}
+                    href={item.path}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none" }}
+                  >
+                    <Typography
+                      sx={{
+                        px: 1.6,
+                        py: 0.8,
+                        borderRadius: "999px",
+                        fontSize: `${0.9 * fontScale}rem`,
+                        fontWeight: 600,
+                        color: textColor,
+                        "&:hover": {
+                          backgroundColor: "rgba(255,255,255,0.18)",
+                        },
+                      }}
+                    >
+                      {item.label}
+                    </Typography>
+                  </a>
+                );
+              }
+
+              // ✅ Internal Links
               return (
                 <Link
                   key={item.label}
@@ -104,7 +140,6 @@ export default function Navbar() {
                   style={{ textDecoration: "none" }}
                 >
                   <Typography
-                    tabIndex={0}
                     sx={{
                       color: active ? bgColor : textColor,
                       backgroundColor: active
@@ -148,8 +183,10 @@ export default function Navbar() {
             {navItems.map((item) => (
               <ListItem
                 key={item.label}
-                component={Link}
+                component={item.external ? "a" : Link}
                 href={item.path}
+                target={item.external ? "_blank" : undefined}
+                rel={item.external ? "noopener noreferrer" : undefined}
                 onClick={() => setOpen(false)}
                 sx={{
                   bgcolor:
@@ -161,8 +198,6 @@ export default function Navbar() {
               </ListItem>
             ))}
           </List>
-
-       
         </Box>
       </Drawer>
     </>
