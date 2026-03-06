@@ -2,98 +2,156 @@ import { NextResponse } from "next/server"
 import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
-import { pipeline } from "@xenova/transformers"
 
-let extractor:any = null
-let vectorIndex:any[] = []
-let initialized=false
+type Vector = number[]
 
-async function init(){
+interface Row {
+  vector: Vector
+  title: string
+  poem: string
+}
 
-if(initialized) return
+let extractor: any = null
+let vectorIndex: Row[] = []
+let initialized = false
+
+/* INIT VECTOR INDEX */
+
+async function init() {
+
+if (initialized) return
+
+// dynamic import (build error fix)
+const { pipeline } = await import("@xenova/transformers")
 
 const poemsDir = path.join(process.cwd(),"poems")
 
 const files = fs.readdirSync(poemsDir)
-.filter(f=>f.endsWith(".md"))
+.filter(f => f.endsWith(".md"))
 
 extractor = await pipeline(
 "feature-extraction",
 "Xenova/all-MiniLM-L6-v2"
 )
 
-for(const file of files){
+for (const file of files) {
 
 const raw = fs.readFileSync(
 path.join(poemsDir,file),
 "utf-8"
 )
 
-const {data,content} = matter(raw)
+const { data, content } = matter(raw)
 
 const emb = await extractor(content)
 
+const vector = meanPooling(emb.data)
+
 vectorIndex.push({
 
-vector: emb.data,
-
+vector,
 title: data.title || file.replace(".md",""),
-
-poem: content
+poem: content.trim()
 
 })
 
 }
 
-initialized=true
+initialized = true
 
 }
 
-export async function POST(req:Request){
+/* SEARCH */
 
-try{
+export async function POST(req: Request) {
 
-const {question} = await req.json()
+try {
+
+const body = await req.json()
+
+if(!body?.question){
+
+return NextResponse.json(
+{ error:"question required"},
+{ status:400 }
+)
+
+}
 
 await init()
 
-const q = await extractor(question)
+const qEmb = await extractor(body.question)
 
-let bestScore=-Infinity
-let best:any=null
+const qVector = meanPooling(qEmb.data)
 
-for(const item of vectorIndex){
+let bestScore = -Infinity
+let best: Row | null = null
 
-const score = cosine(q.data,item.vector)
+for (const item of vectorIndex) {
 
-if(score>bestScore){
+const score = cosine(qVector,item.vector)
 
-bestScore=score
-best=item
+if (score > bestScore) {
+
+bestScore = score
+best = item
 
 }
 
 }
 
-return NextResponse.json({
+if(!best){
 
-title:best.title,
-poem:best.poem
+return NextResponse.json(
+{ error:"no poem found"},
+{ status:404 }
+)
 
-})
+}
+
+return NextResponse.json(best)
 
 }catch{
 
 return NextResponse.json(
-{error:"semantic search failed"},
-{status:500}
+{ error:"semantic search failed"},
+{ status:500 }
 )
 
 }
 
 }
 
-function cosine(a:any,b:any){
+/* MEAN POOLING */
+
+function meanPooling(matrix:number[][]):Vector{
+
+const dim = matrix[0].length
+const result = new Array(dim).fill(0)
+
+for(const row of matrix){
+
+for(let i=0;i<dim;i++){
+
+result[i]+=row[i]
+
+}
+
+}
+
+for(let i=0;i<dim;i++){
+
+result[i]/=matrix.length
+
+}
+
+return result
+
+}
+
+/* COSINE SIMILARITY */
+
+function cosine(a:Vector,b:Vector){
 
 let dot=0
 let na=0
@@ -107,6 +165,8 @@ nb+=b[i]*b[i]
 
 }
 
-return dot/(Math.sqrt(na)*Math.sqrt(nb))
+const denom = Math.sqrt(na)*Math.sqrt(nb)
+
+return denom === 0 ? 0 : dot/denom
 
 }
