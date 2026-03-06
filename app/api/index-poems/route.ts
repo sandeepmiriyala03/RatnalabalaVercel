@@ -2,7 +2,6 @@ import { NextResponse } from "next/server"
 import fs from "fs"
 import path from "path"
 import matter from "gray-matter"
-import { pipeline } from "@xenova/transformers"
 
 let extractor:any = null
 let vectorIndex:any[] = []
@@ -13,11 +12,16 @@ export async function GET(){
 try{
 
 if(initialized){
+
 return NextResponse.json({
 status:"already indexed",
 count:vectorIndex.length
 })
+
 }
+
+/* dynamic import (build error fix) */
+const { pipeline } = await import("@xenova/transformers")
 
 const poemsDir = path.join(process.cwd(),"poems")
 
@@ -44,9 +48,13 @@ const {data,content} = matter(raw)
 
 const emb = await extractor(content)
 
+/* simple mean pooling */
+
+const vector = emb.data[0]
+
 vectorIndex.push({
 
-vector: emb.data,
+vector,
 title: data.title || file.replace(".md",""),
 poem: content.trim()
 
@@ -57,8 +65,10 @@ poem: content.trim()
 initialized = true
 
 return NextResponse.json({
+
 status:"indexed",
 count:vectorIndex.length
+
 })
 
 }catch{
