@@ -212,7 +212,7 @@ export default function PoemCard({
           <Button
             size="small"
             variant="outlined"
-            onClick={() => callAPI("/api/random-poem", "GET")}
+            onClick={() => callAPI("/api/random-poem")}
           >
             మరో పద్యం
           </Button>
