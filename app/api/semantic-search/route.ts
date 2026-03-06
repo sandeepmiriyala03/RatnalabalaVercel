@@ -1,8 +1,53 @@
 import { NextResponse } from "next/server"
-import * as lancedb from "@lancedb/lancedb"
+import fs from "fs"
+import path from "path"
+import matter from "gray-matter"
 import { pipeline } from "@xenova/transformers"
 
 let extractor:any = null
+let vectorIndex:any[] = []
+let initialized=false
+
+async function init(){
+
+if(initialized) return
+
+const poemsDir = path.join(process.cwd(),"poems")
+
+const files = fs.readdirSync(poemsDir)
+.filter(f=>f.endsWith(".md"))
+
+extractor = await pipeline(
+"feature-extraction",
+"Xenova/all-MiniLM-L6-v2"
+)
+
+for(const file of files){
+
+const raw = fs.readFileSync(
+path.join(poemsDir,file),
+"utf-8"
+)
+
+const {data,content} = matter(raw)
+
+const emb = await extractor(content)
+
+vectorIndex.push({
+
+vector: emb.data,
+
+title: data.title || file.replace(".md",""),
+
+poem: content
+
+})
+
+}
+
+initialized=true
+
+}
 
 export async function POST(req:Request){
 
@@ -10,32 +55,30 @@ try{
 
 const {question} = await req.json()
 
-if(!extractor){
+await init()
 
-extractor = await pipeline(
-"feature-extraction",
-"Xenova/all-MiniLM-L6-v2"
-)
+const q = await extractor(question)
+
+let bestScore=-Infinity
+let best:any=null
+
+for(const item of vectorIndex){
+
+const score = cosine(q.data,item.vector)
+
+if(score>bestScore){
+
+bestScore=score
+best=item
 
 }
 
-const db = await lancedb.connect("./poemsdb")
-
-const table = await db.openTable("poems")
-
-const query = await extractor(question)
-
-const result = await table
-.search(query.data)
-.limit(1)
-.toArray()
-
-const row = result[0]
+}
 
 return NextResponse.json({
 
-title: row.title,
-poem: row.poem
+title:best.title,
+poem:best.poem
 
 })
 
@@ -47,5 +90,23 @@ return NextResponse.json(
 )
 
 }
+
+}
+
+function cosine(a:any,b:any){
+
+let dot=0
+let na=0
+let nb=0
+
+for(let i=0;i<a.length;i++){
+
+dot+=a[i]*b[i]
+na+=a[i]*a[i]
+nb+=b[i]*b[i]
+
+}
+
+return dot/(Math.sqrt(na)*Math.sqrt(nb))
 
 }
