@@ -245,7 +245,54 @@ export default function PoemList() {
       </Typography>
 
       </Box>
+{/* MCP CONCEPTS */}
 
+<Box
+sx={{
+p:2,
+mb:4,
+borderRadius:2,
+background:"#f8fafc",
+border:"1px solid #e2e8f0"
+}}
+>
+
+<Typography fontWeight={700} mb={1}>
+🧠 AI ఎలా పనిచేస్తుంది?
+</Typography>
+
+<Typography sx={{fontSize:"0.9em",lineHeight:1.8}}>
+
+<strong>1️⃣ Semantic Search</strong><br/>
+మీరు ఒక ప్రశ్న అడిగితే AI దానికి అర్థం దగ్గరగా ఉన్న పద్యాన్ని కనుగొంటుంది.<br/><br/>
+
+<strong>2️⃣ AI Embeddings</strong><br/>
+ప్రతి పద్యాన్ని AI సంఖ్యల రూపంలో (vector) మార్చి భద్రపరుస్తుంది.<br/><br/>
+
+<strong>3️⃣ Vector Similarity</strong><br/>
+మీ ప్రశ్న మరియు పద్యాల మధ్య అర్థం ఎంత దగ్గరగా ఉందో AI పోల్చుతుంది.<br/><br/>
+
+<strong>4️⃣ AI Explanation</strong><br/>
+“భావం” బటన్ ద్వారా పద్యం యొక్క సారాంశం తెలుసుకోవచ్చు.<br/><br/>
+
+<strong>5️⃣ Theme Detection</strong><br/>
+“అంశం” బటన్ ద్వారా పద్యం ఏ విషయంపై ఉందో తెలుస్తుంది.<br/><br/>
+
+<strong>6️⃣ Similar Poem</strong><br/>
+“సంబంధిత” బటన్ ద్వారా అదే భావం ఉన్న మరో పద్యం కనిపిస్తుంది.<br/><br/>
+
+<strong>7️⃣ Random Discovery</strong><br/>
+“యాదృచ్ఛిక పద్యం” బటన్ ద్వారా కొత్త పద్యాన్ని చూడవచ్చు.<br/><br/>
+
+<strong>8️⃣ Speech AI</strong><br/>
+🔊 బటన్ నొక్కితే పద్యం తెలుగు శబ్దంగా వినిపిస్తుంది.<br/><br/>
+
+<strong>9️⃣ AI Question Answer</strong><br/>
+మీరు ప్రశ్న అడిగితే AI సరైన పద్యాన్ని కనుగొని చూపిస్తుంది.
+
+</Typography>
+
+</Box>
       {/* SEARCH */}
 
       <Stack spacing={2} mb={3}>
