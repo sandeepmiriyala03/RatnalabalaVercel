@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server"
-import * as lancedb from "lancedb"
+import * as lancedb from "@lancedb/lancedb"
 import { pipeline } from "@xenova/transformers"
 
-let extractor:any=null
+let extractor:any = null
 
 export async function POST(req:Request){
 
-const {question}=await req.json()
+try{
+
+const {question} = await req.json()
 
 if(!extractor){
 
@@ -23,7 +25,10 @@ const table = await db.openTable("poems")
 
 const query = await extractor(question)
 
-const result = await table.search(query.data).limit(1)
+const result = await table
+.search(query.data)
+.limit(1)
+.toArray()
 
 const row = result[0]
 
@@ -33,5 +38,14 @@ title: row.title,
 poem: row.poem
 
 })
+
+}catch{
+
+return NextResponse.json(
+{error:"semantic search failed"},
+{status:500}
+)
+
+}
 
 }
