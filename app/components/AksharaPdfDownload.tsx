@@ -14,8 +14,7 @@ async function loadFont(url: string) {
   return btoa(
     new Uint8Array(buffer).reduce(
       (data, byte) => data + String.fromCharCode(byte),
-      ""
-    )
+      "")
   );
 }
 
@@ -43,17 +42,22 @@ export default function AksharaPdfDownload({
 
     const pdf = new jsPDF("p", "mm", "a4");
 
-    /* load Telugu font */
+    /* =====================
+       LOAD FONT
+    ===================== */
     const base64 = await loadFont(fontFile);
 
     pdf.addFileToVFS(`${fontName}.ttf`, base64);
     pdf.addFont(`${fontName}.ttf`, fontName, "normal");
-    pdf.setFont(fontName);
+    pdf.setFont(fontName, "normal");
 
+    /* TITLE */
     pdf.setFontSize(22);
     pdf.text("తెలుగు అక్షరమాల", 70, 20);
 
-    /* convert images */
+    /* =====================
+       PREPARE TABLE DATA
+    ===================== */
     const rows = [];
 
     for (const a of data) {
@@ -71,13 +75,18 @@ export default function AksharaPdfDownload({
       ]);
     }
 
+    /* =====================
+       TABLE
+    ===================== */
     autoTable(pdf, {
       startY: 30,
+
       head: [["అక్షరం", "పదం", "చిత్రం"]],
       body: rows,
 
       styles: {
         font: fontName,
+        fontStyle: "normal",
         fontSize: 18,
         cellPadding: 4,
         halign: "center",
@@ -85,8 +94,8 @@ export default function AksharaPdfDownload({
       },
 
       columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 80 },
+        0: { cellWidth: 30 },
+        1: { cellWidth: 90 },
         2: { cellWidth: 40 }
       },
 
@@ -99,8 +108,8 @@ export default function AksharaPdfDownload({
             "JPEG",
             dataCell.cell.x + 2,
             dataCell.cell.y + 2,
-            16,
-            16
+            18,
+            18
           );
 
         }
