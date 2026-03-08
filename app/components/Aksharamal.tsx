@@ -25,16 +25,17 @@ type Akshara = {
 /* ================= DATA ================= */
 const AKSHARALU: Akshara[] = [
   // అచ్చులు (Swaralu) - 16
+ 
   { id: "s1", type: "swaralu", letter: "అ", word: "అరటి", image: "/akshara/1.jpg" },
   { id: "s2", type: "swaralu", letter: "ఆ", word: "ఆవు", image: "/akshara/2.jpg" },
   { id: "s3", type: "swaralu", letter: "ఇ", word: "ఇల్లు", image: "/akshara/3.jpg" },
   { id: "s4", type: "swaralu", letter: "ఈ", word: "ఈక", image: "/akshara/4.jpg" },
   { id: "s5", type: "swaralu", letter: "ఉ", word: "ఉడుత", image: "/akshara/5.jpg" },
   { id: "s6", type: "swaralu", letter: "ఊ", word: "ఊయల", image: "/akshara/6.jpg" },
- 
-  { id: "s7", type: "swaralu", letter: "ఋ", word: "ఋషి",  },
-  { id: "s8", type: "swaralu", letter: "ౠ", word: "ౠ",  }, 
- 
+
+  { id: "s7", type: "swaralu", letter: "ఋ", word: "ఋషి" },
+  { id: "s8", type: "swaralu", letter: "ౠ", word: "ౠ" },
+
   { id: "s9", type: "swaralu", letter: "ఎ", word: "ఎలుక", image: "/akshara/7.jpg" },
   { id: "s10", type: "swaralu", letter: "ఏ", word: "ఏనుగు", image: "/akshara/8.jpg" },
   { id: "s11", type: "swaralu", letter: "ఐ", word: "ఐదు", image: "/akshara/9.jpg" },
@@ -44,17 +45,17 @@ const AKSHARALU: Akshara[] = [
   { id: "s15", type: "swaralu", letter: "అం", word: "అంకెలు", image: "/akshara/13.jpg" },
   { id: "s16", type: "swaralu", letter: "అః", word: "అంతఃపురం" },
 
-  // హల్లులు (Vyanjanalu) - 29
   { id: "v1", type: "vyanjanalu", letter: "క", word: "కప్ప", image: "/akshara/14.jpg" },
   { id: "v2", type: "vyanjanalu", letter: "ఖ", word: "ఖడ్గం", image: "/akshara/15.jpg" },
   { id: "v3", type: "vyanjanalu", letter: "గ", word: "గడియారం", image: "/akshara/16.jpg" },
   { id: "v4", type: "vyanjanalu", letter: "ఘ", word: "ఘంట", image: "/akshara/17.jpg" },
 
-  { id: "v5", type: "vyanjanalu", letter: "ఙ", word: "ఙ", image: "/akshara/18.jpg" }, 
-  
-  { id: "v6", type: "vyanjanalu", letter: "చ", word: "చందమామ", image: "/akshara/20.jpg" },
-  { id: "v7", type: "vyanjanalu", letter: "ఛ", word: "ఛత్రం", image: "/akshara/21.jpg" },
-  { id: "v8", type: "vyanjanalu", letter: "జ", word: "జడ", image: "/akshara/22.jpg" },
+  { id: "v5", type: "vyanjanalu", letter: "ఙ", word: "ఙ" },
+
+  { id: "v6", type: "vyanjanalu", letter: "చ", word: "చక్రము", image: "/akshara/18.jpg" },
+  { id: "v7", type: "vyanjanalu", letter: "ఛ", word: "ఛత్రము", image: "/akshara/19.jpg" },
+  { id: "v8", type: "vyanjanalu", letter: "జ", word: "జడ", image: "/akshara/20.jpg" }
+
   { id: "v9", type: "vyanjanalu", letter: "ఝ", word: "ఝషం", image: "/akshara/23.jpg" },
   { id: "v10", type: "vyanjanalu", letter: "ఞ", word: "ఞ", image: "/akshara/44.jpg" }, 
   { id: "v11", type: "vyanjanalu", letter: "ట", word: "టపాకాయ", image: "/akshara/24.jpg" },
