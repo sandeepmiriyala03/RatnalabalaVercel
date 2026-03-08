@@ -28,7 +28,7 @@ const navItems = [
   { label: "చిత్రమాల", path: "/chitramala" },
   { label: "స్వరమాల", path: "/swaramala" },
   { label: "లిపిమాల", path: "/lipimala" },
-  { label: "ఖతిమాల", path: "/khatimala" },
+  { label: "ఖతిమాల", path: "/khatiMala" },
 
   // ✅ Google Feedback Form
   {
