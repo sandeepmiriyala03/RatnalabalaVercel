@@ -2,7 +2,11 @@
 
 import { Button } from "@mui/material";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
+/* =====================
+   FONT LOADER
+===================== */
 async function loadFont(url: string) {
   const res = await fetch(url);
   const buffer = await res.arrayBuffer();
@@ -15,6 +19,20 @@ async function loadFont(url: string) {
   );
 }
 
+/* =====================
+   IMAGE LOADER
+===================== */
+async function loadImage(url: string) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function AksharaPdfDownload({
   data,
   fontName,
@@ -23,33 +41,70 @@ export default function AksharaPdfDownload({
 
   const downloadPDF = async () => {
 
-    const pdf = new jsPDF();
+    const pdf = new jsPDF("p", "mm", "a4");
 
+    /* load Telugu font */
     const base64 = await loadFont(fontFile);
 
     pdf.addFileToVFS(`${fontName}.ttf`, base64);
     pdf.addFont(`${fontName}.ttf`, fontName, "normal");
-
     pdf.setFont(fontName);
 
     pdf.setFontSize(22);
     pdf.text("తెలుగు అక్షరమాల", 70, 20);
 
-    let y = 40;
+    /* convert images */
+    const rows = [];
 
-    data.forEach((a: any) => {
+    for (const a of data) {
 
-      pdf.setFontSize(28);
-      pdf.text(a.letter, 20, y);
+      let img = "";
 
-      pdf.setFontSize(18);
-      pdf.text(a.word || "", 40, y);
+      if (a.image) {
+        img = await loadImage(a.image);
+      }
 
-      y += 18;
+      rows.push([
+        a.letter,
+        a.word || "",
+        img
+      ]);
+    }
 
-      if (y > 280) {
-        pdf.addPage();
-        y = 20;
+    autoTable(pdf, {
+      startY: 30,
+      head: [["అక్షరం", "పదం", "చిత్రం"]],
+      body: rows,
+
+      styles: {
+        font: fontName,
+        fontSize: 18,
+        cellPadding: 4,
+        halign: "center",
+        valign: "middle"
+      },
+
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 80 },
+        2: { cellWidth: 40 }
+      },
+
+      didDrawCell: (dataCell: any) => {
+
+        if (dataCell.column.index === 2 && dataCell.cell.raw) {
+
+          pdf.addImage(
+            dataCell.cell.raw,
+            "JPEG",
+            dataCell.cell.x + 2,
+            dataCell.cell.y + 2,
+            16,
+            16
+          );
+
+        }
+
       }
 
     });
