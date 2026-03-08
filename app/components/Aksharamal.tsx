@@ -54,7 +54,7 @@ const AKSHARALU: Akshara[] = [
 
   { id: "v6", type: "vyanjanalu", letter: "చ", word: "చక్రము", image: "/akshara/18.jpg" },
   { id: "v7", type: "vyanjanalu", letter: "ఛ", word: "ఛత్రము", image: "/akshara/19.jpg" },
-  { id: "v8", type: "vyanjanalu", letter: "జ", word: "జడ", image: "/akshara/20.jpg" }
+  { id: "v8", type: "vyanjanalu", letter: "జ", word: "జడ", image: "/akshara/20.jpg" },
 
   { id: "v9", type: "vyanjanalu", letter: "ఝ", word: "ఝషం", image: "/akshara/23.jpg" },
   { id: "v10", type: "vyanjanalu", letter: "ఞ", word: "ఞ", image: "/akshara/44.jpg" }, 
