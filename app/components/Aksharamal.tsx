@@ -77,7 +77,7 @@ const AKSHARALU: Akshara[] = [
 { "id": "v26", "type": "vyanjanalu", "letter": "య", "word": "యంత్రము", "image": "/akshara/37.jpg" },
 { "id": "v27", "type": "vyanjanalu", "letter": "ర", "word": "రంగులు", "image": "/akshara/38.jpg" },
 { "id": "v28", "type": "vyanjanalu", "letter": "ల", "word": "లత", "image": "/akshara/39.jpg" },
-{ "id": "v29", "type": "vyanjanalu", "letter": "వ", "word": "వల", "image": "/akshara/40.jpg" }
+{ "id": "v29", "type": "vyanjanalu", "letter": "వ", "word": "వల", "image": "/akshara/40.jpg" },
 { id: "v30", type: "vyanjanalu", letter: "శ", word: "శంఖము", image: "/akshara/41.jpg" },
 { id: "v31", type: "vyanjanalu", letter: "ష", word: "షట్పదము", image: "/akshara/42.jpg" },
 { id: "v32", type: "vyanjanalu", letter: "స", word: "సంచి", image: "/akshara/43.jpg" },
@@ -91,99 +91,191 @@ const AKSHARALU: Akshara[] = [
 const PAGE_SIZE = 4;
 
 export default function AksharamalaParent() {
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState<"all" | "swaralu" | "vyanjanalu">("all");
 
   const filtered = useMemo(() => {
+
     const term = search.trim();
-    if (!term) return AKSHARALU;
-    return AKSHARALU.filter(
-      (a) => a.letter.includes(term) || (a.word && a.word.includes(term))
-    );
-  }, [search]);
+
+    return AKSHARALU.filter((a) => {
+
+      const matchesSearch =
+        !term ||
+        a.letter.includes(term) ||
+        (a.word && a.word.includes(term));
+
+      const matchesType =
+        typeFilter === "all" || a.type === typeFilter;
+
+      return matchesSearch && matchesType;
+
+    });
+
+  }, [search, typeFilter]);
 
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
-  
+
   const visible = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, page]);
 
+  const handleFilter = (type: "all" | "swaralu" | "vyanjanalu") => {
+    setTypeFilter(type);
+    setPage(1);
+  };
+
   return (
     <Container maxWidth="md">
+
       <Stack spacing={4} sx={{ py: 6 }}>
-        {/* HEADER & SEARCH */}
+
+        {/* HEADER */}
         <Box textAlign="center">
-  
-          <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mb: 4 }}>
-            <Chip label={`మొత్తం: ${filtered.length}`} color="secondary" sx={{ fontWeight: 800 }} />
-            <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
+
+          {/* FILTER BUTTONS */}
+          <Stack
+            direction="row"
+            spacing={1}
+            justifyContent="center"
+            flexWrap="wrap"
+            sx={{ mb: 2 }}
+          >
+            <Chip
+              label="అన్నీ"
+              clickable
+              color={typeFilter === "all" ? "primary" : "default"}
+              onClick={() => handleFilter("all")}
+            />
+
+            <Chip
+              label="అచ్చులు"
+              clickable
+              color={typeFilter === "swaralu" ? "primary" : "default"}
+              onClick={() => handleFilter("swaralu")}
+            />
+
+            <Chip
+              label="హల్లులు"
+              clickable
+              color={typeFilter === "vyanjanalu" ? "primary" : "default"}
+              onClick={() => handleFilter("vyanjanalu")}
+            />
           </Stack>
 
+          {/* INFO */}
+          <Stack
+            direction="row"
+            spacing={1.5}
+            justifyContent="center"
+            sx={{ mb: 3 }}
+          >
+            <Chip
+              label={`మొత్తం: ${filtered.length}`}
+              color="secondary"
+              sx={{ fontWeight: 800 }}
+            />
+
+            <Chip
+              label={`పేజీ: ${page} / ${pageCount || 1}`}
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 800 }}
+            />
+          </Stack>
+
+          {/* SEARCH */}
           <TextField
             fullWidth
-            variant="outlined"
             placeholder="అక్షరం లేదా పదం వెతకండి..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            sx={{ 
-              bgcolor: "white", 
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            sx={{
+              bgcolor: "white",
               borderRadius: "12px",
-              "& .MuiOutlinedInput-root": { borderRadius: "12px" }
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "12px"
+              }
             }}
           />
+
         </Box>
 
-        {/* MODERN GRID REPLACEMENT (FLEXBOX) */}
+        {/* RESULTS */}
         {filtered.length === 0 ? (
+
           <Box textAlign="center" sx={{ py: 10 }}>
             <Typography variant="h6" sx={{ opacity: 0.5 }}>
               క్షమించండి! ఏమీ దొరకలేదు.
             </Typography>
           </Box>
+
         ) : (
+
           <Box
             sx={{
               display: "flex",
               flexWrap: "wrap",
-              gap: 4,
+              gap: 3,
               justifyContent: "center"
             }}
           >
             {visible.map((a) => (
-              <Box 
+              <Box
                 key={a.id}
-                sx={{ 
-                  flex: { 
-                    xs: "1 1 100%",      // Mobile: full width
-                    sm: "1 1 calc(50% - 16px)" // Desktop: 2 columns with gap consideration
+                sx={{
+                  flex: {
+                    xs: "1 1 100%",
+                    sm: "1 1 calc(50% - 16px)"
                   },
-                  maxWidth: { xs: "100%", sm: "440px" } 
+                  maxWidth: {
+                    xs: "100%",
+                    sm: "440px"
+                  }
                 }}
               >
-                <AksharaPosterCard akshara={a} enableRead={true} />
+                <AksharaPosterCard
+                  akshara={a}
+                  enableRead={true}
+                />
               </Box>
             ))}
           </Box>
+
         )}
 
         {/* PAGINATION */}
         {pageCount > 1 && (
-          <Box display="flex" justifyContent="center" sx={{ pt: 2 }}>
+
+          <Box display="flex" justifyContent="center">
+
             <Pagination
               count={pageCount}
               page={page}
               onChange={(_, v) => {
                 setPage(v);
-                window.scrollTo({ top: 0, behavior: "smooth" });
+                window.scrollTo({
+                  top: 0,
+                  behavior: "smooth"
+                });
               }}
               color="primary"
               size="large"
               shape="rounded"
             />
+
           </Box>
+
         )}
+
       </Stack>
+
     </Container>
   );
 }
