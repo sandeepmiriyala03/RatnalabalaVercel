@@ -2,7 +2,7 @@
   "dataset": "Chandamama_Style_Telugu_Kids_Stories",
   "version": "v2.0",
   "total_stories": 100,
-  "age_groups": ["1-4", "5-7", "8-10", "11-15"],
+  "age_groups": ["1-4", "5-7", "8-10", "11-16"],
   "stories": [
 
     {
@@ -1921,7 +1921,5 @@
       "moral": "గొప్ప వృత్తి కంటే గొప్ప వ్యక్తిత్వం ముఖ్యం."
     }
 
-  ]
-}
   ]
 }
