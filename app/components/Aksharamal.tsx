@@ -8,13 +8,12 @@ import {
   Chip,
   Box,
   Pagination,
-  Grid
+  Container
 } from "@mui/material";
 
 import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
 
 /* ================= TYPE ================= */
-
 type Akshara = {
   id: string;
   type: "swaralu" | "vyanjanalu" | "gunintalu";
@@ -23,8 +22,7 @@ type Akshara = {
   image?: string;
 };
 
-/* ================= FULL DATA (41 AKSHARALU) ================= */
-
+/* ================= DATA ================= */
 const AKSHARALU: Akshara[] = [
   // అచ్చులు (Swaralu) - 16
   { id: "s1", type: "swaralu", letter: "అ", word: "అరటి", image: "/images/akshara/1.jpg" },
@@ -34,7 +32,7 @@ const AKSHARALU: Akshara[] = [
   { id: "s5", type: "swaralu", letter: "ఉ", word: "ఉడుత", image: "/images/akshara/5.jpg" },
   { id: "s6", type: "swaralu", letter: "ఊ", word: "ఊయల", image: "/images/akshara/6.jpg" },
   { id: "s7", type: "swaralu", letter: "ఋ", word: "ఋషి", image: "/images/akshara/7.jpg" },
-  { id: "s8", type: "swaralu", letter: "ౠ", word: "ౠ", image: "/images/akshara/42.jpg" }, // కొత్తగా చేర్చినది
+  { id: "s8", type: "swaralu", letter: "ౠ", word: "ౠ", image: "/images/akshara/42.jpg" }, 
   { id: "s9", type: "swaralu", letter: "ఎ", word: "ఎలుక", image: "/images/akshara/8.jpg" },
   { id: "s10", type: "swaralu", letter: "ఏ", word: "ఏనుగు", image: "/images/akshara/9.jpg" },
   { id: "s11", type: "swaralu", letter: "ఐ", word: "ఐదు", image: "/images/akshara/10.jpg" },
@@ -49,12 +47,12 @@ const AKSHARALU: Akshara[] = [
   { id: "v2", type: "vyanjanalu", letter: "ఖ", word: "ఖడ్గం", image: "/images/akshara/17.jpg" },
   { id: "v3", type: "vyanjanalu", letter: "గ", word: "గడియారం", image: "/images/akshara/18.jpg" },
   { id: "v4", type: "vyanjanalu", letter: "ఘ", word: "ఘంట", image: "/images/akshara/19.jpg" },
-  { id: "v5", type: "vyanjanalu", letter: "ఙ", word: "ఙ", image: "/images/akshara/43.jpg" }, // కొత్తగా చేర్చినది
+  { id: "v5", type: "vyanjanalu", letter: "ఙ", word: "ఙ", image: "/images/akshara/43.jpg" }, 
   { id: "v6", type: "vyanjanalu", letter: "చ", word: "చందమామ", image: "/images/akshara/20.jpg" },
   { id: "v7", type: "vyanjanalu", letter: "ఛ", word: "ఛత్రం", image: "/images/akshara/21.jpg" },
   { id: "v8", type: "vyanjanalu", letter: "జ", word: "జడ", image: "/images/akshara/22.jpg" },
   { id: "v9", type: "vyanjanalu", letter: "ఝ", word: "ఝషం", image: "/images/akshara/23.jpg" },
-  { id: "v10", type: "vyanjanalu", letter: "ఞ", word: "ఞ", image: "/images/akshara/44.jpg" }, // కొత్తగా చేర్చినది
+  { id: "v10", type: "vyanjanalu", letter: "ఞ", word: "ఞ", image: "/images/akshara/44.jpg" }, 
   { id: "v11", type: "vyanjanalu", letter: "ట", word: "టపాకాయ", image: "/images/akshara/24.jpg" },
   { id: "v12", type: "vyanjanalu", letter: "ఠ", word: "కంఠం", image: "/images/akshara/25.jpg" },
   { id: "v13", type: "vyanjanalu", letter: "డ", word: "డమరుకం", image: "/images/akshara/26.jpg" },
@@ -73,11 +71,10 @@ const AKSHARALU: Akshara[] = [
   { id: "v26", type: "vyanjanalu", letter: "య", word: "యంత్రం", image: "/images/akshara/39.jpg" },
   { id: "v27", type: "vyanjanalu", letter: "ర", word: "రథం", image: "/images/akshara/40.jpg" },
   { id: "v28", type: "vyanjanalu", letter: "ల", word: "లత", image: "/images/akshara/41.jpg" },
-  { id: "v29", type: "vyanjanalu", letter: "వ", word: "వనం", image: "/images/akshara/45.jpg" }, // కొత్తగా చేర్చినది
+  { id: "v29", type: "vyanjanalu", letter: "వ", word: "వనం", image: "/images/akshara/45.jpg" },
 ];
-/* ================= MAIN PARENT ================= */
 
-const PAGE_SIZE = 4; // విజువల్స్ పెద్దవి కాబట్టి పేజీకి 4 బాగుంటుంది
+const PAGE_SIZE = 4;
 
 export default function AksharamalaParent() {
   const [search, setSearch] = useState("");
@@ -87,67 +84,103 @@ export default function AksharamalaParent() {
     const term = search.trim();
     if (!term) return AKSHARALU;
     return AKSHARALU.filter(
-      (a) => a.letter.includes(term) || a.word?.includes(term)
+      (a) => a.letter.includes(term) || (a.word && a.word.includes(term))
     );
   }, [search]);
 
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
+  
   const visible = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, page]);
 
   return (
-    <Stack spacing={4} sx={{ maxWidth: 900, mx: "auto", p: 3 }}>
-      {/* HEADER & SEARCH */}
-      <Box textAlign="center" sx={{ mb: 2 }}>
-        <Typography variant="h3" sx={{ fontWeight: 900, color: "#d32f2f", mb: 2 }}>
-          తెలుగు అక్షరమాల
-        </Typography>
-        <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 3 }}>
-          <Chip label={`మొత్తం: ${filtered.length}`} color="secondary" />
-          <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" />
-        </Stack>
-        <TextField
-          fullWidth
-          variant="filled"
-          placeholder="అక్షరం లేదా పదం వెతకండి..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-          sx={{ bgcolor: "white", borderRadius: 2 }}
-        />
-      </Box>
-
-      {/* CARDS GRID */}
-      {filtered.length === 0 ? (
-        <Typography align="center" sx={{ py: 10, fontSize: "1.2rem", opacity: 0.6 }}>
-          క్షమించండి! వెతికిన అక్షరాలు దొరకలేదు.
-        </Typography>
-      ) : (
-        <Grid container spacing={4}>
-          {visible.map((a) => (
-            <Grid item xs={12} sm={6} key={a.id}>
-              <AksharaPosterCard akshara={a} enableRead={true} />
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      {/* PAGINATION */}
-      {pageCount > 1 && (
-        <Box display="flex" justifyContent="center" sx={{ mt: 4, pb: 6 }}>
-          <Pagination
-            count={pageCount}
-            page={page}
-            onChange={(_, v) => {
-              setPage(v);
-              window.scrollTo({ top: 0, behavior: "smooth" });
+    <Container maxWidth="md">
+      <Stack spacing={4} sx={{ py: 6 }}>
+        {/* HEADER & SEARCH */}
+        <Box textAlign="center">
+          <Typography 
+            variant="h2" 
+            sx={{ 
+              fontWeight: 900, 
+              color: "#d32f2f", 
+              mb: 2, 
+              fontSize: { xs: "2.8rem", md: "4rem" } 
             }}
-            color="primary"
-            size="large"
+          >
+            తెలుగు అక్షరమాల
+          </Typography>
+          
+          <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mb: 4 }}>
+            <Chip label={`మొత్తం: ${filtered.length}`} color="secondary" sx={{ fontWeight: 800 }} />
+            <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
+          </Stack>
+
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="అక్షరం లేదా పదం వెతకండి..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            sx={{ 
+              bgcolor: "white", 
+              borderRadius: "12px",
+              "& .MuiOutlinedInput-root": { borderRadius: "12px" }
+            }}
           />
         </Box>
-      )}
-    </Stack>
+
+        {/* MODERN GRID REPLACEMENT (FLEXBOX) */}
+        {filtered.length === 0 ? (
+          <Box textAlign="center" sx={{ py: 10 }}>
+            <Typography variant="h6" sx={{ opacity: 0.5 }}>
+              క్షమించండి! ఏమీ దొరకలేదు.
+            </Typography>
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 4,
+              justifyContent: "center"
+            }}
+          >
+            {visible.map((a) => (
+              <Box 
+                key={a.id}
+                sx={{ 
+                  flex: { 
+                    xs: "1 1 100%",      // Mobile: full width
+                    sm: "1 1 calc(50% - 16px)" // Desktop: 2 columns with gap consideration
+                  },
+                  maxWidth: { xs: "100%", sm: "440px" } 
+                }}
+              >
+                <AksharaPosterCard akshara={a} enableRead={true} />
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {/* PAGINATION */}
+        {pageCount > 1 && (
+          <Box display="flex" justifyContent="center" sx={{ pt: 2 }}>
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, v) => {
+                setPage(v);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              color="primary"
+              size="large"
+              shape="rounded"
+            />
+          </Box>
+        )}
+      </Stack>
+    </Container>
   );
 }

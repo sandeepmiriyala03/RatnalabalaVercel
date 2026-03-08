@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
-  Box, Typography, Card, CardContent, Divider, IconButton, Button, Stack
+  Box, Typography, Card, CardContent, Divider, IconButton, Button, Stack, Tooltip
 } from "@mui/material";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
@@ -17,7 +17,7 @@ type Akshara = {
   type: "swaralu" | "vyanjanalu" | "gunintalu";
   letter: string;
   word?: string;
-  image?: string; // ఇమేజ్ సపోర్ట్ కోసం
+  image?: string;
 };
 
 type Props = {
@@ -29,56 +29,109 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
   const [isTracing, setIsTracing] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
 
-  const speak = () => {
+  // పేజీ మారినప్పుడు లేదా కంపోనెంట్ క్లోజ్ అయినప్పుడు వాయిస్ ఆగిపోవడానికి
+  useEffect(() => {
+    return () => {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const speak = useCallback(() => {
     if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(`${akshara.letter} ... ${akshara.word || ""}`);
+    
+    window.speechSynthesis.cancel(); // పాత సౌండ్‌ని క్లియర్ చేస్తుంది
+    
+    const textToSpeak = akshara.word 
+      ? `${akshara.letter} ... ${akshara.word}` 
+      : akshara.letter;
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = "te-IN";
-    utterance.rate = 0.7;
+    utterance.rate = 0.8;
+    utterance.pitch = 1.1;
+    
     window.speechSynthesis.speak(utterance);
-  };
+  }, [akshara.letter, akshara.word]);
 
   return (
-    <Card sx={{ borderRadius: 4, boxShadow: "0 8px 24px rgba(0,0,0,0.15)", overflow: "hidden", background: "white" }}>
+    <Card 
+      sx={{ 
+        borderRadius: 4, 
+        boxShadow: "0 10px 30px rgba(0,0,0,0.1)", 
+        overflow: "hidden", 
+        background: "#ffffff",
+        transition: "transform 0.3s ease",
+        "&:hover": { transform: "translateY(-5px)" } 
+      }}
+    >
       <CardContent sx={{ p: 0 }}>
-        {/* Poster Area - దీన్ని షేర్ చేసినప్పుడు ఫోటోగా మారుతుంది */}
-        <Box ref={posterRef} sx={{ p: 3, textAlign: "center", bgcolor: "#fff" }}>
-          <Typography sx={{ fontSize: "1.2rem", fontWeight: 900, color: "primary.main", mb: 1 }}>
+        <Box 
+          ref={posterRef} 
+          sx={{ 
+            p: { xs: 2, sm: 3 }, 
+            textAlign: "center", 
+            bgcolor: "#fff",
+            minHeight: { xs: 400, sm: 450 },
+            display: "flex",
+            flexDirection: "column"
+          }}
+        >
+          <Typography 
+            variant="overline" 
+            sx={{ fontWeight: 800, color: "primary.main", letterSpacing: 2, fontSize: "1rem" }}
+          >
             తెలుగు అక్షరమాల
           </Typography>
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ my: 1.5, borderBottomWidth: 2 }} />
 
-          <Box sx={{ minHeight: 350, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {isTracing ? (
-              <Box sx={{ width: "100%", height: "100%" }}>
-                 <AksharaTraceBoard letter={akshara.letter} />
+              <Box sx={{ width: "100%", height: "100%", borderRadius: 2, overflow: "hidden" }}>
+                <AksharaTraceBoard letter={akshara.letter} />
               </Box>
             ) : (
               <Stack spacing={2} alignItems="center" sx={{ width: "100%" }}>
-                {/* Image Display - బొమ్మ ఉంటే ఇక్కడ కనిపిస్తుంది */}
                 {akshara.image && (
                   <Box
                     component="img"
                     src={akshara.image}
-                    alt={akshara.word}
+                    alt={akshara.word || akshara.letter} // Word లేకపోతే Letter ని Alt టెక్స్ట్ గా వాడుతుంది
                     sx={{
-                      width: "100%",
-                      maxHeight: 220,
+                      width: "auto",
+                      maxWidth: "100%",
+                      height: { xs: 180, sm: 220 },
                       objectFit: "contain",
-                      borderRadius: 2,
-                      mb: 1
+                      filter: "drop-shadow(0px 10px 15px rgba(0,0,0,0.1))"
                     }}
                   />
                 )}
 
-                {/* Letter and Word Text */}
                 <Box>
-                  <Typography sx={{ fontSize: "5.5rem", fontWeight: 900, lineHeight: 1, color: "#2c3e50" }}>
+                  <Typography 
+                    sx={{ 
+                      fontSize: { xs: "5rem", sm: "6.5rem" }, 
+                      fontWeight: 900, 
+                      lineHeight: 1.1, 
+                      color: "#1a237e" 
+                    }}
+                  >
                     {akshara.letter}
                   </Typography>
-                  <Typography sx={{ fontSize: "1.8rem", fontWeight: 700, color: "secondary.main", mt: 1 }}>
-                    {akshara.word}
-                  </Typography>
+                  {akshara.word && (
+                    <Typography 
+                      variant="h4" 
+                      sx={{ 
+                        fontWeight: 700, 
+                        color: "secondary.dark", 
+                        mt: 1,
+                        fontSize: { xs: "1.5rem", sm: "2rem" }
+                      }}
+                    >
+                      {akshara.word}
+                    </Typography>
+                  )}
                 </Box>
               </Stack>
             )}
@@ -86,24 +139,44 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
           <Divider sx={{ mt: 2 }} />
         </Box>
 
-        {/* Action Buttons Bar */}
-        <Box sx={{ p: 2, bgcolor: "#f8f9fa", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Box>
-            <IconButton onClick={speak} color="primary" title="వినండి">
-              <VolumeUpIcon fontSize="large" />
-            </IconButton>
-            <IconButton onClick={() => window.speechSynthesis.cancel()} color="error" title="ఆపండి">
-              <StopCircleIcon />
-            </IconButton>
-          </Box>
-
+        <Box 
+          sx={{ 
+            p: 2, 
+            bgcolor: "#fcfcfc", 
+            display: "flex", 
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 2,
+            justifyContent: "space-between", 
+            alignItems: "center" 
+          }}
+        >
           <Stack direction="row" spacing={1}>
+            <Tooltip title="వినండి">
+              <IconButton 
+                onClick={speak} 
+                disabled={!enableRead}
+                sx={{ bgcolor: "primary.light", color: "white", "&:hover": { bgcolor: "primary.main" } }}
+              >
+                <VolumeUpIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="ఆపండి">
+              <IconButton 
+                onClick={() => window.speechSynthesis.cancel()} 
+                color="error"
+              >
+                <StopCircleIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+
+          <Stack direction="row" spacing={1} sx={{ width: { xs: "100%", sm: "auto" }, justifyContent: "center" }}>
             <Button
               variant={isTracing ? "contained" : "outlined"}
               color={isTracing ? "secondary" : "primary"}
               startIcon={isTracing ? <CloseIcon /> : <EditIcon />}
               onClick={() => setIsTracing(!isTracing)}
-              sx={{ borderRadius: 20, fontWeight: 700 }}
+              sx={{ borderRadius: 8, px: 3, fontWeight: 700, textTransform: "none" }}
             >
               {isTracing ? "ముగించు" : "రాయండి"}
             </Button>
