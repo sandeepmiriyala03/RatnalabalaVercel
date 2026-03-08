@@ -78,6 +78,12 @@ const AKSHARALU: Akshara[] = [
 { "id": "v27", "type": "vyanjanalu", "letter": "ర", "word": "రంగులు", "image": "/akshara/38.jpg" },
 { "id": "v28", "type": "vyanjanalu", "letter": "ల", "word": "లత", "image": "/akshara/39.jpg" },
 { "id": "v29", "type": "vyanjanalu", "letter": "వ", "word": "వల", "image": "/akshara/40.jpg" }
+{ id: "v30", type: "vyanjanalu", letter: "శ", word: "శంఖము", image: "/akshara/41.jpg" },
+{ id: "v31", type: "vyanjanalu", letter: "ష", word: "షట్పదము", image: "/akshara/42.jpg" },
+{ id: "v32", type: "vyanjanalu", letter: "స", word: "సంచి", image: "/akshara/43.jpg" },
+{ id: "v33", type: "vyanjanalu", letter: "హ", word: "హంస", image: "/akshara/44.jpg" },
+{ id: "v34", type: "vyanjanalu", letter: "ళ", word: "తాళము", image: "/akshara/45.jpg" }
+
 ];
 
 
@@ -107,18 +113,7 @@ export default function AksharamalaParent() {
       <Stack spacing={4} sx={{ py: 6 }}>
         {/* HEADER & SEARCH */}
         <Box textAlign="center">
-          <Typography 
-            variant="h2" 
-            sx={{ 
-              fontWeight: 900, 
-              color: "#d32f2f", 
-              mb: 2, 
-              fontSize: { xs: "2.8rem", md: "4rem" } 
-            }}
-          >
-            తెలుగు అక్షరమాల
-          </Typography>
-          
+  
           <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mb: 4 }}>
             <Chip label={`మొత్తం: ${filtered.length}`} color="secondary" sx={{ fontWeight: 800 }} />
             <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
