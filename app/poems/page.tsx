@@ -158,13 +158,30 @@ export default function PoemList() {
 
   /* RANDOM */
 
-  const randomPoem = ()=>{
+  const randomPoem = async () => {
 
-    const r = poems[Math.floor(Math.random()*poems.length)];
+  try {
 
-    if(r) setSearch(r.title);
+    const res = await fetch("/api/random-poem");
 
-  };
+    if (!res.ok) throw new Error();
+
+    const data = await res.json();
+
+    setAiResult(`${data.title}\n\n${data.poem}`);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+
+  } catch {
+
+    setAiResult("యాదృచ్ఛిక పద్యం పొందడంలో లోపం జరిగింది.");
+
+  }
+
+};
 
   /* AI SEARCH */
 
