@@ -23,6 +23,11 @@ interface Poem {
   slug?: string;
 }
 
+type Score = {
+  label: string;
+  value: number;
+};
+
 type Props = {
   poem: Poem;
   ready: boolean;
@@ -44,6 +49,7 @@ export default function PoemCard({
   const poemRef = useRef<HTMLDivElement>(null);
 
   const [result, setResult] = useState("");
+  const [scores, setScores] = useState<Score[]>([]);
   const [question, setQuestion] = useState("");
 
   const authorText = Array.isArray(authors)
@@ -51,13 +57,17 @@ export default function PoemCard({
     : authors;
 
   /* MCP API CALL */
+
   const callAPI = async (url: string, method = "POST") => {
 
     try {
 
-      const res = await fetch(url, {
+      const res = await fetch(url,{
         method,
-        body: JSON.stringify({ poem: poem.content }),
+        headers:{
+          "Content-Type":"application/json"
+        },
+        body: JSON.stringify({ poem: poem.content })
       });
 
       const data = await res.json();
@@ -71,28 +81,41 @@ export default function PoemCard({
 
       setResult(message);
 
+      if(data.scores){
+        setScores(data.scores);
+      } else {
+        setScores([]);
+      }
+
     } catch {
 
       setResult("లోపం సంభవించింది.");
+      setScores([]);
 
     }
+
   };
 
   /* AI QUESTION */
+
   const askAI = async () => {
 
     if (!question) return;
 
     try {
 
-      const res = await fetch("/api/ask", {
-        method: "POST",
-        body: JSON.stringify({ question }),
+      const res = await fetch("/api/ask",{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json"
+        },
+        body: JSON.stringify({ question })
       });
 
       const data = await res.json();
 
       setResult(`${data.title}\n\n${data.poem}`);
+      setScores([]);
 
     } catch {
 
@@ -107,6 +130,7 @@ export default function PoemCard({
       <CardContent sx={{ lineHeight: 1.9 }}>
 
         {/* POEM */}
+
         <Box
           ref={poemRef}
           sx={{
@@ -165,6 +189,7 @@ export default function PoemCard({
         </Box>
 
         {/* AUDIO */}
+
         <Box sx={{ display: "flex", gap: 1 }}>
 
           <IconButton
@@ -183,7 +208,8 @@ export default function PoemCard({
 
         </Box>
 
-        {/* MCP BUTTONS */}
+        {/* AI ACTION BUTTONS */}
+
         <Box
           sx={{
             mt: 2,
@@ -198,7 +224,7 @@ export default function PoemCard({
             variant="outlined"
             onClick={() => callAPI("/api/explain")}
           >
-            భావం
+            🧠 భావం
           </Button>
 
           <Button
@@ -206,15 +232,15 @@ export default function PoemCard({
             variant="outlined"
             onClick={() => callAPI("/api/theme")}
           >
-            అంశం
+            🎯 అంశం
           </Button>
 
           <Button
             size="small"
             variant="outlined"
-            onClick={() => callAPI("/api/random-poem")}
+            onClick={() => callAPI("/api/random-poem","GET")}
           >
-            మరో పద్యం
+            🎲 మరో పద్యం
           </Button>
 
           <Button
@@ -222,7 +248,7 @@ export default function PoemCard({
             variant="outlined"
             onClick={() => callAPI("/api/similar")}
           >
-            సంబంధిత
+            🔗 సంబంధిత
           </Button>
 
           <Button
@@ -230,12 +256,13 @@ export default function PoemCard({
             variant="contained"
             onClick={() => callAPI("/api/guru")}
           >
-            గురువు
+            👨‍🏫 గురువు
           </Button>
 
         </Box>
 
         {/* AI QUESTION */}
+
         <Box sx={{ mt: 3 }}>
 
           <Typography sx={{ fontSize: "0.9em", mb: 1 }}>
@@ -263,7 +290,8 @@ export default function PoemCard({
 
         </Box>
 
-        {/* RESULT */}
+        {/* RESULT TEXT */}
+
         {result && (
           <Box
             sx={{
@@ -278,9 +306,102 @@ export default function PoemCard({
           </Box>
         )}
 
+        {/* AI SIMILARITY GRAPH */}
+
+        {scores.length > 0 && (
+
+          <Box sx={{ mt: 2 }}>
+
+            <Typography sx={{ fontWeight: 600, mb: 1 }}>
+              📊 AI Similarity Graph
+            </Typography>
+
+            {scores.map((s,i)=>{
+
+              const percent = Math.round(s.value * 100);
+
+              return(
+
+                <Box key={i} sx={{ mb: 1 }}>
+
+                  <Typography sx={{ fontSize:"0.85em" }}>
+                    {s.label} ({percent}%)
+                  </Typography>
+
+                  <Box
+                    sx={{
+                      height:10,
+                      background:"#e5e7eb",
+                      borderRadius:2,
+                      overflow:"hidden"
+                    }}
+                  >
+
+                    <Box
+                      sx={{
+                        width:`${percent}%`,
+                        height:"100%",
+                        background:"#2563eb"
+                      }}
+                    />
+
+                  </Box>
+
+                </Box>
+
+              )
+
+            })}
+
+          </Box>
+
+        )}
+
         {/* SHARE */}
+
         <Box sx={{ mt: 2 }}>
           <ShareButtons targetRef={poemRef} />
+        </Box>
+
+        {/* AI HOW IT WORKS */}
+
+        <Box
+          sx={{
+            mt: 3,
+            p: 2,
+            borderRadius: 2,
+            background: "#fff7ed",
+            border: "1px solid #fed7aa"
+          }}
+        >
+
+          <Typography fontWeight={700} mb={1}>
+            🤖 ఈ AI ఎలా పని చేస్తుంది?
+          </Typography>
+
+          <Typography sx={{ fontSize: "0.9em", lineHeight: 1.9 }}>
+
+            🧠 <b>భావం</b><br/>
+            AI పద్యాన్ని చదివి దాని భావాన్ని అర్థం చేసుకుంటుంది.<br/><br/>
+
+            🎯 <b>అంశం</b><br/>
+            పద్యానికి సంబంధించిన ప్రధాన విషయాన్ని గుర్తిస్తుంది.<br/>
+            ఉదా: ధర్మం, దానం, సద్గుణం.<br/><br/>
+
+            🔗 <b>సంబంధిత పద్యాలు</b><br/>
+            AI ప్రతి పద్యాన్ని సంఖ్యల రూపంలో (Vector) మార్చుతుంది.<br/>
+            ఆ తరువాత అన్ని పద్యాలను పోల్చి దగ్గరగా ఉన్న పద్యాలను చూపిస్తుంది.<br/><br/>
+
+            📊 <b>Similarity Score</b><br/>
+            90% = చాలా దగ్గర<br/>
+            70% = దగ్గర సంబంధం<br/>
+            40% = కొంత సంబంధం<br/><br/>
+
+            👨‍🏫 <b>గురువు వివరణ</b><br/>
+            పద్యాన్ని గురువు లాగా చదివి దాని నీతి మరియు బోధను వివరిస్తుంది.
+
+          </Typography>
+
         </Box>
 
       </CardContent>
