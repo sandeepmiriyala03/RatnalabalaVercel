@@ -221,6 +221,35 @@ export default function RatnalabalaHighlights() {
       {/* =========================
           🤖 AI NOTE
          ========================= */}
+         {/* =========================
+    🪶 AKSHARAMALA PADYAM
+   ========================= */}
+<Card sx={{ mb: 4 }}>
+  <CardContent>
+    <Typography fontWeight={700} sx={{ mb: 2 }}>
+      🪶 అక్షరమాల పద్యం
+    </Typography>
+
+    <Typography
+      sx={{
+        lineHeight: 1.8,
+        fontSize: "0.95rem",
+        whiteSpace: "pre-line",
+      }}
+    >
+{`అమిత యశస్క ఆద్యయన ఇద్రుచి ఈశ్వర ఉగ్ర ఊర్జిత
+క్రమ ఋషభాంక ౠజిహర ఌస్తిత ౡస్మిత ఏకరుద్ర ఐం
+ద్రమహిత రూప ఓమితి పదద్యుతి ఔర్వ లలాట అంబికా
+సమరసభావ అఃకలిత వర్ణనుతం బసవేశ పాహిమాం!!`}
+    </Typography>
+
+    <Divider sx={{ my: 2 }} />
+
+    <Typography sx={{ fontSize: "0.85rem", opacity: 0.7 }}>
+      – పాల్కురికి సోమన
+    </Typography>
+  </CardContent>
+</Card>
       <Card>
         <CardContent>
           <Typography fontWeight={700} sx={{ mb: 2 }}>
