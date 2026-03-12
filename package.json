@@ -36,6 +36,7 @@
     "langchain": "^1.2.30",
     "lodash": "^4.17.23",
     "mammoth": "^1.11.0",
+    "mp4-muxer": "^5.2.2",
     "multer": "^2.0.2",
     "next": "^16.1.6",
     "next-sitemap": "^4.2.3",

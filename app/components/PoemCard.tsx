@@ -9,24 +9,26 @@ import {
   Divider,
   IconButton,
   Button,
-  TextField
+  Stack,
+  Collapse
 } from "@mui/material";
 
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
+import GraphicEqIcon from "@mui/icons-material/GraphicEq";
+import PsychologyIcon from "@mui/icons-material/Psychology";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import ShuffleIcon from "@mui/icons-material/Shuffle";
+import LinkIcon from "@mui/icons-material/Link";
 
 import ShareButtons from "@/app/components/ShareBar";
+import TeluguVoice from "@/app/components/TeluguVoice";
 
 interface Poem {
   title: string;
   content: string;
   slug?: string;
 }
-
-type Score = {
-  label: string;
-  value: number;
-};
 
 type Props = {
   poem: Poem;
@@ -47,96 +49,33 @@ export default function PoemCard({
 }: Props) {
 
   const poemRef = useRef<HTMLDivElement>(null);
-
-  const [result, setResult] = useState("");
-  const [scores, setScores] = useState<Score[]>([]);
-  const [question, setQuestion] = useState("");
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const authorText = Array.isArray(authors)
     ? authors.join(", ")
     : authors;
 
-  /* MCP API CALL */
+  const teluguVoiceText = `${poem.title}\n${poem.content}`.trim();
 
-  const callAPI = async (url: string, method = "POST") => {
-
+  const callAPI = async (url: string) => {
     try {
-
-      const res = await fetch(url,{
-        method,
-        headers:{
-          "Content-Type":"application/json"
-        },
-        body: JSON.stringify({ poem: poem.content })
+      await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ poem: poem.content }),
       });
-
-      const data = await res.json();
-
-      const message =
-        data.explanation ||
-        data.theme ||
-        data.result ||
-        data.message ||
-        `${data.title ?? ""}\n\n${data.poem ?? ""}`;
-
-      setResult(message);
-
-      if(data.scores){
-        setScores(data.scores);
-      } else {
-        setScores([]);
-      }
-
-    } catch {
-
-      setResult("లోపం సంభవించింది.");
-      setScores([]);
-
-    }
-
-  };
-
-  /* AI QUESTION */
-
-  const askAI = async () => {
-
-    if (!question) return;
-
-    try {
-
-      const res = await fetch("/api/ask",{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json"
-        },
-        body: JSON.stringify({ question })
-      });
-
-      const data = await res.json();
-
-      setResult(`${data.title}\n\n${data.poem}`);
-      setScores([]);
-
-    } catch {
-
-      setResult("సమాధానం పొందడంలో లోపం జరిగింది.");
-
-    }
-
+    } catch {}
   };
 
   return (
-    <Card sx={{ mb: 3 }}>
-      <CardContent sx={{ lineHeight: 1.9 }}>
+    <Card sx={{ mb: 3, borderRadius: 3 }}>
+      <CardContent>
 
-        {/* POEM */}
+        {/* ───── POEM ───── */}
 
         <Box
           ref={poemRef}
-          sx={{
-            px: { xs: 2, sm: 4 },
-            py: { xs: 3, sm: 4 },
-          }}
+          sx={{ px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 } }}
         >
 
           <Typography
@@ -144,7 +83,7 @@ export default function PoemCard({
               textAlign: "center",
               fontWeight: 700,
               fontSize: "1.3em",
-              mb: 2,
+              mb: 2
             }}
           >
             {poem.title}
@@ -156,6 +95,8 @@ export default function PoemCard({
             sx={{
               whiteSpace: "pre-line",
               textAlign: "center",
+              fontSize: "1.05em",
+              lineHeight: 1.9
             }}
           >
             {poem.content}
@@ -166,7 +107,7 @@ export default function PoemCard({
               sx={{
                 mt: 2,
                 textAlign: "right",
-                fontSize: "0.9em",
+                fontSize: "0.9em"
               }}
             >
               — {authorText}
@@ -178,7 +119,7 @@ export default function PoemCard({
               sx={{
                 mt: 3,
                 textAlign: "center",
-                fontSize: "0.8em",
+                fontSize: "0.85em",
                 fontWeight: 600
               }}
             >
@@ -188,9 +129,9 @@ export default function PoemCard({
 
         </Box>
 
-        {/* AUDIO */}
+        {/* ───── AUDIO CONTROLS ───── */}
 
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
 
           <IconButton
             onClick={() => speak(`${poem.title}. ${poem.content}`)}
@@ -206,201 +147,97 @@ export default function PoemCard({
             <StopCircleIcon color="error" />
           </IconButton>
 
-        </Box>
+        </Stack>
 
-        {/* AI ACTION BUTTONS */}
+        {/* ───── AI BUTTONS ───── */}
 
-        <Box
-          sx={{
-            mt: 2,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 1
-          }}
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          sx={{ mb: 2 }}
         >
 
           <Button
             size="small"
+            startIcon={<PsychologyIcon />}
             variant="outlined"
             onClick={() => callAPI("/api/explain")}
           >
-            🧠 భావం
+            భావం
           </Button>
 
           <Button
             size="small"
+            startIcon={<AutoAwesomeIcon />}
             variant="outlined"
             onClick={() => callAPI("/api/theme")}
           >
-            🎯 అంశం
+            అంశం
           </Button>
 
           <Button
             size="small"
+            startIcon={<ShuffleIcon />}
             variant="outlined"
-            onClick={() => callAPI("/api/random-poem","GET")}
+            onClick={() => callAPI("/api/random-poem")}
           >
-            🎲 మరో పద్యం
+            మరో పద్యం
           </Button>
 
           <Button
             size="small"
+            startIcon={<LinkIcon />}
             variant="outlined"
             onClick={() => callAPI("/api/similar")}
           >
-            🔗 సంబంధిత
+            సంబంధిత
           </Button>
 
-          <Button
-            size="small"
-            variant="contained"
-            onClick={() => callAPI("/api/guru")}
-          >
-            👨‍🏫 గురువు
-          </Button>
+        </Stack>
 
-        </Box>
-
-        {/* AI QUESTION */}
-
-        <Box sx={{ mt: 3 }}>
-
-          <Typography sx={{ fontSize: "0.9em", mb: 1 }}>
-            ప్రశ్న అడగండి
-          </Typography>
-
-          <Box sx={{ display: "flex", gap: 1 }}>
-
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="ఉదా: దానం గురించి పద్యం"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-            />
-
-            <Button
-              variant="contained"
-              onClick={askAI}
-            >
-              అడగండి
-            </Button>
-
-          </Box>
-
-        </Box>
-
-        {/* RESULT TEXT */}
-
-        {result && (
-          <Box
-            sx={{
-              mt: 2,
-              p: 2,
-              borderRadius: 2,
-              background: "#f3f4f6",
-              whiteSpace: "pre-line"
-            }}
-          >
-            {result}
-          </Box>
-        )}
-
-        {/* AI SIMILARITY GRAPH */}
-
-        {scores.length > 0 && (
-
-          <Box sx={{ mt: 2 }}>
-
-            <Typography sx={{ fontWeight: 600, mb: 1 }}>
-              📊 AI Similarity Graph
-            </Typography>
-
-            {scores.map((s,i)=>{
-
-              const percent = Math.round(s.value * 100);
-
-              return(
-
-                <Box key={i} sx={{ mb: 1 }}>
-
-                  <Typography sx={{ fontSize:"0.85em" }}>
-                    {s.label} ({percent}%)
-                  </Typography>
-
-                  <Box
-                    sx={{
-                      height:10,
-                      background:"#e5e7eb",
-                      borderRadius:2,
-                      overflow:"hidden"
-                    }}
-                  >
-
-                    <Box
-                      sx={{
-                        width:`${percent}%`,
-                        height:"100%",
-                        background:"#2563eb"
-                      }}
-                    />
-
-                  </Box>
-
-                </Box>
-
-              )
-
-            })}
-
-          </Box>
-
-        )}
-
-        {/* SHARE */}
+        {/* ───── SHARE ───── */}
 
         <Box sx={{ mt: 2 }}>
           <ShareButtons targetRef={poemRef} />
         </Box>
 
-        {/* AI HOW IT WORKS */}
+        {/* ───── TELUGU VOICE ───── */}
 
-        <Box
-          sx={{
-            mt: 3,
-            p: 2,
-            borderRadius: 2,
-            background: "#fff7ed",
-            border: "1px solid #fed7aa"
-          }}
-        >
+        <Box sx={{ mt: 3 }}>
 
-          <Typography fontWeight={700} mb={1}>
-            🤖 ఈ AI ఎలా పని చేస్తుంది?
-          </Typography>
+          <Button
+            fullWidth
+            variant={voiceOpen ? "contained" : "outlined"}
+            startIcon={<GraphicEqIcon />}
+            onClick={() => setVoiceOpen(!voiceOpen)}
+            sx={{
+              borderRadius: 3,
+              fontWeight: 700,
+              py: 1.2
+            }}
+          >
 
-          <Typography sx={{ fontSize: "0.9em", lineHeight: 1.9 }}>
+            {voiceOpen
+              ? "ధ్వనిమాల · కళామాల · దర్శనమాల దాచు"
+              : "ధ్వనిమాల · కళామాల · దర్శనమాల"}
 
-            🧠 <b>భావం</b><br/>
-            AI పద్యాన్ని చదివి దాని భావాన్ని అర్థం చేసుకుంటుంది.<br/><br/>
+          </Button>
 
-            🎯 <b>అంశం</b><br/>
-            పద్యానికి సంబంధించిన ప్రధాన విషయాన్ని గుర్తిస్తుంది.<br/>
-            ఉదా: ధర్మం, దానం, సద్గుణం.<br/><br/>
+          <Collapse in={voiceOpen} timeout={300} unmountOnExit>
 
-            🔗 <b>సంబంధిత పద్యాలు</b><br/>
-            AI ప్రతి పద్యాన్ని సంఖ్యల రూపంలో (Vector) మార్చుతుంది.<br/>
-            ఆ తరువాత అన్ని పద్యాలను పోల్చి దగ్గరగా ఉన్న పద్యాలను చూపిస్తుంది.<br/><br/>
+            <Box
+              sx={{
+                mt: 2,
+                borderRadius: 3,
+                border: "1px solid #6ee7b7",
+                overflow: "hidden"
+              }}
+            >
+              <TeluguVoice initialText={teluguVoiceText} />
+            </Box>
 
-            📊 <b>Similarity Score</b><br/>
-            90% = చాలా దగ్గర<br/>
-            70% = దగ్గర సంబంధం<br/>
-            40% = కొంత సంబంధం<br/><br/>
-
-            👨‍🏫 <b>గురువు వివరణ</b><br/>
-            పద్యాన్ని గురువు లాగా చదివి దాని నీతి మరియు బోధను వివరిస్తుంది.
-
-          </Typography>
+          </Collapse>
 
         </Box>
 
