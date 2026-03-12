@@ -50,7 +50,7 @@ export default function PoemCardNew({
 
   const teluguVoiceText = `${poem.title}\n${poem.content}`.trim();
 
-  /* 🔊 line-by-line reading */
+  /* 🔊 Line-by-line speech */
 
   const speak = async () => {
 
@@ -97,189 +97,211 @@ export default function PoemCardNew({
 
   return (
 
-    <Card
-      elevation={3}
-      sx={{
-        mb: 3,
-        borderRadius: 3,
-        transition: "0.25s",
-        "&:hover": {
-          transform: "translateY(-2px)",
-          boxShadow: 6
-        }
-      }}
-    >
+<Card
+elevation={2}
+sx={{
+mb:3,
+borderRadius:3,
+border:"1px solid",
+borderColor:"divider",
+transition:"0.25s",
+"&:hover": {
+transform:"translateY(-2px)",
+boxShadow:4
+}
+}}
+>
 
-      <CardContent>
+<CardContent>
 
-        {/* POEM */}
+{/* Poem */}
 
-        <Box
-          ref={poemRef}
-          sx={{
-            px: { xs: 1, sm: 3 },
-            py: { xs: 2, sm: 3 }
-          }}
-        >
+<Box
+ref={poemRef}
+sx={{
+px:{xs:1,sm:3},
+py:{xs:2,sm:3}
+}}
+>
 
-          <Typography
-            sx={{
-              textAlign: "center",
-              fontWeight: 700,
-              fontSize: { xs: "1.15rem", sm: "1.3rem" },
-              mb: 2
-            }}
-          >
-            {poem.title}
-          </Typography>
+<Typography
+sx={{
+textAlign:"center",
+fontWeight:700,
+fontSize:{xs:"1.2rem",sm:"1.35rem"},
+mb:2,
+fontFamily:"'Noto Serif Telugu', serif"
+}}
+>
 
-          <Divider sx={{ mb: 2 }} />
+{poem.title}
 
-          <Typography
-            sx={{
-              whiteSpace: "pre-line",
-              textAlign: "center",
-              fontSize: { xs: "1rem", sm: "1.05rem" },
-              lineHeight: 1.9
-            }}
-          >
-            {poem.content}
-          </Typography>
+</Typography>
 
-          {authorText && (
+<Divider sx={{mb:2}}/>
 
-            <Typography
-              sx={{
-                mt: 2,
-                textAlign: "right",
-                fontSize: "0.9em",
-                opacity: 0.8
-              }}
-            >
-              — {authorText}
-            </Typography>
+<Typography
+sx={{
+whiteSpace:"pre-line",
+textAlign:"center",
+fontSize:{xs:"1.05rem",sm:"1.1rem"},
+lineHeight:2.1,
+fontFamily:"'Noto Serif Telugu', serif"
+}}
+>
 
-          )}
+{poem.content}
 
-          {poetryName && (
+</Typography>
 
-            <Typography
-              sx={{
-                mt: 3,
-                textAlign: "center",
-                fontSize: "0.85em",
-                fontWeight: 600,
-                opacity: 0.7
-              }}
-            >
-              {poetryName}
-            </Typography>
+{authorText && (
 
-          )}
+<Typography
+sx={{
+mt:3,
+textAlign:"right",
+fontSize:"0.9rem",
+opacity:0.8
+}}
+>
 
-        </Box>
+— {authorText}
 
-        <Divider sx={{ mb: 2 }} />
+</Typography>
 
-        {/* ACTION BAR */}
+)}
 
-        {enableRead && (
+{poetryName && (
 
-          <Stack
-            direction="row"
-            spacing={1}
-            justifyContent="center"
-            sx={{ mb: 2 }}
-          >
+<Typography
+sx={{
+mt:3,
+textAlign:"center",
+fontSize:"0.8rem",
+fontWeight:600,
+opacity:0.7
+}}
+>
 
-            <Tooltip title="పద్యాన్ని వినండి">
+{poetryName}
 
-              <IconButton
-                color="primary"
-                onClick={speak}
-              >
-                <VolumeUpIcon />
-              </IconButton>
+</Typography>
 
-            </Tooltip>
+)}
 
-            <Tooltip title="ఆపండి">
+</Box>
 
-              <IconButton
-                color="error"
-                onClick={stop}
-              >
-                <StopCircleIcon />
-              </IconButton>
+<Divider sx={{my:2}}/>
 
-            </Tooltip>
+{/* Audio controls */}
 
-          </Stack>
+{enableRead && (
 
-        )}
+<Stack
+direction="row"
+spacing={2}
+justifyContent="center"
+sx={{mb:2}}
+>
 
-        {/* SHARE */}
+<Tooltip title="పద్యాన్ని వినండి">
 
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            mb: 2
-          }}
-        >
-          <ShareButtons targetRef={poemRef} />
-        </Box>
+<IconButton
+color="primary"
+onClick={speak}
+sx={{width:48,height:48}}
+>
 
-        {/* ధ్వనిమాల · కళామాల · దర్శనమాల */}
+<VolumeUpIcon fontSize="medium"/>
 
-        <Box sx={{ mt: 2 }}>
+</IconButton>
 
-          <Button
-            fullWidth
-            size="large"
-            variant={voiceOpen ? "contained" : "outlined"}
-            startIcon={<GraphicEqIcon />}
-            onClick={() => setVoiceOpen(!voiceOpen)}
-            sx={{
-              borderRadius: 3,
-              fontWeight: 700,
-              py: 1.2
-            }}
-          >
+</Tooltip>
 
-            {voiceOpen
-              ? "ధ్వనిమాల · కళామాల · దర్శనమాల దాచు"
-              : "ధ్వనిమాల · కళామాల · దర్శనమాల"}
+<Tooltip title="వినడం ఆపండి">
 
-          </Button>
+<IconButton
+color="error"
+onClick={stop}
+sx={{width:48,height:48}}
+>
 
-          <Collapse
-            in={voiceOpen}
-            timeout={300}
-            unmountOnExit
-          >
+<StopCircleIcon fontSize="medium"/>
 
-            <Box
-              sx={{
-                mt: 2,
-                borderRadius: 3,
-                border: "1px solid #6ee7b7",
-                overflow: "hidden"
-              }}
-            >
+</IconButton>
 
-              <TeluguVoice initialText={teluguVoiceText} />
+</Tooltip>
 
-            </Box>
+</Stack>
 
-          </Collapse>
+)}
 
-        </Box>
+{/* Share */}
 
-      </CardContent>
+<Box
+sx={{
+display:"flex",
+justifyContent:"center",
+mb:2
+}}
+>
 
-    </Card>
+<ShareButtons targetRef={poemRef}/>
 
-  );
+</Box>
+
+{/* AI media generator */}
+
+<Box sx={{mt:2}}>
+
+<Button
+fullWidth
+size="large"
+variant={voiceOpen ? "contained":"outlined"}
+startIcon={<GraphicEqIcon/>}
+onClick={()=>setVoiceOpen(!voiceOpen)}
+sx={{
+borderRadius:3,
+fontWeight:700,
+py:1.4,
+fontSize:{xs:"0.95rem",sm:"1rem"}
+}}
+>
+
+{voiceOpen
+? "ధ్వనిమాల · కళామాల · దర్శనమాల దాచు"
+: "ధ్వనిమాల · కళామాల · దర్శనమాల"}
+
+</Button>
+
+<Collapse
+in={voiceOpen}
+timeout={300}
+unmountOnExit
+>
+
+<Box
+sx={{
+mt:2,
+borderRadius:3,
+border:"1px solid",
+borderColor:"divider",
+overflow:"hidden"
+}}
+>
+
+<TeluguVoice initialText={teluguVoiceText}/>
+
+</Box>
+
+</Collapse>
+
+</Box>
+
+</CardContent>
+
+</Card>
+
+);
 
 }
