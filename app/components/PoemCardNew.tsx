@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -8,10 +8,18 @@ import {
   CardContent,
   Divider,
   IconButton,
+  Button,
+  Stack,
+  Collapse,
+  Tooltip
 } from "@mui/material";
+
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
+import GraphicEqIcon from "@mui/icons-material/GraphicEq";
+
 import ShareButtons from "@/app/components/ShareBar";
+import TeluguVoice from "@/app/components/TeluguVoice";
 
 interface Poem {
   title: string;
@@ -21,45 +29,64 @@ interface Poem {
 
 type Props = {
   poem: Poem;
-
-  /* 🔊 Read options (optional) */
   enableRead?: boolean;
-
   authors?: string | string[];
   poetryName?: string;
 };
 
-const PoemCardNew: React.FC<Props> = ({
+export default function PoemCardNew({
   poem,
   enableRead = true,
   authors,
   poetryName,
-}) => {
+}: Props) {
+
   const poemRef = useRef<HTMLDivElement>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const authorText = Array.isArray(authors)
     ? authors.join(", ")
     : authors;
 
-  /* 🔊 Speech handlers */
-  const speak = () => {
+  const teluguVoiceText = `${poem.title}\n${poem.content}`.trim();
+
+  /* 🔊 line-by-line reading */
+
+  const speak = async () => {
+
     if (!("speechSynthesis" in window)) return;
 
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(
-      `${poem.title}. ${poem.content}`
-    );
-    utterance.lang = "te-IN";
-    utterance.rate = 0.8;
+    const lines = [
+      poem.title,
+      ...poem.content.split("\n")
+    ].map(l => l.trim()).filter(Boolean);
 
-    const voice = window.speechSynthesis
-      .getVoices()
-      .find((v) => v.lang === "te-IN");
+    for (const line of lines) {
 
-    if (voice) utterance.voice = voice;
+      await new Promise<void>((resolve) => {
 
-    window.speechSynthesis.speak(utterance);
+        const utterance = new SpeechSynthesisUtterance(line);
+
+        utterance.lang = "te-IN";
+        utterance.rate = 0.85;
+
+        const voice = window.speechSynthesis
+          .getVoices()
+          .find(v => v.lang === "te-IN" || v.lang === "te");
+
+        if (voice) utterance.voice = voice;
+
+        utterance.onend = () => resolve();
+        utterance.onerror = () => resolve();
+
+        window.speechSynthesis.speak(utterance);
+
+      });
+
+    }
+
   };
 
   const stop = () => {
@@ -69,27 +96,38 @@ const PoemCardNew: React.FC<Props> = ({
   };
 
   return (
+
     <Card
+      elevation={3}
       sx={{
         mb: 3,
-        borderRadius: 2,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+        borderRadius: 3,
+        transition: "0.25s",
+        "&:hover": {
+          transform: "translateY(-2px)",
+          boxShadow: 6
+        }
       }}
     >
+
       <CardContent>
-        {/* 🖼 Poster root */}
+
+        {/* POEM */}
+
         <Box
           ref={poemRef}
-          data-poster-root
-          sx={{ px: { xs: 2.5, sm: 4 }, py: { xs: 3, sm: 4 } }}
+          sx={{
+            px: { xs: 1, sm: 3 },
+            py: { xs: 2, sm: 3 }
+          }}
         >
-          {/* 🔸 Title */}
+
           <Typography
             sx={{
               textAlign: "center",
               fontWeight: 700,
-              fontSize: "1.3em",
-              mb: 2,
+              fontSize: { xs: "1.15rem", sm: "1.3rem" },
+              mb: 2
             }}
           >
             {poem.title}
@@ -97,89 +135,151 @@ const PoemCardNew: React.FC<Props> = ({
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* 📜 Poem content */}
           <Typography
             sx={{
               whiteSpace: "pre-line",
               textAlign: "center",
-              lineHeight: 2.1,
-              fontSize: { xs: "0.95em", sm: "1.05em" },
+              fontSize: { xs: "1rem", sm: "1.05rem" },
+              lineHeight: 1.9
             }}
           >
             {poem.content}
           </Typography>
 
-          {/* ✍️ Author */}
           {authorText && (
+
             <Typography
               sx={{
-                mt: 2.5,
+                mt: 2,
                 textAlign: "right",
                 fontSize: "0.9em",
-                fontWeight: 500,
+                opacity: 0.8
               }}
             >
               — {authorText}
             </Typography>
+
           )}
 
-          {/* 🧾 Footer */}
           {poetryName && (
-            <Box
+
+            <Typography
               sx={{
-                mt: 4,
-                pt: 2,
-                borderTop: "1px solid #ddd",
+                mt: 3,
                 textAlign: "center",
+                fontSize: "0.85em",
+                fontWeight: 600,
+                opacity: 0.7
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: "0.8em",
-                  fontWeight: 600,
-                  opacity: 0.85,
-                }}
-              >
-                {poetryName}
-              </Typography>
-            </Box>
+              {poetryName}
+            </Typography>
+
           )}
+
         </Box>
 
-        {/* 🎛 Controls */}
+        <Divider sx={{ mb: 2 }} />
+
+        {/* ACTION BAR */}
+
+        {enableRead && (
+
+          <Stack
+            direction="row"
+            spacing={1}
+            justifyContent="center"
+            sx={{ mb: 2 }}
+          >
+
+            <Tooltip title="పద్యాన్ని వినండి">
+
+              <IconButton
+                color="primary"
+                onClick={speak}
+              >
+                <VolumeUpIcon />
+              </IconButton>
+
+            </Tooltip>
+
+            <Tooltip title="ఆపండి">
+
+              <IconButton
+                color="error"
+                onClick={stop}
+              >
+                <StopCircleIcon />
+              </IconButton>
+
+            </Tooltip>
+
+          </Stack>
+
+        )}
+
+        {/* SHARE */}
+
         <Box
           sx={{
-            mt: 2,
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            justifyContent: "center",
+            mb: 2
           }}
         >
-          {/* 🔊 Read controls */}
-          {enableRead && (
-            <Box>
-              <IconButton
-                onClick={speak}
-                aria-label="పద్యాన్ని వినండి"
-              >
-                <VolumeUpIcon color="primary" />
-              </IconButton>
-
-              <IconButton
-                onClick={stop}
-                aria-label="వినడం ఆపండి"
-              >
-                <StopCircleIcon color="error" />
-              </IconButton>
-            </Box>
-          )}
-
-          {/* 📤 Share */}
           <ShareButtons targetRef={poemRef} />
         </Box>
-      </CardContent>
-    </Card>
-  );
-};
 
-export default PoemCardNew;
+        {/* ధ్వనిమాల · కళామాల · దర్శనమాల */}
+
+        <Box sx={{ mt: 2 }}>
+
+          <Button
+            fullWidth
+            size="large"
+            variant={voiceOpen ? "contained" : "outlined"}
+            startIcon={<GraphicEqIcon />}
+            onClick={() => setVoiceOpen(!voiceOpen)}
+            sx={{
+              borderRadius: 3,
+              fontWeight: 700,
+              py: 1.2
+            }}
+          >
+
+            {voiceOpen
+              ? "ధ్వనిమాల · కళామాల · దర్శనమాల దాచు"
+              : "ధ్వనిమాల · కళామాల · దర్శనమాల"}
+
+          </Button>
+
+          <Collapse
+            in={voiceOpen}
+            timeout={300}
+            unmountOnExit
+          >
+
+            <Box
+              sx={{
+                mt: 2,
+                borderRadius: 3,
+                border: "1px solid #6ee7b7",
+                overflow: "hidden"
+              }}
+            >
+
+              <TeluguVoice initialText={teluguVoiceText} />
+
+            </Box>
+
+          </Collapse>
+
+        </Box>
+
+      </CardContent>
+
+    </Card>
+
+  );
+
+}
