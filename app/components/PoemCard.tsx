@@ -10,16 +10,14 @@ import {
   IconButton,
   Button,
   Stack,
-  Collapse
+  Collapse,
+  Tooltip
 } from "@mui/material";
 
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
 import GraphicEqIcon from "@mui/icons-material/GraphicEq";
-import PsychologyIcon from "@mui/icons-material/Psychology";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import ShuffleIcon from "@mui/icons-material/Shuffle";
-import LinkIcon from "@mui/icons-material/Link";
+import ShareIcon from "@mui/icons-material/Share";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice from "@/app/components/TeluguVoice";
@@ -57,32 +55,38 @@ export default function PoemCard({
 
   const teluguVoiceText = `${poem.title}\n${poem.content}`.trim();
 
-  const callAPI = async (url: string) => {
-    try {
-      await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ poem: poem.content }),
-      });
-    } catch {}
-  };
-
   return (
-    <Card sx={{ mb: 3, borderRadius: 3 }}>
+
+    <Card
+      elevation={3}
+      sx={{
+        mb: 3,
+        borderRadius: 3,
+        transition: "0.25s",
+        "&:hover": {
+          transform: "translateY(-2px)",
+          boxShadow: 6
+        }
+      }}
+    >
+
       <CardContent>
 
-        {/* ───── POEM ───── */}
+        {/* POEM */}
 
         <Box
           ref={poemRef}
-          sx={{ px: { xs: 2, sm: 4 }, py: { xs: 3, sm: 4 } }}
+          sx={{
+            px: { xs: 1, sm: 3 },
+            py: { xs: 2, sm: 3 }
+          }}
         >
 
           <Typography
             sx={{
               textAlign: "center",
               fontWeight: 700,
-              fontSize: "1.3em",
+              fontSize: { xs: "1.15rem", sm: "1.3rem" },
               mb: 2
             }}
           >
@@ -95,7 +99,7 @@ export default function PoemCard({
             sx={{
               whiteSpace: "pre-line",
               textAlign: "center",
-              fontSize: "1.05em",
+              fontSize: { xs: "1rem", sm: "1.05rem" },
               lineHeight: 1.9
             }}
           >
@@ -103,64 +107,95 @@ export default function PoemCard({
           </Typography>
 
           {authorText && (
+
             <Typography
               sx={{
                 mt: 2,
                 textAlign: "right",
-                fontSize: "0.9em"
+                fontSize: "0.9em",
+                opacity: 0.8
               }}
             >
               — {authorText}
             </Typography>
+
           )}
 
           {poetryName && (
+
             <Typography
               sx={{
                 mt: 3,
                 textAlign: "center",
                 fontSize: "0.85em",
-                fontWeight: 600
+                fontWeight: 600,
+                opacity: 0.7
               }}
             >
               {poetryName}
             </Typography>
+
           )}
 
         </Box>
 
-        {/* ───── AUDIO CONTROLS ───── */}
+        <Divider sx={{ mb: 2 }} />
 
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+        {/* ACTION BAR */}
 
-          <IconButton
-            onClick={() => speak(`${poem.title}. ${poem.content}`)}
-            disabled={!ready}
-          >
-            <VolumeUpIcon color="primary" />
-          </IconButton>
+        <Stack
+          direction="row"
+          spacing={1}
+          justifyContent="center"
+          flexWrap="wrap"
+          sx={{ mb: 2 }}
+        >
 
-          <IconButton
-            onClick={stopSpeech}
-            disabled={!ready}
-          >
-            <StopCircleIcon color="error" />
-          </IconButton>
+          <Tooltip title="పద్యాన్ని వినండి">
+
+            <IconButton
+              color="primary"
+              onClick={() => speak(`${poem.title}. ${poem.content}`)}
+              disabled={!ready}
+            >
+              <VolumeUpIcon />
+            </IconButton>
+
+          </Tooltip>
+
+          <Tooltip title="ఆపండి">
+
+            <IconButton
+              color="error"
+              onClick={stopSpeech}
+              disabled={!ready}
+            >
+              <StopCircleIcon />
+            </IconButton>
+
+          </Tooltip>
 
         </Stack>
 
-        {/* ───── SHARE ───── */}
+        {/* SHARE */}
 
-        <Box sx={{ mt: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            mb: 2
+          }}
+        >
           <ShareButtons targetRef={poemRef} />
         </Box>
 
-        {/* ───── TELUGU VOICE ───── */}
+        {/* AI MEDIA GENERATOR */}
 
-        <Box sx={{ mt: 3 }}>
+        <Box sx={{ mt: 2 }}>
 
           <Button
             fullWidth
+            size="large"
             variant={voiceOpen ? "contained" : "outlined"}
             startIcon={<GraphicEqIcon />}
             onClick={() => setVoiceOpen(!voiceOpen)}
@@ -177,7 +212,11 @@ export default function PoemCard({
 
           </Button>
 
-          <Collapse in={voiceOpen} timeout={300} unmountOnExit>
+          <Collapse
+            in={voiceOpen}
+            timeout={300}
+            unmountOnExit
+          >
 
             <Box
               sx={{
@@ -187,7 +226,9 @@ export default function PoemCard({
                 overflow: "hidden"
               }}
             >
+
               <TeluguVoice initialText={teluguVoiceText} />
+
             </Box>
 
           </Collapse>
@@ -195,6 +236,9 @@ export default function PoemCard({
         </Box>
 
       </CardContent>
+
     </Card>
+
   );
+
 }

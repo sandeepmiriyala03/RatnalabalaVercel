@@ -88,17 +88,25 @@ function getACtx() {
   return _actx;
 }
 async function playF32(af: Float32Array, sr: number) {
+
   const ctx = getACtx();
+
   if (ctx.state === "suspended") await ctx.resume();
+
   const buf = ctx.createBuffer(1, af.length, sr);
-  buf.copyToChannel(af, 0);
+
+  buf.copyToChannel(new Float32Array(af), 0);
+
   const src = ctx.createBufferSource();
   src.buffer = buf;
   src.connect(ctx.destination);
   src.start(0);
-  return new Promise<void>((res) => { src.onended = () => res(); });
-}
 
+  return new Promise<void>((res) => {
+    src.onended = () => res();
+  });
+
+}
 /* ─── Canvas draw ────────────────────────────────────────────────── */
 function drawSlide(
   ctx: CanvasRenderingContext2D,
@@ -170,36 +178,68 @@ async function makeVideo(
   canvas: HTMLCanvasElement,
   hasAudio: boolean
 ): Promise<Blob> {
+
   const { W, H, fps } = VIDEO_PROFILES[profile];
+
   canvas.width = W;
   canvas.height = H;
+
   const ctx2d = canvas.getContext("2d", { alpha: false })!;
   const duration = hasAudio ? af.length / sr : 5;
 
   const muxer = new Mp4Muxer.Muxer({
     target: new Mp4Muxer.ArrayBufferTarget(),
     video: { codec: "avc", width: W, height: H },
-    ...(hasAudio ? { audio: { codec: "aac", numberOfChannels: 1, sampleRate: sr } } : {}),
+    ...(hasAudio
+      ? { audio: { codec: "aac", numberOfChannels: 1, sampleRate: sr } }
+      : {}),
     fastStart: "fragmented",
   });
 
   const videoEncoder = new VideoEncoder({
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: (e) => console.error("VE:", e),
+    error: (e) => console.error("VideoEncoder:", e),
   });
-  videoEncoder.configure({ codec: "avc1.4D401F", width: W, height: H, bitrate: 2_000_000 });
+
+  videoEncoder.configure({
+    codec: "avc1.4D401F",
+    width: W,
+    height: H,
+    bitrate: 2_000_000,
+  });
 
   let audioEncoder: AudioEncoder | null = null;
+
   if (hasAudio) {
     try {
+
       audioEncoder = new AudioEncoder({
         output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-        error: (e) => console.warn("AE:", e),
+        error: (e) => console.warn("AudioEncoder:", e),
       });
-      audioEncoder.configure({ codec: "mp4a.40.2", numberOfChannels: 1, sampleRate: sr, bitrate: 128_000 });
-      const ad = new AudioData({ format: "f32", sampleRate: sr, numberOfFrames: af.length, numberOfChannels: 1, timestamp: 0, data: af });
+
+      audioEncoder.configure({
+        codec: "mp4a.40.2",
+        numberOfChannels: 1,
+        sampleRate: sr,
+        bitrate: 128000,
+      });
+
+      /* FIX: convert to proper ArrayBuffer */
+    const audioBuffer = new Float32Array(af.buffer as ArrayBuffer);
+
+      const ad = new AudioData({
+        format: "f32",
+        sampleRate: sr,
+        numberOfFrames: af.length,
+        numberOfChannels: 1,
+        timestamp: 0,
+        data: audioBuffer
+      });
+
       audioEncoder.encode(ad);
       ad.close();
+
     } catch (e) {
       console.warn("AudioEncoder failed:", e);
       audioEncoder = null;
@@ -207,25 +247,50 @@ async function makeVideo(
   }
 
   const totalFrames = Math.ceil(duration * fps);
+
   for (let i = 0; i < totalFrames; i++) {
+
     const timestamp = Math.round((i * 1_000_000) / fps);
+
     drawSlide(ctx2d, W, H, text);
-    const frame = new VideoFrame(canvas, { timestamp, duration: Math.round(1_000_000 / fps) });
+
+    const frame = new VideoFrame(canvas, {
+      timestamp,
+      duration: Math.round(1_000_000 / fps),
+    });
+
     videoEncoder.encode(frame);
     frame.close();
-    if (i % 30 === 0) await new Promise((r) => setTimeout(r, 0));
+
+    if (i % 30 === 0)
+      await new Promise((r) => setTimeout(r, 0));
   }
 
-  try { if (videoEncoder.state !== "closed") await videoEncoder.flush(); } catch {}
-  try { if (videoEncoder.state !== "closed") videoEncoder.close(); } catch {}
+  try {
+    if (videoEncoder.state !== "closed") await videoEncoder.flush();
+  } catch {}
+
+  try {
+    if (videoEncoder.state !== "closed") videoEncoder.close();
+  } catch {}
+
   if (audioEncoder) {
-    try { if (audioEncoder.state === "configured") await audioEncoder.flush(); } catch {}
-    try { if (audioEncoder.state !== "closed") audioEncoder.close(); } catch {}
+
+    try {
+      if (audioEncoder.state === "configured") await audioEncoder.flush();
+    } catch {}
+
+    try {
+      if (audioEncoder.state !== "closed") audioEncoder.close();
+    } catch {}
   }
 
   muxer.finalize();
+
   const { buffer } = muxer.target as Mp4Muxer.ArrayBufferTarget;
+
   return new Blob([buffer], { type: "video/mp4" });
+
 }
 
 /* ─── Props ──────────────────────────────────────────────────────── */
