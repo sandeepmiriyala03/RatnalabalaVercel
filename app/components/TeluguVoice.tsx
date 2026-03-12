@@ -66,19 +66,38 @@ function waitForVoices(): Promise<SpeechSynthesisVoice[]> {
 }
 
 async function speakWebSpeech(text: string, lang: string) {
-  return new Promise<void>(async (resolve) => {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
-    const voices = await waitForVoices();
-    const v =
-      voices.find((v) => v.lang === lang) ||
-      voices.find((v) => v.lang.startsWith(lang.split("-")[0]));
-    if (v) u.voice = v;
-    u.onend = () => resolve();
-    u.onerror = () => resolve();
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  });
+
+  const lines = text
+    .split("\n")
+    .map(l => l.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+
+    await new Promise<void>(async (resolve) => {
+
+      const u = new SpeechSynthesisUtterance(line);
+      u.lang = lang;
+
+      const voices = await waitForVoices();
+
+      const v =
+        voices.find(v => v.lang === lang) ||
+        voices.find(v => v.lang.startsWith(lang.split("-")[0]));
+
+      if (v) u.voice = v;
+
+      u.rate = 0.85;
+
+      u.onend = () => resolve();
+      u.onerror = () => resolve();
+
+      speechSynthesis.speak(u);
+
+    });
+
+  }
+
 }
 
 let _actx: AudioContext | null = null;
