@@ -10,7 +10,6 @@ import {
   Stack
 } from "@mui/material";
 
-import ShuffleIcon from "@mui/icons-material/Shuffle";
 import ClearIcon from "@mui/icons-material/Clear";
 
 import PoemCard from "@/app/components/PoemCard";
@@ -33,9 +32,6 @@ export default function PoemList() {
   const [ready,setReady] = useState(false);
 
   const [search,setSearch] = useState("");
-
-  const [aiQuery,setAiQuery] = useState("");
-  const [aiResult,setAiResult] = useState("");
 
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState<string|null>(null);
@@ -160,61 +156,6 @@ export default function PoemList() {
 
   },[search,viewAll]);
 
-  /* RANDOM */
-
-  const randomPoem = async () => {
-
-  try {
-
-    const res = await fetch("/api/random-poem");
-
-    if (!res.ok) throw new Error();
-
-    const data = await res.json();
-
-    setAiResult(`${data.title}\n\n${data.poem}`);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-
-  } catch {
-
-    setAiResult("యాదృచ్ఛిక పద్యం పొందడంలో లోపం జరిగింది.");
-
-  }
-
-};
-
-  /* AI SEARCH */
-
-  const aiSearch = async()=>{
-
-    if(!aiQuery) return;
-
-    try{
-
-      const res = await fetch("/api/semantic-search",{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json"
-        },
-        body:JSON.stringify({question:aiQuery})
-      });
-
-      const data = await res.json();
-
-      setAiResult(`${data.title}\n\n${data.poem}`);
-
-    }catch{
-
-      setAiResult("AI సమాధానం పొందడంలో లోపం జరిగింది.");
-
-    }
-
-  };
-
   return(
 
     <Box
@@ -243,34 +184,6 @@ export default function PoemList() {
       మొత్తం పద్యాలు: <strong>{poems.length}</strong>
       </Typography>
 
-      {/* AI SIMPLE EXPLANATION */}
-
-      <Box
-      sx={{
-      p:2,
-      mb:3,
-      borderRadius:2,
-      background:"#fff7ed",
-      border:"1px solid #fed7aa"
-      }}
-      >
-
-      <Typography fontWeight={700} mb={1}>
-      🤖 ఈ AI ఎలా పని చేస్తుంది? (సులభంగా)
-      </Typography>
-
-      <Typography sx={{fontSize:"0.95em",lineHeight:1.9}}>
-
-      1️⃣ మీరు ప్రశ్న అడుగుతారు.<br/>
-      2️⃣ AI ఆ ప్రశ్న అర్థం చేసుకుంటుంది.<br/>
-      3️⃣ అన్ని పద్యాలను పోల్చుతుంది.<br/>
-      4️⃣ మీ ప్రశ్నకు దగ్గరగా ఉన్న పద్యం కనిపెడుతుంది.<br/>
-      5️⃣ ఆ పద్యాన్ని మీకు చూపిస్తుంది.
-
-      </Typography>
-
-      </Box>
-
       {/* SEARCH */}
 
       <Stack spacing={2} mb={3}>
@@ -283,14 +196,6 @@ export default function PoemList() {
       />
 
       <Stack direction="row" spacing={1} justifyContent="center">
-
-      <Button
-      startIcon={<ShuffleIcon/>}
-      variant="contained"
-      onClick={randomPoem}
-      >
-      యాదృచ్ఛిక పద్యం
-      </Button>
 
       {search &&(
 
@@ -314,66 +219,6 @@ export default function PoemList() {
       </Stack>
 
       </Stack>
-
-      {/* AI SEARCH */}
-
-      <Box
-      sx={{
-        p:2,
-        mb:3,
-        borderRadius:2,
-        background:"#f1f5f9"
-      }}
-      >
-
-      <Typography fontWeight={600} mb={1}>
-      🧠 AI పద్యం వెతకండి
-      </Typography>
-
-      <Stack direction={{xs:"column",sm:"row"}} spacing={1}>
-
-      <TextField
-      fullWidth
-      placeholder="ఉదా: మంచి మనిషి ఎలా అవ్వాలి"
-      value={aiQuery}
-      onChange={(e)=>setAiQuery(e.target.value)}
-      onKeyDown={(e)=>{
-        if(e.key==="Enter") aiSearch();
-      }}
-      />
-
-      <Button
-      variant="contained"
-      onClick={aiSearch}
-      >
-      AI వెతుకు
-      </Button>
-
-      </Stack>
-
-      </Box>
-
-      {aiResult &&(
-
-      <Box
-      sx={{
-        p:2,
-        mb:3,
-        borderRadius:2,
-        background:"#f8fafc",
-        whiteSpace:"pre-line"
-      }}
-      >
-
-      <Typography fontWeight={700} mb={1}>
-      🤖 AI ఫలితం
-      </Typography>
-
-      {aiResult}
-
-      </Box>
-
-      )}
 
       {/* POEMS */}
 

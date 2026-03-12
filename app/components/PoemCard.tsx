@@ -149,53 +149,6 @@ export default function PoemCard({
 
         </Stack>
 
-        {/* ───── AI BUTTONS ───── */}
-
-        <Stack
-          direction="row"
-          spacing={1}
-          flexWrap="wrap"
-          sx={{ mb: 2 }}
-        >
-
-          <Button
-            size="small"
-            startIcon={<PsychologyIcon />}
-            variant="outlined"
-            onClick={() => callAPI("/api/explain")}
-          >
-            భావం
-          </Button>
-
-          <Button
-            size="small"
-            startIcon={<AutoAwesomeIcon />}
-            variant="outlined"
-            onClick={() => callAPI("/api/theme")}
-          >
-            అంశం
-          </Button>
-
-          <Button
-            size="small"
-            startIcon={<ShuffleIcon />}
-            variant="outlined"
-            onClick={() => callAPI("/api/random-poem")}
-          >
-            మరో పద్యం
-          </Button>
-
-          <Button
-            size="small"
-            startIcon={<LinkIcon />}
-            variant="outlined"
-            onClick={() => callAPI("/api/similar")}
-          >
-            సంబంధిత
-          </Button>
-
-        </Stack>
-
         {/* ───── SHARE ───── */}
 
         <Box sx={{ mt: 2 }}>
