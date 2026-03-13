@@ -3,8 +3,6 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import {
   Box,
-  Card,
-  CardContent,
   IconButton,
   Button,
   MenuItem,
@@ -12,16 +10,26 @@ import {
   Slider,
   TextField,
   Typography,
+  Collapse,
 } from "@mui/material";
+
 import MicIcon from "@mui/icons-material/Mic";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
 import DownloadIcon from "@mui/icons-material/Download";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+
+import { alpha, useTheme } from "@mui/material";
 import { toPng } from "html-to-image";
 
+import TeluguVoice from "@/app/components/TeluguVoice";
+
 /* =========================
-   🎨 THEMES
+🎨 THEMES
 ========================= */
 
 type ThemeKey =
@@ -43,7 +51,7 @@ const THEMES: Record<
 };
 
 /* =========================
-   🔤 FONT LIST
+🔤 FONT LIST
 ========================= */
 
 export type FontKey =
@@ -52,49 +60,10 @@ export type FontKey =
   | "ramaneeya"
   | "veturi"
   | "sirivennela"
-  | "chathura-thin"
-  | "chathura-light"
-  | "chathura-regular"
-  | "chathura-bold"
-  | "chathura-extrabold"
-  | "ramaraja"
-  | "raviprakash"
-  | "tenaliramakrishna"
-  | "timmana"
-  | "tana"
-  | "ponnala-regular"
-  | "gidugu"
-  | "gidugu-italic"
-  | "lakkireddy"
-  | "nandakam"
-  | "nandakam-italic"
-  | "peddana"
-  | "purushothamaa"
-  | "purushothamaa-italic"
-  | "ramabhadra"
-  | "ramabhadra-italic"
-  | "sreekrushnadevaraya"
-  | "sreekrushnadevaraya-italic"
-  | "suranna-regular"
-  | "suranna-bold"
-  | "suranna-italic"
-  | "suranna-bolditalic"
-  | "suravaram"
-  | "suravaram-italic"
   | "annamayya"
-  | "annamayya-bold"
-  | "annamayya-italic"
-  | "annamayya-bolditalic"
-  | "dhurjati"
-  | "dhurjati-italic"
-  | "jims"
-  | "jims-italic"
-  | "kanakadurga"
-  | "kanakadurga-italic"
   | "mandali-regular"
-  | "mandali-bold"
-  | "mandali-italic"
-  | "mandali-bolditalic"
+  | "peddana"
+  | "sreekrushnadevaraya"
   | "pottisreeramulu";
 
 const FONTS: { key: FontKey; label: string; className: string }[] = [
@@ -111,10 +80,11 @@ const FONTS: { key: FontKey; label: string; className: string }[] = [
 ];
 
 /* =========================
-   🌸 SWARAMALA COMPONENT
+🌸 COMPONENT
 ========================= */
 
 export default function Swaramala() {
+
   const posterRef = useRef<HTMLDivElement>(null);
 
   const [text, setText] = useState("");
@@ -122,12 +92,12 @@ export default function Swaramala() {
   const [themeKey, setThemeKey] = useState<ThemeKey>("classicWhite");
   const [fontScale, setFontScale] = useState(1);
   const [listening, setListening] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const theme = THEMES[themeKey];
+  const themeMui = useTheme();
 
-  /* =========================
-     🎤 SPEECH → TEXT (TELUGU)
-  ========================= */
+  /* 🎤 Speech → Text */
 
   const SpeechRecognition =
     typeof window !== "undefined"
@@ -137,14 +107,17 @@ export default function Swaramala() {
 
   const recognition = useMemo(() => {
     if (!SpeechRecognition) return null;
+
     const r = new SpeechRecognition();
     r.lang = "te-IN";
     r.interimResults = false;
     r.continuous = false;
+
     return r;
   }, [SpeechRecognition]);
 
   useEffect(() => {
+
     if (!recognition) return;
 
     recognition.onresult = (e: any) => {
@@ -153,10 +126,14 @@ export default function Swaramala() {
     };
 
     recognition.onend = () => setListening(false);
+
   }, [recognition]);
 
   const startVoice = () => {
-    if (!recognition) return alert("ఈ బ్రౌజర్‌లో స్వరమాల పనిచేయదు");
+
+    if (!recognition)
+      return alert("ఈ బ్రౌజర్‌లో స్వరమాల పనిచేయదు");
+
     setListening(true);
     recognition.start();
   };
@@ -166,32 +143,37 @@ export default function Swaramala() {
     setListening(false);
   };
 
-  /* =========================
-     🔊 TEXT → SPEECH
-  ========================= */
+  /* 🔊 Text → Speech */
 
   const speak = () => {
+
     if (!text) return;
+
     window.speechSynthesis.cancel();
+
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "te-IN";
+
     window.speechSynthesis.speak(u);
   };
 
   const stopSpeak = () => window.speechSynthesis.cancel();
 
-  /* =========================
-     ⬇️ DOWNLOAD POSTER
-  ========================= */
+  /* ⬇️ Download Poster */
 
   const download = async () => {
+
     if (!posterRef.current) return;
+
     await document.fonts.ready;
+
     const url = await toPng(posterRef.current, {
       pixelRatio: 2,
       backgroundColor: theme.bg,
     });
+
     const a = document.createElement("a");
+
     a.href = url;
     a.download = "swaramala-poster.png";
     a.click();
@@ -209,108 +191,162 @@ export default function Swaramala() {
     "chitramala-font-gurajada";
 
   return (
- <>
-     
+    <>
+      {/* TEXT INPUT */}
 
-        {/* ✍️ TEXT INPUT */}
-        <TextField
-          multiline
-          minRows={4}
-          fullWidth
-          placeholder="తెలుగులో మాట్లాడండి లేదా టైప్ చేయండి…"
-          value={text}
-          onChange={e => setText(e.target.value)}
-        />
+      <TextField
+        multiline
+        minRows={4}
+        fullWidth
+        placeholder="తెలుగులో మాట్లాడండి లేదా టైప్ చేయండి…"
+        value={text}
+        onChange={e => setText(e.target.value)}
+      />
 
-        {/* 🎛 CONTROLS */}
-        <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
-          <Button
-            startIcon={<MicIcon />}
-            color={listening ? "error" : "primary"}
-            onClick={startVoice}
-          >
-            మాట్లాడండి
-          </Button>
+      {/* CONTROLS */}
 
-          <IconButton onClick={stopVoice}>
-            <StopCircleIcon />
-          </IconButton>
+      <Box sx={{ display: "flex", gap: 1, mt: 2, flexWrap: "wrap" }}>
 
-          <Select
-            size="small"
-            value={fontKey}
-            onChange={e => setFontKey(e.target.value as FontKey)}
-          >
-            {FONTS.map(f => (
-              <MenuItem key={f.key} value={f.key}>
-                {f.label}
-              </MenuItem>
-            ))}
-          </Select>
+        <Button
+          startIcon={<MicIcon />}
+          color={listening ? "error" : "primary"}
+          onClick={startVoice}
+        >
+          మాట్లాడండి
+        </Button>
 
-          <Select
-            size="small"
-            value={themeKey}
-            onChange={e => setThemeKey(e.target.value as ThemeKey)}
-          >
-            {Object.entries(THEMES).map(([k, t]) => (
-              <MenuItem key={k} value={k}>
-                {t.label}
-              </MenuItem>
-            ))}
-          </Select>
+        <IconButton onClick={stopVoice}>
+          <StopCircleIcon />
+        </IconButton>
 
-          <Box sx={{ width: 120 }}>
-            <Slider
-              min={0.8}
-              max={1.6}
-              step={0.1}
-              value={fontScale}
-              onChange={(_, v) => setFontScale(v as number)}
-            />
-          </Box>
+        <Select
+          size="small"
+          value={fontKey}
+          onChange={e => setFontKey(e.target.value as FontKey)}
+        >
+          {FONTS.map(f => (
+            <MenuItem key={f.key} value={f.key}>
+              {f.label}
+            </MenuItem>
+          ))}
+        </Select>
 
-          <Button startIcon={<RestartAltIcon />} onClick={reset}>
-            Reset
-          </Button>
+        <Select
+          size="small"
+          value={themeKey}
+          onChange={e => setThemeKey(e.target.value as ThemeKey)}
+        >
+          {Object.entries(THEMES).map(([k, t]) => (
+            <MenuItem key={k} value={k}>
+              {t.label}
+            </MenuItem>
+          ))}
+        </Select>
+
+        <Box sx={{ width: 120 }}>
+          <Slider
+            min={0.8}
+            max={1.6}
+            step={0.1}
+            value={fontScale}
+            onChange={(_, v) => setFontScale(v as number)}
+          />
         </Box>
 
-        {/* 🖼 POSTER */}
+        <Button startIcon={<RestartAltIcon />} onClick={reset}>
+          Reset
+        </Button>
+      </Box>
+
+      {/* POSTER */}
+
+      <Box
+        ref={posterRef}
+        className={activeFontClass}
+        sx={{
+          mt: 3,
+          p: 3,
+          textAlign: "center",
+          whiteSpace: "pre-line",
+          lineHeight: 1.9,
+          fontSize: `${fontScale}rem`,
+          backgroundColor: theme.bg,
+          color: theme.text,
+          border: `1px solid ${theme.border}`,
+          borderRadius: 2,
+        }}
+      >
+        {text || "మీ స్వరమాల పద్యం ఇక్కడ కనిపిస్తుంది"}
+      </Box>
+
+      {/* AI TOOLS */}
+
+      <Button
+        fullWidth
+        variant="outlined"
+        onClick={() => setVoiceOpen(v => !v)}
+        startIcon={<AutoAwesomeRoundedIcon />}
+        endIcon={
+          voiceOpen
+            ? <ExpandLessRoundedIcon />
+            : <ExpandMoreRoundedIcon />
+        }
+        sx={{
+          mt: 2,
+          borderRadius: 2,
+          textTransform: "none",
+          fontWeight: 600,
+          borderColor: alpha(themeMui.palette.secondary.main, 0.4),
+          color: "secondary.main",
+        }}
+      >
+        ✨ AI సాధనలు
+      </Button>
+
+      <Collapse in={voiceOpen}>
         <Box
-          ref={posterRef}
-          className={activeFontClass}
           sx={{
-            mt: 3,
-            p: 3,
-            textAlign: "center",
-            whiteSpace: "pre-line",
-            lineHeight: 1.9,
-            fontSize: `${fontScale}rem`,
-            backgroundColor: theme.bg,
-            color: theme.text,
-            border: `1px solid ${theme.border}`,
+            mt: 2,
+            p: 2,
             borderRadius: 2,
+            background: alpha(themeMui.palette.background.default, 0.6),
+            border: `1px solid ${alpha(themeMui.palette.secondary.main, 0.2)}`,
           }}
         >
-          {text || "మీ స్వరమాల పద్యం ఇక్కడ కనిపిస్తుంది"}
-        </Box>
-
-        {/* 🔊 / ⬇️ */}
-        <Box sx={{ display: "flex", gap: 1, mt: 2, justifyContent: "center" }}>
-          <IconButton onClick={speak}>
-            <VolumeUpIcon />
-          </IconButton>
-          <IconButton onClick={stopSpeak}>
-            <StopCircleIcon />
-          </IconButton>
-          <Button
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            onClick={download}
+          <Typography
+            sx={{
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              color: "secondary.main",
+              mb: 1,
+            }}
           >
-            డౌన్‌లోడ్
-          </Button>
+            ధ్వని · కళ · వీడియో
+          </Typography>
+
+          <TeluguVoice initialText={text} />
         </Box>
+      </Collapse>
+
+      {/* AUDIO + DOWNLOAD */}
+
+      <Box sx={{ display: "flex", gap: 1, mt: 2, justifyContent: "center" }}>
+        <IconButton onClick={speak}>
+          <VolumeUpIcon />
+        </IconButton>
+
+        <IconButton onClick={stopSpeak}>
+          <StopCircleIcon />
+        </IconButton>
+
+        <Button
+          variant="contained"
+          startIcon={<DownloadIcon />}
+          onClick={download}
+        >
+          డౌన్‌లోడ్
+        </Button>
+      </Box>
     </>
   );
 }
