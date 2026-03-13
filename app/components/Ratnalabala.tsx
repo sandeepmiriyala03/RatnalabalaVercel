@@ -216,7 +216,7 @@ export default function RatnalabalaHighlights() {
   
 
         <Typography fontWeight={800} sx={{ mb: 1 }}>
-          ✨ మీరు ఇక్కడ చేయగలవి
+          మీరు ఇక్కడ చేయగలవి
         </Typography>
 
         <Stack direction="row" flexWrap="wrap" gap={1}>
@@ -229,6 +229,8 @@ export default function RatnalabalaHighlights() {
             "నేర్చుకోండి",
             "అన్వేషించండి",
             "భద్రపరచండి",
+            "చూడండి",
+            "సృష్టించండి"
           ].map((action) => (
             <Chip key={action} color="secondary" label={action} />
           ))}
