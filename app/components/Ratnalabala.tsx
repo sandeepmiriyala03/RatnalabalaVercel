@@ -98,6 +98,29 @@ export default function RatnalabalaHighlights() {
        తెలుగు సాహిత్యానికి సంపూర్ణ సాంకేతిక వేదిక 
       </Typography>
 
+      <Box sx={{ textAlign: "center", mb: 4 }}>
+  <Typography
+    variant="caption"
+    color="text.secondary"
+    sx={{ display: "block", lineHeight: 1.7 }}
+  >
+    రత్నాలబాల · పద్యాలవాల · భావాలమాల · అక్షరమాల · శతకాలమాల · చిత్రమాల · కథామాల · సామెతలమాల · లిపిమాల · ఖతిమాల · స్వరమాల · ధ్వనిమాల · దర్శనమాల · కళామాల
+  </Typography>
+
+  <Typography
+    variant="caption"
+    color="text.secondary"
+    sx={{
+      fontStyle: "italic",
+      display: "block",
+      mt: 0.4,
+      opacity: 0.8,
+    }}
+  >
+    చదవండి - వినండి - రాయండి - చిత్రీకరించండి - చూడండి - సృష్టించండి - పంచుకోండి - నేర్చుకోండి - అన్వేషించండి - భద్రపరచండి
+  </Typography>
+</Box>
+
       {/* =========================
           📚 MODULES + ACTIONS (NEW)
          ========================= */}
