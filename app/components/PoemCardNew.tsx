@@ -125,75 +125,72 @@ export default function PoemCardNew({ poem, enableRead = true, authors, poetryNa
         {/* ── Divider ── */}
         <Divider sx={{ my: { xs: 2, sm: 2.5 }, borderStyle: "dashed", borderColor: alpha(theme.palette.divider, 0.5) }} />
 
-        {/* ── Action row ── */}
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ justifyContent: "space-between", alignItems: "center" }}>
+        {/* ── Action rows ── */}
+        <Stack direction="column" spacing={1.25}>
 
-          {/* Listen / Stop — full width on mobile */}
-          {enableRead && (
-            <Button
-              onClick={isSpeaking ? stop : speak}
-              variant="contained"
-              disableElevation
-              startIcon={isSpeaking ? <SpeakingBars /> : <VolumeUpRoundedIcon />}
-              sx={{
-                flex: { xs: "1 1 100%", sm: "0 0 auto" },
-                borderRadius: "10px",
-                py: { xs: 1.4, sm: 1.2 },
-                px: { xs: 2, sm: 2.5 },
-                minHeight: { xs: 50, sm: 44 },
-                textTransform: "none",
-                fontWeight: 700,
-                fontSize: { xs: "0.92rem", sm: "0.85rem" },
-                background: isSpeaking
-                  ? alpha(theme.palette.error.main, 0.1)
-                  : `linear-gradient(135deg, ${forestMid}, ${forestGreen})`,
-                color: isSpeaking ? "error.main" : "white",
-                border: isSpeaking ? `1.5px solid ${alpha(theme.palette.error.main, 0.3)}` : "none",
-                boxShadow: isSpeaking ? "none" : "0 3px 12px rgba(26,61,43,0.28)",
-                "&:hover": { background: isSpeaking ? alpha(theme.palette.error.main, 0.15) : `linear-gradient(135deg, ${forestMid}, ${forestGreen})` },
-                "&:active": { transform: "scale(0.97)" },
-                transition: "all 0.15s",
-              }}
-            >
-              {isSpeaking ? "వినడం ఆపండి" : "పద్యాన్ని వినండి"}
-            </Button>
-          )}
-
-          {/* Share + AI Tools row */}
-          <Stack direction="row" spacing={1} sx={{ flex: { xs: "1 1 100%", sm: "0 0 auto" } }}>
-            {/* Share */}
-            <Box sx={{ flex: 1, display: "flex" }}>
+          {/* Row 1 — Listen + Share side by side */}
+          <Stack direction="row" spacing={1}>
+            {enableRead && (
+              <Button
+                onClick={isSpeaking ? stop : speak}
+                variant="contained"
+                disableElevation
+                startIcon={isSpeaking ? <SpeakingBars /> : <VolumeUpRoundedIcon />}
+                sx={{
+                  flex: 1,
+                  borderRadius: "10px",
+                  py: { xs: 1.4, sm: 1.2 },
+                  minHeight: { xs: 50, sm: 44 },
+                  textTransform: "none",
+                  fontWeight: 700,
+                  fontSize: { xs: "0.9rem", sm: "0.85rem" },
+                  background: isSpeaking
+                    ? alpha(theme.palette.error.main, 0.1)
+                    : `linear-gradient(135deg, ${forestMid}, ${forestGreen})`,
+                  color: isSpeaking ? "error.main" : "white",
+                  border: isSpeaking ? `1.5px solid ${alpha(theme.palette.error.main, 0.3)}` : "none",
+                  boxShadow: isSpeaking ? "none" : "0 3px 12px rgba(26,61,43,0.28)",
+                  "&:hover": { background: isSpeaking ? alpha(theme.palette.error.main, 0.15) : `linear-gradient(135deg, ${forestMid}, ${forestGreen})` },
+                  "&:active": { transform: "scale(0.97)" },
+                  transition: "all 0.15s",
+                }}
+              >
+                {isSpeaking ? "ఆపండి" : "వినండి"}
+              </Button>
+            )}
+            <Box sx={{ flex: enableRead ? "0 0 auto" : 1, display: "flex", alignItems: "stretch" }}>
               <ShareButtons targetRef={poemRef} />
             </Box>
-
-            {/* AI Tools toggle */}
-            <Button
-              onClick={() => setVoiceOpen(v => !v)}
-              variant="outlined"
-              startIcon={<AutoAwesomeRoundedIcon fontSize="small" />}
-              endIcon={voiceOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
-              sx={{
-                flex: 1,
-                borderRadius: "10px",
-                py: { xs: 1.4, sm: 1.2 },
-                px: { xs: 1.5, sm: 2 },
-                minHeight: { xs: 50, sm: 44 },
-                textTransform: "none",
-                fontWeight: 700,
-                fontSize: { xs: "0.9rem", sm: "0.82rem" },
-                borderColor: voiceOpen ? "secondary.main" : alpha(theme.palette.secondary.main, 0.35),
-                color: "secondary.main",
-                background: voiceOpen ? alpha(theme.palette.secondary.main, 0.08) : "transparent",
-                boxShadow: voiceOpen ? `0 0 0 3px ${alpha(theme.palette.secondary.main, 0.12)}` : "none",
-                "&:hover": { borderColor: "secondary.main", background: alpha(theme.palette.secondary.main, 0.06) },
-                "&:active": { transform: "scale(0.97)" },
-                transition: "all 0.15s",
-                whiteSpace: "nowrap",
-              }}
-            >
-              AI సాధనాలు
-            </Button>
           </Stack>
+
+          {/* Row 2 — AI Tools full width */}
+          <Button
+            onClick={() => setVoiceOpen(v => !v)}
+            variant="outlined"
+            fullWidth
+            startIcon={<AutoAwesomeRoundedIcon fontSize="small" />}
+            endIcon={voiceOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
+            sx={{
+              borderRadius: "10px",
+              py: { xs: 1.4, sm: 1.2 },
+              minHeight: { xs: 50, sm: 44 },
+              textTransform: "none",
+              fontWeight: 700,
+              fontSize: { xs: "0.92rem", sm: "0.85rem" },
+              borderColor: voiceOpen ? "secondary.main" : alpha(theme.palette.secondary.main, 0.4),
+              color: "secondary.main",
+              background: voiceOpen ? alpha(theme.palette.secondary.main, 0.08) : "transparent",
+              boxShadow: voiceOpen ? `0 0 0 3px ${alpha(theme.palette.secondary.main, 0.12)}` : "none",
+              justifyContent: "space-between",
+              px: 2.5,
+              "&:hover": { borderColor: "secondary.main", background: alpha(theme.palette.secondary.main, 0.06) },
+              "&:active": { transform: "scale(0.98)" },
+              transition: "all 0.15s",
+            }}
+          >
+            <span>✨ AI సాధనాలు — ధ్వని · కళ · వీడియో</span>
+          </Button>
+
         </Stack>
 
         {/* ── AI panel ── */}
