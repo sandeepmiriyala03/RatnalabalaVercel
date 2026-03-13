@@ -1,54 +1,54 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   Box,
   Typography,
   Card,
   CardContent,
   Divider,
+  Button,
+  Collapse,
   IconButton,
+  alpha,
+  useTheme,
 } from "@mui/material";
+
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 
 import ShareButtons from "@/app/components/ShareBar";
-import type { KathamalaStory } from "@/app/types/kathamala"; 
+import TeluguVoice from "@/app/components/TeluguVoice";
+import type { KathamalaStory } from "@/app/types/kathamala";
+
 type Props = {
   story: KathamalaStory;
-
-  /* 🔊 Read options */
   enableRead?: boolean;
-
-  /* Optional footer label */
   seriesName?: string;
 };
 
 const StoryCard: React.FC<Props> = ({
   story,
   enableRead = true,
-  seriesName = "కథామాల ",
-
+  seriesName = "కథామాల",
 }) => {
   const storyRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
-  /* 🔊 Speech handlers */
+  const voiceText = `${story.title}. ${story.story_text.join(" ")}. సందేశం: ${story.moral}`;
+
   const speak = () => {
     if (!("speechSynthesis" in window)) return;
 
     window.speechSynthesis.cancel();
 
-    const fullText = `${story.title}. ${story.story_text.join(" ")}`;
-
-    const utterance = new SpeechSynthesisUtterance(fullText);
+    const utterance = new SpeechSynthesisUtterance(voiceText);
     utterance.lang = "te-IN";
-    utterance.rate = 0.8;
-
-    const voice = window.speechSynthesis
-      .getVoices()
-      .find((v) => v.lang === "te-IN");
-
-    if (voice) utterance.voice = voice;
+    utterance.rate = 0.9;
 
     window.speechSynthesis.speak(utterance);
   };
@@ -63,23 +63,26 @@ const StoryCard: React.FC<Props> = ({
     <Card
       sx={{
         mb: 3,
-        borderRadius: 2,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+        borderRadius: 3,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
       }}
     >
       <CardContent>
-        {/* 🖼 Story root (for share image) */}
+        {/* Story */}
         <Box
           ref={storyRef}
           data-poster-root
-          sx={{ px: { xs: 2.5, sm: 4 }, py: { xs: 3, sm: 4 } }}
+          sx={{
+            px: { xs: 2, sm: 4 },
+            py: { xs: 2.5, sm: 4 },
+          }}
         >
-          {/* 🔸 Title */}
+          {/* Title */}
           <Typography
             sx={{
               textAlign: "center",
               fontWeight: 700,
-              fontSize: "1.3em",
+              fontSize: { xs: "1.15rem", sm: "1.35rem" },
               mb: 2,
             }}
           >
@@ -88,14 +91,15 @@ const StoryCard: React.FC<Props> = ({
 
           <Divider sx={{ mb: 2 }} />
 
-          {/* 📜 Story content */}
+          {/* Story Text */}
           <Box sx={{ textAlign: "center" }}>
             {story.story_text.map((line, idx) => (
               <Typography
                 key={idx}
                 sx={{
-                  lineHeight: 2,
-                  fontSize: { xs: "0.95em", sm: "1.05em" },
+                  lineHeight: 1.9,
+                  fontSize: { xs: "0.95rem", sm: "1.05rem" },
+                  mb: 0.5,
                 }}
               >
                 {line}
@@ -103,34 +107,34 @@ const StoryCard: React.FC<Props> = ({
             ))}
           </Box>
 
-          {/* 🌼 Moral */}
+          {/* Moral */}
           <Typography
             sx={{
               mt: 3,
               textAlign: "center",
               fontWeight: 600,
-              fontSize: "0.95em",
+              fontSize: { xs: "0.9rem", sm: "1rem" },
               color: "success.main",
             }}
           >
             🌼 సందేశం: {story.moral}
           </Typography>
 
-          {/* 🧾 Footer */}
+          {/* Footer */}
           {seriesName && (
             <Box
               sx={{
-                mt: 4,
-                pt: 2,
-                borderTop: "1px solid #ddd",
+                mt: 3,
+                pt: 1.5,
+                borderTop: "1px solid #eee",
                 textAlign: "center",
               }}
             >
               <Typography
                 sx={{
-                  fontSize: "0.8em",
+                  fontSize: "0.8rem",
                   fontWeight: 600,
-                  opacity: 0.85,
+                  opacity: 0.8,
                 }}
               >
                 {seriesName}
@@ -139,37 +143,81 @@ const StoryCard: React.FC<Props> = ({
           )}
         </Box>
 
-        {/* 🎛 Controls */}
+        {/* Controls */}
         <Box
           sx={{
-            mt: 2,
+            mt: 1,
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexWrap: "wrap",
           }}
         >
-          {/* 🔊 Read controls */}
           {enableRead && (
             <Box>
-              <IconButton
-                onClick={speak}
-                aria-label="కథ వినండి"
-              >
+              <IconButton onClick={speak}>
                 <VolumeUpIcon color="primary" />
               </IconButton>
 
-              <IconButton
-                onClick={stop}
-                aria-label="వినడం ఆపండి"
-              >
+              <IconButton onClick={stop}>
                 <StopCircleIcon color="error" />
               </IconButton>
             </Box>
           )}
 
-          {/* 📤 Share */}
           <ShareButtons targetRef={storyRef} />
         </Box>
+
+        {/* AI Tools */}
+        <Button
+          fullWidth
+          variant="outlined"
+          onClick={() => setVoiceOpen((v) => !v)}
+          startIcon={<AutoAwesomeRoundedIcon />}
+          endIcon={
+            voiceOpen ? (
+              <ExpandLessRoundedIcon />
+            ) : (
+              <ExpandMoreRoundedIcon />
+            )
+          }
+          sx={{
+            mt: 2,
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 600,
+            borderColor: alpha(theme.palette.secondary.main, 0.4),
+            color: "secondary.main",
+          }}
+        >
+          ✨ AI సాధనలు
+        </Button>
+
+        {/* AI Panel */}
+        <Collapse in={voiceOpen}>
+          <Box
+            sx={{
+              mt: 2,
+              p: 2,
+              borderRadius: 2,
+              background: alpha(theme.palette.background.default, 0.6),
+              border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                color: "secondary.main",
+                mb: 1,
+              }}
+            >
+              ధ్వని · కళ · వీడియో
+            </Typography>
+
+            <TeluguVoice initialText={voiceText} />
+          </Box>
+        </Collapse>
       </CardContent>
     </Card>
   );
