@@ -14,7 +14,8 @@ import {
   Tooltip,
   Paper,
   alpha,
-  useTheme
+  useTheme,
+  useMediaQuery
 } from "@mui/material";
 
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
@@ -44,9 +45,8 @@ export default function PoemCardNew({
   poetryName,
 }: Props) {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const poemRef = useRef<HTMLDivElement>(null);
-  
-  // FIXED: Ref to interrupt the async loop
   const stopRef = useRef(false);
   
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -55,44 +55,28 @@ export default function PoemCardNew({
   const authorText = Array.isArray(authors) ? authors.join(", ") : authors;
   const teluguVoiceText = `${poem.title}\n${poem.content}`.trim();
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      window.speechSynthesis.cancel();
-    };
+    return () => window.speechSynthesis.cancel();
   }, []);
 
   const speak = async () => {
     if (!("speechSynthesis" in window)) return;
-    
     window.speechSynthesis.cancel();
-    stopRef.current = false; // Reset stop flag
+    stopRef.current = false;
     setIsSpeaking(true);
 
-    const lines = [poem.title, ...poem.content.split("\n")]
-      .map((l) => l.trim())
-      .filter(Boolean);
+    const lines = [poem.title, ...poem.content.split("\n")].map(l => l.trim()).filter(Boolean);
 
     for (const line of lines) {
-      // FIXED: Check if user pressed stop before processing next line
       if (stopRef.current) break;
-
       await new Promise<void>((resolve) => {
         const utterance = new SpeechSynthesisUtterance(line);
         utterance.lang = "te-IN";
         utterance.rate = 0.85;
-        
-        const voices = window.speechSynthesis.getVoices();
-        const voice = voices.find((v) => v.lang === "te-IN" || v.lang === "te");
-
+        const voice = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("te"));
         if (voice) utterance.voice = voice;
-        
         utterance.onend = () => resolve();
-        utterance.onerror = () => {
-          setIsSpeaking(false);
-          resolve();
-        };
-        
+        utterance.onerror = () => { setIsSpeaking(false); resolve(); };
         window.speechSynthesis.speak(utterance);
       });
     }
@@ -100,126 +84,133 @@ export default function PoemCardNew({
   };
 
   const stop = () => {
-    if ("speechSynthesis" in window) {
-      stopRef.current = true; // FIXED: Signal the loop to break
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-    }
+    stopRef.current = true;
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
   };
 
   return (
     <Card
       elevation={0}
       sx={{
-        mb: 4,
-        borderRadius: 4,
-        background: `linear-gradient(145deg, ${theme.palette.background.paper}, ${alpha(theme.palette.primary.main, 0.02)})`,
-        border: "1px solid",
-        borderColor: alpha(theme.palette.divider, 0.1),
-        position: "relative",
+        mb: 3,
+        borderRadius: isMobile ? 5 : 4, // Softer corners for mobile
+        background: theme.palette.background.paper,
+        border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
+        boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.05)}`,
         overflow: "visible",
-        transition: "all 0.3s ease",
-        "&:hover": {
-          borderColor: alpha(theme.palette.primary.main, 0.2),
-          transform: "translateY(-4px)",
-        },
       }}
     >
-      <CardContent sx={{ p: { xs: 2, sm: 4 } }}>
+      <CardContent sx={{ p: { xs: 2.5, sm: 4 } }}>
+        {/* Header Section */}
         <Box ref={poemRef} sx={{ textAlign: "center" }}>
           <Typography
-            variant="h5"
+            variant={isMobile ? "h6" : "h5"}
             sx={{
               fontWeight: 800,
               color: "primary.main",
-              mb: 1,
+              mb: 1.5,
               fontFamily: "'Noto Serif Telugu', serif",
+              lineHeight: 1.4
             }}
           >
             {poem.title}
           </Typography>
           
-          <Box sx={{ width: 60, height: 3, bgcolor: "secondary.main", mx: "auto", mb: 3, borderRadius: 2, opacity: 0.6 }} />
+          <Box sx={{ width: 40, height: 4, bgcolor: "secondary.light", mx: "auto", mb: 3, borderRadius: "2px" }} />
 
           <Typography
             sx={{
               whiteSpace: "pre-line",
-              fontSize: { xs: "1.1rem", sm: "1.25rem" },
-              lineHeight: 2.2,
+              fontSize: { xs: "1.15rem", sm: "1.25rem" },
+              lineHeight: isMobile ? 2.4 : 2.2, // Extra space for mobile readability
               color: "text.primary",
               fontFamily: "'Noto Serif Telugu', serif",
-              px: { xs: 1, sm: 4 },
+              textAlign: "center"
             }}
           >
             {poem.content}
           </Typography>
 
           {(authorText || poetryName) && (
-            <Stack spacing={0.5} sx={{ mt: 4, alignItems: "center" }}>
-              {authorText && (
-                <Typography sx={{ fontWeight: 600, fontSize: "0.95rem", fontStyle: 'italic' }}>
-                  — {authorText}
-                </Typography>
-              )}
+            <Box sx={{ mt: 4, pb: 1 }}>
+              <Typography sx={{ fontWeight: 600, fontSize: "0.9rem", color: "text.secondary" }}>
+                — {authorText}
+              </Typography>
               {poetryName && (
-                <Typography variant="caption" sx={{ textTransform: "uppercase", fontWeight: 700, color: "text.secondary" }}>
+                <Typography variant="caption" sx={{ display: "block", mt: 0.5, letterSpacing: 1, fontWeight: 700, color: alpha(theme.palette.text.secondary, 0.5) }}>
                   {poetryName}
                 </Typography>
               )}
-            </Stack>
+            </Box>
           )}
         </Box>
 
-        <Divider sx={{ my: 4, opacity: 0.5 }} />
+        <Divider sx={{ my: 3, borderStyle: "dashed" }} />
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center" justifyContent="space-between">
+        {/* Mobile-Optimized Action Bar */}
+        <Stack 
+          direction={isMobile ? "column" : "row"} 
+          spacing={2} 
+          alignItems="center" 
+          justifyContent="space-between"
+        >
+          {/* Audio Controls - Full width on mobile for easier tapping */}
           {enableRead && (
-            <Stack direction="row" spacing={1} sx={{ bgcolor: alpha(theme.palette.action.selected, 0.05), p: 0.5, borderRadius: 10 }}>
-              <Tooltip title="పద్యాన్ని వినండి">
-                <IconButton
-                  onClick={speak}
-                  disabled={isSpeaking}
-                  sx={{
-                    bgcolor: isSpeaking ? "action.disabledBackground" : "primary.main",
-                    color: "white",
-                    "&:hover": { bgcolor: "primary.dark" },
-                  }}
-                >
-                  <VolumeUpRoundedIcon />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="వినడం ఆపండి">
-                <IconButton
-                  color="error"
-                  onClick={stop}
-                  disabled={!isSpeaking}
-                  sx={{ border: "1px solid", borderColor: "error.light" }}
-                >
-                  <StopCircleRoundedIcon />
-                </IconButton>
-              </Tooltip>
+            <Stack 
+              direction="row" 
+              spacing={1} 
+              sx={{ 
+                width: isMobile ? "100%" : "auto",
+                justifyContent: "center",
+                bgcolor: alpha(theme.palette.primary.main, 0.04), 
+                p: 0.75, 
+                borderRadius: 12 
+              }}
+            >
+              <Button
+                fullWidth={isMobile}
+                startIcon={isSpeaking ? <StopCircleRoundedIcon /> : <VolumeUpRoundedIcon />}
+                onClick={isSpeaking ? stop : speak}
+                variant={isSpeaking ? "outlined" : "contained"}
+                color={isSpeaking ? "error" : "primary"}
+                sx={{ 
+                  borderRadius: 10, 
+                  px: 3, 
+                  py: 1,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  boxShadow: isSpeaking ? "none" : 2
+                }}
+              >
+                {isSpeaking ? "వినడం ఆపండి" : "పద్యాన్ని వినండి"}
+              </Button>
             </Stack>
           )}
 
-          <Stack direction="row" spacing={1.5}>
-            <ShareButtons targetRef={poemRef} />
+          {/* Social and AI Tools */}
+          <Stack direction="row" spacing={1} sx={{ width: isMobile ? "100%" : "auto" }}>
+            <Box sx={{ flexGrow: isMobile ? 1 : 0 }}>
+                <ShareButtons targetRef={poemRef} />
+            </Box>
             
             <Button
-              // FIXED: Changed "soft" to conditional styling for compilation
               variant={voiceOpen ? "contained" : "outlined"} 
               color="secondary"
               startIcon={<AutoAwesomeIcon />}
               onClick={() => setVoiceOpen(!voiceOpen)}
+              fullWidth={isMobile}
               sx={{
                 borderRadius: 8,
                 textTransform: "none",
                 fontWeight: 700,
-                px: 3,
-                // Mimicking the "soft" look manually
+                px: 2,
+                flexGrow: 1,
+                transition: "all 0.2s",
+                "&:active": { transform: "scale(0.96)" }, // Haptic feel
                 ...(!voiceOpen && {
-                    bgcolor: alpha(theme.palette.secondary.main, 0.08),
+                    bgcolor: alpha(theme.palette.secondary.main, 0.05),
                     border: 'none',
-                    "&:hover": { bgcolor: alpha(theme.palette.secondary.main, 0.15), border: 'none' }
                 })
               }}
             >
@@ -230,13 +221,13 @@ export default function PoemCardNew({
 
         <Collapse in={voiceOpen} timeout={400} unmountOnExit>
           <Paper
-            variant="outlined"
+            elevation={0}
             sx={{
-              mt: 3,
-              p: 2,
+              mt: 2,
+              p: 1.5,
               borderRadius: 4,
-              bgcolor: alpha(theme.palette.background.default, 0.5),
-              borderColor: "divider",
+              bgcolor: alpha(theme.palette.background.default, 0.8),
+              border: `1px solid ${theme.palette.divider}`,
             }}
           >
             <TeluguVoice initialText={teluguVoiceText} />
