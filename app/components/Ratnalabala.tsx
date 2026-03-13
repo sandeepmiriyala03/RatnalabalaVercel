@@ -88,7 +88,7 @@ export default function RatnalabalaHighlights() {
         fontWeight={900}
         sx={{ mb: 1 }}
       >
-         రత్నాలబాల – జ్ఞానమాల
+         రత్నాలబాల -జ్ఞానమాల
       </Typography>
 
       <Typography
@@ -216,7 +216,7 @@ export default function RatnalabalaHighlights() {
   
 
         <Typography fontWeight={800} sx={{ mb: 1 }}>
-          మీరు ఇక్కడ చేయగలవి
+          మీరు ఇక్కడ చేయగలవి:
         </Typography>
 
         <Stack direction="row" flexWrap="wrap" gap={1}>
@@ -244,7 +244,7 @@ export default function RatnalabalaHighlights() {
             textAlign: "center",
           }}
         >
-          🔒 మీ గోప్యతే మా మొదటి ప్రాధాన్యత
+          🔒 మీ గోప్యతే మా మొదటి ప్రాధాన్యత.
         </Typography>
       </Box>
 
@@ -274,7 +274,7 @@ export default function RatnalabalaHighlights() {
       <Card>
         <CardContent>
           <Typography fontWeight={700} sx={{ mb: 2 }}>
-            🤖 సాహిత్యం × సాంకేతికత
+        🤖 సాహిత్యం × సాంకేతికత =  తెలుగు జ్ఞానానికి నూతన సాంకేతిక మార్గం.
           </Typography>
 
           <List dense>
