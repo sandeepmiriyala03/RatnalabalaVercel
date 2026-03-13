@@ -11,12 +11,18 @@ import {
   Select,
   Slider,
 } from "@mui/material";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
 import DownloadIcon from "@mui/icons-material/Download";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import { toPng } from "html-to-image";
-
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import StopCircleIcon from "@mui/icons-material/StopCircle";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import Collapse from "@mui/material/Collapse";
+import Typography from "@mui/material/Typography";
+import { alpha } from "@mui/material";
+import TeluguVoice from "@/app/components/TeluguVoice";
 /* =========================
    🎨 THEMES
    ========================= */
@@ -231,7 +237,7 @@ export default function ChitramalaPreviewCard({
   enableRead = true,
 }: Props) {
   const posterRef = useRef<HTMLDivElement>(null);
-
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [fontKey, setFontKey] = useState<FontKey>("gurajada");
   const [themeKey, setThemeKey] =
     useState<ThemeKey>("classicWhite");
@@ -256,7 +262,7 @@ export default function ChitramalaPreviewCard({
     setThemeKey("classicWhite");
     setFontScale(1);
   };
-
+const voiceText = `${title ?? ""}. ${poemText}`;
   /* 🔊 Speech */
   const speak = () => {
     if (!("speechSynthesis" in window)) return;
@@ -428,6 +434,51 @@ export default function ChitramalaPreviewCard({
             డౌన్‌లోడ్
           </Button>
         </Box>
+
+<Button
+  fullWidth
+  variant="outlined"
+  onClick={() => setVoiceOpen(v => !v)}
+  startIcon={<AutoAwesomeRoundedIcon />}
+  endIcon={
+    voiceOpen
+      ? <ExpandLessRoundedIcon />
+      : <ExpandMoreRoundedIcon />
+  }
+  sx={{
+    mt: 2,
+    borderRadius: 2,
+    textTransform: "none",
+    fontWeight: 600,
+    borderColor: "#d1d5db"
+  }}
+>
+  ✨ AI సాధనలు
+</Button>
+
+<Collapse in={voiceOpen} timeout={300} unmountOnExit>
+  <Box
+    sx={{
+      mt: 2,
+      p: 2,
+      borderRadius: 2,
+      background: "#f9fafb",
+      border: "1px solid #e5e7eb",
+    }}
+  >
+    <Typography
+      sx={{
+        fontSize: "0.85rem",
+        fontWeight: 700,
+        mb: 1,
+      }}
+    >
+      ధ్వని · కళ · వీడియో
+    </Typography>
+
+    <TeluguVoice initialText={voiceText} />
+  </Box>
+</Collapse>
       </CardContent>
     </Card>
   );
