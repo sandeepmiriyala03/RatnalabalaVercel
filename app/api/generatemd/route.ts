@@ -3,8 +3,8 @@ import path from "path";
 
 export async function GET() {
   try {
-    const inputFile = path.join(process.cwd(), "DasarathiKaruNapaYonidhi.txt");
-    const outputDir = path.join(process.cwd(), "DasarathiKaruNapaYonidhi");
+    const inputFile = path.join(process.cwd(), "Dileep.txt");
+    const outputDir = path.join(process.cwd(), "Ugadi108");
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -12,33 +12,37 @@ export async function GET() {
 
     let content = fs.readFileSync(inputFile, "utf-8");
 
-    // normalize line endings
-    content = content.replace(/\r/g, "").trim();
+    content = content
+      .replace(/\r/g, "")
+      .replace(/Become a Medium member/g, "")
+      .trim();
 
-    /**
-     * 🔑 Split by verse numbers like 001, 002, ... 103
-     * Keep the number with the poem
-     */
     const poems = content
-      .split(/\n(?=\d{3}\n)/g)
+      .split(/\n(?=\d+\.\n)/g)
       .map(p => p.trim())
       .filter(p => p.length > 50);
 
     poems.forEach((poem, index) => {
-      const verseNumberMatch = poem.match(/^(\d{3})/);
-      const verse = verseNumberMatch ? verseNumberMatch[1] : `${index + 1}`;
+      const match = poem.match(/^(\d+)\./);
+
+      const verseNumber = match ? match[1] : String(index + 1);
+
+
+      const cleanPoem = poem.replace(/^\d+\.\n?/, "").trim();
+
+      const versePadded = verseNumber.padStart(3, "0");
 
       const md = `---
-title: " దాశరథీ శతకము  – పద్యం ${verse}"
-verse: ${verse}
-author: "భద్రాచల రామదాసు"
+title: "ఉగాది శతకం – పద్యం ${parseInt(verseNumber)}"
+verse: ${versePadded}
+author: "నిర్మాణం, పర్యవేక్షణ, సారధ్యం  మిరియాల దిలీపు"
 ---
 
-${poem}
+${cleanPoem}
 `;
 
       fs.writeFileSync(
-        path.join(outputDir, `${verse}.md`),
+        path.join(outputDir, `${versePadded}.md`),
         md,
         "utf-8"
       );
@@ -48,10 +52,7 @@ ${poem}
       JSON.stringify({
         success: true,
         poemsGenerated: poems.length,
-        message:
-          poems.length === 103
-            ? "✅ PERFECT: 103 పద్యాలు సరిగా జనరేట్ అయ్యాయి"
-            : `⚠️ Generated ${poems.length}, expected 103`,
+        message: "✅ Clean format generated",
       }),
       { status: 200 }
     );
