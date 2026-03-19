@@ -179,6 +179,45 @@ export default function PoemList() {
       >
       పరాభవమాల 
       </Typography>
+<Box
+  sx={{
+    mb: 4,
+    p: 3,
+    borderRadius: 3,
+    background: "#f8fafc",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.05)"
+  }}
+>
+
+  <Typography variant="h5" fontWeight={700} mb={1}>
+    ఉగాది శతకం: పరాభవ నామ సంవత్సర స్వాగతం
+  </Typography>
+
+  <Typography variant="body2" color="text.secondary" mb={2}>
+    సృజన: Claude Opus 4.6
+  </Typography>
+
+  <Typography variant="body2" mb={1}>
+    <strong>మానవ సహకారం:</strong> దిలీపు మిరియాల  
+    (విత్తు, పరికరాల అమరిక, నిర్మాణం, పర్యవేక్షణ, సారధ్యం)
+  </Typography>
+
+  <Typography variant="body2" mb={2}>
+    <strong>యంత్ర సహకారం:</strong> చంధం AI పరికరాలు
+  </Typography>
+
+  <Typography variant="body1" lineHeight={1.8}>
+    తెలుగు సాహిత్య సౌరభాన్ని, ఉగాది పండుగ పరమార్థాన్ని కలబోస్తూ సాగిన ఈ <b>ఉగాది శతకం</b> ఒక అక్షర యాత్ర. 
+    ప్రకృతిలో వచ్చే మార్పులు, షడ్రుచుల పచ్చడిలో దాగిన జీవన సత్యాలు, పంచాంగ శ్రవణం, పల్లెల్లోని కోలాహలం—
+    ఇవన్నీ ఒక వైపు ఉంటే, రాబోయే పరాభవ నామ సంవత్సరానికి ఇచ్చిన అద్భుతమైన నిర్వచనం మరొక వైపు నిలుస్తుంది. 
+    పరాభవం అంటే ఓటమి కాదు, అది <b>పర-భవం</b>—సరికొత్త, ఉన్నతమైన ఉనికి అని ఈ శతకం స్పష్టం చేస్తుంది. 
+    ఆశావాదంతో అక్షర రూపం దాల్చిన 108 పద్యాల ఈ మాలిక, ప్రతి పద్యం చివర  <b>రా ఉగాది</b>  అనే ఆప్యాయ మకుటంతో 
+    ఉగాదిని ఆహ్వానిస్తుంది.
+  </Typography>
+
+</Box>
+
+
 
       <Typography align="center" mb={3}>
       మొత్తం పద్యాలు: <strong>{poems.length}</strong>
