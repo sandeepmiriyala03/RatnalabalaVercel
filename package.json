@@ -53,8 +53,8 @@
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0",
     "uuid": "^13.0.0",
-    "yuktai": "github:sandeepmiriyala03/yuktai",
-    "zod": "^4.3.6"
+    "yuktai": "^1.0.1",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -68,17 +68,13 @@
     "eslint-config-next": "^16.1.1",
     "typescript": "^5"
   },
-  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+  "description": "Indic literary archive and AI document intelligence platform.",
   "main": "index.js",
-  "directories": {
-    "lib": "lib"
-  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sandeepmiriyala03/RatnalabalaVercel.git"
+    "url": "https://github.com/sandeepmiriyala03/RatnalabalaVercel.git"
   },
-  "keywords": [],
-  "author": "",
+  "author": "Sandeep Miriyala",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/sandeepmiriyala03/RatnalabalaVercel/issues"
