@@ -2,85 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { wcagPlugin } from "./A11yWidget";
 import AccessibilityRoundedIcon from "@mui/icons-material/AccessibilityRounded";
-import ContrastRoundedIcon from "@mui/icons-material/ContrastRoundedIcon";
-import PauseRoundedIcon from "@mui/icons-material/PauseRoundedIcon";
+import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
+import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 
 const G = "#10b981";
-
-// Apply accessibility styles to the document
-const applyAccessibilityStyles = (options: {
-  enabled: boolean;
-  highContrast?: boolean;
-  reduceMotion?: boolean;
-  fontSizeMultiplier?: number;
-  colorBlindMode?: string;
-  keyboardHints?: boolean;
-}) => {
-  const root = document.documentElement;
-  
-  if (!options.enabled) {
-    root.style.filter = "";
-    root.style.fontSize = "16px";
-    return;
-  }
-
-  // Apply font size
-  if (options.fontSizeMultiplier) {
-    root.style.fontSize = `${16 * options.fontSizeMultiplier}px`;
-  }
-
-  // Apply high contrast
-  if (options.highContrast) {
-    root.style.filter = (root.style.filter || "") + " contrast(1.5)";
-  }
-
-  // Apply color blindness filter
-  const colorFilters: Record<string, string> = {
-    deuteranopia: "url(#deuteranopia-filter)",
-    protanopia: "url(#protanopia-filter)",
-    tritanopia: "url(#tritanopia-filter)",
-    achromatopsia: "grayscale(100%)",
-  };
-
-  if (options.colorBlindMode && options.colorBlindMode !== "none") {
-    root.style.filter = (root.style.filter || "") + " " + colorFilters[options.colorBlindMode];
-  }
-
-  // Apply reduce motion
-  if (options.reduceMotion) {
-    const style = document.getElementById("a11y-reduce-motion-style");
-    if (!style) {
-      const styleEl = document.createElement("style");
-      styleEl.id = "a11y-reduce-motion-style";
-      styleEl.textContent = `
-        * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-      `;
-      document.head.appendChild(styleEl);
-    }
-  } else {
-    const style = document.getElementById("a11y-reduce-motion-style");
-    if (style) style.remove();
-  }
-
-  // Apply keyboard hints
-  if (options.keyboardHints) {
-    const style = document.getElementById("a11y-keyboard-style");
-    if (!style) {
-      const styleEl = document.createElement("style");
-      styleEl.id = "a11y-keyboard-style";
-      styleEl.textContent = `
-        *:focus { outline: 3px solid #4f46e5 !important; outline-offset: 2px !important; }
-        button:focus, a:focus, input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.5) !important; }
-      `;
-      document.head.appendChild(styleEl);
-    }
-  } else {
-    const style = document.getElementById("a11y-keyboard-style");
-    if (style) style.remove();
-  }
-};
 
 export default function YuktAIWrapper() {
   const pathname = usePathname();
@@ -102,10 +29,19 @@ export default function YuktAIWrapper() {
   }, []);
 
   useEffect(() => {
+    const plugin = wcagPlugin;
+
     const run = async () => {
       try {
-        applyAccessibilityStyles({
-          enabled,
+        if (!enabled) {
+          await plugin.execute({ enabled: false });
+          setMessage("ADA disabled.");
+          return;
+        }
+
+        const result = await plugin.execute({
+          enabled: true,
+          autoFix: true,
           highContrast,
           reduceMotion,
           fontSizeMultiplier,
@@ -113,30 +49,23 @@ export default function YuktAIWrapper() {
           keyboardHints,
         });
 
-        if (enabled) {
-          setMessage("ADA enabled.");
-          console.log("♿ Accessibility features applied");
-        } else {
-          setMessage("ADA disabled.");
-        }
+        setMessage(typeof result === "string" ? result : "ADA enabled.");
+        console.log("♿ WCAG executed", result);
 
         (window as any).runWCAG = () =>
-          applyAccessibilityStyles({
-            enabled: true,
-            highContrast,
-            reduceMotion,
-            fontSizeMultiplier,
-            colorBlindMode,
-            keyboardHints,
-          });
+          plugin.execute({ enabled: true, autoFix: true, highContrast, reduceMotion, fontSizeMultiplier, colorBlindMode, keyboardHints });
       } catch (e) {
-        console.error("Accessibility setup failed:", e);
-        setMessage("Accessibility setup failed. See console.");
+        console.error("WCAG load failed:", e);
+        setMessage("WCAG load failed. See console.");
       }
     };
 
     run();
-  }, [pathname, enabled, highContrast, reduceMotion, fontSizeMultiplier, colorBlindMode, keyboardHints]);
+
+    return () => {
+      wcagPlugin.stopObserver();
+    };
+  }, [pathname, enabled, highContrast, reduceMotion]);
 
   return (
     <>
