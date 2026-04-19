@@ -53,6 +53,7 @@
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0",
     "uuid": "^13.0.0",
+    "yuktai": "github:sandeepmiriyala03/yuktai",
     "zod": "^4.3.6"
   },
   "devDependencies": {
