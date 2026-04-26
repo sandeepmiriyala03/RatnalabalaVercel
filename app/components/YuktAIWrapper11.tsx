@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { wcagPlugin } from "./A11yWidget";
+import { wcagPlugin } from "./A11yWidgetsss";
 import AccessibilityRoundedIcon from "@mui/icons-material/AccessibilityRounded";
 import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
