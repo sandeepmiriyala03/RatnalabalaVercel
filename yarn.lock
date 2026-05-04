@@ -1615,10 +1615,10 @@
   resolved "https://registry.npmjs.org/@xmldom/xmldom/-/xmldom-0.8.11.tgz"
   integrity sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==
 
-"@yuktishaalaa/yuktai@^3.0.14":
-  version "3.0.14"
-  resolved "https://registry.npmjs.org/@yuktishaalaa/yuktai/-/yuktai-3.0.14.tgz"
-  integrity sha512-QVyCkhtm6YjS6X/Q9kP/xJeHYee5IuvZcW//4hgoqehe7wgQIHpRZb0CVseWwf898pplHg+CBYU3aCiuPBA1HA==
+"@yuktishaalaa/yuktai@^3.0.16":
+  version "3.0.16"
+  resolved "https://registry.npmjs.org/@yuktishaalaa/yuktai/-/yuktai-3.0.16.tgz"
+  integrity sha512-gDxM4yVjVlrsjywplYNGayR3rmgPCG3Qzh+39K0ofiWnbEy+7pGP20HPKxCEvSqW7octVrLvL13Hs3ZQog2JDw==
 
 acorn-jsx@^5.3.2:
   version "5.3.2"
