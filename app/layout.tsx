@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     ],
   },
 
-  // 🤖 Windows / Android tiles
+
   other: {
     "msapplication-TileColor": "#4A148C",
     "msapplication-TileImage": "/icons/icon-192x192.png",
