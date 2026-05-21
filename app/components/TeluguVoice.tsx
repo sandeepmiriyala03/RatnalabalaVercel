@@ -1,0 +1,580 @@
+"use client";
+
+import * as Mp4Muxer from "mp4-muxer";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useTheme, useMediaQuery } from "@mui/material";
+
+/* ── telugu font ─────────────────────────────────────────────── */
+const TELUGU_FONT = "'Noto Serif Telugu','Noto Serif',Georgia,serif";
+
+/* ── config ──────────────────────────────────────────────────── */
+const TEL = {
+  label: "Telugu", flag: "🌺",
+  webSpeechLang: "te-IN", googleTTSCode: "te",
+  bgColor: "#1a3d2b",
+  sampleText: "నమస్కారం! నేను AksharaTantra.",
+};
+const MAX = 1000;
+
+const PROFILES = {
+  mobile:    { W: 540,  H: 960,  fps: 30, label: "Mobile" },
+  whatsapp:  { W: 720,  H: 1280, fps: 30, label: "WhatsApp" },
+  instagram: { W: 720,  H: 1280, fps: 30, label: "Instagram" },
+  youtube:   { W: 1080, H: 1920, fps: 30, label: "YouTube" },
+  twitter:   { W: 720,  H: 1280, fps: 30, label: "X / Twitter" },
+} as const;
+type PK = keyof typeof PROFILES;
+
+/* ── inline SVG icons (no external dep) ─────────────────────── */
+const Ic = {
+  mic: (c="currentColor") => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill={c}>
+      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+    </svg>
+  ),
+  dl: (c="currentColor",s=18) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill={c}>
+      <path d="M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z"/>
+    </svg>
+  ),
+  play: (c="currentColor") => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={c}><path d="M8 5v14l11-7z"/></svg>
+  ),
+  stop: (c="currentColor") => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill={c}><rect x="6" y="6" width="12" height="12"/></svg>
+  ),
+  audio: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="#2563eb">
+      <path d="M12 3v9.28A4 4 0 1014 16V7h4V3h-6zm-2 16a2 2 0 110-4 2 2 0 010 4z"/>
+    </svg>
+  ),
+  video: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="#dc2626">
+      <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+    </svg>
+  ),
+  img: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="#7c3aed">
+      <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+    </svg>
+  ),
+  info: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0,marginTop:1}}>
+      <circle cx="12" cy="12" r="10" stroke="#059669" strokeWidth="2"/>
+      <path d="M12 7v5m0 4h.01" stroke="#059669" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  ok: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0,marginTop:1}}>
+      <circle cx="12" cy="12" r="10" stroke="#059669" strokeWidth="2"/>
+      <path d="M8 12l3 3 5-5" stroke="#059669" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+  err: () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{flexShrink:0,marginTop:1}}>
+      <circle cx="12" cy="12" r="10" stroke="#dc2626" strokeWidth="2"/>
+      <path d="M12 7v5m0 4h.01" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  ),
+};
+
+/* platform icons ──────────────────────────────────────────────── */
+const PlatformIcon = ({ k }: { k: PK }) => {
+  const icons: Record<PK, React.ReactNode> = {
+    mobile: <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="2" width="10" height="20" rx="2"/></svg>,
+    whatsapp: <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M17.5 2h-11A3.5 3.5 0 003 5.5v13A3.5 3.5 0 006.5 22h11a3.5 3.5 0 003.5-3.5v-13A3.5 3.5 0 0017.5 2z"/><path d="M12 7c-2.76 0-5 2.24-5 5 0 .89.24 1.73.65 2.45L7 17l2.64-.64A5 5 0 0012 17c2.76 0 5-2.24 5-5s-2.24-5-5-5zm2.5 7.27c-.1.28-.58.52-.8.54-.2.02-.21.15-1.33-.29a5.1 5.1 0 01-2.04-1.82c-.23-.32-.47-.85-.47-1.28 0-.43.19-.64.26-.73.07-.09.15-.11.2-.11h.14c.06 0 .13.01.2.15l.27.68c.03.09.01.19-.04.27l-.12.17c-.05.07-.1.15-.04.28.19.4.5.75.87 1.02.35.26.75.44 1.17.53.12.03.21-.01.29-.09l.2-.25c.08-.1.18-.12.27-.08l.84.4c.1.05.17.1.17.23 0 .13-.05.38-.14.57z" fill="white"/></svg>,
+    instagram: <svg width="13" height="13" viewBox="0 0 24 24"><defs><linearGradient id="ig2" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#f09433"/><stop offset="50%" stopColor="#e6683c"/><stop offset="100%" stopColor="#dc2743"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig2)"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="17.5" cy="6.5" r="1" fill="white"/></svg>,
+    youtube: <svg width="13" height="13" viewBox="0 0 24 24"><path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.8-2-.9C16.8 5 12 5 12 5s-4.8 0-7 .1c-.4.1-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.8 2.3.9C6.8 19 12 19 12 19s4.8 0 7-.2c.4-.1 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM10 15V9l6 3-6 3z" fill="#FF0000"/></svg>,
+    twitter: <svg width="13" height="13" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="currentColor"/></svg>,
+  };
+  return <>{icons[k]}</>;
+};
+
+/* ── audio helpers ───────────────────────────────────────────── */
+async function proxyTTS(text: string, code: string) {
+  const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(code)}`);
+  if (!res.ok) throw new Error(`TTS ${res.status}`);
+  const buf = await res.arrayBuffer();
+  const C = window.AudioContext || (window as any).webkitAudioContext;
+  const tmp = new C();
+  const dec = await tmp.decodeAudioData(buf.slice(0));
+  const af = dec.getChannelData(0);
+  const sr = dec.sampleRate;
+  await tmp.close();
+  return { audioFloat: af, sampleRate: sr, blob: new Blob([buf], { type: "audio/mpeg" }) };
+}
+
+function waitVoices(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise(res => {
+    const v = speechSynthesis.getVoices();
+    if (v.length) { res(v); return; }
+    const fn = () => { speechSynthesis.removeEventListener("voiceschanged", fn); res(speechSynthesis.getVoices()); };
+    speechSynthesis.addEventListener("voiceschanged", fn);
+    setTimeout(() => { speechSynthesis.removeEventListener("voiceschanged", fn); res([]); }, 2000);
+  });
+}
+async function speakWS(text: string, lang: string) {
+  for (const line of text.split("\n").map(l => l.trim()).filter(Boolean)) {
+    await new Promise<void>(async res => {
+      const u = new SpeechSynthesisUtterance(line);
+      u.lang = lang;
+      const vv = await waitVoices();
+      const v = vv.find(v => v.lang === lang) || vv.find(v => v.lang.startsWith(lang.split("-")[0]));
+      if (v) u.voice = v;
+      u.rate = 0.85; u.onend = () => res(); u.onerror = () => res();
+      speechSynthesis.speak(u);
+    });
+  }
+}
+
+let _ctx: AudioContext | null = null;
+function getCtx() {
+  const C = window.AudioContext || (window as any).webkitAudioContext;
+  if (!_ctx || _ctx.state === "closed") _ctx = new C();
+  return _ctx;
+}
+async function playF32(af: Float32Array, sr: number) {
+  const ctx = getCtx();
+  if (ctx.state === "suspended") await ctx.resume();
+  const buf = ctx.createBuffer(1, af.length, sr);
+  buf.copyToChannel(new Float32Array(af), 0);
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.connect(ctx.destination); src.start(0);
+  return new Promise<void>(res => { src.onended = () => res(); });
+}
+
+/* ── canvas draw ─────────────────────────────────────────────── */
+function drawSlide(ctx: CanvasRenderingContext2D, W: number, H: number, text: string) {
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, "#2d6a4f"); g.addColorStop(1, "#0a0a1a");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(255,255,255,0.07)"; ctx.fillRect(0, 0, W, H * 0.12);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.font = `bold ${Math.floor(W/28)}px sans-serif`;
+  ctx.fillText("✍️ స్వరమాల", W/2, H*0.065);
+  const bW=140,bH=30,bx=(W-bW)/2,by=H*0.086;
+  ctx.fillStyle="rgba(255,255,255,0.14)"; ctx.beginPath(); ctx.roundRect(bx,by,bW,bH,15); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,0.88)"; ctx.font=`600 ${Math.floor(W/37)}px sans-serif`;
+  ctx.fillText(`${TEL.flag} ${TEL.label}`, W/2, by+bH*0.7);
+  const fs=Math.max(20,Math.floor(W/17));
+  ctx.font=`bold ${fs}px ${TELUGU_FONT}`; ctx.fillStyle="#fff";
+  ctx.shadowColor="rgba(0,0,0,0.45)"; ctx.shadowBlur=10;
+  const mw=W-100; const words=text.split(" "); const lines:string[]=[];
+  let cur="";
+  for (const w of words) {
+    const t=cur?cur+" "+w:w;
+    if (ctx.measureText(t).width>mw&&cur){lines.push(cur);cur=w;}else cur=t;
+  }
+  if(cur)lines.push(cur);
+  const dls=lines.slice(0,8); if(lines.length>8)dls[7]+="…";
+  const lh=fs*1.7; let y=H/2-(dls.length*lh)/2+fs*0.4;
+  for(const l of dls){ctx.fillText(l,W/2,y);y+=lh;}
+  ctx.shadowBlur=0;
+  ctx.fillStyle="rgba(255,255,255,0.07)"; ctx.fillRect(0,H*0.92,W,H*0.08);
+  ctx.fillStyle="rgba(255,255,255,0.42)"; ctx.font=`400 ${Math.floor(W/45)}px sans-serif`;
+  ctx.fillText("🇮🇳 Indic AI · AksharaTantra", W/2, H*0.965);
+}
+
+/* ── video ───────────────────────────────────────────────────── */
+async function makeVideo(text:string,af:Float32Array,sr:number,pk:PK,canvas:HTMLCanvasElement,hasAudio:boolean): Promise<Blob> {
+  const {W,H,fps}=PROFILES[pk];
+  canvas.width=W; canvas.height=H;
+  const c2=canvas.getContext("2d",{alpha:false})!;
+  const dur=hasAudio?af.length/sr:5;
+  const muxer=new Mp4Muxer.Muxer({
+    target:new Mp4Muxer.ArrayBufferTarget(),
+    video:{codec:"avc",width:W,height:H},
+    ...(hasAudio?{audio:{codec:"aac",numberOfChannels:1,sampleRate:sr}}:{}),
+    fastStart:"fragmented",
+  });
+  const ve=new VideoEncoder({output:(c,m)=>muxer.addVideoChunk(c,m),error:e=>console.error(e)});
+  ve.configure({codec:"avc1.4D401F",width:W,height:H,bitrate:2_000_000});
+  let ae:AudioEncoder|null=null;
+  if(hasAudio){
+    try{
+      ae=new AudioEncoder({output:(c,m)=>muxer.addAudioChunk(c,m),error:e=>console.warn(e)});
+      ae.configure({codec:"mp4a.40.2",numberOfChannels:1,sampleRate:sr,bitrate:128000});
+      const ad=new AudioData({format:"f32",sampleRate:sr,numberOfFrames:af.length,numberOfChannels:1,timestamp:0,data:new Float32Array(af.buffer as ArrayBuffer)});
+      ae.encode(ad); ad.close();
+    }catch{ae=null;}
+  }
+  const total=Math.ceil(dur*fps);
+  for(let i=0;i<total;i++){
+    const ts=Math.round((i*1_000_000)/fps);
+    drawSlide(c2,W,H,text);
+    const f=new VideoFrame(canvas,{timestamp:ts,duration:Math.round(1_000_000/fps)});
+    ve.encode(f); f.close();
+    if(i%30===0)await new Promise(r=>setTimeout(r,0));
+  }
+  try{if(ve.state!=="closed")await ve.flush();}catch{}
+  try{if(ve.state!=="closed")ve.close();}catch{}
+  if(ae){
+    try{if((ae as any).state==="configured")await ae.flush();}catch{}
+    try{if((ae as any).state!=="closed")ae.close();}catch{}
+  }
+  muxer.finalize();
+  const {buffer}=muxer.target as Mp4Muxer.ArrayBufferTarget;
+  return new Blob([buffer],{type:"video/mp4"});
+}
+
+function dlFile(url:string,name:string){
+  const a=document.createElement("a"); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHARED STYLE TOKENS
+═══════════════════════════════════════════════════════════════ */
+const C = {
+  forest: "#1a3d2b",
+  forestMid: "#2d6a4f",
+  white: "#ffffff",
+  surface: "#f8faf9",
+  border: "#ddeee4",
+  borderDark: "#c3d9cc",
+  textPrimary: "#0d1f18",
+  textMuted: "#6b7280",
+  textHint: "#9ca3af",
+  successBg: "#f0fdf4",
+  successBorder: "#86efac",
+  successText: "#166534",
+  errorBg: "#fef2f2",
+  errorBorder: "#fca5a5",
+  errorText: "#991b1b",
+  audioBg: "#eff6ff",
+  videoBg: "#fef2f2",
+  imgBg: "#f5f3ff",
+};
+
+const s = {
+  // containers
+  card: {background:C.white,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden"} as React.CSSProperties,
+  surface: {background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:"12px 14px"} as React.CSSProperties,
+  // typography
+  label: {fontSize:11,fontWeight:600,letterSpacing:"0.7px",textTransform:"uppercase" as const,color:C.textMuted,display:"block",marginBottom:8},
+  // buttons
+  btnPrimary: {width:"100%",minHeight:54,borderRadius:14,background:`linear-gradient(135deg, ${C.forestMid}, ${C.forest})`,color:C.white,border:"none",fontSize:15,fontWeight:700,display:"flex" as const,alignItems:"center" as const,justifyContent:"center" as const,gap:9,cursor:"pointer",boxShadow:"0 4px 20px rgba(26,61,43,0.3)",WebkitTapHighlightColor:"transparent",letterSpacing:0.2,fontFamily:"inherit"} as React.CSSProperties,
+  btnGhost: {width:"100%",minHeight:46,borderRadius:10,background:C.white,color:C.forest,border:`1.5px solid ${C.borderDark}`,fontSize:14,fontWeight:600,display:"flex" as const,alignItems:"center" as const,justifyContent:"center" as const,gap:7,cursor:"pointer",WebkitTapHighlightColor:"transparent",fontFamily:"inherit"} as React.CSSProperties,
+  btnSolid: {width:"100%",minHeight:46,borderRadius:10,background:C.forest,color:C.white,border:"none",fontSize:14,fontWeight:600,display:"flex" as const,alignItems:"center" as const,justifyContent:"center" as const,gap:7,cursor:"pointer",boxShadow:"0 3px 12px rgba(26,61,43,0.25)",WebkitTapHighlightColor:"transparent",fontFamily:"inherit"} as React.CSSProperties,
+  btnSm: {flex:1,minHeight:42,borderRadius:8,fontSize:13,fontWeight:600,display:"flex" as const,alignItems:"center" as const,justifyContent:"center" as const,gap:6,cursor:"pointer",WebkitTapHighlightColor:"transparent",fontFamily:"inherit",border:"none"} as React.CSSProperties,
+  // icons badge
+  iconBadge: (bg:string) => ({width:30,height:30,borderRadius:8,background:bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0} as React.CSSProperties),
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENT
+═══════════════════════════════════════════════════════════════ */
+export interface TeluguVoiceProps { initialText?: string; }
+
+export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const [text, setText] = useState(initialText ?? TEL.sampleText);
+  const [loading, setLoading] = useState(false);
+  const [pct, setPct] = useState(0);
+  const [statusMsg, setStatusMsg] = useState("");
+  const [profile, setProfile] = useState<PK>("mobile");
+  const [mounted, setMounted] = useState(false);
+  const [audioUrl, setAudioUrl_] = useState<string|null>(null);
+  const [vidUrl, setVidUrl_] = useState<string|null>(null);
+  const [af, setAf] = useState<Float32Array|null>(null);
+  const [sr, setSr] = useState(22050);
+  const [slideReady, setSlideReady] = useState(false);
+  const [error, setError] = useState("");
+  const [playing, setPlaying] = useState(false);
+
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const prevAudio = useRef<string|null>(null);
+  const prevVid = useRef<string|null>(null);
+
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    if (initialText != null) {
+      setText(initialText); setAudioUrl_(null); setVidUrl_(null); setAf(null);
+      setSlideReady(false); setStatusMsg(""); setError("");
+    }
+  }, [initialText]);
+  useEffect(() => () => {
+    if (prevAudio.current) URL.revokeObjectURL(prevAudio.current);
+    if (prevVid.current) URL.revokeObjectURL(prevVid.current);
+  }, []);
+
+  const setAudioUrl = useCallback((u:string|null) => {
+    if (prevAudio.current) URL.revokeObjectURL(prevAudio.current);
+    prevAudio.current = u; setAudioUrl_(u);
+  }, []);
+  const setVidUrl = useCallback((u:string|null) => {
+    if (prevVid.current) URL.revokeObjectURL(prevVid.current);
+    prevVid.current = u; setVidUrl_(u);
+  }, []);
+
+  const dlSlide = () => {
+    if (!canvasRef.current) return;
+    const {W,H} = PROFILES[profile];
+    const c = canvasRef.current; c.width=W; c.height=H;
+    drawSlide(c.getContext("2d",{alpha:false})!, W, H, text);
+    dlFile(c.toDataURL("image/png"), `telugu_slide_${Date.now()}.png`);
+  };
+
+  const handlePlay = async () => {
+    if (!af) return; setPlaying(true);
+    await playF32(af, sr); setPlaying(false);
+  };
+
+  const generate = async () => {
+    if (!text.trim() || loading) return;
+    const AT = text;
+    setLoading(true); setAudioUrl(null); setVidUrl(null); setAf(null);
+    setSlideReady(false); setStatusMsg(""); setError(""); setPct(10);
+    try {
+      let audioF!: Float32Array; let audioSr=22050;
+      let audioBlob:Blob|null=null; let hasAudio=false;
+      try {
+        setStatusMsg("తెలుగు ధ్వని తయారవుతోంది…"); setPct(30);
+        const r = await proxyTTS(AT, TEL.googleTTSCode);
+        audioF=r.audioFloat; audioSr=r.sampleRate; audioBlob=r.blob; hasAudio=true;
+        setStatusMsg("ధ్వని సిద్ధం ✅"); setPct(55);
+      } catch {
+        setStatusMsg("ఆఫ్‌లైన్ వాయిస్ ఉపయోగిస్తున్నాం…");
+        await speakWS(AT, TEL.webSpeechLang);
+        audioSr=22050; audioF=new Float32Array(audioSr*5); setPct(55);
+      }
+      if (audioBlob) { setAf(audioF); setSr(audioSr); setAudioUrl(URL.createObjectURL(audioBlob)); }
+      else { setAf(audioF); setSr(audioSr); }
+      if (canvasRef.current) {
+        const {W,H}=PROFILES[profile];
+        canvasRef.current.width=W; canvasRef.current.height=H;
+        drawSlide(canvasRef.current.getContext("2d",{alpha:false})!, W, H, AT);
+        setSlideReady(true);
+      }
+      if (canvasRef.current) {
+        setStatusMsg("వీడియో రెండర్ అవుతోంది…"); setPct(75);
+        try {
+          const vb = await makeVideo(AT, audioF, audioSr, profile, canvasRef.current, hasAudio);
+          setVidUrl(URL.createObjectURL(vb));
+          setStatusMsg(hasAudio ? "సిద్ధం! డౌన్‌లోడ్ చేయండి 🎉" : "వీడియో సిద్ధం ✅");
+          setPct(100);
+        } catch (e:any) { setError("వీడియో విఫలమైంది: "+e?.message); setPct(100); }
+      }
+    } catch(e:any) { setError(e?.message??"Error"); setPct(0); }
+    finally { setLoading(false); }
+  };
+
+  if (!mounted) return null;
+
+  const over = text.length > MAX;
+  const canGo = !loading && !!text.trim() && !over;
+  const charsLeft = MAX - text.length;
+  const hasOutput = audioUrl || vidUrl || slideReady;
+
+  return (
+    <>
+      {/* hidden font preload */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Telugu:wght@400;700&display=swap" rel="stylesheet" />
+      <canvas ref={canvasRef} style={{position:"fixed",top:-9999,left:-9999}} />
+
+      <div style={{fontFamily:"system-ui,-apple-system,sans-serif",display:"flex",flexDirection:"column",gap:14}}>
+
+        {/* ── Info banner ── */}
+        <div style={{background:C.successBg,border:`1px solid ${C.successBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",gap:9,alignItems:"flex-start"}}>
+          {Ic.info()}
+          <p style={{fontSize:12,color:C.successText,margin:0,lineHeight:1.7}}>
+            Google TTS ద్వారా తెలుగు టెక్స్ట్‌ని <strong>MP3 + MP4 + PNG</strong>గా మారుస్తాం. ఇంటర్నెట్ అవసరం.
+          </p>
+        </div>
+
+        {/* ── Text area ── */}
+        <div>
+          <span style={s.label}>తెలుగు వచనం</span>
+          <div style={{position:"relative"}}>
+            <textarea
+              rows={isMobile ? 3 : 4}
+              value={text}
+              disabled={loading}
+              placeholder="తెలుగు వచనం ఇక్కడ టైప్ చేయండి…"
+              onChange={e => { if (e.target.value.length <= MAX) setText(e.target.value); }}
+              style={{
+                width:"100%", boxSizing:"border-box",
+                border:`1.5px solid ${over?"#ef4444":C.border}`,
+                borderRadius:12, padding:"13px 13px 36px",
+                fontSize:17, lineHeight:1.9,
+                fontFamily:TELUGU_FONT, color:C.textPrimary,
+                background:C.white, resize:"vertical",
+                outline:"none", WebkitAppearance:"none",
+                transition:"border-color 0.15s",
+              }}
+            />
+            <span style={{
+              position:"absolute",bottom:10,right:12,
+              fontSize:11,fontWeight:600,pointerEvents:"none",
+              color:charsLeft<=0?"#ef4444":charsLeft<=50?"#f59e0b":C.textHint,
+            }}>{text.length}/{MAX}</span>
+          </div>
+          {over && <p style={{color:"#ef4444",fontSize:12,margin:"4px 0 0"}}>అక్షర పరిమితి మించింది</p>}
+        </div>
+
+        {/* ── Format chips ── */}
+        <div>
+          <span style={s.label}>వీడియో ఫార్మాట్</span>
+          <div style={{display:"flex",gap:7,overflowX:"auto",paddingBottom:4,WebkitOverflowScrolling:"touch" as any,scrollbarWidth:"none" as any}}>
+            {(Object.entries(PROFILES) as [PK,any][]).map(([k,v]) => {
+              const active = profile === k;
+              return (
+                <button key={k} onClick={() => !loading && setProfile(k)} disabled={loading}
+                  style={{
+                    display:"inline-flex",alignItems:"center",gap:6,
+                    padding:"0 14px",height:38,borderRadius:100,
+                    fontSize:13,fontWeight:600,cursor:"pointer",
+                    flexShrink:0,border:"none",
+                    background:active?C.forest:C.white,
+                    color:active?C.white:C.textMuted,
+                    outline:`1.5px solid ${active?C.forest:C.border}`,
+                    boxShadow:active?"0 3px 10px rgba(26,61,43,0.25)":"none",
+                    transition:"all 0.15s",
+                    WebkitTapHighlightColor:"transparent",
+                    fontFamily:"inherit",
+                  }}>
+                  <PlatformIcon k={k} />
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Generate button ── */}
+        <button style={{
+          ...s.btnPrimary,
+          ...((!canGo)&&{background:"#e5e7eb",color:C.textHint,boxShadow:"none",cursor:"not-allowed"}),
+        }} onClick={generate} disabled={!canGo}>
+          {loading ? (
+            <span style={{display:"flex",gap:5,alignItems:"center"}}>
+              {[0,1,2].map(i=>(
+                <span key={i} style={{
+                  width:7,height:7,borderRadius:"50%",background:"white",
+                  display:"inline-block",
+                  animation:`tvbounce 1.2s ease-in-out ${i*0.15}s infinite`,
+                }}/>
+              ))}
+              <style>{`@keyframes tvbounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}`}</style>
+            </span>
+          ) : (
+            <>{Ic.mic("white")} ధ్వని + కళ + వీడియో సృష్టించండి</>
+          )}
+        </button>
+
+        {/* ── Progress ── */}
+        {loading && (
+          <div>
+            <div style={{width:"100%",height:5,background:"#d1fae5",borderRadius:100,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg,${C.forestMid},${C.forest})`,borderRadius:100,transition:"width 0.4s ease"}}/>
+            </div>
+            {statusMsg && <p style={{fontSize:12,color:C.textMuted,margin:"5px 0 0"}}>{statusMsg}</p>}
+          </div>
+        )}
+
+        {/* ── Error ── */}
+        {error && (
+          <div style={{background:C.errorBg,border:`1px solid ${C.errorBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",gap:9,alignItems:"flex-start"}}>
+            {Ic.err()}
+            <p style={{fontSize:13,color:C.errorText,margin:0,lineHeight:1.6}}>{error}</p>
+          </div>
+        )}
+
+        {/* ── Success ── */}
+        {statusMsg && !loading && !error && (
+          <div style={{background:C.successBg,border:`1px solid ${C.successBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",gap:9,alignItems:"flex-start"}}>
+            {Ic.ok()}
+            <p style={{fontSize:13,color:C.successText,margin:0,lineHeight:1.6,fontWeight:500}}>{statusMsg}</p>
+          </div>
+        )}
+
+        {/* ══ Downloads card ══ */}
+        {hasOutput && (
+          <div style={s.card}>
+            {/* header */}
+            <div style={{padding:"11px 14px",background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}>
+              {Ic.dl(C.textMuted,15)}
+              <span style={{fontSize:13,fontWeight:600,color:C.textPrimary}}>డౌన్‌లోడ్‌లు</span>
+            </div>
+
+            {/* Audio */}
+            {audioUrl && (
+              <div style={{padding:"14px",borderBottom:`1px solid ${C.border}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <div style={s.iconBadge(C.audioBg)}>{Ic.audio()}</div>
+                  <span style={{fontSize:13,fontWeight:600,color:C.textPrimary}}>ధ్వనిమాల (MP3)</span>
+                </div>
+                <audio controls src={audioUrl} preload="auto"
+                  style={{width:"100%",display:"block",borderRadius:8,marginBottom:10}} />
+                <div style={{display:"flex",gap:8}}>
+                  <button style={{...s.btnSm,background:C.forest,color:C.white,boxShadow:"0 2px 8px rgba(26,61,43,0.2)"}}
+                    onClick={handlePlay} disabled={playing}>
+                    {playing?Ic.stop("white"):Ic.play("white")}
+                    {playing?"ఆపు":"Play"}
+                  </button>
+                  <button style={{...s.btnSm,background:C.surface,color:C.forest,border:`1.5px solid ${C.border}`}}
+                    onClick={()=>dlFile(audioUrl!,`telugu_audio_${Date.now()}.mp3`)}>
+                    {Ic.dl(C.forest,14)}
+                    MP3
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Video */}
+            {vidUrl && (
+              <div style={{padding:"14px",borderBottom:`1px solid ${C.border}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <div style={s.iconBadge(C.videoBg)}>{Ic.video()}</div>
+                  <span style={{fontSize:13,fontWeight:600,color:C.textPrimary}}>దర్శనమాల (MP4)</span>
+                </div>
+                <div style={{borderRadius:12,overflow:"hidden",marginBottom:10,boxShadow:"0 4px 14px rgba(0,0,0,0.12)"}}>
+                  <video controls playsInline src={vidUrl} style={{width:"100%",display:"block"}} />
+                </div>
+                <button style={s.btnSolid}
+                  onClick={()=>dlFile(vidUrl!,`telugu_video_${Date.now()}.mp4`)}>
+                  {Ic.dl("white",16)}
+                  MP4 వీడియో డౌన్‌లోడ్
+                </button>
+              </div>
+            )}
+
+            {/* Image */}
+            {slideReady && (
+              <div style={{padding:"14px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <div style={s.iconBadge(C.imgBg)}>{Ic.img()}</div>
+                  <span style={{fontSize:13,fontWeight:600,color:C.textPrimary}}>కళామాల (PNG)</span>
+                </div>
+                <div style={{background:C.surface,borderRadius:10,padding:14,display:"flex",gap:14,alignItems:"center",marginBottom:10}}>
+                  <canvas
+                    ref={node=>{
+                      if(!node||!text)return;
+                      node.width=180; node.height=320;
+                      drawSlide(node.getContext("2d")!, 180, 320, text);
+                    }}
+                    style={{width:60,borderRadius:6,border:`1px solid ${C.border}`,flexShrink:0,display:"block"}}
+                  />
+                  <div>
+                    <p style={{fontSize:13,fontWeight:600,color:C.textPrimary,margin:"0 0 3px"}}>{PROFILES[profile].W} × {PROFILES[profile].H}</p>
+                    <p style={{fontSize:12,color:C.textMuted,margin:0}}>{PROFILES[profile].label} format · PNG</p>
+                  </div>
+                </div>
+                <button style={s.btnGhost} onClick={dlSlide}>
+                  {Ic.dl(C.forest,16)}
+                  PNG డౌన్‌లోడ్
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

@@ -1,0 +1,1 @@
+declare module "@xenova/transformers/dist/transformers.min.js";

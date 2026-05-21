@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>రత్నాలబాల – ఆఫ్‌లైన్</title>
+
+  <style>
+    :root {
+      --bg: #fafafa;
+      --fg: #222;
+      --accent: #6200ee;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0a0a0a;
+        --fg: #ededed;
+        --accent: #bb86fc;
+      }
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "Noto Sans Telugu", sans-serif;
+    }
+
+    .card {
+      max-width: 420px;
+      padding: 24px;
+      text-align: center;
+      border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+      background: var(--bg);
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 1.4rem;
+    }
+
+    p {
+      line-height: 1.6;
+      opacity: 0.85;
+    }
+
+    .hint {
+      margin-top: 16px;
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+
+    .icon {
+      font-size: 2.4rem;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="icon">📴</div>
+    <h1>మీరు ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉన్నారు</h1>
+    <p>
+      ఇంటర్నెట్ కనెక్షన్ అందుబాటులో లేదు.<br />
+      కనెక్షన్ వచ్చిన తర్వాత మళ్లీ ప్రయత్నించండి.
+    </p>
+
+    <div class="hint">
+      ⚡ మీరు ముందుగా చూసిన పద్యాలు offline లో అందుబాటులో ఉండవచ్చు
+    </div>
+  </div>
+</body>
+</html>

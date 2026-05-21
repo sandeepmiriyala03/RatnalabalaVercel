@@ -1,0 +1,7 @@
+ignoredBuiltDependencies:
+  - '@firebase/util'
+  - core-js
+  - protobufjs
+  - sharp
+  - tesseract.js
+  - unrs-resolver
