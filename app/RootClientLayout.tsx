@@ -3,7 +3,7 @@
 import { useEffect, useState,useRef } from "react";
 import ClientWrapper from "@/app/components/ClientWrapper";
 import Navbar from "@/app/components/Navbar";
-import MobileBottomNav from "@/app/components/MobileBottomNav";
+
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
 import FloatingAIButton from "@/app/components/FloatingAIButton";
 import FontControlsTelugu from "@/app/components/FontSelection";
