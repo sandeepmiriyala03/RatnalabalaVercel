@@ -51,6 +51,12 @@ const navItems = [
     path: "/sametalu",
     intro: "తెలుగు సామెతలు",
   },
+  //
+  {
+    label: "సంధి మాల",
+    path: "/sandhi",
+    intro: "తెలుగు సంధిల అన్వేషణ మరియు అభ్యాసం",
+  },
   {
     label: "చిత్రమాల",
     path: "/chitramala",
