@@ -85,8 +85,7 @@ const FONTS: { key: FontKey; label: string; className: string }[] = [
   { key: "mandali-bold",           label: "మండలి (Bold)",           className: "chitramala-font-mandali-bold" },
   { key: "mandali-italic",         label: "మండలి (Italic)",         className: "chitramala-font-mandali-italic" },
   { key: "mandali-bolditalic",     label: "మండలి (Bold Italic)",    className: "chitramala-font-mandali-bolditalic" },
-  { key: "pottisreeramulu",        label: "పొట్టి శ్రీరాములు",     className: "chitramala-font-pottisreeramulu" },
-  { key: "tirosundaratelugu-regular", label: "తిరొ సుందర తెలుగు", className: "chitramala-font-TiroSundaraTelugu-Regular" }
+  { key: "pottisreeramulu",        label: "పొట్టి శ్రీరాములు",     className: "chitramala-font-pottisreeramulu" }
 ];
 
 /* ========================= FONT FILE MAP ========================= */
