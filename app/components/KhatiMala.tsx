@@ -50,6 +50,7 @@ const FONTS: { key: FontKey; label: string; className: string }[] = [
   { key: "raviprakash",            label: "రవి ప్రకాష్",             className: "chitramala-font-raviprakash" },
   { key: "tenaliramakrishna",      label: "తెనాలి రామకృష్ణ",        className: "chitramala-font-tenali" },
   { key: "timmana",                label: "తిమ్మన",                  className: "chitramala-font-timmana" },
+  {key: "tirosundaratelugu-regular",label: "తిరొ సుందర తెలుగు",      className: "chitramala-font-TiroSundaraTelugu-Regular" },
   { key: "tana",                   label: "టానా",                    className: "chitramala-font-tana" },
   { key: "ponnala-regular",        label: "పొన్నల",                  className: "chitramala-font-ponnala" },
   { key: "gidugu",                 label: "గిడుగు",                  className: "chitramala-font-gidugu" },
@@ -104,6 +105,7 @@ const FONT_FILES: Record<FontKey, { name: string; file: string }> = {
   raviprakash:                 { name: "RaviPrakash",          file: "/fonts/RaviPrakash.ttf" },
   tenaliramakrishna:           { name: "TenaliRamakrishna",    file: "/fonts/TenaliRamakrishna-Regular.ttf" },
   timmana:                     { name: "Timmana",              file: "/fonts/TimmanaRegular.ttf" },
+  "tirosundaratelugu-regular": { name: "TiroSundaraTelugu",    file: "/fonts/TiroSundaraTelugu-Regular.ttf" },
   tana:                        { name: "TANA",                 file: "/fonts/TANA.ttf" },
   "ponnala-regular":           { name: "Ponnala",              file: "/fonts/Ponnala-Regular.ttf" },
   gidugu:                      { name: "Gidugu",               file: "/fonts/Gidugu.otf" },
@@ -138,8 +140,7 @@ const FONT_FILES: Record<FontKey, { name: string; file: string }> = {
   "mandali-bold":              { name: "MandaliBold",          file: "/fonts/Mandali-Bold.otf" },
   "mandali-italic":            { name: "MandaliItalic",        file: "/fonts/Mandali-Italic.otf" },
   "mandali-bolditalic":        { name: "MandaliBoldItalic",    file: "/fonts/Mandali-Bold Italic.otf" },
-  pottisreeramulu:             { name: "PottiSreeramulu",      file: "/fonts/Potti Sreeramulu.otf" },
-  "tirosundaratelugu-regular": { name: "TiroSundaraTelugu",    file: "/fonts/TiroSundaraTelugu-Regular.ttf" }
+  pottisreeramulu:             { name: "PottiSreeramulu",      file: "/fonts/Potti Sreeramulu.otf" }
 };
 
 /* ========================= CANVAS ========================= */
