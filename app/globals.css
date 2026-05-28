@@ -943,6 +943,15 @@ MuiTypography-root
   font-style: normal;
   font-display: swap;
 }
+
+@font-face {
+  font-family: "TiroSundaraTelugu-Regular";
+  src: url("/Fonts/TiroSundaraTelugu-Regular.ttf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* =========================
    🆕 ANNAMAYYA
 ========================= */
@@ -1036,5 +1045,10 @@ MuiTypography-root
 ========================= */
 
 .chitramala-font-pottisreeramulu {
+  font-family: "PottiSreeramulu", system-ui;
+}
+
+
+.chitramala-font-TiroSundaraTelugu-Regular {
   font-family: "PottiSreeramulu", system-ui;
 }

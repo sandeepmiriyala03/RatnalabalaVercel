@@ -93,6 +93,8 @@ const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
   { label: "మండలి (Bold Italic)", value: "Mandali-BoldItalic" },
 
   { label: "పొట్టి శ్రీరాములు", value: "PottiSreeramulu" },
+  
+  { label: "తిరొ సుందర తెలుగు", value: "TiroSundaraTelugu-Regular" }
 ];
 
 

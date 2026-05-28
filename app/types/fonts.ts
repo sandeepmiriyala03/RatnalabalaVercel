@@ -67,4 +67,6 @@ export type TeluguFont =
   | "Mandali-Italic"
   | "Mandali-BoldItalic"
 
-  | "PottiSreeramulu";
+  | "PottiSreeramulu"
+
+  | "TiroSundaraTelugu-Regular";
