@@ -29,7 +29,8 @@ type FontKey =
   | "jims" | "jims-italic"
   | "kanakadurga" | "kanakadurga-italic"
   | "mandali-regular" | "mandali-bold" | "mandali-italic" | "mandali-bolditalic"
-  | "pottisreeramulu";
+  | "pottisreeramulu"
+  | "tirosundaratelugu-regular";
 
 type CanvasSize = "a4" | "square";
 
@@ -84,6 +85,7 @@ const FONTS: { key: FontKey; label: string; className: string }[] = [
   { key: "mandali-italic",         label: "మండలి (Italic)",         className: "chitramala-font-mandali-italic" },
   { key: "mandali-bolditalic",     label: "మండలి (Bold Italic)",    className: "chitramala-font-mandali-bolditalic" },
   { key: "pottisreeramulu",        label: "పొట్టి శ్రీరాములు",     className: "chitramala-font-pottisreeramulu" },
+  { key: "tirosundaratelugu-regular", label: "తిరొ సుందర తెలుగు", className: "chitramala-font-TiroSundaraTelugu-Regular" }
 ];
 
 /* ========================= FONT FILE MAP ========================= */
@@ -137,6 +139,7 @@ const FONT_FILES: Record<FontKey, { name: string; file: string }> = {
   "mandali-italic":            { name: "MandaliItalic",        file: "/fonts/Mandali-Italic.otf" },
   "mandali-bolditalic":        { name: "MandaliBoldItalic",    file: "/fonts/Mandali-Bold Italic.otf" },
   pottisreeramulu:             { name: "PottiSreeramulu",      file: "/fonts/Potti Sreeramulu.otf" },
+  "tirosundaratelugu-regular": { name: "TiroSundaraTelugu",    file: "/fonts/TiroSundaraTelugu-Regular.ttf" }
 };
 
 /* ========================= CANVAS ========================= */
