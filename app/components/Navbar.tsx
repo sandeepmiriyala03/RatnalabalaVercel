@@ -27,6 +27,7 @@ const navItems = [
   { label: "శతకాలమాల", path: "/shatakamu" },
   { label: "కథామాల", path: "/kathamala" },
   { label: "సామెతలమాల", path: "/sametalu" },
+  { label: "సంధి మాల", path: "/sandhi" },
   { label: "చిత్రమాల", path: "/chitramala" },
   { label: "స్వరమాల", path: "/swaramala" },
   { label: "లిపిమాల", path: "/lipimala" },
