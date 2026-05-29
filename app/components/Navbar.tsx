@@ -35,6 +35,7 @@ const NAV_GROUPS = [
       { label: "సంధి మాల",     path: "/sandhi" },
       { label: "సమాసము మాల",   path: "/samasa" },
       { label: "సామెతలమాల",    path: "/sametalu" },
+      { label: "పదాల మాల ",      path: "/padalamala" },
     ],
   },
   {
