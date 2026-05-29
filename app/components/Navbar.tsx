@@ -32,11 +32,11 @@ const NAV_GROUPS = [
     icon: "📖",
     items: [
       { label: "అక్షరమాల",     path: "/aksharamala" },
-      { label: "గుణింత మాల",     path: "/guninta" },
-      { label: "పదాల మాల ",      path: "/padalamala" },
+      { label: "గుణింతమాల",     path: "/guninta" },
+      { label: "పదాలమాల ",      path: "/padalamala" },
        { label: "సామెతలమాల",    path: "/sametalu" },
-      { label: "సంధి మాల",     path: "/sandhi" },
-      { label: "సమాసము మాల",   path: "/samasa" }, 
+      { label: "సంధిమాల",     path: "/sandhi" },
+      { label: "సమాసముమాల",   path: "/samasa" }, 
     ],
   },
   {
