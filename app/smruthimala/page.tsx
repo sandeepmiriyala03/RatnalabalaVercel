@@ -34,7 +34,7 @@ export default function SmruthimalaPage() {
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  };ad
+  };
 
   // ప్రస్తుతం ఉన్న పేజీ కథలను లెక్కించడం
   const paginatedStories = useMemo(() => {
