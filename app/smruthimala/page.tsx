@@ -106,7 +106,6 @@ utterance.onerror = () => setPlayingId(null);
 
 setPlayingId(storyId);
 synth.speak(utterance);
-```
 
 };
 
@@ -126,7 +125,6 @@ py: 4,
    >
 స్మృతిమాల </Typography>
 
-```
   <Typography
     variant="h6"
     align="center"
