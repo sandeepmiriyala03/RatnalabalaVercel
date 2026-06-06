@@ -23,11 +23,10 @@ export default function SmruthimalaPage() {
   const totalStories = stories.length;
 
   // స్టేట్స్ (States)
-  const [page, setPage] = useState(1);
-  const [playingId, setPlayingId] = useState(null);
+  const [page, setPage] = useState<number>(1);
+  const [playingId, setPlayingId] = useState<string | null>(null);
 
-
-// పేజీ మారినప్పుడు ఆడియో ఆపి, స్క్రీన్ పైకి స్క్రోల్ అవ్వడానికి
+  // పేజీ మారినప్పుడు ఆడియో ఆపి, స్క్రీన్ పైకి స్క్రోల్ అవ్వడానికి
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
     handleStopSpeech();
@@ -59,8 +58,8 @@ export default function SmruthimalaPage() {
     };
   }, []);
 
-  // తెలుగు Text-to-Speech (TTS) ఫంక్షన్
-  const handlePlaySpeech = (storyId, textArray, title) => {
+  // తెలుగు Text-to-Speech (TTS) ఫంక్షన్ (TypeScript టైప్స్ యాడ్ చేయబడినవి)
+  const handlePlaySpeech = (storyId: string, textArray: string[], title: string) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
 
     const synth = window.speechSynthesis;
