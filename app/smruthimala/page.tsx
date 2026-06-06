@@ -20,28 +20,19 @@ const STORIES_PER_PAGE = 3;
 
 export default function SmruthimalaPage() {
   const stories = seethamalaData.stories;
-  const totalStories = stories.length; // డైనమిక్‌గా కథల సంఖ్యను తీసుకుంటుంది
+  const totalStories = stories.length;
 
   // స్టేట్స్ (States)
   const [page, setPage] = useState(1);
   const [playingId, setPlayingId] = useState(null);
-  const [synth, setSynth] = useState(null);
 
-  // Web Speech API Initialization
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      setSynth(window.speechSynthesis);
-    }
-    return () => {
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
-    };
-  }, []);
 
-  // పేజీ మారినప్పుడు టాప్‌కి స్క్రోల్ అవ్వడానికి మరియు ఆడియో స్టాప్ అవ్వడానికి
   const handlePageChange = (event, value) => {
     setPage(value);
     handleStopSpeech();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   // ప్రస్తుతం ఉన్న పేజీ కథలను లెక్కించడం
@@ -50,11 +41,30 @@ export default function SmruthimalaPage() {
     return stories.slice(startIndex, startIndex + STORIES_PER_PAGE);
   }, [page, stories]);
 
+  // ఆడియో ఆపే ఫంక్షన్
+  const handleStopSpeech = () => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      setPlayingId(null);
+    }
+  };
+
+  // పేజీ రీలోడ్ లేదా క్లోజ్ అయినప్పుడు ఆడియో ఆటోమేటిక్‌గా ఆగిపోవడానికి
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
   // తెలుగు Text-to-Speech (TTS) ఫంక్షన్
   const handlePlaySpeech = (storyId, textArray, title) => {
-    if (!synth) return;
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
 
-    // ఒకవేళ ఆల్రెడీ ప్లే అవుతుంటే ఆపేయాలి
+    const synth = window.speechSynthesis;
+
+    // ఒకవేళ ఆల్రెడీ ఇదే కథ ప్లే అవుతుంటే ఆపేయాలి
     if (playingId === storyId) {
       handleStopSpeech();
       return;
@@ -66,30 +76,25 @@ export default function SmruthimalaPage() {
     const fullText = `${title}. ${textArray.join(" ")}`;
     const utterance = new SpeechSynthesisUtterance(fullText);
 
-    // తెలుగు వాయిస్ కోసం సెట్ చేయడం
+    // బ్రౌజర్‌లో అందుబాటులో ఉన్న తెలుగు వాయిస్‌ను వెతకడం
     const voices = synth.getVoices();
-    const teluguVoice = voices.find((voice) => voice.lang.includes("te") || voice.lang.includes("TE"));
+    const teluguVoice = voices.find(
+      (voice) => voice.lang.includes("te") || voice.lang.includes("TE")
+    );
     
     if (teluguVoice) {
       utterance.voice = teluguVoice;
     }
     
     utterance.lang = "te-IN";
-    utterance.rate = 0.95; // స్పష్టత కోసం స్పీడ్ కొద్దిగా తగ్గించాను
+    utterance.rate = 0.95; // చదివే వేగం
 
-    // ఆడియో ముగిసినప్పుడు లేదా ఆగినప్పుడు స్టేట్ మార్చడం
+    // ఆడియో ముగిసినప్పుడు స్టేట్ రీసెట్ చేయడం
     utterance.onend = () => setPlayingId(null);
     utterance.onerror = () => setPlayingId(null);
 
     setPlayingId(storyId);
     synth.speak(utterance);
-  };
-
-  const handleStopSpeech = () => {
-    if (synth) {
-      synth.cancel();
-      setPlayingId(null);
-    }
   };
 
   return (
@@ -119,7 +124,7 @@ export default function SmruthimalaPage() {
         fontWeight={600} 
         sx={{ mb: 2, fontSize: { xs: "1rem", sm: "1.25rem" }, color: "#475569" }}
       >
-        ピంగళి సీతమామ సిరీస్: మిరపకాయల వీధి ముచ్చట్లు
+        పింగళి సీతమామ సిరీస్: | మిరపకాయల వీధి ముచ్చట్లు
       </Typography>
 
       {/* 📻 టాగ్‌లైన్ */}
@@ -155,7 +160,6 @@ export default function SmruthimalaPage() {
       {/* 📖 కథల కంటైనర్ */}
       <Stack spacing={4}>
         {paginatedStories.map((story) => {
-          // అసలు డేటాసెట్ లో ఈ కథ యొక్క కరెక్ట్ ఇండెక్స్ కనుగొనడం
           const originalIndex = stories.findIndex((s) => s.story_id === story.story_id);
           const isCurrentPlaying = playingId === story.story_id;
 
@@ -175,7 +179,7 @@ export default function SmruthimalaPage() {
                 
                 {/* హెడర్: భాగం సంఖ్య, శీర్షిక మరియు ఆడియో బటన్ */}
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
-                  <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ gap: 1 }}>
                     <Chip 
                       label={`భాగం ${originalIndex + 1}`} 
                       size="small" 
