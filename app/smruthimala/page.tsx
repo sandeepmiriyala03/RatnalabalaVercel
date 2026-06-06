@@ -27,13 +27,14 @@ export default function SmruthimalaPage() {
   const [playingId, setPlayingId] = useState(null);
 
 
-  const handlePageChange = (event, value) => {
+// పేజీ మారినప్పుడు ఆడియో ఆపి, స్క్రీన్ పైకి స్క్రోల్ అవ్వడానికి
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
     handleStopSpeech();
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  };
+  };ad
 
   // ప్రస్తుతం ఉన్న పేజీ కథలను లెక్కించడం
   const paginatedStories = useMemo(() => {
