@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -9,51 +9,125 @@ import {
   Divider,
   Card,
   CardContent,
+  Pagination,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
-// మీ కొత్త పింగళి సీతమామ సిరీస్ JSON డేటా పాత్ ఇక్కడ ఇవ్వండి
+import { PlayArrow, Stop, VolumeUp } from "@mui/icons-material";
 import seethamalaData from "@/data/Pingali_Seethamama.json";
+
+const STORIES_PER_PAGE = 3;
 
 export default function SmruthimalaPage() {
   const stories = seethamalaData.stories;
-  const totalStories = seethamalaData.total_stories;
+  const totalStories = stories.length; // డైనమిక్‌గా కథల సంఖ్యను తీసుకుంటుంది
+
+  // స్టేట్స్ (States)
+  const [page, setPage] = useState(1);
+  const [playingId, setPlayingId] = useState(null);
+  const [synth, setSynth] = useState(null);
+
+  // Web Speech API Initialization
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      setSynth(window.speechSynthesis);
+    }
+    return () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  // పేజీ మారినప్పుడు టాప్‌కి స్క్రోల్ అవ్వడానికి మరియు ఆడియో స్టాప్ అవ్వడానికి
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    handleStopSpeech();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // ప్రస్తుతం ఉన్న పేజీ కథలను లెక్కించడం
+  const paginatedStories = useMemo(() => {
+    const startIndex = (page - 1) * STORIES_PER_PAGE;
+    return stories.slice(startIndex, startIndex + STORIES_PER_PAGE);
+  }, [page, stories]);
+
+  // తెలుగు Text-to-Speech (TTS) ఫంక్షన్
+  const handlePlaySpeech = (storyId, textArray, title) => {
+    if (!synth) return;
+
+    // ఒకవేళ ఆల్రెడీ ప్లే అవుతుంటే ఆపేయాలి
+    if (playingId === storyId) {
+      handleStopSpeech();
+      return;
+    }
+
+    synth.cancel(); // మునుపటి ఆడియోలను క్లియర్ చేయడానికి
+
+    // శీర్షిక మరియు పారాగ్రాఫ్‌లను ఒకే టెక్స్ట్‌గా మార్చడం
+    const fullText = `${title}. ${textArray.join(" ")}`;
+    const utterance = new SpeechSynthesisUtterance(fullText);
+
+    // తెలుగు వాయిస్ కోసం సెట్ చేయడం
+    const voices = synth.getVoices();
+    const teluguVoice = voices.find((voice) => voice.lang.includes("te") || voice.lang.includes("TE"));
+    
+    if (teluguVoice) {
+      utterance.voice = teluguVoice;
+    }
+    
+    utterance.lang = "te-IN";
+    utterance.rate = 0.95; // స్పష్టత కోసం స్పీడ్ కొద్దిగా తగ్గించాను
+
+    // ఆడియో ముగిసినప్పుడు లేదా ఆగినప్పుడు స్టేట్ మార్చడం
+    utterance.onend = () => setPlayingId(null);
+    utterance.onerror = () => setPlayingId(null);
+
+    setPlayingId(storyId);
+    synth.speak(utterance);
+  };
+
+  const handleStopSpeech = () => {
+    if (synth) {
+      synth.cancel();
+      setPlayingId(null);
+    }
+  };
 
   return (
-    <Box sx={{ py: { xs: 4, md: 6 }, px: 2, maxWidth: 850, mx: "auto" }}>
+    <Box sx={{ py: { xs: 4, md: 6 }, px: 2, maxWidth: 850, mx: "auto", minHeight: "100vh" }}>
       
-      {/* 🌶️ Title */}
+      {/* 🌶️ ప్రధాన శీర్షిక */}
       <Typography
         variant="h3"
-        fontWeight={800}
+        fontWeight={900}
         sx={{
           letterSpacing: "-0.5px",
-          background: "linear-gradient(90deg, #b91c1c, #2563eb)", // మిరపకాయల ఎరుపు & రాయల్ బ్లూ మిక్సింగ్
+          background: "linear-gradient(90deg, #dc2626, #2563eb)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
-          fontSize: "calc(var(--telugu-font-size) * 1.8)",
           textAlign: "center",
-          mb: 1
+          mb: 1,
+          fontSize: { xs: "2.2rem", sm: "2.8rem", md: "3.5rem" }
         }}
       >
         స్మృతిమాల
       </Typography>
 
-      {/* 👵 Subtitle */}
+      {/* 👵 సబ్‌టైటిల్ */}
       <Typography 
         variant="h6" 
         align="center" 
         fontWeight={600} 
-        color="text.secondary"
-        sx={{ mb: 2, fontSize: "1.1rem", color: "#475569" }}
+        sx={{ mb: 2, fontSize: { xs: "1rem", sm: "1.25rem" }, color: "#475569" }}
       >
-        పింగళి సీతమామ సిరీస్: మిరపకాయల వీధి ముచ్చట్లు
+        ピంగళి సీతమామ సిరీస్: మిరపకాయల వీధి ముచ్చట్లు
       </Typography>
 
-      {/* 📻 Tagline */}
-      <Typography align="center" sx={{ mb: 3, opacity: 0.85, fontStyle: "italic" }}>
+      {/* 📻 టాగ్‌లైన్ */}
+      <Typography align="center" sx={{ mb: 4, opacity: 0.85, fontStyle: "italic", color: "#64748b", fontSize: "0.95rem" }}>
         🌶️ ఆనాటి మిరపఘాటు – 👵 సీతమామ ప్రేమ – 🥞 కాంతమ్మ ఇడ్లీ రుచి
       </Typography>
 
-      {/* 📈 Platform Summary */}
+      {/* 📈 ప్లాట్‌ఫారమ్ సమ్మరీ చిప్స్ */}
       <Stack
         direction="row"
         spacing={1.5}
@@ -64,81 +138,131 @@ export default function SmruthimalaPage() {
         <Chip
           label={`📚 మొత్తం ముచ్చట్లు: ${totalStories}`}
           color="error"
-          variant="outlined"
+          variant="filled"
+          sx={{ fontWeight: "bold" }}
         />
         <Chip 
-          label="✨ జ్ఞాపకాల హారం × తెలుగు" 
+          label="🔊 తెలుగు ఆడియో అందుబాటులో ఉంది" 
+          icon={<VolumeUp fontSize="small" />}
           variant="outlined" 
+          color="primary"
+          sx={{ fontWeight: "500" }}
         />
       </Stack>
 
       <Divider sx={{ mb: 5 }} />
 
-      {/* 📖 Stories Container */}
+      {/* 📖 కథల కంటైనర్ */}
       <Stack spacing={4}>
-        {stories.map((story, index) => (
-          <Card 
-            key={story.story_id} 
-            elevation={2} 
-            sx={{ 
-              borderRadius: 3, 
-              borderLeft: "5px solid #b91c1c", // లెఫ్ట్ సైడ్ బోర్డర్ హైలైట్
-              background: "#fffdfa" // పాత చందమామ పుస్తకాల కలర్ ఫీల్ కోసం చిన్న ఆఫ్-వైట్ షేడ్
-            }}
-          >
-            <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-              
-              {/* కథ సంఖ్య & శీర్షిక */}
-              <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-                <Chip 
-                  label={`భాగం ${index + 1}`} 
-                  size="small" 
-                  color="error" 
-                  sx={{ fontWeight: "bold", borderRadius: 1 }} 
-                />
+        {paginatedStories.map((story) => {
+          // అసలు డేటాసెట్ లో ఈ కథ యొక్క కరెక్ట్ ఇండెక్స్ కనుగొనడం
+          const originalIndex = stories.findIndex((s) => s.story_id === story.story_id);
+          const isCurrentPlaying = playingId === story.story_id;
+
+          return (
+            <Card 
+              key={story.story_id} 
+              elevation={isCurrentPlaying ? 6 : 2} 
+              sx={{ 
+                borderRadius: 4, 
+                borderLeft: isCurrentPlaying ? "6px solid #2563eb" : "6px solid #dc2626",
+                background: isCurrentPlaying ? "#f8fafc" : "#fffdfa",
+                transition: "all 0.3s ease",
+                transform: isCurrentPlaying ? "scale(1.01)" : "none"
+              }}
+            >
+              <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+                
+                {/* హెడర్: భాగం సంఖ్య, శీర్షిక మరియు ఆడియో బటన్ */}
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
+                  <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
+                    <Chip 
+                      label={`భాగం ${originalIndex + 1}`} 
+                      size="small" 
+                      color={isCurrentPlaying ? "primary" : "error"} 
+                      sx={{ fontWeight: "bold", borderRadius: 1 }} 
+                    />
+                    <Typography 
+                      variant="h5" 
+                      fontWeight={700} 
+                      color="#0f172a"
+                      sx={{ fontSize: { xs: "1.25rem", sm: "1.5rem" } }}
+                    >
+                      {story.title}
+                    </Typography>
+                  </Stack>
+
+                  {/* 🎧 TTS ఆడియో ప్లేయర్ బటన్ */}
+                  <Tooltip title={isCurrentPlaying ? "ఆడియో ఆపు" : "తెలుగులో వినండి"} placement="top">
+                    <IconButton 
+                      onClick={() => handlePlaySpeech(story.story_id, story.story_text, story.title)}
+                      color={isCurrentPlaying ? "primary" : "default"}
+                      sx={{ 
+                        background: isCurrentPlaying ? "#dbeafe" : "#f1f5f9",
+                        "&:hover": { background: isCurrentPlaying ? "#bfdbfe" : "#e2e8f0" }
+                      }}
+                    >
+                      {isCurrentPlaying ? <Stop /> : <PlayArrow />}
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+
+                {/* కథ చిన్న సబ్‌టైటిల్ */}
                 <Typography 
-                  variant="h5" 
-                  fontWeight={700} 
-                  color="#0f172a"
+                  variant="subtitle2" 
+                  color="text.secondary" 
+                  sx={{ mb: 3, pl: 0.5, fontStyle: "italic", color: "#64748b" }}
                 >
-                  {story.title}
+                  {story.subtitle}
                 </Typography>
-              </Stack>
 
-              {/* కథ చిన్న సబ్‌టైటిల్ */}
-              <Typography 
-                variant="subtitle2" 
-                color="text.secondary" 
-                sx={{ mb: 3, pl: 0.5, fontStyle: "italic" }}
-              >
-                {story.subtitle}
-              </Typography>
+                <Divider sx={{ mb: 3, opacity: 0.5 }} />
 
-              <Divider sx={{ mb: 3, opacity: 0.5 }} />
+                {/* కథ అసలు పాఠం (Paragraphs) */}
+                <Stack spacing={2.5}>
+                  {story.story_text.map((paragraph, pIndex) => (
+                    <Typography
+                      key={pIndex}
+                      variant="body1"
+                      sx={{
+                        lineHeight: 1.9,
+                        color: "#334155",
+                        fontSize: "1.08rem",
+                        textAlign: "justify",
+                        textIndent: { xs: "0px", sm: "24px" }
+                      }}
+                    >
+                      {paragraph}
+                    </Typography>
+                  ))}
+                </Stack>
 
-              {/* కథ అసలు పాఠం (Paragraphs) */}
-              <Stack spacing={2.5}>
-                {story.story_text.map((paragraph, pIndex) => (
-                  <Typography
-                    key={pIndex}
-                    variant="body1"
-                    sx={{
-                      lineHeight: 1.8,
-                      color: "#334155",
-                      fontSize: "1.05rem",
-                      textAlign: "justify",
-                      textIndent: { xs: "0px", sm: "24px" } // మొదటి లైన్ కాస్త లోపలికి రావడానికి
-                    }}
-                  >
-                    {paragraph}
-                  </Typography>
-                ))}
-              </Stack>
-
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </Stack>
+
+      {/* 📑 కింద పేజీల విభజన (Pagination UI) */}
+      {totalStories > STORIES_PER_PAGE && (
+        <Stack alignItems="center" sx={{ mt: 6, mb: 2 }}>
+          <Pagination 
+            count={Math.ceil(totalStories / STORIES_PER_PAGE)} 
+            page={page} 
+            onChange={handlePageChange} 
+            color="error" 
+            size="large"
+            variant="outlined"
+            shape="rounded"
+            sx={{
+              "& .MuiPaginationItem-root": {
+                fontWeight: "bold",
+              }
+            }}
+          />
+        </Stack>
+      )}
+
     </Box>
   );
 }
