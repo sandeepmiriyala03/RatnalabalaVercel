@@ -23,6 +23,7 @@ const NAV_GROUPS = [
       { label: "పద్యాలవాల",    path: "/poems" },
       { label: "మిరా",          path: "/mirapoems" },
       { label: "శతకాలమాల",     path: "/shatakamu" },
+      { label: "స్మృతిమాల",     path: "/smruthimala" },
       { label: "కథామాల",        path: "/kathamala" },
       { label: "పరాభవమాల",     path: "/parabhava" },
     ],
