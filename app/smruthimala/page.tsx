@@ -176,7 +176,7 @@ export default function SmruthimalaPage() {
               mb: 3,
             }}
           >
-            ピంగళి సీతమామ సిరీస్
+            పింగళి సీతమామ సిరీస్
           </Typography>
 
           <Stack direction="row" spacing={1.5} justifyContent="center">
