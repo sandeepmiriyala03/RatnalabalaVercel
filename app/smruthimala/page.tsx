@@ -310,7 +310,7 @@ export default function SmruthimalaPage() {
                     {/* బ్రాండింగ్ శీర్షిక */}
                     <Box sx={{ textAlign: "center", mt: "6vh" }}>
                       <Typography sx={{ fontFamily: "'Peddana', serif", fontSize: "clamp(24px, 5vw, 42px)", color: "#eedfc8" }}>
-                        पिంగళి సీతమామ స్మృతిమాల
+                        పింగళి సీతమామ స్మృతిమాల
                       </Typography>
                       <Box sx={{ width: "40px", height: "1px", bg: "rgba(238, 223, 200, 0.3)", mx: "auto", mt: 2 }} />
                     </Box>
