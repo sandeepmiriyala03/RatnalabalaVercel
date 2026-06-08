@@ -41,22 +41,15 @@ export default function SmruthimalaPage() {
   const [page, setPage] = useState(1);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
-  // డివైస్ స్క్రీన్ డైమెన్షన్స్ ట్రాక్ చేయడానికి స్టేట్
-  const [deviceDimensions, setDeviceDimensions] = useState({ width: 375, height: 812 });
+  // డివైస్ స్క్రీన్ వెడల్పును ట్రాక్ చేయడానికి స్టేట్
+  const [deviceWidth, setDeviceWidth] = useState(375);
 
   useEffect(() => {
-    // విండో లోడ్ అయినప్పుడు మరియు రీసైజ్ అయినప్పుడు డివైస్ సైజ్ అప్‌డేట్ అవుతుంది
     if (typeof window !== "undefined") {
-      setDeviceDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+      setDeviceWidth(window.innerWidth);
 
       const handleResize = () => {
-        setDeviceDimensions({
-          width: window.innerWidth,
-          height: window.innerHeight,
-        });
+        setDeviceWidth(window.innerWidth);
       };
 
       window.addEventListener("resize", handleResize);
@@ -119,40 +112,40 @@ export default function SmruthimalaPage() {
     synth.speak(utterance);
   };
 
-  // డివైస్ సైజ్ ప్రకారం (As Per Device) పోస్టర్ డౌన్‌లోడ్ చేసే పర్ఫెక్ట్ ఫంక్షన్
-  const downloadSharePoster = async (storyId: string, title: string) => {
+  // Change 1: మీ కొత్త పర్ఫెక్ట్ డౌన్‌లోడ్ ఫంక్షన్ (WCAG వైట్ బ్యాక్‌గ్రౌండ్‌తో)
+  const downloadFullStoryPoster = async (storyId: string, title: string) => {
     const element = document.getElementById(`hidden-poster-${storyId}`);
     if (!element) return;
 
     try {
-      // 1. పోస్టర్ కంటైనర్‌ను తాత్కాలికంగా ఆన్ చేయడం
-      element.style.display = "block";
+      // ఫాంట్లు పూర్తిగా లోడ్ అయ్యే వరకు వేచి ఉండటం
+      await document.fonts.ready;
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // 2. html2canvas రన్ చేసి ఇమేజ్ క్యాప్చర్ చేయడం
       const canvas = await html2canvas(element, {
         useCORS: true,
-        scale: window.devicePixelRatio || 2, // డివైస్ స్క్రీన్ క్వాలిటీని బట్టి క్రిస్ప్ ఇమేజ్ వస్తుంది
-        backgroundColor: null,
-        width: deviceDimensions.width, // ఎగ్జాక్ట్ డివైస్ వెడల్పు
-        height: deviceDimensions.height, // ఎగ్జాక్ట్ డివైస్ ఎత్తు
+        scale: 2,
+        backgroundColor: "#ffffff", // WCAG ప్రమాణాల కోసం ప్యూర్ వైట్ బ్యాక్‌గ్రౌండ్
+        logging: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight,
       });
 
-      // 3. పోస్టర్ కంటైనర్‌ను మళ్లీ హైడ్ చేయడం
-      element.style.display = "none";
-
-      // 4. ఇమేజ్ డౌన్‌లోడ్ ప్రాసెస్
       const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = image;
-      link.download = `${title.replace(/\s+/g, "_")}_డివైస్_స్టేటర్.png`;
+      link.download = `${title.replace(/\s+/g, "_")}.png`;
+
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (error) {
-      console.error("పోస్టర్ డౌన్‌లోడ్ అవ్వడంలో సమస్య వచ్చింది:", error);
+      console.error("Poster download failed:", error);
     }
   };
 
   return (
-    <Box sx={{ bg: "#fcfbfa", minHeight: "100vh", py: 6 }}>
+    <Box sx={{ bg: "#ffffff", minHeight: "100vh", py: 6 }}>
       <Container maxWidth="md">
         
         {/* వెబ్‌సైట్ మెయిన్ హెడర్ */}
@@ -162,7 +155,7 @@ export default function SmruthimalaPage() {
             sx={{
               fontFamily: "'Peddana', serif",
               fontWeight: 800,
-              color: "#3a220f",
+              color: "#000000",
               mb: 1,
             }}
           >
@@ -172,7 +165,7 @@ export default function SmruthimalaPage() {
             variant="subtitle1"
             sx={{
               fontFamily: "'Mandali', sans-serif",
-              color: "#6e523b",
+              color: "#000000",
               mb: 3,
             }}
           >
@@ -181,20 +174,20 @@ export default function SmruthimalaPage() {
 
           <Stack direction="row" spacing={1.5} justifyContent="center">
             <Chip
-              icon={<Book sx={{ fontSize: "18px", color: "#fff !important" }} />}
+              icon={<Book sx={{ fontSize: "18px", color: "#ffffff !important" }} />}
               label={`${stories.length} కథలు`}
-              sx={{ bgcolor: "#5c3d24", color: "#fff", fontWeight: 600, fontFamily: "'NTR', sans-serif" }}
+              sx={{ bgcolor: "#000000", color: "#ffffff", fontWeight: 600, fontFamily: "'NTR', sans-serif" }}
             />
             <Chip
-              icon={<VolumeUp sx={{ fontSize: "18px" }} />}
+              icon={<VolumeUp sx={{ fontSize: "18px", color: "#000000 !important" }} />}
               variant="outlined"
               label="ఆడియో ప్లేయర్"
-              sx={{ borderColor: "#5c3d24", color: "#5c3d24", fontWeight: 600, fontFamily: "'NTR', sans-serif" }}
+              sx={{ borderColor: "#000000", color: "#000000", fontWeight: 600, fontFamily: "'NTR', sans-serif" }}
             />
           </Stack>
         </Box>
 
-        <Divider sx={{ mb: 5, borderColor: "#eedfc8" }} />
+        <Divider sx={{ mb: 5, borderColor: "#000000" }} />
 
         {/* కథల లిస్ట్ */}
         <Stack spacing={5}>
@@ -205,27 +198,26 @@ export default function SmruthimalaPage() {
             return (
               <Box key={story.story_id} sx={{ position: "relative" }}>
                 
-                {/* రీడింగ్ కార్డ్ */}
+                {/* వెబ్‌సైట్ రీడింగ్ కార్డ్ */}
                 <Card
                   elevation={0}
                   sx={{
-                    borderRadius: 4,
-                    border: "1px solid #ebdcc5",
+                    borderRadius: 0,
+                    border: "2px solid #000000",
                     background: "#ffffff",
                     p: { xs: 2, sm: 4 },
-                    boxShadow: "0 4px 20px rgba(92, 61, 36, 0.03)",
                   }}
                 >
                   <CardContent sx={{ p: 0 }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
                       <Box>
-                        <Typography variant="caption" sx={{ fontFamily: "'NTR', sans-serif", color: "#b84244", fontWeight: 700, fontSize: "1.05rem", display: "block", mb: 0.5 }}>
+                        <Typography variant="caption" sx={{ fontFamily: "'NTR', sans-serif", color: "#000000", fontWeight: 700, fontSize: "1.05rem", display: "block", mb: 0.5 }}>
                           కథా భాగం {currentStoryNumber}
                         </Typography>
-                        <Typography variant="h4" sx={{ fontFamily: "'Ramabhadra', sans-serif", color: "#1f1105", fontWeight: 700, fontSize: { xs: "1.4rem", sm: "1.8rem" }, mb: 1 }}>
+                        <Typography variant="h4" sx={{ fontFamily: "'Ramabhadra', sans-serif", color: "#000000", fontWeight: 700, fontSize: { xs: "1.4rem", sm: "1.8rem" }, mb: 1 }}>
                           {story.title}
                         </Typography>
-                        <Typography variant="body1" sx={{ fontFamily: "'Mandali', sans-serif", color: "#7c624d", fontSize: "1.05rem" }}>
+                        <Typography variant="body1" sx={{ fontFamily: "'Mandali', sans-serif", color: "#000000", fontSize: "1.05rem" }}>
                           {story.subtitle}
                         </Typography>
                       </Box>
@@ -236,9 +228,10 @@ export default function SmruthimalaPage() {
                           <IconButton
                             onClick={() => handlePlaySpeech(story.story_id, story.story_text, story.title)}
                             sx={{
-                              bgcolor: isPlaying ? "#b84244" : "#fbf7f0",
-                              color: isPlaying ? "#fff" : "#5c3d24",
-                              "&:hover": { bgcolor: isPlaying ? "#963234" : "#f3eada" },
+                              bgcolor: isPlaying ? "#000000" : "#ffffff",
+                              color: isPlaying ? "#ffffff" : "#000000",
+                              border: "1px solid #000000",
+                              "&:hover": { bgcolor: isPlaying ? "#333333" : "#f0f0f0" },
                               width: 44,
                               height: 44,
                             }}
@@ -247,13 +240,14 @@ export default function SmruthimalaPage() {
                           </IconButton>
                         </Tooltip>
 
-                        <Tooltip title="డివైస్ సైజ్ పోస్టర్ సేవ్ చేయండి">
+                        <Tooltip title="పూర్తి కథా పోస్టర్ డౌన్‌లోడ్ చేయండి">
                           <IconButton
-                            onClick={() => downloadSharePoster(story.story_id, story.title)}
+                            onClick={() => downloadFullStoryPoster(story.story_id, story.title)}
                             sx={{
-                              bgcolor: "#f0f7f4",
-                              color: "#2a6f4d",
-                              "&:hover": { bgcolor: "#e1ede8" },
+                              bgcolor: "#ffffff",
+                              color: "#000000",
+                              border: "1px solid #000000",
+                              "&:hover": { bgcolor: "#f0f0f0" },
                               width: 44,
                               height: 44,
                             }}
@@ -264,12 +258,12 @@ export default function SmruthimalaPage() {
                       </Stack>
                     </Stack>
 
-                    <Divider sx={{ my: 3, borderColor: "#f7f1e6" }} />
+                    <Divider sx={{ my: 3, borderColor: "#000000" }} />
 
-                    {/* స్టోరీ టెక్స్ట్ */}
+                    {/* వెబ్‌సైట్ స్టోరీ టెక్స్ట్ */}
                     <Box>
                       {story.story_text.map((paragraph, idx) => (
-                        <Typography key={idx} sx={{ fontFamily: "'NTR', sans-serif", fontSize: { xs: "1.25rem", sm: "1.35rem" }, color: "#2c1e12", mb: 2.5, lineHeight: 1.9, textAlign: "justify" }}>
+                        <Typography key={idx} sx={{ fontFamily: "'NTR', sans-serif", fontSize: { xs: "1.25rem", sm: "1.35rem" }, color: "#000000", mb: 2.5, lineHeight: 1.9, textAlign: "justify" }}>
                           {paragraph}
                         </Typography>
                       ))}
@@ -278,78 +272,94 @@ export default function SmruthimalaPage() {
                 </Card>
 
                 {/* ----------------------------------------------------------------- */}
-                {/* 📱 డైనమిక్ డివైస్ సైజ్ పోస్టర్ (As Per Device Screen Size - No Stars) */}
+                {/* Change 2: రీప్లేస్ చేయబడిన హిడెన్ పోస్టర్ కంటైనర్ (visibility: "hidden" తో) */}
                 {/* ----------------------------------------------------------------- */}
                 <Box
                   id={`hidden-poster-${story.story_id}`}
                   sx={{
-                    display: "none", 
-                    width: `${deviceDimensions.width}px`,   // కరెక్ట్ డివైస్ విడ్త్ ఇక్కడ అప్లై అవుతుంది
-                    height: `${deviceDimensions.height}px`, // కరెక్ట్ డివైస్ హైట్ ఇక్కడ అప్లై అవుతుంది
-                    position: "absolute",
-                    top: -9999,
-                    left: -9999,
-                    background: "linear-gradient(135deg, #2b1704 0%, #4a2c11 100%)", 
-                    p: "5vw", // డివైస్ స్క్రీన్‌ను బట్టి ప్యాడింగ్ మారుతుంది
+                    visibility: "hidden",
+                    position: "fixed",
+                    left: "-10000px",
+                    top: 0,
+                    width: `${deviceWidth}px`, // డైనమిక్ డివైస్ వెడల్పు
+                    height: "auto",            // పూర్తి కథ పట్టేలా ఆటో హైట్
+                    background: "#ffffff",     // WCAG ప్యూర్ వైట్
+                    p: "6vw", 
                     boxSizing: "border-box",
+                    overflow: "hidden",
                   }}
                 >
                   <Box
                     sx={{
                       width: "100%",
                       height: "100%",
-                      border: "1px solid rgba(238, 223, 200, 0.3)",
-                      borderRadius: "12px",
-                      p: "4vw",
+                      border: "2px solid #000000", // WCAG బ్లాక్ బోర్డర్
+                      p: "6vw",
                       display: "flex",
                       flexDirection: "column",
-                      justifyContent: "space-between",
                       boxSizing: "border-box",
+                      background: "#ffffff",
                     }}
                   >
-                    {/* బ్రాండింగ్ శీర్షిక */}
-                    <Box sx={{ textAlign: "center", mt: "6vh" }}>
-                      <Typography sx={{ fontFamily: "'Peddana', serif", fontSize: "clamp(24px, 5vw, 42px)", color: "#eedfc8" }}>
-                        పింగళి సీతమామ స్మృతిమాల
+                    {/* పోస్టర్ హెడర్ */}
+                    <Box sx={{ textAlign: "center", mb: "4vh" }}>
+                      <Typography sx={{ fontFamily: "'Peddana', serif", fontSize: "clamp(24px, 5vw, 40px)", color: "#000000", fontWeight: 700 }}>
+                        पिంగళి సీతమామ స్మృతిమాల
                       </Typography>
-                      <Box sx={{ width: "40px", height: "1px", bg: "rgba(238, 223, 200, 0.3)", mx: "auto", mt: 2 }} />
+                      {/* Change 3: Fix Divider Line (backgroundColor గా మార్చబడింది) */}
+                      <Box sx={{ width: "60px", height: "2px", backgroundColor: "#000000", mx: "auto", mt: 1.5 }} />
                     </Box>
 
-                    {/* కంటెంట్ ఏరియా - క్లీన్ & సింపుల్ */}
-                    <Box sx={{ textAlign: "center", px: 2 }}>
-                      <Typography sx={{ fontFamily: "'NTR', sans-serif", fontSize: "clamp(16px, 3.5vw, 26px)", color: "#eedfc8", opacity: 0.7, mb: 2 }}>
+                    {/* పోస్టర్ టైటిల్ సెక్షన్ */}
+                    <Box sx={{ textAlign: "center", mb: "3vh" }}>
+                      <Typography sx={{ fontFamily: "'NTR', sans-serif", fontSize: "clamp(14px, 3.5vw, 22px)", color: "#000000", fontWeight: 600, mb: 1 }}>
                         భాగం {currentStoryNumber}
                       </Typography>
-                      
                       <Typography
                         sx={{
                           fontFamily: "'Ramabhadra', sans-serif",
-                          fontSize: "clamp(32px, 7vw, 68px)", // మొబైల్ ఐతే చిన్నగా, డెస్క్‌టాప్ ఐతే పెద్దగా మారుతుంది
-                          color: "#ffffff",
+                          fontSize: "clamp(28px, 6.5vw, 54px)",
+                          color: "#000000",
                           fontWeight: "bold",
-                          lineHeight: 1.4,
-                          mb: 3,
+                          lineHeight: 1.3,
+                          mb: 1.5,
                         }}
                       >
                         {story.title}
                       </Typography>
-
-                      <Typography
-                        sx={{
-                          fontFamily: "'Mandali', sans-serif",
-                          fontSize: "clamp(18px, 4vw, 32px)",
-                          color: "#eedfc8",
-                          lineHeight: 1.6,
-                        }}
-                      >
+                      <Typography sx={{ fontFamily: "'Mandali', sans-serif", fontSize: "clamp(16px, 4vw, 26px)", color: "#000000" }}>
                         {story.subtitle}
                       </Typography>
                     </Box>
 
-                    {/* ఫుటర్ నోట్ */}
-                    <Box sx={{ textAlign: "center", mb: "4vh" }}>
-                      <Typography sx={{ fontFamily: "'Mandali', sans-serif", fontSize: "clamp(14px, 3vw, 22px)", color: "#f3eada", opacity: 0.5 }}>
-                        వెబ్‌సైట్‌లో పూర్తి కథను చదవండి
+                    <Divider sx={{ borderColor: "#000000", borderBottomWidth: 1, my: 3 }} />
+
+                    {/* 📜 పూర్తి కథా భాగం */}
+                    <Box sx={{ flexGrow: 1 }}>
+                      {story.story_text.map((paragraph, idx) => (
+                        <Typography
+                          key={idx}
+                          sx={{
+                            fontFamily: "'NTR', sans-serif",
+                            fontSize: "clamp(18px, 4.5vw, 24px)", 
+                            color: "#000000", 
+                            mb: 2.5,
+                            lineHeight: 1.8,
+                            textAlign: "justify",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {paragraph}
+                        </Typography>
+                      ))}
+                    </Box>
+
+                    <Divider sx={{ borderColor: "#000000", borderBottomWidth: 1, my: 3 }} />
+
+                    {/* ఫుటర్ */}
+                    <Box sx={{ textAlign: "center", mt: "2vh" }}>
+                      <Typography sx={{ fontFamily: "'Mandali', sans-serif", fontSize: "clamp(12px, 3vw, 18px)", color: "#000000", fontWeight: 600 }}>
+                        బాల్య మాల  
                       </Typography>
                     </Box>
 
@@ -373,8 +383,8 @@ export default function SmruthimalaPage() {
             }}
             count={Math.ceil(stories.length / STORIES_PER_PAGE)}
             sx={{
-              "& .MuiPaginationItem-root": { fontFamily: "'NTR', sans-serif", fontSize: "1.1rem", color: "#5c3d24" },
-              "& .Mui-selected": { bgcolor: "#5c3d24 !important", color: "#fff !important" },
+              "& .MuiPaginationItem-root": { fontFamily: "'NTR', sans-serif", fontSize: "1.1rem", color: "#000000", border: "1px solid #000000", borderRadius: 0 },
+              "& .Mui-selected": { bgcolor: "#000000 !important", color: "#ffffff !important" },
             }}
           />
         </Stack>
