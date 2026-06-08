@@ -365,7 +365,7 @@ export default function SmruthimalaPage() {
                     {/* బ్రాండింగ్ ఫుటర్ బాటమ్ */}
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.5, px: 1 }}>
                       <Typography sx={{ fontFamily: "'Mandali', sans-serif", fontSize: "22px", color: "#000000", fontWeight: 600 }}>
-                    రత్నాలబాల -జ్ఞానమాల-  తెలుగు సాహిత్యానికి సంపూర్ణ సాంకేతిక వేదిక
+                    రత్నాలబాల -జ్ఞానమాల-  తెలుగు సాహిత్యానికి సంపూర్ణ సాంకేతిక వేదిక.
                       </Typography>
                       <Typography sx={{ fontFamily: "'NTR', sans-serif", fontSize: "18px", color: "#666666", fontWeight: 700 }}>
                        https://ratnalabala.vercel.app/
