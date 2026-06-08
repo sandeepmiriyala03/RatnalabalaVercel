@@ -41,22 +41,6 @@ export default function SmruthimalaPage() {
   const [page, setPage] = useState(1);
   const [playingId, setPlayingId] = useState<string | null>(null);
 
-  // డివైస్ స్క్రీన్ వెడల్పును ట్రాక్ చేయడానికి స్టేట్
-  const [deviceWidth, setDeviceWidth] = useState(375);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setDeviceWidth(window.innerWidth);
-
-      const handleResize = () => {
-        setDeviceWidth(window.innerWidth);
-      };
-
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
-    }
-  }, []);
-
   // గూగుల్ తెలుగు ఫాంట్లు
   useEffect(() => {
     const link = document.createElement("link");
@@ -112,17 +96,16 @@ export default function SmruthimalaPage() {
     synth.speak(utterance);
   };
 
-  // వైట్ పేజీ బగ్ ఫిక్స్ చేయబడిన పర్ఫెక్ట్ డౌన్‌లోడ్ ఫంక్షన్
+  // సోషల్ మీడియా స్క్వేర్ పోస్టర్ క్యాప్చర్ (1200x1200px నిష్పత్తి)
   const downloadFullStoryPoster = async (storyId: string, title: string) => {
     const element = document.getElementById(`hidden-poster-${storyId}`);
     if (!element) return;
 
     try {
-      // ఫాంట్లు పూర్తిగా లోడ్ అయ్యే వరకు వేచి ఉండటం
       await document.fonts.ready;
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      // 1. క్యాప్చర్ చేయడానికి వీలుగా ఎలిమెంట్‌ను తాత్కాలికంగా విజిబుల్ చేయడం
+      // తాత్కాలికంగా విజిబుల్ చేయడం
       const originalOpacity = element.style.opacity;
       const originalLeft = element.style.left;
       const originalPosition = element.style.position;
@@ -131,28 +114,26 @@ export default function SmruthimalaPage() {
       element.style.left = "0px";
       element.style.position = "absolute"; 
 
-      // 2. క్యాప్చర్ రన్ చేయడం (విండో బౌండరీస్ ఫోర్స్ చేయబడ్డాయి)
       const canvas = await html2canvas(element, {
         useCORS: true,
-        scale: 2,
+        scale: 2, // క్లారిటీ HDగా ఉండటానికి
         backgroundColor: "#ffffff", 
         logging: false,
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-        windowWidth: element.scrollWidth,  
-        windowHeight: element.scrollHeight,
+        width: 1200, 
+        height: 1200,
+        windowWidth: 1200,  
+        windowHeight: 1200,
       });
 
-      // 3. క్యాప్చర్ అయిపోయాక మళ్ళీ ఎలిమెంట్‌ను పాతపద్ధతిలో దాచేయడం
+      // తిరిగి దాచేయడం
       element.style.opacity = originalOpacity;
       element.style.left = originalLeft;
       element.style.position = originalPosition;
 
-      // 4. ఇమేజ్ డౌన్‌లోడ్ ప్రాసెస్
       const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = image;
-      link.download = `${title.replace(/\s+/g, "_")}.png`;
+      link.download = `${title.replace(/\s+/g, "_")}_Poster.png`;
 
       document.body.appendChild(link);
       link.click();
@@ -290,7 +271,7 @@ export default function SmruthimalaPage() {
                 </Card>
 
                 {/* ----------------------------------------------------------------- */}
-                {/* హిడెన్ పోస్టర్ కంటైనర్ (opacity: 0 తో పర్ఫెక్ట్ క్యాప్చర్ కోసం) */}
+                {/* 📸 పర్ఫెక్ట్ సోషల్ మీడియా పోస్టర్ లేఅవుట్ (1200px x 1200px చతురస్రాకారం) */}
                 {/* ----------------------------------------------------------------- */}
                 <Box
                   id={`hidden-poster-${story.story_id}`}
@@ -300,10 +281,10 @@ export default function SmruthimalaPage() {
                     position: "fixed",
                     left: "-10000px",
                     top: 0,
-                    width: `${deviceWidth}px`, 
-                    height: "auto",            
+                    width: "1200px",       
+                    height: "1200px",      
                     background: "#ffffff",     
-                    p: "6vw", 
+                    p: "60px", 
                     boxSizing: "border-box",
                     overflow: "hidden",
                   }}
@@ -312,74 +293,79 @@ export default function SmruthimalaPage() {
                     sx={{
                       width: "100%",
                       height: "100%",
-                      border: "2px solid #000000", 
-                      p: "6vw",
+                      border: "4px solid #000000", 
+                      p: "60px",
                       display: "flex",
                       flexDirection: "column",
+                      justifyContent: "space-between", // కంటెంట్ అంతా సమానంగా పరుచుకోవడానికి
                       boxSizing: "border-box",
                       background: "#ffffff",
                     }}
                   >
-                    {/* పోస్టర్ హెడర్ */}
-                    <Box sx={{ textAlign: "center", mb: "4vh" }}>
-                      <Typography sx={{ fontFamily: "'Peddana', serif", fontSize: "clamp(24px, 5vw, 40px)", color: "#000000", fontWeight: 700 }}>
+                    {/* పోస్టర్ హెడర్ టాప్ */}
+                    <Box sx={{ textAlign: "center" }}>
+                      <Typography sx={{ fontFamily: "'Peddana', serif", fontSize: "44px", color: "#000000", fontWeight: 700, letterSpacing: "1px" }}>
                         పింగళి సీతమామ స్మృతిమాల
                       </Typography>
-                      <Box sx={{ width: "60px", height: "2px", backgroundColor: "#000000", mx: "auto", mt: 1.5 }} />
+                      <Box sx={{ width: "100px", height: "3px", backgroundColor: "#000000", mx: "auto", mt: 2 }} />
                     </Box>
 
-                    {/* పోస్టర్ టైటిల్ సెక్షన్ */}
-                    <Box sx={{ textAlign: "center", mb: "3vh" }}>
-                      <Typography sx={{ fontFamily: "'NTR', sans-serif", fontSize: "clamp(14px, 3.5vw, 22px)", color: "#000000", fontWeight: 600, mb: 1 }}>
+                    {/* పోస్టర్ టైటిల్ సెక్షన్ మిడిల్ */}
+                    <Box sx={{ textAlign: "center", my: 2 }}>
+                      <Typography sx={{ fontFamily: "'NTR', sans-serif", fontSize: "24px", color: "#000000", fontWeight: 600, mb: 1, letterSpacing: "0.5px" }}>
                         భాగం {currentStoryNumber}
                       </Typography>
                       <Typography
                         sx={{
                           fontFamily: "'Ramabhadra', sans-serif",
-                          fontSize: "clamp(28px, 6.5vw, 54px)",
+                          fontSize: "56px",
                           color: "#000000",
                           fontWeight: "bold",
                           lineHeight: 1.3,
-                          mb: 1.5,
+                          mb: 2,
                         }}
                       >
                         {story.title}
                       </Typography>
-                      <Typography sx={{ fontFamily: "'Mandali', sans-serif", fontSize: "clamp(16px, 4vw, 26px)", color: "#000000" }}>
+                      <Typography sx={{ fontFamily: "'Mandali', sans-serif", fontSize: "28px", color: "#333333" }}>
                         {story.subtitle}
                       </Typography>
                     </Box>
 
-                    <Divider sx={{ borderColor: "#000000", borderBottomWidth: 1, my: 3 }} />
+                    <Divider sx={{ borderColor: "#000000", borderBottomWidth: 2, my: 1 }} />
 
-                    {/* 📜 పూర్తి కథా భాగం */}
-                    <Box sx={{ flexGrow: 1 }}>
-                      {story.story_text.map((paragraph, idx) => (
-                        <Typography
-                          key={idx}
-                          sx={{
-                            fontFamily: "'NTR', sans-serif",
-                            fontSize: "clamp(18px, 4.5vw, 24px)", 
-                            color: "#000000", 
-                            mb: 2.5,
-                            lineHeight: 1.8,
-                            textAlign: "justify",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {paragraph}
-                        </Typography>
-                      ))}
-                    </Box>
-
-                    <Divider sx={{ borderColor: "#000000", borderBottomWidth: 1, my: 3 }} />
-
-                    {/* ఫుటర్ */}
-                    <Box sx={{ textAlign: "center", mt: "2vh" }}>
-                      <Typography sx={{ fontFamily: "'Mandali', sans-serif", fontSize: "clamp(12px, 3vw, 18px)", color: "#000000", fontWeight: 600 }}>
-                        బాల్య మాల  
+                    {/* 📜 కథా ప్రివ్యూ - సోషల్ మీడియా కోసం పర్ఫెక్ట్ లిమిటెడ్ హైట్ */}
+                    <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", justifyContent: "center", px: 4, my: 2 }}>
+                      <Typography
+                        sx={{
+                          fontFamily: "'NTR', sans-serif",
+                          fontSize: "32px", // వాట్సాప్/ఇన్‌స్టాగ్రామ్‌లో స్పష్టంగా చదవగలిగే పెద్ద సైజు
+                          color: "#000000", 
+                          lineHeight: 1.8,
+                          textAlign: "justify",
+                          fontWeight: 500,
+                          // కేవలం మొదటి పేరాగ్రాఫ్ మాత్రమే అందంగా చూపించడానికి
+                          display: "-webkit-box",
+                          WebkitLineClamp: 6, 
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {story.story_text[0]}...
                       </Typography>
                     </Box>
+
+                    <Divider sx={{ borderColor: "#000000", borderBottomWidth: 2, my: 1 }} />
+
+                    {/* బ్రాండింగ్ ఫుటర్ బాటమ్ */}
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 2, px: 2 }}>
+                      <Typography sx={{ fontFamily: "'Mandali', sans-serif", fontSize: "20px", color: "#000000", fontWeight: 600 }}>
+                        బాల్య మాల  
+                      </Typography>
+                      <Typography sx={{ fontFamily: "'NTR', sans-serif", fontSize: "18px", color: "#666666", fontWeight: 700 }}>
+                        పూర్తి కథ కోసం వెబ్‌సైట్ చూడండి
+                      </Typography>
+                    </Stack>
 
                   </Box>
                 </Box>
