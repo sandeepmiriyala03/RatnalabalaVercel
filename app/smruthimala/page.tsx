@@ -112,7 +112,7 @@ export default function SmruthimalaPage() {
     synth.speak(utterance);
   };
 
-  // Change 1: మీ కొత్త పర్ఫెక్ట్ డౌన్‌లోడ్ ఫంక్షన్ (WCAG వైట్ బ్యాక్‌గ్రౌండ్‌తో)
+  // వైట్ పేజీ బగ్ ఫిక్స్ చేయబడిన పర్ఫెక్ట్ డౌన్‌లోడ్ ఫంక్షన్
   const downloadFullStoryPoster = async (storyId: string, title: string) => {
     const element = document.getElementById(`hidden-poster-${storyId}`);
     if (!element) return;
@@ -122,15 +122,33 @@ export default function SmruthimalaPage() {
       await document.fonts.ready;
       await new Promise((resolve) => setTimeout(resolve, 300));
 
+      // 1. క్యాప్చర్ చేయడానికి వీలుగా ఎలిమెంట్‌ను తాత్కాలికంగా విజిబుల్ చేయడం
+      const originalOpacity = element.style.opacity;
+      const originalLeft = element.style.left;
+      const originalPosition = element.style.position;
+      
+      element.style.opacity = "1";
+      element.style.left = "0px";
+      element.style.position = "absolute"; 
+
+      // 2. క్యాప్చర్ రన్ చేయడం (విండో బౌండరీస్ ఫోర్స్ చేయబడ్డాయి)
       const canvas = await html2canvas(element, {
         useCORS: true,
         scale: 2,
-        backgroundColor: "#ffffff", // WCAG ప్రమాణాల కోసం ప్యూర్ వైట్ బ్యాక్‌గ్రౌండ్
+        backgroundColor: "#ffffff", 
         logging: false,
         width: element.scrollWidth,
         height: element.scrollHeight,
+        windowWidth: element.scrollWidth,  
+        windowHeight: element.scrollHeight,
       });
 
+      // 3. క్యాప్చర్ అయిపోయాక మళ్ళీ ఎలిమెంట్‌ను పాతపద్ధతిలో దాచేయడం
+      element.style.opacity = originalOpacity;
+      element.style.left = originalLeft;
+      element.style.position = originalPosition;
+
+      // 4. ఇమేజ్ డౌన్‌లోడ్ ప్రాసెస్
       const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = image;
@@ -145,7 +163,7 @@ export default function SmruthimalaPage() {
   };
 
   return (
-    <Box sx={{ bg: "#ffffff", minHeight: "100vh", py: 6 }}>
+    <Box sx={{ bgcolor: "#ffffff", minHeight: "100vh", py: 6 }}>
       <Container maxWidth="md">
         
         {/* వెబ్‌సైట్ మెయిన్ హెడర్ */}
@@ -272,18 +290,19 @@ export default function SmruthimalaPage() {
                 </Card>
 
                 {/* ----------------------------------------------------------------- */}
-                {/* Change 2: రీప్లేస్ చేయబడిన హిడెన్ పోస్టర్ కంటైనర్ (visibility: "hidden" తో) */}
+                {/* హిడెన్ పోస్టర్ కంటైనర్ (opacity: 0 తో పర్ఫెక్ట్ క్యాప్చర్ కోసం) */}
                 {/* ----------------------------------------------------------------- */}
                 <Box
                   id={`hidden-poster-${story.story_id}`}
                   sx={{
-                    visibility: "hidden",
+                    opacity: 0,
+                    pointerEvents: "none",
                     position: "fixed",
                     left: "-10000px",
                     top: 0,
-                    width: `${deviceWidth}px`, // డైనమిక్ డివైస్ వెడల్పు
-                    height: "auto",            // పూర్తి కథ పట్టేలా ఆటో హైట్
-                    background: "#ffffff",     // WCAG ప్యూర్ వైట్
+                    width: `${deviceWidth}px`, 
+                    height: "auto",            
+                    background: "#ffffff",     
                     p: "6vw", 
                     boxSizing: "border-box",
                     overflow: "hidden",
@@ -293,7 +312,7 @@ export default function SmruthimalaPage() {
                     sx={{
                       width: "100%",
                       height: "100%",
-                      border: "2px solid #000000", // WCAG బ్లాక్ బోర్డర్
+                      border: "2px solid #000000", 
                       p: "6vw",
                       display: "flex",
                       flexDirection: "column",
@@ -304,9 +323,8 @@ export default function SmruthimalaPage() {
                     {/* పోస్టర్ హెడర్ */}
                     <Box sx={{ textAlign: "center", mb: "4vh" }}>
                       <Typography sx={{ fontFamily: "'Peddana', serif", fontSize: "clamp(24px, 5vw, 40px)", color: "#000000", fontWeight: 700 }}>
-                        पिంగళి సీతమామ స్మృతిమాల
+                        పింగళి సీతమామ స్మృతిమాల
                       </Typography>
-                      {/* Change 3: Fix Divider Line (backgroundColor గా మార్చబడింది) */}
                       <Box sx={{ width: "60px", height: "2px", backgroundColor: "#000000", mx: "auto", mt: 1.5 }} />
                     </Box>
 
