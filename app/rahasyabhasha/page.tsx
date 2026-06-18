@@ -30,7 +30,7 @@ export default function MlechhaBhashaPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /* ─── ఖచ్చితమైన విదుర కా-భాషా లాజిక్ (Syllable with Space Logic) ─── */
+  /* ─── ఖచ్చితమైన విదుర -భాషా లాజిక్ (Syllable with Space Logic) ─── */
   const convertToSecret = (text: string): string => {
     // న్యూలైన్స్ మరియు స్పేస్‌లను అలాగే ఉంచుతూ టోకెన్లుగా విడదీస్తుంది
     return text.split(/(\s+)/).map((token) => {
@@ -42,7 +42,7 @@ export default function MlechhaBhashaPage() {
       if (syllables.length === 0) return token; // ప్రత్యేక గుర్తులు ఉంటే అలాగే ఉంచుతుంది (ఉదా: '[')
 
       // ప్రతి అక్షరానికి ముందు "కా" చేర్చి, వాటి మధ్య ఒక స్పేస్ ఇస్తుంది
-      const encodedWord = syllables.map((syl) => "కా" + syl).join(" ");
+      const encodedWord = syllables.map((syl) => "క" + syl).join(" ");
       
       // ఒకవేళ పదం చివర లేదా మొదట బ్రాకెట్లు లాంటివి ఉంటే వాటిని రీప్లేస్ కాకుండా కాపాడుతుంది
       let cleanToken = token;
@@ -60,7 +60,7 @@ export default function MlechhaBhashaPage() {
       
       for (let i = 0; i < syllables.length; i++) {
         // ఒకవేళ ప్రస్తుత అక్షరం "కా" అయితే, దాన్ని దాటవేసి తదుపరి అక్షరాన్ని మెయిన్ రిజల్ట్‌లోకి తీసుకుంటుంది
-        if (syllables[i] === "కా") {
+        if (syllables[i] === "క") {
           if (syllables[i + 1]) {
             result.push(syllables[i + 1]);
             i++;
@@ -222,7 +222,7 @@ export default function MlechhaBhashaPage() {
             విదుర మాల
           </h1>
           <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
-            సంపూర్ణ శబ్ద ఆధారిత రహస్య భాషా వ్యవస్థ ("కా" శైలి)
+            సంపూర్ణ శబ్ద ఆధారిత రహస్య భాషా వ్యవస్థ ("క" శైలి)
           </p>
         </div>
 
@@ -241,7 +241,7 @@ export default function MlechhaBhashaPage() {
             <h2 style={S.label}><GavelIcon fontSize="small" style={{ color: "#4f46e5" }} /> "కా-శబ్ద" నియమం</h2>
             <p style={{ fontSize: 12.5, color: "#64748b", lineHeight: 1.6, margin: 0 }}>
               ప్రతి పూర్తి ఉచ్చారణ శబ్దానికి (Syllable) ముందు <b>'కా'</b> వచ్చి చేరుతుంది మరియు అక్షరాల మధ్య స్పేస్ వస్తుంది. <br />
-              (ఉదాహరణకు: <b>రాముడు ➔ కారా కాము కాడు</b>).
+              (ఉదాహరణకు: <b>రాముడు ➔ కరా కము కడు</b>).
             </p>
           </div>
         </div>
@@ -262,7 +262,7 @@ export default function MlechhaBhashaPage() {
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={isEncode ? "ఇక్కడ రాయండి (ఉదా: రాముడు)..." : "ఇక్కడ రాయండి (ఉదా: కారా కాము కాడు)..."}
+              placeholder={isEncode ? "ఇక్కడ రాయండి (ఉదా: రాముడు)..." : "ఇక్కడ రాయండి (ఉదా: కరా కము కడు)..."}
               rows={isMobile ? 5 : 9}
               style={S.input}
             />
