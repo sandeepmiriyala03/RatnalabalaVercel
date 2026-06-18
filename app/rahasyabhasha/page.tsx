@@ -30,17 +30,24 @@ export default function MlechhaBhashaPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /* ─── శబ్ద ఆధారిత "కా" భాషా లాజిక్ (Syllable Sound Based Logic) ─── */
+  /* ─── ఖచ్చితమైన విదుర కా-భాషా లాజిక్ (Syllable with Space Logic) ─── */
   const convertToSecret = (text: string): string => {
+    // న్యూలైన్స్ మరియు స్పేస్‌లను అలాగే ఉంచుతూ టోకెన్లుగా విడదీస్తుంది
     return text.split(/(\s+)/).map((token) => {
       if (/^\s+$/.test(token)) return token;
       
-      const syllables = token.match(/[\u0C00-\u0C7F][\u0C3E-\u0C4D]*/g) || [token];
+      // తెలుగు అక్షరాలను (గుణింతాలు, ఒత్తులు, సున్నాలతో సహా) విడదీస్తుంది
+      const syllables = token.match(/[\u0C00-\u0C7F][\u0C3E-\u0C4D]*/g) || [];
       
-      return syllables.map((syl) => {
-        if (!/[\u0C00-\u0C7F]/.test(syl)) return syl;
-        return "కా" + syl;
-      }).join(" ");
+      if (syllables.length === 0) return token; // ప్రత్యేక గుర్తులు ఉంటే అలాగే ఉంచుతుంది (ఉదా: '[')
+
+      // ప్రతి అక్షరానికి ముందు "కా" చేర్చి, వాటి మధ్య ఒక స్పేస్ ఇస్తుంది
+      const encodedWord = syllables.map((syl) => "కా" + syl).join(" ");
+      
+      // ఒకవేళ పదం చివర లేదా మొదట బ్రాకెట్లు లాంటివి ఉంటే వాటిని రీప్లేస్ కాకుండా కాపాడుతుంది
+      let cleanToken = token;
+      const coreText = syllables.join("");
+      return cleanToken.replace(coreText, encodedWord);
     }).join("");
   };
 
@@ -52,6 +59,7 @@ export default function MlechhaBhashaPage() {
       const result: string[] = [];
       
       for (let i = 0; i < syllables.length; i++) {
+        // ఒకవేళ ప్రస్తుత అక్షరం "కా" అయితే, దాన్ని దాటవేసి తదుపరి అక్షరాన్ని మెయిన్ రిజల్ట్‌లోకి తీసుకుంటుంది
         if (syllables[i] === "కా") {
           if (syllables[i + 1]) {
             result.push(syllables[i + 1]);
@@ -62,7 +70,7 @@ export default function MlechhaBhashaPage() {
         }
       }
       return result.join("");
-    }).join("").replace(/\s+/g, " ").trim();
+    }).join("").replace(/  +/g, " ").trim(); // అనవసరమైన డబుల్ స్పేస్‌లను క్లీన్ చేస్తుంది
   };
 
   /* ─── హ్యాండ్లర్స్ (Handlers) ─── */
@@ -211,7 +219,7 @@ export default function MlechhaBhashaPage() {
         {/* హెడర్ */}
         <div style={{ textAlign: "center", padding: "5px 0" }}>
           <h1 style={{ fontSize: isMobile ? 26 : 34, fontWeight: 800, color: "#0f172a", margin: "0 0 4px 0" }}>
-            మ్లేచ్ఛ మాల
+            విదుర మాల
           </h1>
           <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
             సంపూర్ణ శబ్ద ఆధారిత రహస్య భాషా వ్యవస్థ ("కా" శైలి)
@@ -223,7 +231,7 @@ export default function MlechhaBhashaPage() {
           <div style={{ ...S.card, backgroundColor: "#f8fafc" }}>
             <h2 style={S.label}><MenuBookIcon fontSize="small" style={{ color: "#4f46e5" }} /> చారిత్రక నేపథ్యం</h2>
             <p style={{ fontSize: 12.5, color: "#1e293b", lineHeight: 1.6, margin: "0 0 6px 0", fontStyle: "italic", fontWeight: 500 }}>
-              "ఖనన శిల్పకళా ప్రౌఢుఁడనఘ!... నడవి కార్చిచ్చు గాల్చుచో నందు నక్క బిలము సొచ్చిన యలుక గాలక సుఖించు."
+              "ఖనన శిల్పకళా ప్రౌఢుఁడనఘ!... నడవి కార్చిచ్చు గాల్చుచో నందు నక్క బిలము సొచ్చిన ยలుక గాలక సుఖించు."
             </p>
             <p style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.5, margin: 0 }}>
               మహాభారతంలో లాక్షాగృహ దహన కుట్ర నుండి పాండవులను కాపాడటానికి విదురుడు ధర్మరాజుతో సంభాషించిన ప్రాచీన రహస్య సంకేత పద్య భాగం.
@@ -232,8 +240,8 @@ export default function MlechhaBhashaPage() {
           <div style={S.card}>
             <h2 style={S.label}><GavelIcon fontSize="small" style={{ color: "#4f46e5" }} /> "కా-శబ్ద" నియమం</h2>
             <p style={{ fontSize: 12.5, color: "#64748b", lineHeight: 1.6, margin: 0 }}>
-              ప్రతి పూర్తి ఉచ్చారణ శబ్దానికి (Syllable) ముందు <b>'కా'</b> వచ్చి చేరుతుంది. <br />
-              (ఉదాహరణకు: <b>సందీప్ ➔ కాసం కాదీ కాప్</b>).
+              ప్రతి పూర్తి ఉచ్చారణ శబ్దానికి (Syllable) ముందు <b>'కా'</b> వచ్చి చేరుతుంది మరియు అక్షరాల మధ్య స్పేస్ వస్తుంది. <br />
+              (ఉదాహరణకు: <b>రాముడు ➔ కారా కాము కాడు</b>).
             </p>
           </div>
         </div>
@@ -254,7 +262,7 @@ export default function MlechhaBhashaPage() {
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={isEncode ? "ఇక్కడ రాయండి (ఉదా: సందీప్)..." : "ఇక్కడ రాయండి (ఉదా: కాసం కాదీ కాప్)..."}
+              placeholder={isEncode ? "ఇక్కడ రాయండి (ఉదా: రాముడు)..." : "ఇక్కడ రాయండి (ఉదా: కారా కాము కాడు)..."}
               rows={isMobile ? 5 : 9}
               style={S.input}
             />
@@ -288,7 +296,7 @@ export default function MlechhaBhashaPage() {
           {/* [కుడి అవుట్‌పుట్ బాక్స్] */}
           <div style={S.card}>
             <label style={{ ...S.label, color: "#0f172a" }}>
-              {isEncode ? "ఫలితం (మ్లేచ్ఛ భాష)" : "ఫలితం (సాధారణ తెలుగు)"}
+              {isEncode ? "ఫలితం (విదుర భాష)" : "ఫలితం (సాధారణ తెలుగు)"}
             </label>
             {outputText ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
