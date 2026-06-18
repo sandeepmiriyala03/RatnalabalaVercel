@@ -35,10 +35,8 @@ export default function MlechhaBhashaPage() {
     return text.split(/(\s+)/).map((token) => {
       if (/^\s+$/.test(token)) return token;
       
-      // తెలుగు పూర్తి శబ్దాలను (Syllables - ఒత్తులు, సున్నాలతో కలిపి) విడదీస్తుంది
       const syllables = token.match(/[\u0C00-\u0C7F][\u0C3E-\u0C4D]*/g) || [token];
       
-      // ప్రతి శబ్దానికి ముందు "కా" చేర్చి, వాటి మధ్య స్పేస్ ఇస్తుంది (ఉదా: కాసం కాదీ కాప్)
       return syllables.map((syl) => {
         if (!/[\u0C00-\u0C7F]/.test(syl)) return syl;
         return "కా" + syl;
@@ -50,12 +48,10 @@ export default function MlechhaBhashaPage() {
     return text.split(/(\s+)/).map((token) => {
       if (/^\s+$/.test(token)) return token;
       
-      // "కా" శబ్దాలను గుర్తించి వాటిని తొలగిస్తుంది
       const syllables = token.match(/[\u0C00-\u0C7F][\u0C3E-\u0C4D]*/g) || [];
       const result: string[] = [];
       
       for (let i = 0; i < syllables.length; i++) {
-        // ఒకవేళ ప్రస్తుత అక్షరం "కా" అయితే దాన్ని వదిలేసి తదుపరి అక్షరాన్ని తీసుకుంటుంది
         if (syllables[i] === "కా") {
           if (syllables[i + 1]) {
             result.push(syllables[i + 1]);
@@ -66,7 +62,7 @@ export default function MlechhaBhashaPage() {
         }
       }
       return result.join("");
-    }).join("").replace(/\s+/g, " ").trim(); // అదనపు స్పేస్‌లను క్లీన్ చేస్తుంది
+    }).join("").replace(/\s+/g, " ").trim();
   };
 
   /* ─── హ్యాండ్లర్స్ (Handlers) ─── */
@@ -218,27 +214,31 @@ export default function MlechhaBhashaPage() {
             మ్లేచ్ఛ మాల
           </h1>
           <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
-            సంపూర్ణ శబ్ద ఆధారిత రహస్య భాషా వ్యవస్థ (కా-శైలి)
+            సంపూర్ణ శబ్ద ఆధారిత రహస్య భాషా వ్యవస్థ ("కా" శైలి)
           </p>
         </div>
 
-        {/* సమాచారం */}
+        {/* సమాచారం (చారిత్రక నేపథ్యం మరియు నియమాలు) */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
           <div style={{ ...S.card, backgroundColor: "#f8fafc" }}>
             <h2 style={S.label}><MenuBookIcon fontSize="small" style={{ color: "#4f46e5" }} /> చారిత్రక నేపథ్యం</h2>
-            <p style={{ fontSize: 12.5, color: "#64748b", lineHeight: 1.6, margin: 0 }}>
-              మహాభారతంలో లాక్షాగృహ ప్రమాదం నుండి పాండవులను రక్షించడానికి విదురుడు వాడిన ప్రాచీన రహస్య సంకేత సంభాషణ శైలి.
+            <p style={{ fontSize: 12.5, color: "#1e293b", lineHeight: 1.6, margin: "0 0 6px 0", fontStyle: "italic", fontWeight: 500 }}>
+              "ఖనన శిల్పకళా ప్రౌఢుఁడనఘ!... నడవి కార్చిచ్చు గాల్చుచో నందు నక్క బిలము సొచ్చిన యలుక గాలక సుఖించు."
+            </p>
+            <p style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.5, margin: 0 }}>
+              మహాభారతంలో లాక్షాగృహ దహన కుట్ర నుండి పాండవులను కాపాడటానికి విదురుడు ధర్మరాజుతో సంభాషించిన ప్రాచీన రహస్య సంకేత పద్య భాగం.
             </p>
           </div>
           <div style={S.card}>
             <h2 style={S.label}><GavelIcon fontSize="small" style={{ color: "#4f46e5" }} /> "కా-శబ్ద" నియమం</h2>
             <p style={{ fontSize: 12.5, color: "#64748b", lineHeight: 1.6, margin: 0 }}>
-              ప్రతి పూర్తి ఉచ్చారణ శబ్దానికి (Syllable) ముందు <b>'కా'</b> వచ్చి చేరుతుంది. (ఉదాహరణకు: <b>సందీప్ ➔ కాసం కాదీ కాప్</b>).
+              ప్రతి పూర్తి ఉచ్చారణ శబ్దానికి (Syllable) ముందు <b>'కా'</b> వచ్చి చేరుతుంది. <br />
+              (ఉదాహరణకు: <b>సందీప్ ➔ కాసం కాదీ కాప్</b>).
             </p>
           </div>
         </div>
 
-        {/* ─── గ్రిడ్ లేఅవుట్ [LEFT INPUT] [CONTROLS] [RIGHT OUTPUT] ─── */}
+        {/* ─── ప్రధాన లేఅవుట్ [ఎడమ ఇన్‌పుట్] [మధ్య కంట్రోల్స్] [కుడి అవుట్‌పుట్] ─── */}
         <div style={{
           display: "grid",
           gridTemplateColumns: isMobile ? "1fr" : "1fr 190px 1fr",
@@ -246,7 +246,7 @@ export default function MlechhaBhashaPage() {
           alignItems: "center"
         }}>
           
-          {/* [LEFT INPUT BOX] */}
+          {/* [ఎడమ ఇన్‌పుట్ బాక్స్] */}
           <div style={S.card}>
             <label style={{ ...S.label, color: "#0f172a" }}>
               {isEncode ? "ఇన్‌పుట్ (సాధారణ తెలుగు)" : "ఇన్‌పుట్ (రహస్య సంకేతం)"}
@@ -260,7 +260,7 @@ export default function MlechhaBhashaPage() {
             />
           </div>
 
-          {/* [CENTER CONTROLS] */}
+          {/* [మధ్య బటన్ల ప్యానెల్] */}
           <div style={{
             display: "flex",
             flexDirection: "column",
@@ -271,21 +271,21 @@ export default function MlechhaBhashaPage() {
           }}>
             <button onClick={handleEncode} style={S.btnAction("encode")}>
               <CodeIcon fontSize="small" />
-              ENCODE ➔
+              కోడ్ చేయి ➔
             </button>
             
             <button onClick={handleSwap} style={S.btnAction("swap")} title="ఇన్‌పుట్ మరియు అవుట్‌పుట్ మార్చండి">
               <SwapVertIcon style={{ transform: isMobile ? "none" : "rotate(90deg)" }} />
-              ⇄ swap
+              మార్చు ⇄
             </button>
 
             <button onClick={handleDecode} style={S.btnAction("decode")}>
               <LockOpenIcon fontSize="small" />
-              DECODE ➔
+              డీకోడ్ చేయి ➔
             </button>
           </div>
 
-          {/* [RIGHT OUTPUT BOX] */}
+          {/* [కుడి అవుట్‌పుట్ బాక్స్] */}
           <div style={S.card}>
             <label style={{ ...S.label, color: "#0f172a" }}>
               {isEncode ? "ఫలితం (మ్లేచ్ఛ భాష)" : "ఫలితం (సాధారణ తెలుగు)"}
@@ -309,7 +309,7 @@ export default function MlechhaBhashaPage() {
                   {outputText}
                 </div>
                 
-                {/* క్విక్ యాక్షన్స్ */}
+                {/* యాక్షన్స్ */}
                 <div style={{ display: "flex", gap: 8, width: "100%" }}>
                   <button onClick={handleCopy} style={S.btnSecondary(copied)}>
                     {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
