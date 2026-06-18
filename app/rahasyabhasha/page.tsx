@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 // MUI Icons
-import SyncAltIcon from "@mui/icons-material/SyncAlt";
+import SwapVertIcon from "@mui/icons-material/SwapVert";
+import CodeIcon from "@mui/icons-material/Code";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CheckIcon from "@mui/icons-material/Check";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
@@ -19,7 +21,7 @@ export default function MlechhaBhashaPage() {
   const [copied, setCopied] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Responsive state for pure-CSS fallback or toggle layout if needed
+  // Mobile layout responsiveness
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -28,58 +30,62 @@ export default function MlechhaBhashaPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  /* ─── Conversion Logic ─── */
-  const convertToSecret = (text: string): string =>
-    text.split(/(\s+)/).map((token) => {
+  /* ─── శబ్ద ఆధారిత "కా" భాషా లాజిక్ (Syllable Sound Based Logic) ─── */
+  const convertToSecret = (text: string): string => {
+    return text.split(/(\s+)/).map((token) => {
       if (/^\s+$/.test(token)) return token;
+      
+      // తెలుగు పూర్తి శబ్దాలను (Syllables - ఒత్తులు, సున్నాలతో కలిపి) విడదీస్తుంది
       const syllables = token.match(/[\u0C00-\u0C7F][\u0C3E-\u0C4D]*/g) || [token];
+      
+      // ప్రతి శబ్దానికి ముందు "కా" చేర్చి, వాటి మధ్య స్పేస్ ఇస్తుంది (ఉదా: కాసం కాదీ కాప్)
       return syllables.map((syl) => {
         if (!/[\u0C00-\u0C7F]/.test(syl)) return syl;
-        if (syl.endsWith("్")) return syl;
-        const matra = syl.match(/[\u0C3E-\u0C4C]/)?.[0] ?? "";
-        return syl + "క" + matra;
-      }).join("");
+        return "కా" + syl;
+      }).join(" ");
     }).join("");
+  };
 
-  const convertToNormal = (text: string): string =>
-    text.split(/(\s+)/).map((token) => {
+  const convertToNormal = (text: string): string => {
+    return text.split(/(\s+)/).map((token) => {
       if (/^\s+$/.test(token)) return token;
+      
+      // "కా" శబ్దాలను గుర్తించి వాటిని తొలగిస్తుంది
       const syllables = token.match(/[\u0C00-\u0C7F][\u0C3E-\u0C4D]*/g) || [];
       const result: string[] = [];
       
       for (let i = 0; i < syllables.length; i++) {
-        const cur = syllables[i];
-        const nxt = syllables[i + 1];
-
-        if (nxt) {
-          const cm = cur.match(/[\u0C3E-\u0C4C]/)?.[0] ?? "";
-          const expectedSecretKa = "క" + cm;
-
-          if (nxt === expectedSecretKa) {
-            result.push(cur);
-            i++; 
-            continue;
+        // ఒకవేళ ప్రస్తుత అక్షరం "కా" అయితే దాన్ని వదిలేసి తదుపరి అక్షరాన్ని తీసుకుంటుంది
+        if (syllables[i] === "కా") {
+          if (syllables[i + 1]) {
+            result.push(syllables[i + 1]);
+            i++;
           }
+        } else {
+          result.push(syllables[i]);
         }
-        result.push(cur);
       }
       return result.join("");
-    }).join("");
+    }).join("").replace(/\s+/g, " ").trim(); // అదనపు స్పేస్‌లను క్లీన్ చేస్తుంది
+  };
 
-  /* ─── Handlers ─── */
-  const handleConvert = () => {
+  /* ─── హ్యాండ్లర్స్ (Handlers) ─── */
+  const handleEncode = () => {
     if (!inputText.trim()) { setOutputText(""); return; }
-    setOutputText(direction === "encode" ? convertToSecret(inputText) : convertToNormal(inputText));
+    setDirection("encode");
+    setOutputText(convertToSecret(inputText));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") handleConvert();
+  const handleDecode = () => {
+    if (!inputText.trim()) { setOutputText(""); return; }
+    setDirection("decode");
+    setOutputText(convertToNormal(inputText));
   };
 
-  const handleDirectionChange = (val: "encode" | "decode") => {
-    setDirection(val);
-    setInputText("");
-    setOutputText("");
+  const handleSwap = () => {
+    setDirection((prev) => (prev === "encode" ? "decode" : "encode"));
+    setInputText(outputText);
+    setOutputText(inputText);
     setIsSpeaking(false);
     if (typeof window !== "undefined") window.speechSynthesis?.cancel();
   };
@@ -116,29 +122,29 @@ export default function MlechhaBhashaPage() {
 
   const isEncode = direction === "encode";
 
-  /* ─── Premium UI/UX Design System ─── */
+  /* ─── UI రెస్పాన్సివ్ స్టైల్స్ ─── */
   const S = {
     page: {
       minHeight: "100vh",
       backgroundColor: "#f4f6f9",
-      padding: isMobile ? "1rem 0.75rem" : "2rem 1.5rem",
+      padding: isMobile ? "1rem 0.75rem" : "2.5rem 1.5rem",
       fontFamily: "'Noto Sans Telugu', system-ui, sans-serif",
       boxSizing: "border-box" as const,
-      color: "#1e293b"
+      color: "#1e293b",
     },
     wrap: {
-      maxWidth: 850,
+      maxWidth: 1100,
       margin: "0 auto",
       display: "flex",
       flexDirection: "column" as const,
-      gap: 16,
+      gap: 18,
     },
     card: {
       backgroundColor: "#ffffff",
       border: "1px solid #e2e8f0",
       borderRadius: 16,
       padding: isMobile ? "16px" : "24px",
-      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05)",
+      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.03)",
     },
     label: {
       fontSize: 13,
@@ -154,7 +160,7 @@ export default function MlechhaBhashaPage() {
       border: "1px solid #cbd5e1",
       borderRadius: 12,
       padding: "14px",
-      fontSize: 16, // Prevents iOS auto-zoom behavior on focus
+      fontSize: 16,
       lineHeight: 1.6,
       color: "#0f172a",
       backgroundColor: "#ffffff",
@@ -162,25 +168,28 @@ export default function MlechhaBhashaPage() {
       outline: "none",
       boxSizing: "border-box" as const,
       fontFamily: "inherit",
-      WebkitAppearance: "none" as const,
-      transition: "border-color 0.2s, box-shadow 0.2s",
     },
-    btnPrimary: {
-      backgroundColor: "#4f46e5", // Indigo theme for higher fidelity feel
-      color: "#ffffff",
-      border: "none",
-      borderRadius: 12,
-      padding: "14px 28px",
-      fontSize: 16,
-      fontWeight: 600,
-      cursor: "pointer",
-      fontFamily: "inherit",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
-      width: isMobile ? "100%" : "auto",
+    btnAction: (type: "encode" | "decode" | "swap") => {
+      let bg = "#4f46e5";
+      if (type === "decode") bg = "#0284c7";
+      if (type === "swap") bg = "#64748b";
+      return {
+        backgroundColor: bg,
+        color: "#ffffff",
+        border: "none",
+        borderRadius: 12,
+        padding: isMobile ? "14px" : "12px 20px",
+        fontSize: 14,
+        fontWeight: 600,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        width: "100%",
+        boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
+        fontFamily: "inherit",
+      };
     },
     btnSecondary: (active = false) => ({
       backgroundColor: active ? "#ecfdf5" : "#ffffff",
@@ -189,138 +198,98 @@ export default function MlechhaBhashaPage() {
       borderRadius: 10,
       padding: "10px 16px",
       fontSize: 14,
-      fontWeight: 500,
       cursor: "pointer",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
       fontFamily: "inherit",
-      flex: isMobile ? 1 : "none",
+      flex: 1,
     }),
-    selectWrapper: {
-      position: "relative" as const,
-      display: "flex",
-      alignItems: "center",
-    },
-    select: {
-      width: "100%",
-      border: "1px solid #cbd5e1",
-      borderRadius: 12,
-      padding: "14px",
-      fontSize: 15,
-      fontWeight: 500,
-      color: "#1e293b",
-      backgroundColor: "#ffffff",
-      cursor: "pointer",
-      outline: "none",
-      fontFamily: "inherit",
-      boxSizing: "border-box" as const,
-      WebkitAppearance: "none" as const,
-    },
   };
 
   return (
     <div style={S.page}>
       <div style={S.wrap}>
 
-        {/* Brand Header */}
-        <div style={{ textAlign: "center", padding: "10px 0" }}>
-          <h1 style={{ fontSize: isMobile ? 24 : 32, fontWeight: 800, color: "#0f172a", margin: "0 0 4px 0", letterSpacing: "-0.02em" }}>
+        {/* హెడర్ */}
+        <div style={{ textAlign: "center", padding: "5px 0" }}>
+          <h1 style={{ fontSize: isMobile ? 26 : 34, fontWeight: 800, color: "#0f172a", margin: "0 0 4px 0" }}>
             మ్లేచ్ఛ మాల
           </h1>
-          <p style={{ fontSize: 14, color: "#64748b", margin: 0, fontWeight: 400 }}>
-            రహస్య గూఢచార భాషా మార్పిడి సాధనం
+          <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
+            సంపూర్ణ శబ్ద ఆధారిత రహస్య భాషా వ్యవస్థ (కా-శైలి)
           </p>
         </div>
 
-        {/* Responsive Mobile Layout Switcher Grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-          gap: 16
-        }}>
-          
-          {/* History Context (Collapsible on Mobile naturally by stacking layout) */}
+        {/* సమాచారం */}
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
           <div style={{ ...S.card, backgroundColor: "#f8fafc" }}>
-            <h2 style={S.label}>
-              <MenuBookIcon fontSize="small" style={{ color: "#4f46e5" }} /> చారిత్రక నేపథ్యం
-            </h2>
-            <div style={{
-              borderLeft: "4px solid #4f46e5",
-              backgroundColor: "#ffffff",
-              borderRadius: "0 12px 12px 0",
-              padding: "12px",
-              marginBottom: 10,
-            }}>
-              <p style={{ fontSize: 13, color: "#334155", fontStyle: "italic", lineHeight: 1.8, margin: 0 }}>
-                "ఖనన శిల్పకళా ప్రౌఢుఁడనఘ!... నడవి కార్చిచ్చు గాల్చుచో నందు నక్క బిలము సొచ్చిన యలుక గాలక సుఖించు."
-              </p>
-            </div>
+            <h2 style={S.label}><MenuBookIcon fontSize="small" style={{ color: "#4f46e5" }} /> చారిత్రక నేపథ్యం</h2>
             <p style={{ fontSize: 12.5, color: "#64748b", lineHeight: 1.6, margin: 0 }}>
-              మహాభారత కాలంలో విదురుడు లాక్షాగృహ కుట్రను పాండవులకు రహస్యంగా తెలియజేయడానికి వాడిన ప్రాచీన సంకేత భాష.
+              మహాభారతంలో లాక్షాగృహ ప్రమాదం నుండి పాండవులను రక్షించడానికి విదురుడు వాడిన ప్రాచీన రహస్య సంకేత సంభాషణ శైలి.
             </p>
           </div>
-
-          {/* Quick Rules */}
           <div style={S.card}>
-            <h2 style={S.label}>
-              <GavelIcon fontSize="small" style={{ color: "#4f46e5" }} /> రహస్య నియమాలు
-            </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div style={{ backgroundColor: "#f8fafc", borderRadius: 8, padding: "8px 10px" }}>
-                <p style={{ fontSize: 12, fontWeight: 700, margin: "0 0 2px 0" }}>అక్షరం + క</p>
-                <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>ప్రతి అక్షరం తర్వాత అదే మాత్రతో "క" వస్తుంది.</p>
-              </div>
-              <div style={{ backgroundColor: "#f8fafc", borderRadius: 8, padding: "8px 10px" }}>
-                <p style={{ fontSize: 12, fontWeight: 700, margin: "0 0 2px 0" }}>హల్లంతాలు</p>
-                <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>పొల్లు అక్షరాలకు (్) "క" నియమం వర్తించదు.</p>
-              </div>
-            </div>
+            <h2 style={S.label}><GavelIcon fontSize="small" style={{ color: "#4f46e5" }} /> "కా-శబ్ద" నియమం</h2>
+            <p style={{ fontSize: 12.5, color: "#64748b", lineHeight: 1.6, margin: 0 }}>
+              ప్రతి పూర్తి ఉచ్చారణ శబ్దానికి (Syllable) ముందు <b>'కా'</b> వచ్చి చేరుతుంది. (ఉదాహరణకు: <b>సందీప్ ➔ కాసం కాదీ కాప్</b>).
+            </p>
           </div>
         </div>
 
-        {/* Direction Mode Selector */}
-        <div style={S.card}>
-          <label style={S.label}>మార్పిడి దిశను ఎంచుకోండి</label>
-          <div style={S.selectWrapper}>
-            <select
-              value={direction}
-              onChange={(e) => handleDirectionChange(e.target.value as "encode" | "decode")}
-              style={S.select}
-            >
-              <option value="encode">సాధారణ తెలుగు ➔ మ్లేచ్ఛ భాష (Encode)</option>
-              <option value="decode">మ్లేచ్ఛ భాష ➔ సాధారణ తెలుగు (Decode)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Input & Output Stack Matrix */}
+        {/* ─── గ్రిడ్ లేఅవుట్ [LEFT INPUT] [CONTROLS] [RIGHT OUTPUT] ─── */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 190px 1fr",
           gap: 16,
-          alignItems: "start"
+          alignItems: "center"
         }}>
           
-          {/* Input Interface */}
+          {/* [LEFT INPUT BOX] */}
           <div style={S.card}>
             <label style={{ ...S.label, color: "#0f172a" }}>
-              {isEncode ? "సాధారణ తెలుగు పాఠ్యం" : "మ్లేచ్ఛ భాషా సంకేతం"}
+              {isEncode ? "ఇన్‌పుట్ (సాధారణ తెలుగు)" : "ఇన్‌పుట్ (రహస్య సంకేతం)"}
             </label>
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={isEncode ? "ఇక్కడ రాయండి (ఉదా: సందీప్)..." : "ఇక్కడ రాయండి (ఉదా: సంకదీకిప్)..."}
-              rows={isMobile ? 5 : 8}
+              placeholder={isEncode ? "ఇక్కడ రాయండి (ఉదా: సందీప్)..." : "ఇక్కడ రాయండి (ఉదా: కాసం కాదీ కాప్)..."}
+              rows={isMobile ? 5 : 9}
               style={S.input}
             />
           </div>
 
-          {/* Output Interface */}
+          {/* [CENTER CONTROLS] */}
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            padding: isMobile ? "6px 0" : "0",
+            justifyContent: "center",
+            alignItems: "center"
+          }}>
+            <button onClick={handleEncode} style={S.btnAction("encode")}>
+              <CodeIcon fontSize="small" />
+              ENCODE ➔
+            </button>
+            
+            <button onClick={handleSwap} style={S.btnAction("swap")} title="ఇన్‌పుట్ మరియు అవుట్‌పుట్ మార్చండి">
+              <SwapVertIcon style={{ transform: isMobile ? "none" : "rotate(90deg)" }} />
+              ⇄ swap
+            </button>
+
+            <button onClick={handleDecode} style={S.btnAction("decode")}>
+              <LockOpenIcon fontSize="small" />
+              DECODE ➔
+            </button>
+          </div>
+
+          {/* [RIGHT OUTPUT BOX] */}
           <div style={S.card}>
-            <label style={{ ...S.label, color: "#0f172a" }}>పరివర్తన ఫలితం</label>
+            <label style={{ ...S.label, color: "#0f172a" }}>
+              {isEncode ? "ఫలితం (మ్లేచ్ఛ భాష)" : "ఫలితం (సాధారణ తెలుగు)"}
+            </label>
             {outputText ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{
@@ -332,15 +301,15 @@ export default function MlechhaBhashaPage() {
                   color: "#0f172a",
                   backgroundColor: "#f8fafc",
                   whiteSpace: "pre-wrap",
-                  minHeight: isMobile ? 100 : 166,
-                  maxHeight: 300,
+                  minHeight: isMobile ? 100 : 182,
+                  maxHeight: 280,
                   overflowY: "auto",
                   wordBreak: "break-word"
                 }}>
                   {outputText}
                 </div>
                 
-                {/* Action Buttons Container - Auto fluid rows for mobile */}
+                {/* క్విక్ యాక్షన్స్ */}
                 <div style={{ display: "flex", gap: 8, width: "100%" }}>
                   <button onClick={handleCopy} style={S.btnSecondary(copied)}>
                     {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
@@ -356,48 +325,33 @@ export default function MlechhaBhashaPage() {
               <div style={{
                 border: "2px dashed #e2e8f0",
                 borderRadius: 12,
-                minHeight: isMobile ? 120 : 220,
+                minHeight: isMobile ? 120 : 236,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 backgroundColor: "#fafafa"
               }}>
                 <p style={{ fontSize: 13, color: "#94a3b8", fontStyle: "italic", margin: 0, textAlign: "center" }}>
-                  క్రింది బటన్ నొక్కిన వెంటనే<br />ఫలితం ఇక్కడ ప్రత్యక్షమవుతుంది
+                  బటన్లను క్లిక్ చేయగానే ఫలితం ఇక్కడ ప్రత్యక్షమవుతుంది.
                 </p>
               </div>
             )}
           </div>
+
         </div>
 
-        {/* Global Action Floating Bar Area */}
-        <div style={{
-          display: "flex",
-          flexDirection: isMobile ? "column" as const : "row" as const,
-          gap: 10,
-          justifyContent: "center",
-          alignItems: "center",
-          marginTop: 8,
-          marginBottom: isMobile ? 24 : 0
-        }}>
-          <button
-            onClick={handleConvert}
-            style={S.btnPrimary}
-          >
-            <SyncAltIcon />
-            {isEncode ? "మ్లేచ్ఛ భాషలోకి మార్చు" : "సాధారణ భాషలోకి మార్చు"}
-          </button>
-
-          {(inputText || outputText) && (
+        {/* క్లియర్ బటన్ */}
+        {(inputText || outputText) && (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
             <button
               onClick={handleClear}
-              style={{ ...S.btnSecondary(), width: isMobile ? "100%" : "auto", height: 50, borderRadius: 12 }}
+              style={{ ...S.btnSecondary(), maxWidth: isMobile ? "100%" : "220px", height: 46, borderRadius: 12 }}
             >
               <DeleteOutlineIcon fontSize="small" />
               అంతా క్లియర్ చేయండి
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
       </div>
     </div>
