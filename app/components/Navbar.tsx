@@ -49,6 +49,7 @@ const NAV_GROUPS = [
       { label: "లిపిమాల",      path: "/lipimala" },
       { label: "ఖతిమాల",       path: "/khatiMala" },
       { label: "విదురమాల", path: "/rahasyabhasha" },
+      { label: "శైలిమాల", path: "/shailimala" }, 
     ],
   },
 ];
