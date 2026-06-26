@@ -8,7 +8,7 @@ interface ShailimalaTabsProps {
 }
 
 export default function ShailimalaTabs({ initialFonts, initialBooks }: ShailimalaTabsProps) {
-  const [activeTab, setActiveTab] = useState<'fonts' | 'books'>('fonts');
+  const [activeTab, setActiveTab] = useState<'Fonts' | 'books'>('Fonts');
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
 
@@ -35,9 +35,9 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
     return dot === -1 ? '' : filename.substring(dot + 1).toLowerCase();
   };
 
-  const handleSingleDownload = (originalName: string, folder: 'fonts' | 'books') => {
+  const handleSingleDownload = (originalName: string, folder: 'Fonts' | 'books') => {
     if (!isDesktop) return;
-    const finalName = folder === 'fonts' ? formatToMalaName(originalName) : originalName;
+    const finalName = folder === 'Fonts' ? formatToMalaName(originalName) : originalName;
     const link = document.createElement('a');
     link.href = `/${folder}/${originalName}`;
     link.setAttribute('download', finalName);
@@ -46,7 +46,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
     document.body.removeChild(link);
   };
 
-  const handleBulkDownload = async (files: string[], folder: 'fonts' | 'books', archiveName: string) => {
+  const handleBulkDownload = async (files: string[], folder: 'Fonts' | 'books', archiveName: string) => {
     if (!isDesktop) return;
     setIsDownloadingAll(true);
     try {
@@ -87,8 +87,8 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
     );
   }
 
-  const files = activeTab === 'fonts' ? initialFonts : initialBooks;
-  const archiveName = activeTab === 'fonts' ? 'Shailimala_Fonts' : 'Gnyanamala_Books';
+  const files = activeTab === 'Fonts' ? initialFonts : initialBooks;
+  const archiveName = activeTab === 'Fonts' ? 'Shailimala_Fonts' : 'Gnyanamala_Books';
 
   const DownloadIcon = () => (
     <svg style={{ width: 14, height: 14 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -126,8 +126,8 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
             <line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="2.5" strokeLinecap="round" />
           </svg>
           <div>
-            <p style={{ fontWeight: 600, color: '#991b1b', fontSize: 14, margin: 0 }}>Desktop required</p>
-            <p style={{ color: '#b91c1c', fontSize: 12, marginTop: 4, lineHeight: 1.5, marginBottom: 0 }}>
+            <p style={{ fontWeight: 600, color: '#991b1b', Fontsize: 14, margin: 0 }}>Desktop required</p>
+            <p style={{ color: '#b91c1c', Fontsize: 12, marginTop: 4, lineHeight: 1.5, marginBottom: 0 }}>
               Downloads only work in desktop browsers. Please open this page on a computer.
             </p>
           </div>
@@ -136,10 +136,10 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 24 }}>
-        {(['fonts', 'books'] as const).map((tab) => {
+        {(['Fonts', 'books'] as const).map((tab) => {
           const isActive = activeTab === tab;
-          const label = tab === 'fonts' ? 'తెలుగు ఖతులు' : 'సాహిత్య గ్రంథాలు';
-          const count = tab === 'fonts' ? initialFonts.length : initialBooks.length;
+          const label = tab === 'Fonts' ? 'తెలుగు ఖతులు' : 'సాహిత్య గ్రంథాలు';
+          const count = tab === 'Fonts' ? initialFonts.length : initialBooks.length;
           return (
             <button
               key={tab}
@@ -149,7 +149,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                 alignItems: 'center',
                 gap: 8,
                 padding: '10px 16px',
-                fontSize: 14,
+                Fontsize: 14,
                 fontWeight: 500,
                 border: 'none',
                 borderBottom: isActive ? '2px solid #4f46e5' : '2px solid transparent',
@@ -161,7 +161,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                 fontFamily: 'inherit',
               }}
             >
-              {tab === 'fonts' ? (
+              {tab === 'Fonts' ? (
                 <svg style={{ width: 16, height: 16, flexShrink: 0 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path d="M4 20V4l8 16V4" /><line x1="6" y1="12" x2="14" y2="12" />
                   <path d="M19 7v13M16 7h6" />
@@ -175,7 +175,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
               {label}
               <span
                 style={{
-                  fontSize: 12,
+                  Fontsize: 12,
                   padding: '1px 8px',
                   borderRadius: 20,
                   fontWeight: 500,
@@ -202,11 +202,11 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
         }}
       >
         <div>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-            {activeTab === 'fonts' ? 'శైలిమాల కలెక్షన్' : 'జ్ఞానమాల గ్రంథాలు'}
+          <h3 style={{ Fontsize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
+            {activeTab === 'Fonts' ? 'శైలిమాల కలెక్షన్' : 'జ్ఞానమాల గ్రంథాలు'}
           </h3>
-          <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 2, marginBottom: 0 }}>
-            {activeTab === 'fonts'
+          <p style={{ Fontsize: 13, color: '#94a3b8', marginTop: 2, marginBottom: 0 }}>
+            {activeTab === 'Fonts'
               ? 'విడిగా లేదా అన్నింటినీ ఒకే ప్యాకేజీగా డౌన్‌లోడ్ చేసుకోవచ్చు.'
               : 'సాహిత్య గ్రంథాల సంకలనాన్ని వీక్షించవచ్చు లేదా డౌన్‌లోడ్ చేసుకోవచ్చు.'}
           </p>
@@ -225,7 +225,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
               border: 'none',
               borderRadius: 8,
               padding: '8px 16px',
-              fontSize: 13,
+              Fontsize: 13,
               fontWeight: 500,
               cursor: (!isDesktop || isDownloadingAll) ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
@@ -245,12 +245,12 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
             textAlign: 'center',
             padding: '56px 24px',
             color: '#94a3b8',
-            fontSize: 14,
+            Fontsize: 14,
             border: '2px dashed #e2e8f0',
             borderRadius: 12,
           }}
         >
-          {activeTab === 'fonts' ? 'ఫోల్డర్‌లో ఫాంట్ ఫైళ్లు ఏవీ లభించలేదు.' : 'ఫోల్డర్‌లో గ్రంథాల ప్రతులు ఏవీ లభించలేదు.'}
+          {activeTab === 'Fonts' ? 'ఫోల్డర్‌లో ఫాంట్ ఫైళ్లు ఏవీ లభించలేదు.' : 'ఫోల్డర్‌లో గ్రంథాల ప్రతులు ఏవీ లభించలేదు.'}
         </div>
       ) : (
         <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
@@ -262,7 +262,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
               background: '#f8fafc',
               borderBottom: '1px solid #e2e8f0',
               padding: '8px 12px',
-              fontSize: 11,
+              Fontsize: 11,
               fontWeight: 600,
               color: '#94a3b8',
               textTransform: 'uppercase',
@@ -270,12 +270,12 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
             }}
           >
             <div>#</div>
-            <div>{activeTab === 'fonts' ? 'ఖతువు పేరు' : 'గ్రంథం పేరు'}</div>
+            <div>{activeTab === 'Fonts' ? 'ఖతువు పేరు' : 'గ్రంథం పేరు'}</div>
             <div style={{ textAlign: 'center' }}>డౌన్‌లోడ్</div>
           </div>
 
           {files.map((file, index) => {
-            const displayName = activeTab === 'fonts' ? formatToMalaName(file) : file;
+            const displayName = activeTab === 'Fonts' ? formatToMalaName(file) : file;
             const base = getBaseName(displayName);
             const ext = getExt(displayName);
             return (
@@ -286,11 +286,11 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                   gridTemplateColumns: '40px 1fr 60px',
                   alignItems: 'center',
                   padding: '10px 12px',
-                  fontSize: 14,
+                  Fontsize: 14,
                   borderBottom: index < files.length - 1 ? '1px solid #f1f5f9' : 'none',
                 }}
               >
-                <div style={{ fontSize: 12, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ Fontsize: 12, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
                   {index + 1}
                 </div>
                 <div
@@ -303,7 +303,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                   }}
                 >
                   {base}
-                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 12, marginLeft: 2 }}>
+                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', Fontsize: 12, marginLeft: 2 }}>
                     .{ext}
                   </span>
                 </div>
