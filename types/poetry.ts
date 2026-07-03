@@ -93,7 +93,7 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
   {
   key: "TeaShatakam",
   label: "టీ శతకం",
-  authors: "ప్రసాదరావు మిరియాల, కాకినాడ",
+  authors: "శ్రీ ప్రసాదరావు మిరియాల గారు",
   totalPoems: 100,
 }
 ];
