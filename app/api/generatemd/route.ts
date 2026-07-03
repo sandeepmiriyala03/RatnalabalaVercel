@@ -24,7 +24,7 @@ export async function GET() {
       .replace(/శుభోదయం.*$/gm, "")
       .trim();
 
-    // Generate numbered poems (1-99)
+    // Split numbered poems
     const poems = content
       .split(/\n(?=\d+\.\s*)/g)
       .map((p) => p.trim())
@@ -36,18 +36,18 @@ export async function GET() {
       const match = poem.match(/^(\d+)\./);
       if (!match) continue;
 
-      const verseNumber = parseInt(match[1]);
+      const verseNumber = parseInt(match[1], 10);
       const versePadded = verseNumber.toString().padStart(3, "0");
 
       let cleanPoem = poem.replace(/^\d+\.\s*/, "").trim();
 
-      // Remove existing ending
-      cleanPoem = cleanPoem.replace(/\*?టీ\*?!?\s*$/u, "").trim();
-
-      // Remove Telugu verse numbers like ౯౮ ౯౯ ౧౦౦
+      // Remove Telugu verse numbers (౯౮, ౯౯, ౧౦౦...)
       cleanPoem = cleanPoem.replace(/[౦-౯]+\.?\s*$/gm, "").trim();
 
-      cleanPoem += "\n\n*టీ*";
+      // Convert "*టీ*!" → "టీ"
+      cleanPoem = cleanPoem
+        .replace(/\*టీ\*!?/gu, "టీ")
+        .trim();
 
       const md = `---
 title: "టీ శతకం – పద్యం ${verseNumber}"
@@ -65,9 +65,7 @@ ${cleanPoem}
       );
 
       generated++;
-    }
-
-    // Create 100.md from the final blessing
+    }    // Generate 100.md
     const finalMatch = content.match(
       /ఈ పద్యములను జదివిన[\s\S]*?గనినన్ వినినన్\.?\s*[౦-౯]*/
     );
@@ -77,9 +75,10 @@ ${cleanPoem}
         .replace(/[౦-౯]+\.?\s*$/gm, "")
         .trim();
 
-      finalPoem = finalPoem.replace(/\*?టీ\*?!?\s*$/u, "").trim();
-
-      finalPoem += "\n\n*టీ*";
+      // Convert "*టీ*!" → "టీ"
+      finalPoem = finalPoem
+        .replace(/\*టీ\*!?/gu, "టీ")
+        .trim();
 
       const md100 = `---
 title: "టీ శతకం – పద్యం 100"
@@ -105,6 +104,8 @@ ${finalPoem}
       message: `✅ ${generated} Markdown files generated successfully.`,
     });
   } catch (err) {
+    console.error(err);
+
     return Response.json(
       {
         success: false,

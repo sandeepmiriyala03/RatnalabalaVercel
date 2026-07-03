@@ -10,7 +10,9 @@ export type PoetryKey =
   | "ShivanandaLahari"
   | "RamachandraPrabhu"
   | "YajnavalkyaSatakam"
-  | "DasarathiKaruNapaYonidhi"  ; 
+  | "DasarathiKaruNapaYonidhi"  
+  | "TeaShatakam"
+  ; 
 
 /* 📘 Poetry Meta */
 export interface PoetryMeta {
@@ -87,7 +89,13 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
     label: "శ్రీ దాశరథీ కరుణాపయోనిధీ",
     authors: "శ్రీ భద్రాచల రామదాసు గారు",
     totalPoems: 108,
-  }
+  },
+  {
+  key: "TeaShatakam",
+  label: "టీ శతకం",
+  authors: "ప్రసాదరావు మిరియాల, కాకినాడ",
+  totalPoems: 100,
+}
 ];
 
 /* ⭐ Default */
