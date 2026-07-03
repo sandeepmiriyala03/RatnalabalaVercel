@@ -108,31 +108,70 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
   return (
     <div>
       {/* Mobile restriction banner */}
-      {!isDesktop && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 12,
-            alignItems: 'flex-start',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 24,
-          }}
-        >
-          <svg style={{ width: 20, height: 20, color: '#ef4444', flexShrink: 0, marginTop: 2 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <rect x="5" y="2" width="14" height="20" rx="2" />
-            <line x1="12" y1="18" x2="12" y2="18.01" strokeWidth="2.5" strokeLinecap="round" />
-          </svg>
-          <div>
-            <p style={{ fontWeight: 600, color: '#991b1b', Fontsize: 14, margin: 0 }}>Desktop required</p>
-            <p style={{ color: '#b91c1c', Fontsize: 12, marginTop: 4, lineHeight: 1.5, marginBottom: 0 }}>
-              Downloads only work in desktop browsers. Please open this page on a computer.
-            </p>
-          </div>
-        </div>
-      )}
+    {!isDesktop && (
+  <div
+    style={{
+      display: "flex",
+      gap: 12,
+      alignItems: "flex-start",
+      background: "#fef2f2",
+      border: "1px solid #fecaca",
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 24,
+    }}
+  >
+    <svg
+      style={{
+        width: 20,
+        height: 20,
+        color: "#ef4444",
+        flexShrink: 0,
+        marginTop: 2,
+      }}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <rect x="5" y="2" width="14" height="20" rx="2" />
+      <line
+        x1="12"
+        y1="18"
+        x2="12"
+        y2="18.01"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+    </svg>
+
+    <div>
+      <p
+        style={{
+          fontWeight: 600,
+          color: "#991b1b",
+          fontSize: 14,
+          margin: 0,
+        }}
+      >
+        Desktop required
+      </p>
+
+      <p
+        style={{
+          color: "#b91c1c",
+          fontSize: 12,
+          marginTop: 4,
+          lineHeight: 1.5,
+          marginBottom: 0,
+        }}
+      >
+        Downloads only work in desktop browsers. Please open this page on a
+        computer.
+      </p>
+    </div>
+  </div>
+)}
 
       {/* Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 24 }}>
@@ -149,7 +188,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                 alignItems: 'center',
                 gap: 8,
                 padding: '10px 16px',
-                Fontsize: 14,
+                fontSize: 14,
                 fontWeight: 500,
                 border: 'none',
                 borderBottom: isActive ? '2px solid #4f46e5' : '2px solid transparent',
@@ -175,7 +214,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
               {label}
               <span
                 style={{
-                  Fontsize: 12,
+                  fontSize : 12,
                   padding: '1px 8px',
                   borderRadius: 20,
                   fontWeight: 500,
@@ -202,10 +241,10 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
         }}
       >
         <div>
-          <h3 style={{ Fontsize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
             {activeTab === 'Fonts' ? 'శైలిమాల కలెక్షన్' : 'జ్ఞానమాల గ్రంథాలు'}
           </h3>
-          <p style={{ Fontsize: 13, color: '#94a3b8', marginTop: 2, marginBottom: 0 }}>
+          <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 2, marginBottom: 0 }}>
             {activeTab === 'Fonts'
               ? 'విడిగా లేదా అన్నింటినీ ఒకే ప్యాకేజీగా డౌన్‌లోడ్ చేసుకోవచ్చు.'
               : 'సాహిత్య గ్రంథాల సంకలనాన్ని వీక్షించవచ్చు లేదా డౌన్‌లోడ్ చేసుకోవచ్చు.'}
@@ -225,7 +264,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
               border: 'none',
               borderRadius: 8,
               padding: '8px 16px',
-              Fontsize: 13,
+              fontSize: 13,
               fontWeight: 500,
               cursor: (!isDesktop || isDownloadingAll) ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
@@ -245,7 +284,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
             textAlign: 'center',
             padding: '56px 24px',
             color: '#94a3b8',
-            Fontsize: 14,
+            fontSize: 14,
             border: '2px dashed #e2e8f0',
             borderRadius: 12,
           }}
@@ -262,7 +301,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
               background: '#f8fafc',
               borderBottom: '1px solid #e2e8f0',
               padding: '8px 12px',
-              Fontsize: 11,
+              fontSize: 11,
               fontWeight: 600,
               color: '#94a3b8',
               textTransform: 'uppercase',
@@ -286,11 +325,11 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                   gridTemplateColumns: '40px 1fr 60px',
                   alignItems: 'center',
                   padding: '10px 12px',
-                  Fontsize: 14,
+                  fontSize: 14,
                   borderBottom: index < files.length - 1 ? '1px solid #f1f5f9' : 'none',
                 }}
               >
-                <div style={{ Fontsize: 12, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ fontSize: 12, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
                   {index + 1}
                 </div>
                 <div
@@ -303,7 +342,7 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                   }}
                 >
                   {base}
-                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', Fontsize: 12, marginLeft: 2 }}>
+                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 12, marginLeft: 2 }}>
                     .{ext}
                   </span>
                 </div>
