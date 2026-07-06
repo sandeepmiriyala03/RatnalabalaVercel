@@ -2,12 +2,8 @@
 
 import React, { useCallback } from "react";
 import { IconButton, Stack, Tooltip } from "@mui/material";
-
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import XIcon from "@mui/icons-material/X";
 import DownloadIcon from "@mui/icons-material/Download";
-import PrintIcon from "@mui/icons-material/Print";
-
 import html2canvas from "html2canvas";
 
 type Props = {
@@ -15,18 +11,26 @@ type Props = {
 };
 
 /* Sizes */
-const SOCIAL_SIZE = 1080;
+// WhatsApp Status is full-screen PORTRAIT (9:16). 1080x1920 is the standard
+// WhatsApp/Instagram Story size.
+const SOCIAL_WIDTH = 1080;
+const SOCIAL_HEIGHT = 1920;
 const A4_WIDTH = 2480;
 const A4_HEIGHT = 3508;
+
+// Temple teal — same tokens as PoemCardNew.tsx / poemPoster.ts
+const POSTER_BG = "#F0F7F5";
+const POSTER_BORDER = "#0F4C43";
+
+const CAPTURE_WINDOW_WIDTH = 1280;
 
 export default function ShareButtons({ targetRef }: Props) {
 
   /* 🔹 Shared Telugu Text */
-  const SHARE_TEXT =
+ const SHARE_TEXT =
     "రత్నాలబాల – పద్యాలవాల – భావాలమాల\n" +
-    "చదవండి – వినండి – పంచుకోండి\n\n" +
-    "© సృష్టి : యుక్తిశాల AI\n" +
-    "https://ratnalabala.vercel.app";
+    "   చదవండి – వినండి – పంచుకోండి.\n\n" +
+    "🌐 https://ratnalabala.vercel.app/";
 
   /* 🖼 Generate Image */
   const generateImage = useCallback(
@@ -39,12 +43,18 @@ export default function ShareButtons({ targetRef }: Props) {
 
       const isA4 = mode === "a4";
 
+      const targetWidth = isA4 ? A4_WIDTH : SOCIAL_WIDTH;
+      const targetHeight = isA4 ? A4_HEIGHT : SOCIAL_HEIGHT;
+
       const canvas = await html2canvas(targetRef.current, {
-        backgroundColor: "#ffffff",
+        backgroundColor: POSTER_BG,
         scale: 2,
         useCORS: true,
         scrollX: 0,
         scrollY: 0,
+        width: targetWidth,
+        height: targetHeight,
+        windowWidth: CAPTURE_WINDOW_WIDTH,
 
         onclone: (_, doc) => {
           const root = doc.querySelector(
@@ -57,28 +67,77 @@ export default function ShareButtons({ targetRef }: Props) {
 
           if (!root || !body) return;
 
+          doc.querySelectorAll("[data-poster-hide]").forEach((el) => {
+            (el as HTMLElement).style.display = "none";
+          });
+
+          // FIX — this is the actual bug behind the giant blank area below
+          // short poems. Plain block layout (no flex, no table) just places
+          // body at the top of root and stops — it never fills or centers
+          // within root's full forced height, so a short poem leaves a huge
+          // gap at the bottom of a tall 1080x1920 canvas.
+          //
+          // display:table + table-cell/vertical-align:middle is the fix.
+          // Unlike flexbox (unreliable in html2canvas — this is what caused
+          // the earlier "card stuck in the top-left corner" bug), table
+          // layout is one of the oldest, most consistently supported CSS
+          // features and centers content of ANY height reliably.
+          //
+          // Root padding is now small and uniform on all sides — this is
+          // what makes the bordered card fill almost the entire canvas
+          // instead of leaving big asymmetric gaps.
           Object.assign(root.style, {
-            width: isA4 ? `${A4_WIDTH}px` : `${SOCIAL_SIZE}px`,
-            height: isA4 ? `${A4_HEIGHT}px` : `${SOCIAL_SIZE}px`,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            background: "#ffffff",
+            width: `${targetWidth}px`,
+            height: `${targetHeight}px`,
+            boxSizing: "border-box",
+            background: POSTER_BG,
+            display: "table",
+            padding: isA4 ? "120px" : "32px",
           });
 
           Object.assign(body.style, {
+            display: "table-cell",
+            verticalAlign: "middle",
             width: "100%",
-            height: "100%",
-            maxWidth: isA4 ? "1800px" : "900px",
-            padding: isA4 ? "200px 180px" : "80px 72px",
             boxSizing: "border-box",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            alignItems: "center",
+            padding: isA4 ? "120px 100px" : "40px 32px",
             textAlign: "center",
             fontFamily: "var(--telugu-font-family)",
+            border: `2px solid ${POSTER_BORDER}`,
+            borderRadius: "12px",
           });
+
+          const titleEl = doc.querySelector(
+            "[data-poster-title]"
+          ) as HTMLElement | null;
+
+          if (titleEl) {
+            Object.assign(titleEl.style, {
+              fontSize: isA4 ? "92px" : "42px",
+              lineHeight: "1.45",
+            });
+          }
+
+          doc
+            .querySelectorAll("[data-poster-line]")
+            .forEach((el) => {
+              Object.assign((el as HTMLElement).style, {
+                fontSize: isA4 ? "68px" : "32px",
+                lineHeight: isA4 ? "2.3" : "1.9",
+              });
+            });
+
+          const imgEl = doc.querySelector(
+            "[data-poster-image]"
+          ) as HTMLElement | null;
+
+          if (imgEl) {
+            Object.assign(imgEl.style, {
+              width: isA4 ? "420px" : "240px",
+              maxWidth: isA4 ? "420px" : "240px",
+              height: "auto",
+            });
+          }
         },
       });
 
@@ -99,7 +158,6 @@ export default function ShareButtons({ targetRef }: Props) {
     link.click();
   };
 
-  /* 📤 Share (WhatsApp / Telegram / System Share) */
   const share = async () => {
     const img = await generateImage("social");
     if (!img) return;
@@ -112,7 +170,7 @@ export default function ShareButtons({ targetRef }: Props) {
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: "రత్నాలబాల",
+        title: "రత్నాలబాల – పద్యాలవాల – భావాలమాల",
         text: SHARE_TEXT,
       });
     } else {
@@ -124,17 +182,15 @@ const shareOnX = async () => {
   const img = await generateImage("social");
   if (!img) return;
 
-  // 1️⃣ Download image (mandatory for X)
   const link = document.createElement("a");
   link.href = img;
-  link.download = "ratnalabala.png";
+  link.download = "telugu-padyam.png";
   link.click();
 
-  // 2️⃣ Open X with text
   const text = encodeURIComponent(
     "రత్నాలబాల – పద్యాలవాల – భావాలమాల\n" +
-    "చదవండి – వినండి – పంచుకోండి\n\n" +
-    "© సృష్టి : యుక్తిశాల AI"
+    "చదవండి – వినండి – పంచుకోండి.\n\n" +
+    "🌐 https://ratnalabala.vercel.app/"
   );
 
   window.open(
@@ -148,26 +204,15 @@ const shareOnX = async () => {
   return (
     <Stack direction="row" spacing={1}>
       <Tooltip title="వాట్సాప్ / టెలిగ్రామ్">
-        <IconButton color="success" onClick={share}>
+        <IconButton color="success" onClick={share} aria-label="వాట్సాప్‌లో పంచుకోండి">
           <WhatsAppIcon />
         </IconButton>
       </Tooltip>
 
-      <Tooltip title="X (Twitter)">
-        <IconButton onClick={shareOnX}>
-          <XIcon />
-        </IconButton>
-      </Tooltip>
 
       <Tooltip title="సోషల్ డౌన్‌లోడ్">
-        <IconButton color="secondary" onClick={() => download("social")}>
+        <IconButton color="secondary" onClick={() => download("social")} aria-label="పోస్టర్ డౌన్‌లోడ్ చేయండి">
           <DownloadIcon />
-        </IconButton>
-      </Tooltip>
-
-      <Tooltip title="A4 ప్రింట్">
-        <IconButton color="primary" onClick={() => download("a4")}>
-          <PrintIcon />
         </IconButton>
       </Tooltip>
     </Stack>

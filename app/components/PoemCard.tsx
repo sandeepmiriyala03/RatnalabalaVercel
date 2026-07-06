@@ -7,7 +7,7 @@ import {
   alpha, useTheme, useMediaQuery,
 } from "@mui/material";
 import VolumeUpRoundedIcon      from "@mui/icons-material/VolumeUpRounded";
-import StopRoundedIcon           from "@mui/icons-material/StopRounded";
+
 import AutoAwesomeRoundedIcon    from "@mui/icons-material/AutoAwesomeRounded";
 import ExpandMoreRoundedIcon     from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon     from "@mui/icons-material/ExpandLessRounded";
