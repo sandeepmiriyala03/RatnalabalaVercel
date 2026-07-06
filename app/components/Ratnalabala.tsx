@@ -15,6 +15,8 @@ import {
 } from "@mui/material";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AgentPoemButton from "@/app/components/AgentPoemButton";
+
 const navItems = [
   {
     label: "రత్నాలబాల",
@@ -51,7 +53,6 @@ const navItems = [
     path: "/sametalu",
     intro: "తెలుగు సామెతలు",
   },
-  //
   {
     label: "సంధి మాల",
     path: "/sandhi",
@@ -103,6 +104,57 @@ export default function RatnalabalaHighlights() {
       >
        తెలుగు సాహిత్యానికి సంపూర్ణ సాంకేతిక వేదిక 
       </Typography>
+
+      {/* =========================
+          🤖 AGENT SPOTLIGHT — made deliberately eye-catching
+          (gradient card, bold heading, icon) instead of a plain small
+          button, so it's the clear visual anchor right under the
+          intro — the first interactive thing a visitor notices, not
+          something they have to hunt for.
+         ========================= */}
+      <Box
+        sx={{
+          mb: 4,
+          p: { xs: 2.5, md: 3 },
+          borderRadius: 4,
+          textAlign: "center",
+          background: "linear-gradient(135deg, #4338ca 0%, #7c3aed 50%, #c026d3 100%)",
+          boxShadow: "0 8px 30px rgba(124, 58, 237, 0.35)",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        <Typography
+          sx={{
+            fontWeight: 900,
+            fontSize: { xs: "1.15rem", md: "1.35rem" },
+            color: "#fff",
+            mb: 0.5,
+          }}
+        >
+          🤖 ఈరోజు ఏజెంట్ ఎంచుకున్న పద్యం
+        </Typography>
+
+        <Typography
+          sx={{
+            color: "rgba(255,255,255,0.85)",
+            fontSize: "0.88rem",
+            mb: 2,
+          }}
+        >
+          1140+ పద్యాలలో నుండి — ఒక్క క్లిక్‌తో మీ కోసం ఎంపిక
+        </Typography>
+
+        <Box
+          sx={{
+            bgcolor: "#fff",
+            borderRadius: 3,
+            p: { xs: 1.5, md: 2 },
+          }}
+        >
+          <AgentPoemButton />
+        </Box>
+      </Box>
 
       <Box sx={{ textAlign: "center", mb: 4 }}>
   <Typography
