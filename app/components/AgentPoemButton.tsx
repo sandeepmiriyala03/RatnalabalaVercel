@@ -38,7 +38,7 @@ export default function AgentPoemButton() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data?.error || "ఏజెంట్ నుండి జవాబు రాలేదు.");
+        throw new Error(data?.error || "నిర్ణయాత్మక మాల నుండి జవాబు రాలేదు.");
       }
 
       setResult(data);
@@ -72,7 +72,7 @@ export default function AgentPoemButton() {
           px: 3,
         }}
       >
-        {loading ? "ఏజెంట్ ఆలోచిస్తోంది…" : "ఏజెంట్‌ని అడగండి"}
+        {loading ? "నిర్ణయాత్మక  ఆలోచిస్తోంది…" : "నిర్ణయాత్మక   మాల  ‌ని అడగండి"}
       </Button>
 
       {error && (
@@ -97,7 +97,7 @@ export default function AgentPoemButton() {
               }}
             >
               <Typography variant="caption" sx={{ fontWeight: 700, color: "success.main" }}>
-                ✅ ఏజెంట్ పనిచేస్తోంది
+                ✅ నిర్ణయాత్మక   మాల   పనిచేస్తోంది
               </Typography>
               <Typography variant="caption" sx={{ opacity: 0.65 }}>
                 మొత్తం స్కాన్ చేసిన పద్యాలు: <strong>{result.totalScanned}</strong>
@@ -126,7 +126,7 @@ export default function AgentPoemButton() {
             </Typography>
 
             <Alert severity="info" icon={<AutoAwesomeRoundedIcon fontSize="small" />}>
-              <strong>ఏజెంట్ ఎందుకు ఎంచుకుందంటే:</strong> {result.agentReason}
+              <strong>నిర్ణయాత్మక   మాల   ఎందుకు ఎంచుకుందంటే:</strong> {result.agentReason}
             </Alert>
           </CardContent>
         </Card>

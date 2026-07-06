@@ -160,7 +160,7 @@ export async function GET() {
   } catch (error) {
     console.error("Agent error:", error);
     return NextResponse.json(
-      { error: "ఏజెంట్ పనిచేయడంలో లోపం సంభవించింది." },
+      { error: "నిర్ణయాత్మక   మాల పనిచేయడంలో లోపం సంభవించింది." },
       { status: 500 }
     );
   }

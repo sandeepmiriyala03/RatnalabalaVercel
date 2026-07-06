@@ -132,7 +132,7 @@ export default function RatnalabalaHighlights() {
             mb: 0.5,
           }}
         >
-          🤖 ఈరోజు ఏజెంట్ ఎంచుకున్న పద్యం
+          🤖 ఈరోజు నిర్ణయాత్మక   మాల ఎంచుకున్న పద్యం
         </Typography>
 
         <Typography
