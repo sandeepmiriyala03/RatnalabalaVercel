@@ -27,9 +27,18 @@ const POSTER_COLOR = {
   hairline: "#E4DACB",
 };
 
-// CHANGE THIS if you save the illustration under a different filename in
-// /public. Same asset as PoemCardNew.tsx.
-const KAVI_IMAGE_SRC = "/CartoonStyle.png";
+// Default illustration, used when the author isn't in KAVI_IMAGE_MAP below.
+const DEFAULT_KAVI_IMAGE_SRC = "/CartoonStyle.png";
+
+// Per-author illustration lookup. Add one entry per poet whose name should
+// get its own cartoon instead of the shared default. The key must match the
+// `authors` string exactly as passed into <PoemCard authors={...} />
+// (see AUTHORS in PoemList.tsx). Save each PNG under /public with any name
+// you like, and point to it here.
+const KAVI_IMAGE_MAP: Record<string, string> = {
+  "డాక్టర్ మిరియాల రామకృష్ణ": "/MiriaPen.jpg",
+  // "మరో కవి పేరు": "/AnotherPoet.png",
+};
 
 // Small-caps footer tagline + URL — same as PoemCardNew.tsx. Adjust to your
 // actual site name/URL.
@@ -79,6 +88,25 @@ export default function PoemCard({
 
   const authorText  = Array.isArray(authors) ? authors.join(", ") : authors;
   const voiceText   = `${poem.title}\n${poem.content}`.trim();
+
+  // Pick the illustration based on the author. If `authors` is an array
+  // (multiple poets), this checks each name in turn and uses the first
+  // match found in KAVI_IMAGE_MAP; falls back to the default cartoon.
+  const kaviImageSrc = useMemo(() => {
+    const names = Array.isArray(authors)
+      ? authors
+      : authors
+      ? [authors]
+      : [];
+
+    for (const name of names) {
+      if (KAVI_IMAGE_MAP[name.trim()]) {
+        return KAVI_IMAGE_MAP[name.trim()];
+      }
+    }
+
+    return DEFAULT_KAVI_IMAGE_SRC;
+  }, [authors]);
 
   // Split into individual lines, same as PoemCardNew.tsx — each line gets
   // its own data-poster-line element so ShareButtons.tsx's onclone can size
@@ -164,11 +192,11 @@ export default function PoemCard({
               mx: "auto", mb: { xs: 2.5, sm: 3 },
             }} />
 
-            {/* Centered illustration */}
+            {/* Centered illustration — picked per-author via kaviImageSrc */}
             <Box
               component="img"
               data-poster-image
-              src={KAVI_IMAGE_SRC}
+              src={kaviImageSrc}
               alt={authorText || poem.title}
               sx={{
                 width: "auto",
