@@ -3,19 +3,6 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 
-/*
-  ══════════════════════════════════════════════════════════════════
-  MOCK "LLM" — still a heuristic keyword matcher, NOT real GenAI.
-  See earlier notes: this is a stand-in for a real Anthropic API call.
-
-  moodKeywords below is now tuned to YOUR actual 11 collections and
-  ~1140 poems (Jandhyala, Sumati, SriKalahastheeswara, KrishnaSatakam,
-  NarayanaSatakam, Annamacharya, ShivanandaLahari, RamachandraPrabhu,
-  YajnavalkyaSatakam, DasarathiKaruNapaYonidhi, TeaShatakam) instead
-  of generic placeholder words.
-  ══════════════════════════════════════════════════════════════════
-*/
-
 const POETRY_FOLDERS = [
   "Jandhyala",
   "Sumati",

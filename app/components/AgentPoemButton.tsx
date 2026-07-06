@@ -12,18 +12,6 @@ import {
   Alert,
 } from "@mui/material";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
-
-/*
-  This component is intentionally simple — its whole job is to:
-    1. Call the agent API route (GET /api/agent/pick-poem)
-    2. Show a loading state while the agent (file read + LLM call) runs
-    3. Display the poem it picked, plus the agent's own stated reason
-
-  This is the "frontend half" of the agent pattern: the agent's
-  intelligence lives entirely in the API route; this component is a
-  thin, dumb client that just triggers it and renders the result.
-*/
-
 type AgentResult = {
   success: boolean;
   poem: {
