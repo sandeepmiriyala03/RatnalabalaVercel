@@ -43,7 +43,7 @@ const KAVI_IMAGE_MAP: Record<string, string> = {
 // Small-caps footer tagline + URL — same as PoemCardNew.tsx. Adjust to your
 // actual site name/URL.
 const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
-const SITE_URL = "www.ratnalabala.vercel.app";
+const SITE_URL = "https://ratnalabala.vercel.app";
 
 /* ── animated waveform bars shown while speaking ── */
 function SpeakingBars() {
