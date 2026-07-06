@@ -50,16 +50,8 @@ const POSTER_COLOR = {
 
 // Default illustration, used when the author isn't in KAVI_IMAGE_MAP below.
 const DEFAULT_KAVI_IMAGE_SRC = "/CartoonStyle.png";
-
-// Per-author illustration lookup — same mechanism as PoemCard.tsx. Add one
-// entry per poet whose name should get its own cartoon instead of the
-// shared default. The key must match the `authors` string passed into
-// <PoemCardNew authors={...} /> exactly. Save each PNG under /public with
-// any filename you like, and point to it here.
 const KAVI_IMAGE_MAP: Record<string, string> = {
   "డాక్టర్ మిరియాల రామకృష్ణ": "/MiriyalaRamakrishna.png",
-  // "మరో కవి పేరు": "/AnotherPoet.png",
-  // Add more poets and their illustrations here as needed.
   "శ్రీ ప్రసాదరావు మిరియాల గారు": "/Prasad.jpeg"
 };
 
