@@ -48,11 +48,20 @@ const POSTER_COLOR = {
   hairline: "#E4DACB",  // faint divider line, not a heavy border
 };
 
-// CHANGE THIS if you save the illustration under a different filename in
-// /public. Keeping your existing photo for now — swap this path if you
-// later commission a lighter line-art illustration to match the reference
-// more closely.
-const KAVI_IMAGE_SRC = "/CartoonStyle.png";
+// Default illustration, used when the author isn't in KAVI_IMAGE_MAP below.
+const DEFAULT_KAVI_IMAGE_SRC = "/CartoonStyle.png";
+
+// Per-author illustration lookup — same mechanism as PoemCard.tsx. Add one
+// entry per poet whose name should get its own cartoon instead of the
+// shared default. The key must match the `authors` string passed into
+// <PoemCardNew authors={...} /> exactly. Save each PNG under /public with
+// any filename you like, and point to it here.
+const KAVI_IMAGE_MAP: Record<string, string> = {
+  "డాక్టర్ మిరియాల రామకృష్ణ": "/MiriyalaRamakrishna.png",
+  // "మరో కవి పేరు": "/AnotherPoet.png",
+  // Add more poets and their illustrations here as needed.
+  "శ్రీ ప్రసాదరావు మిరియాల గారు": "/Prasad.jpeg"
+};
 
 // Small-caps footer tagline + URL, matching the reference's
 // "DISCOVER. READ. INSPIRE." + domain treatment. Adjust the copy/URL to
@@ -122,6 +131,32 @@ export default function PoemCardNew({
     : authors;
 
   const voiceText = `${poem.title}\n${poem.content}`.trim();
+
+  // Pick the illustration based on the author. If `authors` is an array
+  // (multiple poets), this checks each name in turn and uses the first
+  // match found in KAVI_IMAGE_MAP; falls back to the default cartoon.
+  const kaviImageSrc = useMemo(() => {
+    const names = Array.isArray(authors)
+      ? authors
+      : authors
+      ? [authors]
+      : [];
+
+    // Trim BOTH the incoming author name and the map's own keys — a stray
+    // leading/trailing space in KAVI_IMAGE_MAP (easy to introduce by
+    // accident when editing) would otherwise silently fail to match.
+    for (const name of names) {
+      const normalized = name.trim();
+      const matchKey = Object.keys(KAVI_IMAGE_MAP).find(
+        (k) => k.trim() === normalized
+      );
+      if (matchKey) {
+        return KAVI_IMAGE_MAP[matchKey];
+      }
+    }
+
+    return DEFAULT_KAVI_IMAGE_SRC;
+  }, [authors]);
 
   const contentLines = useMemo(
     () =>
@@ -236,13 +271,9 @@ export default function PoemCardNew({
       >
 
         {/* 📝 Poem — this is the exact area html2canvas captures for the
-            share/poster image. REDESIGNED to a single-column, borderless,
-            cream editorial layout: title -> hairline divider -> centered
-            illustration -> poem lines -> author -> small-caps tagline/URL
-            footer. No table needed now that it's a single column — just
-            plain centered block flow, which html2canvas renders reliably
-            (it's flexbox/grid that's unreliable, not simple block+text-align
-            layouts like this). */}
+            share/poster image. Single-column, borderless, cream editorial
+            layout: title -> hairline divider -> centered illustration ->
+            poem lines -> author -> small-caps tagline/URL footer. */}
         <Box
           ref={poemRef}
           data-poster-root
@@ -292,11 +323,11 @@ export default function PoemCardNew({
               }}
             />
 
-            {/* Centered illustration */}
+            {/* Centered illustration — picked per-author via kaviImageSrc */}
             <Box
               component="img"
               data-poster-image
-              src={KAVI_IMAGE_SRC}
+              src={kaviImageSrc}
               alt={authorText || poem.title}
               sx={{
                 width: "auto",
