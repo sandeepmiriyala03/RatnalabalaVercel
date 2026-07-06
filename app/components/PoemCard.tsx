@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import {
   Box, Typography, Card, CardContent, Divider,
   Button, Stack, Collapse,
@@ -14,6 +14,27 @@ import ExpandLessRoundedIcon     from "@mui/icons-material/ExpandLessRounded";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
+
+// Same warm cream editorial palette as PoemCardNew.tsx / ShareButtons.tsx.
+// Hardcoded (not theme.palette.*) on purpose: the poster capture must look
+// identical regardless of the app's light/dark mode or user theme settings.
+const POSTER_COLOR = {
+  bg: "#F7F2EA",
+  ink: "#2B2620",
+  inkMuted: "#6B6258",
+  accent: "#2B2620",
+  bronze: "#8B6F47",
+  hairline: "#E4DACB",
+};
+
+// CHANGE THIS if you save the illustration under a different filename in
+// /public. Same asset as PoemCardNew.tsx.
+const KAVI_IMAGE_SRC = "/CartoonStyle.png";
+
+// Small-caps footer tagline + URL — same as PoemCardNew.tsx. Adjust to your
+// actual site name/URL.
+const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
+const SITE_URL = "www.ratnalabala.vercel.app";
 
 /* ── animated waveform bars shown while speaking ── */
 function SpeakingBars() {
@@ -59,6 +80,19 @@ export default function PoemCard({
   const authorText  = Array.isArray(authors) ? authors.join(", ") : authors;
   const voiceText   = `${poem.title}\n${poem.content}`.trim();
 
+  // Split into individual lines, same as PoemCardNew.tsx — each line gets
+  // its own data-poster-line element so ShareButtons.tsx's onclone can size
+  // them independently for the exported poster, and so a wrapped line never
+  // shares wrap-flow with the next logical line.
+  const contentLines = useMemo(
+    () =>
+      poem.content
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
+    [poem.content]
+  );
+
   /* ── colours ── */
   const forestGreen = "#1a3d2b";
   const forestMid   = "#2d6a4f";
@@ -98,59 +132,124 @@ export default function PoemCard({
         "&:last-child": { pb: { xs: "20px", sm: "24px" } },
       }}>
 
-        {/* ── Poem body ── */}
-        <Box ref={poemRef} sx={{ textAlign: "center" }}>
+        {/* ── Poem body — this is the exact area html2canvas captures for
+            the share/poster image. Styled with fixed cream/ink tokens
+            (not theme.palette.*) so the exported poster looks identical
+            regardless of the app's light/dark mode. Same structure as
+            PoemCardNew.tsx: title -> hairline -> centered illustration ->
+            poem lines -> author -> hairline -> tagline/URL footer. ── */}
+        <Box ref={poemRef} data-poster-root lang="te" sx={{
+          textAlign: "center",
+          bgcolor: POSTER_COLOR.bg,
+          borderRadius: "12px",
+          p: { xs: 2, sm: 3 },
+        }}>
 
-          <Typography sx={{
-            fontWeight: 800,
-            color: "primary.main",
-            mb: 1.5,
-            fontFamily: "'Noto Serif Telugu', serif",
-            lineHeight: 1.45,
-            fontSize: { xs: "1.1rem", sm: "1.3rem", md: "1.45rem" },
-          }}>
-            {poem.title}
-          </Typography>
+          <Box data-poster-body sx={{ p: { xs: 2, sm: 3 } }}>
 
-          {/* decorative accent bar */}
-          <Box sx={{
-            width: 32, height: 3, bgcolor: "secondary.light",
-            mx: "auto", mb: { xs: 2, sm: 2.5 }, borderRadius: 2,
-          }} />
+            <Typography data-poster-title sx={{
+              fontWeight: 600,
+              color: POSTER_COLOR.accent,
+              mb: 2,
+              fontFamily: "'Noto Serif Telugu', serif",
+              letterSpacing: 0.5,
+              lineHeight: 1.4,
+              fontSize: { xs: "1.15rem", sm: "1.35rem", md: "1.5rem" },
+            }}>
+              {poem.title}
+            </Typography>
 
-          <Typography sx={{
-            whiteSpace: "pre-line",
-            fontSize: { xs: "1.05rem", sm: "1.18rem", md: "1.25rem" },
-            lineHeight: { xs: 2.6, sm: 2.3 },
-            color: "text.primary",
-            fontFamily: "'Noto Serif Telugu', serif",
-            px: { xs: 0, sm: 2 },
-          }}>
-            {poem.content}
-          </Typography>
+            <Box sx={{
+              width: 40, height: 1, bgcolor: POSTER_COLOR.hairline,
+              mx: "auto", mb: { xs: 2.5, sm: 3 },
+            }} />
 
-          {(authorText || poetryName) && (
-            <Box sx={{ mt: { xs: 2.5, sm: 3.5 } }}>
-              {authorText && (
-                <Typography sx={{
-                  fontWeight: 600,
-                  fontSize: { xs: "0.82rem", sm: "0.88rem" },
-                  color: "text.secondary",
-                }}>
-                  — {authorText}
+            {/* Centered illustration */}
+            <Box
+              component="img"
+              data-poster-image
+              src={KAVI_IMAGE_SRC}
+              alt={authorText || poem.title}
+              sx={{
+                width: "auto",
+                height: { xs: 96, sm: 120, md: 140 },
+                display: "block",
+                mx: "auto",
+                mb: { xs: 2.5, sm: 3 },
+              }}
+            />
+
+            {/* Poem lines — single centered column */}
+            <Box>
+              {contentLines.map((line, i) => (
+                <Typography
+                  key={i}
+                  data-poster-line
+                  sx={{
+                    fontSize: { xs: "1.05rem", sm: "1.18rem", md: "1.25rem" },
+                    lineHeight: { xs: 1.9, sm: 1.9, md: 2.1 },
+                    color: POSTER_COLOR.ink,
+                    fontFamily: "'Noto Serif Telugu', serif",
+                    mb: i === contentLines.length - 1 ? 0 : { xs: 0.5, sm: 0.75, md: 1 },
+                    overflowWrap: "break-word",
+                  }}
+                >
+                  {line}
                 </Typography>
-              )}
-              {poetryName && (
-                <Typography variant="caption" sx={{
-                  display: "block", mt: 0.5, letterSpacing: 1,
-                  fontWeight: 700,
-                  color: alpha(theme.palette.text.secondary, 0.45),
-                }}>
-                  {poetryName}
-                </Typography>
-              )}
+              ))}
             </Box>
-          )}
+
+            {authorText && (
+              <Typography sx={{
+                mt: { xs: 2.5, sm: 3 },
+                fontWeight: 500,
+                fontSize: { xs: "0.82rem", sm: "0.88rem" },
+                color: POSTER_COLOR.inkMuted,
+              }}>
+                — {authorText}
+              </Typography>
+            )}
+
+            {/* data-poster-hide: internal nav label, not for the export */}
+            {poetryName && (
+              <Typography data-poster-hide variant="caption" sx={{
+                display: "block", mt: 0.5, letterSpacing: 1,
+                fontWeight: 700,
+                color: POSTER_COLOR.bronze,
+              }}>
+                {poetryName}
+              </Typography>
+            )}
+
+            {/* data-poster-footer: small-caps tagline + URL. Only meant to
+                stand out in the exported poster, kept subtle in-app. */}
+            <Box
+              data-poster-footer
+              sx={{
+                mt: { xs: 3, sm: 3.5 },
+                pt: { xs: 1.5, sm: 2 },
+                borderTop: `1px solid ${POSTER_COLOR.hairline}`,
+              }}
+            >
+              <Typography sx={{
+                fontSize: { xs: "0.68rem", sm: "0.72rem" },
+                fontWeight: 700,
+                letterSpacing: 1.5,
+                color: POSTER_COLOR.ink,
+                textTransform: "uppercase",
+                mb: 0.5,
+              }}>
+                {SITE_TAGLINE}
+              </Typography>
+              <Typography sx={{
+                fontSize: { xs: "0.68rem", sm: "0.72rem" },
+                color: POSTER_COLOR.inkMuted,
+              }}>
+                {SITE_URL}
+              </Typography>
+            </Box>
+
+          </Box>
         </Box>
 
         {/* ── Divider ── */}

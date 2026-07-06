@@ -10,19 +10,13 @@ type Props = {
   targetRef: React.RefObject<HTMLDivElement | null>;
 };
 
-/* Sizes */
-// WhatsApp Status is full-screen PORTRAIT (9:16). 1080x1920 is the standard
-// WhatsApp/Instagram Story size.
-const SOCIAL_WIDTH = 1080;
-const SOCIAL_HEIGHT = 1920;
-const A4_WIDTH = 2480;
-const A4_HEIGHT = 3508;
-
-// Temple teal — same tokens as PoemCardNew.tsx / poemPoster.ts
-const POSTER_BG = "#F0F7F5";
-const POSTER_BORDER = "#0F4C43";
+/* Warm cream editorial palette */
+const POSTER_BG = "#F7F2EA";
+const POSTER_HAIRLINE = "#E4DACB";
+const POSTER_INK = "#2B2620";
 
 const CAPTURE_WINDOW_WIDTH = 1280;
+const CAPTURE_SCALE = 2;
 
 export default function ShareButtons({ targetRef }: Props) {
 
@@ -32,7 +26,19 @@ export default function ShareButtons({ targetRef }: Props) {
     "   చదవండి – వినండి – పంచుకోండి.\n\n" +
     "🌐 https://ratnalabala.vercel.app/";
 
-  /* 🖼 Generate Image */
+  /* 🖼 Generate Image
+     SIMPLER, MORE RELIABLE APPROACH — instead of forcing html2canvas to
+     output a full 1080x1920 (or A4) canvas directly (which repeatedly hit
+     html2canvas quirks: top-left cropping, flexbox not centering, content
+     tiling/duplicating on tall canvases), we now:
+       1. let html2canvas capture the poster at its OWN natural content
+          size — this is what html2canvas is actually reliable at.
+       2. composite that capture onto a real fixed-size canvas ourselves
+          using plain 2D canvas drawImage — deterministic arithmetic, no
+          viewport/window quirks at all.
+     Long poems get scaled down slightly to fit instead of using a fixed
+     font size that's wrong for every poem length; short poems render at
+     full, legible size. */
   const generateImage = useCallback(
     async (mode: "social" | "a4") => {
       if (!targetRef.current) return null;
@@ -43,17 +49,16 @@ export default function ShareButtons({ targetRef }: Props) {
 
       const isA4 = mode === "a4";
 
-      const targetWidth = isA4 ? A4_WIDTH : SOCIAL_WIDTH;
-      const targetHeight = isA4 ? A4_HEIGHT : SOCIAL_HEIGHT;
+      // Content is captured at a fixed, comfortable reading WIDTH — height
+      // is left to size naturally to however long the poem is.
+      const CONTENT_WIDTH = isA4 ? 1600 : 860;
 
-      const canvas = await html2canvas(targetRef.current, {
+      const contentCanvas = await html2canvas(targetRef.current, {
         backgroundColor: POSTER_BG,
-        scale: 2,
+        scale: CAPTURE_SCALE,
         useCORS: true,
         scrollX: 0,
         scrollY: 0,
-        width: targetWidth,
-        height: targetHeight,
         windowWidth: CAPTURE_WINDOW_WIDTH,
 
         onclone: (_, doc) => {
@@ -71,40 +76,22 @@ export default function ShareButtons({ targetRef }: Props) {
             (el as HTMLElement).style.display = "none";
           });
 
-          // FIX — this is the actual bug behind the giant blank area below
-          // short poems. Plain block layout (no flex, no table) just places
-          // body at the top of root and stops — it never fills or centers
-          // within root's full forced height, so a short poem leaves a huge
-          // gap at the bottom of a tall 1080x1920 canvas.
-          //
-          // display:table + table-cell/vertical-align:middle is the fix.
-          // Unlike flexbox (unreliable in html2canvas — this is what caused
-          // the earlier "card stuck in the top-left corner" bug), table
-          // layout is one of the oldest, most consistently supported CSS
-          // features and centers content of ANY height reliably.
-          //
-          // Root padding is now small and uniform on all sides — this is
-          // what makes the bordered card fill almost the entire canvas
-          // instead of leaving big asymmetric gaps.
+          // No forced height here — root/body just size to their content,
+          // which is exactly what html2canvas handles reliably.
           Object.assign(root.style, {
-            width: `${targetWidth}px`,
-            height: `${targetHeight}px`,
+            width: `${CONTENT_WIDTH}px`,
             boxSizing: "border-box",
             background: POSTER_BG,
-            display: "table",
-            padding: isA4 ? "120px" : "32px",
+            display: "block",
           });
 
           Object.assign(body.style, {
-            display: "table-cell",
-            verticalAlign: "middle",
             width: "100%",
             boxSizing: "border-box",
-            padding: isA4 ? "120px 100px" : "40px 32px",
+            padding: isA4 ? "56px 64px" : "28px 24px",
             textAlign: "center",
             fontFamily: "var(--telugu-font-family)",
-            border: `2px solid ${POSTER_BORDER}`,
-            borderRadius: "12px",
+            border: "none",
           });
 
           const titleEl = doc.querySelector(
@@ -113,8 +100,8 @@ export default function ShareButtons({ targetRef }: Props) {
 
           if (titleEl) {
             Object.assign(titleEl.style, {
-              fontSize: isA4 ? "92px" : "42px",
-              lineHeight: "1.45",
+              fontSize: isA4 ? "72px" : "40px",
+              lineHeight: "1.4",
             });
           }
 
@@ -122,8 +109,8 @@ export default function ShareButtons({ targetRef }: Props) {
             .querySelectorAll("[data-poster-line]")
             .forEach((el) => {
               Object.assign((el as HTMLElement).style, {
-                fontSize: isA4 ? "68px" : "32px",
-                lineHeight: isA4 ? "2.3" : "1.9",
+                fontSize: isA4 ? "52px" : "30px",
+                lineHeight: isA4 ? "1.9" : "1.75",
               });
             });
 
@@ -133,15 +120,54 @@ export default function ShareButtons({ targetRef }: Props) {
 
           if (imgEl) {
             Object.assign(imgEl.style, {
-              width: isA4 ? "420px" : "240px",
-              maxWidth: isA4 ? "420px" : "240px",
-              height: "auto",
+              height: isA4 ? "280px" : "160px",
+              width: "auto",
+              maxWidth: "60%",
+            });
+          }
+
+          const footerEl = doc.querySelector(
+            "[data-poster-footer]"
+          ) as HTMLElement | null;
+
+          if (footerEl) {
+            Object.assign(footerEl.style, {
+              borderTop: `1px solid ${POSTER_HAIRLINE}`,
+            });
+
+            footerEl.querySelectorAll("p").forEach((p, i) => {
+              Object.assign((p as HTMLElement).style, {
+                fontSize: isA4
+                  ? (i === 0 ? "26px" : "23px")
+                  : (i === 0 ? "16px" : "14px"),
+              });
             });
           }
         },
       });
 
-      return canvas.toDataURL("image/png");
+      // Composite the natural-size capture onto a canvas sized to the
+      // CONTENT itself, plus a small fixed margin — not a huge fixed
+      // 1080x1920/A4 frame. That fixed-frame approach was leaving large
+      // blank areas above/below (and sometimes side to side) whenever a
+      // poem's natural content was shorter than the frame. Content size/
+      // font sizes are untouched — only the surrounding canvas shrinks to
+      // match, so there's no wasted space on any device.
+      const MARGIN = (isA4 ? 60 : 28) * CAPTURE_SCALE;
+
+      const finalCanvas = document.createElement("canvas");
+      finalCanvas.width = contentCanvas.width + MARGIN * 2;
+      finalCanvas.height = contentCanvas.height + MARGIN * 2;
+
+      const ctx = finalCanvas.getContext("2d");
+      if (!ctx) return null;
+
+      ctx.fillStyle = POSTER_BG;
+      ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+      ctx.drawImage(contentCanvas, MARGIN, MARGIN);
+
+      return finalCanvas.toDataURL("image/png");
     },
     [targetRef]
   );

@@ -36,17 +36,29 @@ type Props = {
   poetryName?: string;
 };
 
+// REDESIGNED — warm cream / editorial palette, replacing the temple-teal
+// scheme. No hard border box; the poster reads as one calm, open page
+// rather than a bordered card.
 const POSTER_COLOR = {
-  bg: "#F0F7F5",       // page/card background — text 15.0:1 against ink
-  ink: "#0F241F",      // primary text
-  inkMuted: "#3D5A54", // secondary text (author line)
-  accent: "#0F4C43",   // title / divider bar — 9.1:1 on bg
-  bronze: "#8A5A2B",   // poetryName label (decorative accent)
-  border: "#0F4C43",
+  bg: "#F7F2EA",       // warm cream — matches the reference mood board
+  ink: "#2B2620",       // near-black warm charcoal — primary text
+  inkMuted: "#6B6258",  // softer charcoal — secondary text (author line)
+  accent: "#2B2620",    // title color — same ink, no teal accent anymore
+  bronze: "#8B6F47",    // small caps footer label
+  hairline: "#E4DACB",  // faint divider line, not a heavy border
 };
 
-// CHANGE THIS if you save the cartoon under a different filename in /public.
+// CHANGE THIS if you save the illustration under a different filename in
+// /public. Keeping your existing photo for now — swap this path if you
+// later commission a lighter line-art illustration to match the reference
+// more closely.
 const KAVI_IMAGE_SRC = "/CartoonStyle.png";
+
+// Small-caps footer tagline + URL, matching the reference's
+// "DISCOVER. READ. INSPIRE." + domain treatment. Adjust the copy/URL to
+// your actual site name.
+const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
+const SITE_URL = "https://ratnalabala.vercel.app/";
 
 /* 🔊 Speaking Animation */
 function SpeakingBars() {
@@ -111,10 +123,6 @@ export default function PoemCardNew({
 
   const voiceText = `${poem.title}\n${poem.content}`.trim();
 
-  // FIX: split the poem into its individual lines ONCE, up front, instead of
-  // relying on a single Typography with whiteSpace:"pre-line". Rendering
-  // each line as its own block guarantees a logical line never shares
-  // wrap-flow with the next one.
   const contentLines = useMemo(
     () =>
       poem.content
@@ -228,16 +236,13 @@ export default function PoemCardNew({
       >
 
         {/* 📝 Poem — this is the exact area html2canvas captures for the
-            share/poster image, so it's styled with fixed Temple teal colors
-            rather than theme.palette.* to keep the exported poster consistent
-            regardless of the app's light/dark mode.
-
-            LAYOUT: title (full width, centered) -> two-column table row
-            (poem text left, kavi illustration right) -> footer (kavi name,
-            centered). Built with a real <table> rather than flex/grid —
-            html2canvas has unreliable flexbox/grid support, but renders
-            table layout faithfully, which matters because this exact DOM
-            is what gets captured for the shareable poster. */}
+            share/poster image. REDESIGNED to a single-column, borderless,
+            cream editorial layout: title -> hairline divider -> centered
+            illustration -> poem lines -> author -> small-caps tagline/URL
+            footer. No table needed now that it's a single column — just
+            plain centered block flow, which html2canvas renders reliably
+            (it's flexbox/grid that's unreliable, not simple block+text-align
+            layouts like this). */}
         <Box
           ref={poemRef}
           data-poster-root
@@ -253,28 +258,24 @@ export default function PoemCardNew({
           <Box
             data-poster-body
             sx={{
-              border: `2px solid ${POSTER_COLOR.border}`,
-              borderRadius: "10px",
               p: { xs: 2, sm: 3 },
             }}
           >
 
-            {/* data-poster-title: lets ShareButtons.tsx apply poster-only
-                font sizes in html2canvas's onclone, independent of these
-                live/responsive rem values (which are tuned for in-app
-                reading on screen, not for a poster viewed at a glance). */}
+            {/* data-poster-title */}
             <Typography
               data-poster-title
               sx={{
-                fontWeight: 800,
+                fontWeight: 600,
                 color: POSTER_COLOR.accent,
-                mb: 1.5,
+                mb: 2,
                 fontFamily: "'Noto Serif Telugu', serif",
-                lineHeight: 1.45,
+                letterSpacing: 0.5,
+                lineHeight: 1.4,
                 fontSize: {
-                  xs: "1.1rem",
-                  sm: "1.3rem",
-                  md: "1.45rem",
+                  xs: "1.15rem",
+                  sm: "1.35rem",
+                  md: "1.5rem",
                 },
               }}
             >
@@ -283,134 +284,123 @@ export default function PoemCardNew({
 
             <Box
               sx={{
-                width: 32,
-                height: 3,
-                bgcolor: POSTER_COLOR.accent,
+                width: 40,
+                height: 1,
+                bgcolor: POSTER_COLOR.hairline,
                 mx: "auto",
-                mb: { xs: 2, sm: 2.5 },
-                borderRadius: 2,
+                mb: { xs: 2.5, sm: 3 },
               }}
             />
 
-            {/* Two-column table: poem text left, kavi illustration right */}
+            {/* Centered illustration */}
             <Box
-              component="table"
+              component="img"
+              data-poster-image
+              src={KAVI_IMAGE_SRC}
+              alt={authorText || poem.title}
               sx={{
-                width: "100%",
-                borderCollapse: "collapse",
+                width: "auto",
+                height: { xs: 96, sm: 120, md: 140 },
+                display: "block",
+                mx: "auto",
+                mb: { xs: 2.5, sm: 3 },
               }}
-            >
-              <Box component="tbody">
-                <Box component="tr">
-                  <Box
-                    component="td"
-                    sx={{
-                      width: "70%",
-                      verticalAlign: "middle",
-                      textAlign: { xs: "left", sm: "left", md: "center" },
-                      pr: { xs: 1.5, sm: 2 },
-                    }}
-                  >
-                    {contentLines.map((line, i) => (
-                      <Typography
-                        key={i}
-                        data-poster-line
-                        sx={{
-                          fontSize: {
-                            xs: "1.05rem",
-                            sm: "1.18rem",
-                            md: "1.25rem",
-                          },
-                          lineHeight: {
-                            xs: 1.9,
-                            sm: 1.85,
-                            md: 2.3,
-                          },
-                          color: POSTER_COLOR.ink,
-                          fontFamily: "'Noto Serif Telugu', serif",
-                          mb:
-                            i === contentLines.length - 1
-                              ? 0
-                              : { xs: 0.5, sm: 0.75, md: 1 },
-                          overflowWrap: "break-word",
-                        }}
-                      >
-                        {line}
-                      </Typography>
-                    ))}
-                  </Box>
+            />
 
-                  <Box
-                    component="td"
-                    sx={{
-                      width: "30%",
-                      verticalAlign: "middle",
-                      textAlign: "center",
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      data-poster-image
-                      src={KAVI_IMAGE_SRC}
-                      alt={authorText || poem.title}
-                      sx={{
-                        width: "100%",
-                        maxWidth: { xs: 72, sm: 96, md: 120 },
-                        height: "auto",
-                        display: "block",
-                        mx: "auto",
-                      }}
-                    />
-                  </Box>
-                </Box>
-              </Box>
+            {/* Poem lines — single centered column */}
+            <Box>
+              {contentLines.map((line, i) => (
+                <Typography
+                  key={i}
+                  data-poster-line
+                  sx={{
+                    fontSize: {
+                      xs: "1rem",
+                      sm: "1.1rem",
+                      md: "1.2rem",
+                    },
+                    lineHeight: {
+                      xs: 1.85,
+                      sm: 1.9,
+                      md: 2.1,
+                    },
+                    color: POSTER_COLOR.ink,
+                    fontFamily: "'Noto Serif Telugu', serif",
+                    mb:
+                      i === contentLines.length - 1
+                        ? 0
+                        : { xs: 0.5, sm: 0.75, md: 1 },
+                    overflowWrap: "break-word",
+                  }}
+                >
+                  {line}
+                </Typography>
+              ))}
             </Box>
 
-            {(authorText || poetryName) && (
-              <Box
+            {authorText && (
+              <Typography
                 sx={{
-                  mt: { xs: 2.5, sm: 3.5 },
-                  textAlign: "center",
+                  mt: { xs: 2.5, sm: 3 },
+                  fontWeight: 500,
+                  fontSize: { xs: "0.82rem", sm: "0.88rem" },
+                  color: POSTER_COLOR.inkMuted,
                 }}
               >
-
-                {authorText && (
-                  <Typography
-                    sx={{
-                      fontWeight: 600,
-                      fontSize: {
-                        xs: "0.82rem",
-                        sm: "0.88rem",
-                      },
-                      color: POSTER_COLOR.inkMuted,
-                    }}
-                  >
-                    — {authorText}
-                  </Typography>
-                )}
-
-                {/* data-poster-hide: this is a site-navigation style label
-                    ("📊 అన్ని శతకాలు" etc.), not poem content — it belongs on
-                    the live card but not baked into a shareable image.
-                    ShareButtons.tsx's onclone hides any element with this
-                    attribute during export only. */}
-                {poetryName && (
-                  <Typography
-                    data-poster-hide
-                    variant="caption"
-                    sx={{
-                      display: "block",
-                      mt: 0.5,
-                      letterSpacing: 1,
-                      fontWeight: 700,
-                      color: POSTER_COLOR.bronze,
-                    }}
-                  >
-                    {poetryName}
-                  </Typography>
-                )}
-              </Box>
+                — {authorText}
+              </Typography>
             )}
+
+            {/* data-poster-hide: internal nav label, not for the export */}
+            {poetryName && (
+              <Typography
+                data-poster-hide
+                variant="caption"
+                sx={{
+                  display: "block",
+                  mt: 0.5,
+                  letterSpacing: 1,
+                  fontWeight: 700,
+                  color: POSTER_COLOR.bronze,
+                }}
+              >
+                {poetryName}
+              </Typography>
+            )}
+
+            {/* data-poster-footer: small-caps tagline + URL, matching the
+                reference's "DISCOVER. READ. INSPIRE." treatment. Only meant
+                to appear in the exported poster — kept subtle here so it
+                doesn't compete with the live in-app card. */}
+            <Box
+              data-poster-footer
+              sx={{
+                mt: { xs: 3, sm: 3.5 },
+                pt: { xs: 1.5, sm: 2 },
+                borderTop: `1px solid ${POSTER_COLOR.hairline}`,
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: { xs: "0.68rem", sm: "0.72rem" },
+                  fontWeight: 700,
+                  letterSpacing: 1.5,
+                  color: POSTER_COLOR.ink,
+                  textTransform: "uppercase",
+                  mb: 0.5,
+                }}
+              >
+                {SITE_TAGLINE}
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: { xs: "0.68rem", sm: "0.72rem" },
+                  color: POSTER_COLOR.inkMuted,
+                }}
+              >
+                {SITE_URL}
+              </Typography>
+            </Box>
 
           </Box>
         </Box>
@@ -508,7 +498,7 @@ export default function PoemCardNew({
               fontWeight: 700,
             }}
           >
-            ✨ AI సాధనాలు — ధ్వని · కళ · వీడియో
+            AI సాధనాలు — ధ్వని · కళ · వీడియో
           </Button>
 
         </Stack>
