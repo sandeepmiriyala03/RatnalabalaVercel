@@ -88,7 +88,7 @@ export default function ShareButtons({ targetRef }: Props) {
           Object.assign(body.style, {
             width: "100%",
             boxSizing: "border-box",
-            padding: isA4 ? "56px 64px" : "28px 24px",
+            padding: isA4 ? "56px 64px" : "20px 18px",
             textAlign: "center",
             fontFamily: "var(--telugu-font-family)",
             border: "none",
@@ -133,13 +133,16 @@ export default function ShareButtons({ targetRef }: Props) {
           if (footerEl) {
             Object.assign(footerEl.style, {
               borderTop: `1px solid ${POSTER_HAIRLINE}`,
+              marginTop: isA4 ? "48px" : "20px",
+              paddingTop: isA4 ? "36px" : "14px",
             });
 
             footerEl.querySelectorAll("p").forEach((p, i) => {
               Object.assign((p as HTMLElement).style, {
                 fontSize: isA4
-                  ? (i === 0 ? "26px" : "23px")
-                  : (i === 0 ? "16px" : "14px"),
+                  ? (i === 0 ? "22px" : "20px")
+                  : (i === 0 ? "13px" : "12px"),
+                margin: i === 0 ? "0 0 4px 0" : "0",
               });
             });
           }
@@ -153,7 +156,7 @@ export default function ShareButtons({ targetRef }: Props) {
       // poem's natural content was shorter than the frame. Content size/
       // font sizes are untouched — only the surrounding canvas shrinks to
       // match, so there's no wasted space on any device.
-      const MARGIN = (isA4 ? 60 : 28) * CAPTURE_SCALE;
+      const MARGIN = (isA4 ? 60 : 20) * CAPTURE_SCALE;
 
       const finalCanvas = document.createElement("canvas");
       finalCanvas.width = contentCanvas.width + MARGIN * 2;
