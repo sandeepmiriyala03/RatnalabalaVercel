@@ -255,7 +255,7 @@ export default function Navbar() {
                 fontSize: "0.9rem", fontWeight: pathname === "/test-lab" ? 700 : 500,
                 "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
               }}>
-                Test Lab
+                పరీక్షల కేంద్రం
               </Typography>
             </Link>
 
@@ -321,7 +321,7 @@ export default function Navbar() {
               onClick={() => setDrawerOpen(false)}
               sx={{ bgcolor: pathname === "/test-lab" ? `${ACCENT}88` : "transparent", borderRadius: "8px", mb: 0.5 }}
             >
-              <ListItemText primary="Test Lab"
+              <ListItemText primary="పరీక్షల కేంద్రం"
                 primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem" }} />
             </ListItem>
 

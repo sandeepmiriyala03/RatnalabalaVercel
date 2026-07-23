@@ -9,7 +9,8 @@
 "dev": "next dev",
 "build": "next build",
 "start": "next start",
-"lint": "next lint"
+"lint": "next lint",
+"test:e2e": "playwright test"
 },
 "dependencies": {
 "@emotion/react": "^11.14.0",
@@ -68,6 +69,7 @@
 "@types/react-dom": "^19",
 "eslint": "^9",
 "eslint-config-next": "^16.1.1",
+"@playwright/test": "^1.55.0",
 "typescript": "^5"
 },
 "description": "Indic literary archive and AI document intelligence platform.",
