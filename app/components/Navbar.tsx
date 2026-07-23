@@ -247,6 +247,18 @@ export default function Navbar() {
             {/* Groups */}
             {NAV_GROUPS.map(g => <DesktopGroup key={g.label} group={g} />)}
 
+            <Link href="/test-lab" style={{ textDecoration: "none" }}>
+              <Typography sx={{
+                color: pathname === "/test-lab" ? BG : TEXT,
+                bgcolor: pathname === "/test-lab" ? ACCENT : "transparent",
+                px: 1.6, py: 0.8, borderRadius: "999px",
+                fontSize: "0.9rem", fontWeight: pathname === "/test-lab" ? 700 : 500,
+                "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
+              }}>
+                Test Lab
+              </Typography>
+            </Link>
+
             {/* Feedback */}
             <a href="https://forms.gle/z4zugcnmZrW9d9cR9" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
               <Typography sx={{
@@ -303,6 +315,15 @@ export default function Navbar() {
             {NAV_GROUPS.map(g => (
               <MobileGroup key={g.label} group={g} onClose={() => setDrawerOpen(false)} />
             ))}
+
+            <ListItem
+              component={Link} href="/test-lab"
+              onClick={() => setDrawerOpen(false)}
+              sx={{ bgcolor: pathname === "/test-lab" ? `${ACCENT}88` : "transparent", borderRadius: "8px", mb: 0.5 }}
+            >
+              <ListItemText primary="Test Lab"
+                primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem" }} />
+            </ListItem>
 
             <Divider sx={{ my: 1 }} />
 

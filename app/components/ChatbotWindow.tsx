@@ -1,3 +1,8 @@
+"use client";
+
+import { Dialog, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+
 /*
   ══════════════════════════════════════════════════════════════════
   IMPROVEMENTS MADE HERE:
@@ -148,11 +153,17 @@ export function getCollectionByKey(key: string): PoetryMeta | undefined {
 
 export function getCollectionByAlias(alias: string): PoetryMeta | undefined {
   const normalized = alias.trim().toLowerCase();
-  return POETRY_COLLECTIONS.find(
-    (c) =>
-      c.key.toLowerCase() === normalized ||
-      c.aliases?.some((a) => a.toLowerCase() === normalized)
-  );
+  return POETRY_COLLECTIONS.find((c) => {
+    if (c.key.toLowerCase() === normalized) {
+      return true;
+    }
+
+    if (!("aliases" in c)) {
+      return false;
+    }
+
+    return c.aliases.some((a) => a.toLowerCase() === normalized);
+  });
 }
 
 /* Builds the same shape ChatbotWindow.tsx's COLLECTION_ALIASES used
@@ -171,4 +182,28 @@ export function buildAliasMap(): Record<string, PoetryKey> {
   }
 
   return map;
+}
+
+export default function ChatbotWindow({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <Typography variant="h6">భావాలమాల – AI సహాయకుడు</Typography>
+        <IconButton onClick={onClose} edge="end" aria-label="close chatbot">
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body1">
+          Chatbot experience is temporarily unavailable while the component is being restored.
+        </Typography>
+      </DialogContent>
+    </Dialog>
+  );
 }
