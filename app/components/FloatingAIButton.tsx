@@ -29,7 +29,7 @@ export default function FloatingAIButton() {
           sx={{
             position: "fixed",
             bottom: isMobile ? 96 : 24, // ⬆️ above bottom nav
-            right: 16,
+            left: 16,
             zIndex: 1600,
           }}
         >
@@ -67,6 +67,5 @@ export default function FloatingAIButton() {
     </>
   );
 }
-
 
 

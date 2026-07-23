@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Alert, Box, Button, CircularProgress, Divider, Drawer, Paper, Stack } from "@mui/material";
 import { Dialog, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
@@ -191,6 +193,58 @@ export default function ChatbotWindow({
   open: boolean;
   onClose: () => void;
 }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [recommendation, setRecommendation] = useState<{
+    title: string;
+    content: string;
+    folder: string;
+    reason: string;
+  } | null>(null);
+
+  const askForPoem = async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/agent/pick-poem");
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || "సిఫార్సు అందుబాటులో లేదు.");
+      setRecommendation({ title: data.poem.title, content: data.poem.content, folder: data.poem.folder, reason: data.agentReason });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "సమస్య ఏర్పడింది. మళ్లీ ప్రయత్నించండి.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Drawer anchor="left" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: "100%", sm: 380 } } }}>
+      <Stack spacing={2.5} sx={{ height: "100%", p: 2.5 }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Box>
+            <Typography variant="h6" fontWeight={800}>భావాలమాల సహాయకుడు</Typography>
+            <Typography variant="body2" color="text.secondary">మీ కోసం ఒక పద్యాన్ని ఎంచే సహాయకుడు</Typography>
+          </Box>
+          <IconButton onClick={onClose} aria-label="సహాయకుడిని మూసివేయండి"><CloseIcon /></IconButton>
+        </Stack>
+        <Divider />
+        <Typography variant="body2" color="text.secondary">క్రింది బటన్ నొక్కితే సహాయకుడు సాహిత్య సేకరణలలో నుండి ఒక పద్యాన్ని ఎంచి, కారణంతో చూపిస్తాడు.</Typography>
+        <Button variant="contained" size="large" onClick={askForPoem} disabled={isLoading} startIcon={isLoading ? <CircularProgress size={18} color="inherit" /> : undefined}>
+          {isLoading ? "పద్యాన్ని వెతుకుతోంది…" : "నాకు ఒక పద్యం సూచించండి"}
+        </Button>
+        {error && <Alert severity="error">{error}</Alert>}
+        {recommendation && <Paper sx={{ bgcolor: "primary.50", border: "1px solid", borderColor: "primary.light", borderRadius: 2, p: 2 }}>
+          <Typography variant="overline" color="primary.main">సూచించిన సేకరణ: {recommendation.folder}</Typography>
+          <Typography variant="h6" fontWeight={700}>{recommendation.title}</Typography>
+          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1.5, maxHeight: 220, overflowY: "auto" }}>{recommendation.content}</Typography>
+          <Divider sx={{ my: 1.5 }} />
+          <Typography variant="body2" color="text.secondary"><strong>ఎందుకు ఎంచింది:</strong> {recommendation.reason}</Typography>
+        </Paper>}
+        <Box sx={{ mt: "auto" }}><Typography variant="caption" color="text.secondary">ఈ సహాయకుడు ఎడమ వైపున అన్ని పేజీలలో అందుబాటులో ఉంటుంది.</Typography></Box>
+      </Stack>
+    </Drawer>
+  );
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
