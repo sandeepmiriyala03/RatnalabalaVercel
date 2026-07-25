@@ -42,11 +42,6 @@ export default function SametaluList({ letter }: Props) {
 
     const loadSametalu = async () => {
       try {
-        if (letter === "all") {
-          if (mounted) setSametalu([]);
-          return;
-        }
-
         const file = SAMETALU_FILE_MAP[letter];
         const res = await fetch(`/ssmetalamala/${file}.json`);
 
@@ -89,7 +84,7 @@ export default function SametaluList({ letter }: Props) {
 
   /* 🔤 Letter header card */
   const letterHeader: Sameta | null =
-    letter !== "all"
+    letter
       ? { id: `header-${letter}`, text: letter }
       : null;
 
