@@ -576,7 +576,7 @@ export default function PoemCardNew({
               fontWeight: 700,
             }}
           >
-            AI సాధనాలు — ధ్వని · కళ · వీడియో
+           ధ్వనికళాదర్శి మాల
           </Button>
 
         </Stack>
@@ -625,7 +625,7 @@ export default function PoemCardNew({
                   color: "secondary.main",
                 }}
               >
-                ధ్వని · కళ · వీడియో
+                ధ్వనికళాదర్శి మాల
               </Typography>
             </Box>
 
