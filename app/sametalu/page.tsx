@@ -15,13 +15,13 @@ import {
 import SametaluList from "@/app/components/SametaluList";
 import {
   SAMETALU_GROUPS,
-  DEFAULT_LETTER,
+ 
   TeluguLetter,
 } from "@/app/types/sametalu";
 
 export default function SametaluPage() {
   const [letter, setLetter] =
-    useState<TeluguLetter>(DEFAULT_LETTER);
+    useState<TeluguLetter>("అ");
 
   return (
     <Box sx={{ maxWidth: 900, mx: "auto", p: 3 }}>

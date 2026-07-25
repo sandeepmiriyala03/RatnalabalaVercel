@@ -18,6 +18,7 @@ import type {
 import { SAMETALU_FILE_MAP } from "@/app/types/sametalu";
 
 import SametaCard from "@/app/components/SametaCard";
+import DownloadAllSametalu from "@/app/components/DownloadAllSametalu";
 
 interface Props {
   letter: TeluguLetter;
@@ -133,6 +134,13 @@ export default function SametaluList({ letter }: Props) {
           setPage(1);
         }}
       />
+
+      {/* 📦 Download all currently-filtered sametalu as one ZIP of
+          posters — respects the search box above (filtered, not just
+          the currently-paginated `visible` slice). */}
+      {filtered.length > 0 && (
+        <DownloadAllSametalu sametalu={filtered} />
+      )}
 
       {/* 🔤 Letter Header (no speaker / no share) */}
       {letterHeader && (

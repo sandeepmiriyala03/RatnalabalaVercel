@@ -24,8 +24,6 @@ export interface PoetryMeta {
 
 /* 📚 All Poetry Collections */
 export const POETRY_COLLECTIONS: PoetryMeta[] = [
-  
-
   {
     key: "Jandhyala",
     label: "తెలుగుబాల",
@@ -95,4 +93,4 @@ export const POETRY_COLLECTIONS: PoetryMeta[] = [
 ];
 
 /* ⭐ Default */
-export const DEFAULT_POETRY_KEY: PoetryKey = "all";
+export const DEFAULT_POETRY_KEY: PoetryKey = "Jandhyala";

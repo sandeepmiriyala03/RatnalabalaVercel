@@ -27,30 +27,19 @@ export default function PoemsPage() {
   /* ✅ Safe selected collection */
   const selected =
     POETRY_COLLECTIONS.find((p) => p.key === selectedKey) ??
-    POETRY_COLLECTIONS.find(
-      (p) => p.key === DEFAULT_POETRY_KEY
-    )!;
+    POETRY_COLLECTIONS[0];
 
   /* 📊 Platform totals */
-  const totalCollections = useMemo(
-    () => POETRY_COLLECTIONS.filter((p) => p.key !== "all").length,
-    []
-  );
+  const totalCollections = useMemo(() => POETRY_COLLECTIONS.length, []);
 
   const totalPoemsAll = useMemo(
-    () =>
-      POETRY_COLLECTIONS.filter((p) => p.key !== "all").reduce(
-        (sum, p) => sum + (p.totalPoems ?? 0),
-        0
-      ),
+    () => POETRY_COLLECTIONS.reduce((sum, p) => sum + (p.totalPoems ?? 0), 0),
     []
   );
 
   /* ✅ Display poems count */
   const displayTotalPoems =
-    selected.key === "all"
-      ? totalPoemsAll
-      : selected.totalPoems;
+    selected.key === "Jandhyala" ? totalPoemsAll : selected.totalPoems ?? 0;
 
   const authorsText = Array.isArray(selected.authors)
     ? selected.authors.join(", ")

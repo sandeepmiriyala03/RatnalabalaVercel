@@ -1,6 +1,5 @@
 /* Telugu letters used in Sametalu */
 export type TeluguLetter =
-  | "all"
   | "అ" | "ఆ" | "ఇ" | "ఈ" | "ఉ" | "ఊ" | "ఋ"
   | "ఎ" | "ఏ" | "ఐ" | "ఒ" | "ఓ" | "ఔ"
   | "అం" | "అః"
@@ -11,15 +10,16 @@ export type TeluguLetter =
   | "య" | "ర" | "ల" | "వ"
   | "శ" | "ష" | "స" | "హ" | "ళ" | "క్ష" | "జ్ఞ" | "ఱ";
 
-/* ✅ DEFAULT */
+/* ✅ DEFAULT 
 export const DEFAULT_LETTER: TeluguLetter = "all";
-
+{ key: "all", label: "అన్ని సామెతలు" }
+*/
 /* ✅ DROPDOWN GROUPS (USED IN PAGE) */
 export const SAMETALU_GROUPS: {
   key: TeluguLetter;
   label: string;
 }[] = [
-  { key: "all", label: "అన్ని సామెతలు" },
+  
 
   { key: "అ", label: "అ" },
   { key: "ఆ", label: "ఆ" },
@@ -94,7 +94,7 @@ export interface SametaluFile {
 
 /* 🔤 Telugu → ENGLISH filename mapping */
 export const SAMETALU_FILE_MAP: Record<TeluguLetter, string> = {
-  all: "all",
+
 
   "అ": "a",
   "ఆ": "aa",
