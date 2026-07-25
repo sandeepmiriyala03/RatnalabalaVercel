@@ -9,7 +9,7 @@ import {
   Pagination,
 } from "@mui/material";
 import PoemCard from "@/app/components/PoemCard";
-
+import DownloadAllPosters from "@/app/components/DownloadAllPosters";
 interface Poem {
   title: string;
   content: string;
@@ -175,6 +175,19 @@ const PoemList: React.FC = () => {
         <Typography align="center" color="error">
           {error}
         </Typography>
+      )}
+
+  {/* Download every currently-filtered poem's poster as one ZIP.
+          THIS is the button that was missing — it did not exist anywhere
+          in this file before. */}
+      {!loading && !error && filtered.length > 0 && (
+
+        <DownloadAllPosters
+          poems={filtered}
+          authors={AUTHORS}
+          poetryName={POETRY_NAME}
+        />
+
       )}
 
       {!loading &&

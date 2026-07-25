@@ -11,7 +11,7 @@ import {
 
 import PoemCardNew from "@/app/components/PoemCardNew";
 import { POETRY_COLLECTIONS } from "@/types/poetry";
-
+import DownloadAllPosters from "@/app/components/DownloadAllPosters";
 interface Poem {
   title: string;
   content: string;
@@ -167,6 +167,19 @@ const PoemListByKey: React.FC<Props> = ({
           {error}
         </Typography>
       )}
+       {/* Download every currently-filtered poem's poster as one ZIP.
+                THIS is the button that was missing — it did not exist anywhere
+                in this file before. */}
+            {!loading && !error && filtered.length > 0 && (
+      
+              <DownloadAllPosters
+                poems={filtered}
+                authors={authors}
+                poetryName={poetryName}
+              />
+      
+            )}
+      
 
       {!loading &&
         !error &&
