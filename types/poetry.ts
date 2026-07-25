@@ -24,11 +24,7 @@ export interface PoetryMeta {
 
 /* 📚 All Poetry Collections */
 export const POETRY_COLLECTIONS: PoetryMeta[] = [
-  {
-    key: "all",
-    label: "📚 అన్ని శతకాలు",
-    authors: "అనేక కవులు",
-  },
+  
 
   {
     key: "Jandhyala",

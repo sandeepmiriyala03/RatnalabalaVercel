@@ -50,11 +50,7 @@ export interface PoetryMeta {
    from these `key` values, so the type and the data can never
    silently drift apart. */
 export const POETRY_COLLECTIONS = [
-  {
-    key: "all",
-    label: "📚 అన్ని శతకాలు",
-    authors: "అనేక కవులు",
-  },
+ 
   {
     key: "Jandhyala",
     label: "తెలుగుబాల",
