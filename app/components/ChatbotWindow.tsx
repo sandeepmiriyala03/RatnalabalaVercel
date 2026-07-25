@@ -172,7 +172,7 @@ export function buildAliasMap(): Record<string, PoetryKey> {
   const map: Record<string, PoetryKey> = {};
 
   for (const collection of POETRY_COLLECTIONS) {
-    if (collection.key === "all") continue;
+    if (collection.key === "Jandhyala") continue;
 
     for (const alias of collection.aliases ?? []) {
       map[alias.toLowerCase()] = collection.key as PoetryKey;
