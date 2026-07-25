@@ -40,8 +40,14 @@ const KAVI_IMAGE_MAP: Record<string, string> = {
   // "మరో కవి పేరు": "/AnotherPoet.png",
 };
 
+// Per-author focal point for the close-up crop below (objectPosition).
+// Use this when an illustration's subject isn't centered — e.g. if the
+// face sits higher/lower or left/right of frame. Falls back to a sensible
+// default (top-ish center, where most portrait-style faces land) when a
+// name isn't listed here.
 const KAVI_FOCAL_MAP: Record<string, string> = {
   "డాక్టర్ మిరియాల రామకృష్ణ": "50% 15%",
+  // "మరో కవి పేరు": "50% 25%",
 };
 const DEFAULT_FOCAL_POINT = "50% 20%";
 
@@ -318,6 +324,24 @@ export default function PoemCard({
               }}>
                 {SITE_URL}
               </Typography>
+
+              {/* Full-width brand/footer illustration — needs a
+                  transparent-background PNG (not white bg) so it blends
+                  into the cream poster instead of showing a white box. */}
+              <Box
+                component="img"
+                data-poster-footer-image
+                src="/cartoonkids.png"
+                alt=""
+                sx={{
+                  width: "100%",
+                  maxWidth: 460,
+                  height: "auto",
+                  display: "block",
+                  mx: "auto",
+                  mt: { xs: 2, sm: 2.5 },
+                }}
+              />
             </Box>
 
           </Box>
@@ -416,8 +440,8 @@ export default function PoemCard({
               transition: "all 0.15s",
             }}
           >
-            <span>ధ్వనికళాదర్శి మాల </span>
-          </Button>
+              <span>ధ్వనికళాదర్శి మాల</span>
+            </Button>
 
         </Stack>
 
@@ -436,7 +460,7 @@ export default function PoemCard({
                 fontSize: 12, fontWeight: 700, color: "secondary.main",
                 letterSpacing: 0.5, textTransform: "uppercase",
               }}>
-                ధ్వనికళాదర్శి మాల
+               ధ్వనికళాదర్శి మాల
               </Typography>
             </Box>
             <TeluguVoice initialText={voiceText} />

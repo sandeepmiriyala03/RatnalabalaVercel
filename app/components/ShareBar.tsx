@@ -177,6 +177,20 @@ export default function ShareButtons({ targetRef }: Props) {
         });
       }
 
+      // Full-width footer illustration — lock its size for export the
+      // same way every other poster element is locked, so it can't drift
+      // by device/breakpoint.
+      const footerImgEl = clone.querySelector(
+        "[data-poster-footer-image]"
+      ) as HTMLElement | null;
+
+      if (footerImgEl) {
+        Object.assign(footerImgEl.style, {
+          maxWidth: isA4 ? "760px" : "460px",
+          marginTop: isA4 ? "28px" : "16px",
+        });
+      }
+
       // 3. Attach the real, fully-styled clone to the document so the
       // browser lays it out for real — this is what makes its measured
       // size 100% predictable.

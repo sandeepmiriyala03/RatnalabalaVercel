@@ -478,6 +478,24 @@ export default function PoemCardNew({
               >
                 {SITE_URL}
               </Typography>
+
+              {/* Full-width brand/footer illustration — needs a
+                  transparent-background PNG (not white bg) so it blends
+                  into the cream poster instead of showing a white box. */}
+              <Box
+                component="img"
+                data-poster-footer-image
+                src="/cartoonkids.png"
+                alt=""
+                sx={{
+                  width: "100%",
+                  maxWidth: 460,
+                  height: "auto",
+                  display: "block",
+                  mx: "auto",
+                  mt: { xs: 2, sm: 2.5 },
+                }}
+              />
             </Box>
 
           </Box>
@@ -576,7 +594,7 @@ export default function PoemCardNew({
               fontWeight: 700,
             }}
           >
-           ధ్వనికళాదర్శి మాల
+            ధ్వనికళాదర్శి మాల
           </Button>
 
         </Stack>
@@ -625,7 +643,7 @@ export default function PoemCardNew({
                   color: "secondary.main",
                 }}
               >
-                ధ్వనికళాదర్శి మాల
+              ధ్వనికళాదర్శి మాల
               </Typography>
             </Box>
 
