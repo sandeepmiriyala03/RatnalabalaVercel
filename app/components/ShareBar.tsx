@@ -50,8 +50,10 @@ export default function ShareButtons({ targetRef }: Props) {
       const isA4 = mode === "a4";
 
       // Content is captured at a fixed, comfortable reading WIDTH — height
-      // is left to size naturally to however long the poem is.
-      const CONTENT_WIDTH = isA4 ? 1600 : 860;
+      // is left to size naturally to however long the poem is. Narrowed
+      // further (860 -> 680 -> 600) to keep cutting the leftover cream
+      // space on the left/right of short, centered Telugu lines.
+      const CONTENT_WIDTH = isA4 ? 1400 : 600;
 
       const contentCanvas = await html2canvas(targetRef.current, {
         backgroundColor: POSTER_BG,
@@ -77,18 +79,23 @@ export default function ShareButtons({ targetRef }: Props) {
           });
 
           // No forced height here — root/body just size to their content,
-          // which is exactly what html2canvas handles reliably.
+          // which is exactly what html2canvas handles reliably. root's
+          // padding is now explicitly overridden too (it used to inherit
+          // MUI's sx p:{xs:2,sm:3} ≈ 24px untouched, which stacked with
+          // body's own padding below to make the side gaps much bigger
+          // than intended).
           Object.assign(root.style, {
             width: `${CONTENT_WIDTH}px`,
             boxSizing: "border-box",
             background: POSTER_BG,
             display: "block",
+            padding: isA4 ? "20px" : "8px",
           });
 
           Object.assign(body.style, {
             width: "100%",
             boxSizing: "border-box",
-            padding: isA4 ? "56px 64px" : "20px 18px",
+            padding: isA4 ? "32px 36px" : "10px 12px",
             textAlign: "center",
             fontFamily: "var(--telugu-font-family)",
             border: "none",
@@ -102,6 +109,19 @@ export default function ShareButtons({ targetRef }: Props) {
             Object.assign(titleEl.style, {
               fontSize: isA4 ? "72px" : "40px",
               lineHeight: "1.4",
+              marginBottom: isA4 ? "16px" : "10px",
+            });
+          }
+
+          // Hairline divider under the title — was inheriting MUI's
+          // mb:{xs:2.5,sm:3} (≈24px), one of the bigger unnecessary gaps.
+          const dividerEl = doc.querySelector(
+            "[data-poster-divider]"
+          ) as HTMLElement | null;
+
+          if (dividerEl) {
+            Object.assign(dividerEl.style, {
+              marginBottom: isA4 ? "24px" : "14px",
             });
           }
 
@@ -114,15 +134,42 @@ export default function ShareButtons({ targetRef }: Props) {
               });
             });
 
-          const imgEl = doc.querySelector(
+          // Close-up illustration crop — data-poster-image is now the
+          // circular WRAPPER (see PoemCard.tsx), not the raw <img>. Resize
+          // the wrapper itself; the inner <img data-poster-image-inner>
+          // keeps its width:100%/height:100%/object-fit:cover from
+          // PoemCard.tsx, so it automatically fills whatever size we set
+          // here — no separate sizing needed for the inner image.
+          const imgWrapEl = doc.querySelector(
             "[data-poster-image]"
           ) as HTMLElement | null;
 
-          if (imgEl) {
-            Object.assign(imgEl.style, {
-              height: isA4 ? "280px" : "160px",
-              width: "auto",
-              maxWidth: "60%",
+          if (imgWrapEl) {
+            const size = isA4 ? "300px" : "200px";
+            Object.assign(imgWrapEl.style, {
+              width: size,
+              height: size,
+              borderRadius: "50%",
+              overflow: "hidden",
+              margin: isA4 ? "0 auto 26px" : "0 auto 16px",
+              border: `1px solid ${POSTER_HAIRLINE}`,
+            });
+          }
+
+          // Author line — was relying purely on the windowWidth:1280
+          // simulation to resolve MUI's responsive sx to the "sm" value.
+          // Now hard-pinned like everything else, so it can't drift even
+          // if a future browser/device renders the html2canvas clone
+          // differently.
+          const authorEl = doc.querySelector(
+            "[data-poster-author]"
+          ) as HTMLElement | null;
+
+          if (authorEl) {
+            Object.assign(authorEl.style, {
+              fontSize: isA4 ? "26px" : "16px",
+              fontWeight: "500",
+              marginTop: isA4 ? "20px" : "12px",
             });
           }
 
@@ -133,8 +180,8 @@ export default function ShareButtons({ targetRef }: Props) {
           if (footerEl) {
             Object.assign(footerEl.style, {
               borderTop: `1px solid ${POSTER_HAIRLINE}`,
-              marginTop: isA4 ? "48px" : "20px",
-              paddingTop: isA4 ? "36px" : "14px",
+              marginTop: isA4 ? "26px" : "14px",
+              paddingTop: isA4 ? "20px" : "10px",
             });
 
             footerEl.querySelectorAll("p").forEach((p, i) => {
@@ -156,7 +203,7 @@ export default function ShareButtons({ targetRef }: Props) {
       // poem's natural content was shorter than the frame. Content size/
       // font sizes are untouched — only the surrounding canvas shrinks to
       // match, so there's no wasted space on any device.
-      const MARGIN = (isA4 ? 60 : 20) * CAPTURE_SCALE;
+      const MARGIN = (isA4 ? 30 : 10) * CAPTURE_SCALE;
 
       const finalCanvas = document.createElement("canvas");
       finalCanvas.width = contentCanvas.width + MARGIN * 2;

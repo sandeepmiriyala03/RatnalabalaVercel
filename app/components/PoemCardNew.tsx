@@ -55,6 +55,17 @@ const KAVI_IMAGE_MAP: Record<string, string> = {
   "శ్రీ ప్రసాదరావు మిరియాల గారు": "/Prasad.jpeg"
 };
 
+// Per-author focal point for the close-up crop below (objectPosition).
+// Use this when an illustration's subject isn't centered — e.g. if the
+// face sits higher/lower or left/right of frame. Falls back to a sensible
+// default (top-ish center, where most portrait-style faces land) when a
+// name isn't listed here.
+const KAVI_FOCAL_MAP: Record<string, string> = {
+  "డాక్టర్ మిరియాల రామకృష్ణ": "50% 15%",
+  "శ్రీ ప్రసాదరావు మిరియాల గారు": "50% 15%",
+};
+const DEFAULT_FOCAL_POINT = "50% 20%";
+
 // Small-caps footer tagline + URL, matching the reference's
 // "DISCOVER. READ. INSPIRE." + domain treatment. Adjust the copy/URL to
 // your actual site name.
@@ -148,6 +159,28 @@ export default function PoemCardNew({
     }
 
     return DEFAULT_KAVI_IMAGE_SRC;
+  }, [authors]);
+
+  // Matching focal point for the close-up crop, keyed off the same author
+  // lookup used for kaviImageSrc above.
+  const kaviFocalPoint = useMemo(() => {
+    const names = Array.isArray(authors)
+      ? authors
+      : authors
+      ? [authors]
+      : [];
+
+    for (const name of names) {
+      const normalized = name.trim();
+      const matchKey = Object.keys(KAVI_FOCAL_MAP).find(
+        (k) => k.trim() === normalized
+      );
+      if (matchKey) {
+        return KAVI_FOCAL_MAP[matchKey];
+      }
+    }
+
+    return DEFAULT_FOCAL_POINT;
   }, [authors]);
 
   const contentLines = useMemo(
@@ -306,6 +339,7 @@ export default function PoemCardNew({
             </Typography>
 
             <Box
+              data-poster-divider
               sx={{
                 width: 40,
                 height: 1,
@@ -315,20 +349,40 @@ export default function PoemCardNew({
               }}
             />
 
-            {/* Centered illustration — picked per-author via kaviImageSrc */}
+            {/* Close-up illustration crop — a fixed circular window with
+                object-fit: cover, so the subject reads as "zoomed in"
+                regardless of how much empty space surrounds them in the
+                source file. data-poster-image now marks the CROP WRAPPER
+                (not the raw <img>) so ShareButtons.tsx's onclone can resize
+                the whole crop window consistently for the poster export.
+                The actual <img> carries data-poster-image-inner so the
+                export step can still reach it directly if needed. */}
             <Box
-              component="img"
               data-poster-image
-              src={kaviImageSrc}
-              alt={authorText || poem.title}
               sx={{
-                width: "auto",
-                height: { xs: 96, sm: 120, md: 140 },
-                display: "block",
+                width: { xs: 140, sm: 170, md: 190 },
+                height: { xs: 140, sm: 170, md: 190 },
+                borderRadius: "50%",
+                overflow: "hidden",
                 mx: "auto",
                 mb: { xs: 2.5, sm: 3 },
+                border: `1px solid ${POSTER_COLOR.hairline}`,
               }}
-            />
+            >
+              <Box
+                component="img"
+                data-poster-image-inner
+                src={kaviImageSrc}
+                alt={authorText || poem.title}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  objectPosition: kaviFocalPoint,
+                  display: "block",
+                }}
+              />
+            </Box>
 
             {/* Poem lines — single centered column */}
             <Box>
@@ -363,6 +417,7 @@ export default function PoemCardNew({
 
             {authorText && (
               <Typography
+                data-poster-author
                 sx={{
                   mt: { xs: 2.5, sm: 3 },
                   fontWeight: 500,
