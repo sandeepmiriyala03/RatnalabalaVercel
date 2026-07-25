@@ -331,7 +331,7 @@ export default function PoemCard({
               <Box
                 component="img"
                 data-poster-footer-image
-                src="/cartoonkids.png"
+                src="/cartoonkids1.png"
                 alt=""
                 sx={{
                   width: "100%",
