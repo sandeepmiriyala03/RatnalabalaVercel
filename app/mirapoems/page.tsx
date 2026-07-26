@@ -10,6 +10,8 @@ import {
 } from "@mui/material";
 import PoemCard from "@/app/components/PoemCard";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";
+import DownloadAllVoices from "../components/DownloadAllVoices";
+
 interface Poem {
   title: string;
   content: string;
@@ -189,6 +191,16 @@ const PoemList: React.FC = () => {
         />
 
       )}
+
+            {/* Download every currently-filtered poem's VOICE audio as one
+                ZIP — same idea as the poster ZIP above, but each file is a
+                real live /api/tts call, not a free instant browser capture,
+                so this one is genuinely slower for large collections. */}
+            {!loading && !error && filtered.length > 0 && (
+      
+              <DownloadAllVoices poems={filtered} />
+      
+            )}
 
       {!loading &&
         !error &&

@@ -12,6 +12,7 @@ import {
 import PoemCardNew from "@/app/components/PoemCardNew";
 import { POETRY_COLLECTIONS } from "@/types/poetry";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";
+import DownloadAllVoices from "@/app/components/DownloadAllVoices";
 interface Poem {
   title: string;
   content: string;
@@ -180,6 +181,15 @@ const PoemListByKey: React.FC<Props> = ({
       
             )}
       
+            {/* Download every currently-filtered poem's VOICE audio as one
+                ZIP — same idea as the poster ZIP above, but each file is a
+                real live /api/tts call, not a free instant browser capture,
+                so this one is genuinely slower for large collections. */}
+            {!loading && !error && filtered.length > 0 && (
+      
+              <DownloadAllVoices poems={filtered} />
+      
+            )}
 
       {!loading &&
         !error &&
