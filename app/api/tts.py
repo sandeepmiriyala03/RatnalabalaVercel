@@ -1,112 +1,104 @@
-"""
-api/tts.py — generates poem audio ON THE FLY, live, when someone clicks
-the Listen button. No pre-generated files, no /public/audio folders to
-fill, no batch job.
+// app/api/tts/route.ts
+//
+// Generates poem audio ON THE FLY, live, when someone clicks Listen.
+// No pre-generated files, no Python, no separate serverless runtime —
+// this is a normal Next.js Route Handler, exactly like your existing
+// app/api/poems/route.ts. That matters: mixing a top-level /api/*.py
+// file alongside app/api/*/route.ts can actually break the Next.js
+// routes entirely (a real, reported Vercel issue) — staying in pure
+// Node.js sidesteps that risk completely.
+//
+// Engines:
+//   source: "edge"   -> Microsoft Edge neural voice, via @andresaya/edge-tts
+//                        (voice: "male" -> te-IN-MohanNeural,
+//                         voice: "female" -> te-IN-ShrutiNeural)
+//   source: "google" -> Google Translate's TTS engine, via google-tts-api
+//                        (one voice only; "voice" is ignored for this source)
+//
+// Called from the frontend exactly as before:
+//   fetch('/api/tts', {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ text, source: 'edge', voice: 'male' }),
+//   })
 
-Uses POST with a JSON body (not GET with a query string) specifically
-because Telugu text explodes in size once URL-encoded — each Telugu
-character is 3 UTF-8 bytes, and percent-encoding turns each byte into
-"%XX" (3 ASCII chars), so a single Telugu letter can become 9 characters
-of URL. A full poem quickly exceeds URL-length limits enforced upstream
-by Vercel's infrastructure, causing a 400 before this code even runs. A
-POST body has no such limit.
+import { NextRequest, NextResponse } from "next/server";
+import { EdgeTTS } from "@andresaya/edge-tts";
+import * as googleTTS from "google-tts-api";
 
-Supports both engines you were comparing:
-  source: "edge"   -> Microsoft Edge neural voice
-                       (voice: "male" -> te-IN-MohanNeural,
-                        voice: "female" -> te-IN-ShrutiNeural)
-  source: "google" -> Google Translate's TTS engine (via gTTS) — one
-                       voice only, "voice" is ignored for this source
+export const runtime = "nodejs"; // needs real Node APIs, not Edge runtime
 
-DEPLOY REQUIREMENTS:
-  - Lives at the project ROOT under /api/tts.py (sibling of /app,
-    /public — NOT inside app/api/, which is reserved for Next.js route
-    handlers).
-  - requirements.txt at the project root (edge-tts, gTTS).
-  - vercel.json declaring the python3.12 runtime for this file.
+const MAX_TEXT_LENGTH = 5000; // sanity cap against abuse via giant payloads
 
-CALLED FROM THE FRONTEND LIKE:
-  fetch('/api/tts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, source: 'edge', voice: 'male' }),
-  })
-  -> returns raw MP3 audio bytes directly as the response body.
-"""
+async function generateEdge(text: string, voiceChoice: string): Promise<Buffer> {
+  const voice = voiceChoice === "female" ? "te-IN-ShrutiNeural" : "te-IN-MohanNeural";
+  const tts = new EdgeTTS();
+  await tts.synthesize(text, voice);
+  return tts.toBuffer(); // NOT getAudioData() — that method doesn't exist on this class
+}
 
-from http.server import BaseHTTPRequestHandler
-import asyncio
-import io
-import json
+async function generateGoogle(text: string): Promise<Buffer> {
+  // Google's endpoint caps individual requests at ~200 characters — a
+  // full poem exceeds that, so getAllAudioBase64 splits it into
+  // multiple chunks (by sentence-ish punctuation) and returns each
+  // chunk's audio separately. MP3 frames are self-contained, so
+  // concatenating the raw bytes of sequential chunks plays back fine
+  // as one continuous file.
+  const chunks = await googleTTS.getAllAudioBase64(text, {
+    lang: "te",
+    slow: false,
+  });
 
-import edge_tts
-from gtts import gTTS
+  const buffers = chunks.map((chunk) => Buffer.from(chunk.base64, "base64"));
+  return Buffer.concat(buffers);
+}
 
-MAX_TEXT_LENGTH = 5000  # sanity cap to block abuse via giant payloads
+export async function POST(req: NextRequest) {
+  let payload: { text?: string; source?: string; voice?: string };
 
+  try {
+    payload = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
 
-async def generate_edge(text: str, voice_choice: str) -> bytes:
-    voice = "te-IN-MohanNeural" if voice_choice == "male" else "te-IN-ShrutiNeural"
-    communicate = edge_tts.Communicate(text, voice)
-    buf = io.BytesIO()
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            buf.write(chunk["data"])
-    return buf.getvalue()
+  const text = (payload.text ?? "").trim();
+  const source = payload.source ?? "edge";
+  const voiceChoice = payload.voice ?? "male";
 
+  if (!text) {
+    return NextResponse.json({ error: "Missing 'text' field." }, { status: 400 });
+  }
 
-def generate_gtts(text: str) -> bytes:
-    tts = gTTS(text=text, lang="te")
-    buf = io.BytesIO()
-    tts.write_to_fp(buf)
-    return buf.getvalue()
+  if (text.length > MAX_TEXT_LENGTH) {
+    return NextResponse.json(
+      { error: `Text too long (max ${MAX_TEXT_LENGTH} characters).` },
+      { status: 400 }
+    );
+  }
 
+  try {
+    const audioBuffer =
+      source === "google"
+        ? await generateGoogle(text)
+        : await generateEdge(text, voiceChoice);
 
-class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        try:
-            content_length = int(self.headers.get("Content-Length", 0))
-            raw_body = self.rfile.read(content_length) if content_length else b"{}"
-            payload = json.loads(raw_body.decode("utf-8"))
-        except (ValueError, json.JSONDecodeError):
-            self._error(400, "Invalid JSON body.")
-            return
-
-        text = str(payload.get("text", "")).strip()
-        source = payload.get("source", "edge")
-        voice_choice = payload.get("voice", "male")
-
-        if not text:
-            self._error(400, "Missing 'text' field in request body.")
-            return
-
-        if len(text) > MAX_TEXT_LENGTH:
-            self._error(400, f"Text too long (max {MAX_TEXT_LENGTH} characters).")
-            return
-
-        try:
-            if source == "google":
-                audio_bytes = generate_gtts(text)
-            else:
-                audio_bytes = asyncio.run(generate_edge(text, voice_choice))
-        except Exception as e:
-            self._error(500, f"TTS generation failed: {e}")
-            return
-
-        if not audio_bytes:
-            self._error(500, "TTS generation returned no audio.")
-            return
-
-        self.send_response(200)
-        self.send_header("Content-Type", "audio/mpeg")
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(audio_bytes)
-
-    def _error(self, code: int, message: str):
-        self.send_response(code)
-        self.send_header("Content-Type", "text/plain; charset=utf-8")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        self.wfile.write(message.encode("utf-8"))
+    // NextResponse's BodyInit type doesn't recognize Node's Buffer type
+    // directly (a TS strictness quirk, not a runtime problem — Buffer IS
+    // a Uint8Array at runtime) — wrapping it explicitly satisfies the
+    // type checker without changing the actual bytes sent.
+    return new NextResponse(new Uint8Array(audioBuffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "audio/mpeg",
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (err) {
+    console.error("TTS generation failed:", err);
+    return NextResponse.json(
+      { error: "TTS generation failed." },
+      { status: 500 }
+    );
+  }
+}

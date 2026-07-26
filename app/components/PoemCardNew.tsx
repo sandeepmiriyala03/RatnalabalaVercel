@@ -11,6 +11,12 @@ import {
   Button,
   Stack,
   Collapse,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  FormControlLabel,
+  Switch,
   alpha,
   useTheme,
 } from "@mui/material";
@@ -72,6 +78,48 @@ const DEFAULT_FOCAL_POINT = "50% 20%";
 const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
 const SITE_URL = "https://ratnalabala.vercel.app/";
 
+// Voice choice — THREE real options, all generated ON THE FLY by calling
+// /api/tts (a plain Node.js Next.js Route Handler — same one PoemCard.tsx
+// uses, no Python, no separate runtime) with the poem's text. No
+// pre-generated files, no batch job — every click generates fresh.
+type VoiceOption = "mohan" | "shruti" | "google";
+
+const VOICE_LABELS: Record<VoiceOption, string> = {
+  mohan: "🎙️ మగ స్వరం (Mohan)",
+  shruti: "👩 స్త్రీ స్వరం (Shruti)",
+  google: "🔊 Google TTS",
+};
+
+// POST with a JSON body — Telugu text explodes in size once URL-encoded,
+// so a GET query string risks hitting URL-length limits. See PoemCard.tsx
+// for the same helper; kept duplicated here since PoemCardNew.tsx is a
+// separate, self-contained component (not sharing PoemCard's props).
+async function fetchTtsAudio(text: string, voice: VoiceOption): Promise<Blob> {
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text,
+      source: voice === "google" ? "google" : "edge",
+      voice: voice === "shruti" ? "female" : "male",
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`TTS request failed: ${res.status} ${errText}`);
+  }
+
+  return res.blob();
+}
+
+// Optional background music, mixed quietly under the narration — swap
+// this file for a proper licensed track whenever you have one. Kept
+// deliberately quiet (see BG_MUSIC_VOLUME) so it never competes with the
+// spoken poem.
+const BG_MUSIC_SRC = "/audio/bg-music-guitar-loop.wav";
+const BG_MUSIC_VOLUME = 0.18;
+
 /* 🔊 Speaking Animation */
 function SpeakingBars() {
   return (
@@ -122,12 +170,17 @@ export default function PoemCardNew({
   const theme = useTheme();
 
   const poemRef = useRef<HTMLDivElement | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const bgMusicElRef = useRef<HTMLAudioElement | null>(null);
 
   const stopRef = useRef(false);
 
   const [voiceOpen, setVoiceOpen] = useState(false);
 
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [voiceChoice, setVoiceChoice] = useState<VoiceOption>("mohan");
+  const [bgMusicOn, setBgMusicOn] = useState(true);
 
   const authorText = Array.isArray(authors)
     ? authors.join(", ")
@@ -198,16 +251,37 @@ export default function PoemCardNew({
     };
   }, []);
 
-  /* 🔊 Read poem */
-  const speak = async () => {
+  const stopBgMusic = () => {
+    if (bgMusicElRef.current) {
+      bgMusicElRef.current.pause();
+      bgMusicElRef.current.currentTime = 0;
+      bgMusicElRef.current = null;
+    }
+  };
+
+  const startBgMusicIfEnabled = () => {
+    if (!bgMusicOn) return;
+    const bg = new Audio(BG_MUSIC_SRC);
+    bg.loop = true;
+    bg.volume = BG_MUSIC_VOLUME;
+    bgMusicElRef.current = bg;
+    // Background music failing to load/play is non-critical — the poem
+    // narration itself still works fine without it.
+    bg.play().catch(() => {
+      bgMusicElRef.current = null;
+    });
+  };
+
+  /* 🔊 Browser fallback — original line-by-line SpeechSynthesis reading,
+     used only if the live /api/tts generation call fails (network issue,
+     cold start, server error). Unchanged from before. */
+  const browserSpeakFallback = async () => {
 
     if (!("speechSynthesis" in window)) return;
 
     window.speechSynthesis.cancel();
 
     stopRef.current = false;
-
-    setIsSpeaking(true);
 
     const lines = [
       poem.title,
@@ -252,16 +326,73 @@ export default function PoemCardNew({
     }
 
     setIsSpeaking(false);
+    stopBgMusic();
+  };
+
+  /* 🔊 Read poem — tries live /api/tts generation first (person's
+     selected voice), only falling back to the browser voice above if
+     that call itself fails. */
+  const speak = async () => {
+
+    setIsSpeaking(true);
+    setIsGenerating(true);
+    stopRef.current = false;
+
+    try {
+      const blob = await fetchTtsAudio(voiceText, voiceChoice);
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      audioElRef.current = audio;
+      setIsGenerating(false);
+
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(audioUrl);
+        audioElRef.current = null;
+        stopBgMusic();
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+        audioElRef.current = null;
+        stopBgMusic();
+        browserSpeakFallback();
+      };
+
+      startBgMusicIfEnabled();
+      await audio.play();
+    } catch {
+      // Live generation failed — fall back to the browser voice.
+      setIsGenerating(false);
+      startBgMusicIfEnabled();
+      await browserSpeakFallback();
+    }
   };
 
   /* ⛔ Stop reading */
   const stop = () => {
 
     stopRef.current = true;
+    setIsGenerating(false);
 
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.currentTime = 0;
+      audioElRef.current = null;
+    }
+
+    stopBgMusic();
     window.speechSynthesis.cancel();
 
     setIsSpeaking(false);
+  };
+
+  // Switching voice mid-playback stops whatever's currently playing —
+  // otherwise the old voice keeps going while the dropdown visually shows
+  // the new selection, which reads as broken.
+  const handleVoiceChange = (event: any) => {
+    if (isSpeaking) stop();
+    setVoiceChoice(event.target.value as VoiceOption);
   };
 
   const forestGreen = "#1a3d2b";
@@ -516,6 +647,50 @@ export default function PoemCardNew({
         {/* Buttons */}
         <Stack direction="column" spacing={1.25}>
 
+          {/* Voice choice — THREE real options, generated live via
+              /api/tts on click. No pre-generated files, no waiting on a
+              batch job — every poem, every voice, generated on demand. */}
+          {enableRead && (
+            <FormControl size="small" fullWidth>
+              <InputLabel id={`voice-select-new-${poem.slug ?? poem.title}`}>
+                స్వరం ఎంచుకోండి
+              </InputLabel>
+              <Select
+                labelId={`voice-select-new-${poem.slug ?? poem.title}`}
+                label="స్వరం ఎంచుకోండి"
+                value={voiceChoice}
+                onChange={handleVoiceChange}
+              >
+                {(Object.keys(VOICE_LABELS) as VoiceOption[]).map((v) => (
+                  <MenuItem key={v} value={v}>
+                    {VOICE_LABELS[v]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {/* Background music toggle — optional, quiet, mixed under the
+              narration via a second simultaneous <audio> element. On by
+              default — person can still switch it off. */}
+          {enableRead && (
+            <FormControlLabel
+              sx={{ ml: 0.5, justifyContent: "flex-start" }}
+              control={
+                <Switch
+                  size="small"
+                  checked={bgMusicOn}
+                  onChange={(e) => setBgMusicOn(e.target.checked)}
+                />
+              }
+              label={
+                <Typography sx={{ fontSize: "0.82rem", fontWeight: 600 }}>
+                  🎵 నేపథ్య సంగీతం (తేలికపాటి గిటార్)
+                </Typography>
+              }
+            />
+          )}
+
           <Stack direction="row" spacing={1}>
 
             {enableRead && (
@@ -554,6 +729,8 @@ export default function PoemCardNew({
               >
                 {isSpeaking
                   ? "ఆపండి"
+                  : isGenerating
+                  ? "తయారవుతోంది…"
                   : "వినండి"}
               </Button>
             )}
