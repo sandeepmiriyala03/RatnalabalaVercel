@@ -4,6 +4,7 @@ import React, { useRef, useState, useMemo } from "react";
 import {
   Box, Typography, Card, CardContent, Divider,
   Button, Stack, Collapse,
+  ToggleButtonGroup, ToggleButton,
   alpha, useTheme, useMediaQuery,
 } from "@mui/material";
 import VolumeUpRoundedIcon      from "@mui/icons-material/VolumeUpRounded";
@@ -56,6 +57,45 @@ const DEFAULT_FOCAL_POINT = "50% 20%";
 const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
 const SITE_URL = "https://ratnalabala.vercel.app";
 
+// Pre-generated audio lookup — the LISTENER picks which voice to hear
+// (not an automatic priority order), via the toggle rendered below.
+// Filename (minus extension) must exactly match the poem's title, e.g. a
+// poem titled "అసహనం" needs a file at public/audio/male/అసహనం.wav (or
+// .mp3) matching whichever voice is selected. Both extensions are tried
+// since your two generation methods may not output the same format.
+type VoiceSource = "male" | "google";
+
+const VOICE_FOLDERS: Record<VoiceSource, string> = {
+  male: "/audio/male/",
+  google: "/audio/google/",
+};
+
+const AUDIO_EXTENSIONS = ["wav", "mp3"];
+
+function audioBaseName(title: string): string {
+  const cleaned = title.trim().replace(/[\\/:*?"<>|]+/g, "");
+  return cleaned || "poem";
+}
+
+// HEAD request just checks whether THIS specific voice's file exists
+// (trying .wav then .mp3) before committing to play it — if neither
+// exists (expected for most poems during this 34-poem test phase), the
+// caller falls back to the browser voice rather than silently trying the
+// other pregenerated folder.
+async function findAudioUrlFor(title: string, source: VoiceSource): Promise<string | null> {
+  const baseName = audioBaseName(title);
+  for (const ext of AUDIO_EXTENSIONS) {
+    const url = `${VOICE_FOLDERS[source]}${encodeURIComponent(baseName)}.${ext}`;
+    try {
+      const res = await fetch(url, { method: "HEAD" });
+      if (res.ok) return url;
+    } catch {
+      // network hiccup — try the next extension rather than giving up
+    }
+  }
+  return null;
+}
+
 /* ── animated waveform bars shown while speaking ── */
 function SpeakingBars() {
   return (
@@ -94,8 +134,10 @@ export default function PoemCard({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const poemRef   = useRef<HTMLDivElement>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const [voiceOpen,   setVoiceOpen]   = useState(false);
   const [isSpeaking,  setIsSpeaking]  = useState(false);
+  const [voiceSource, setVoiceSource] = useState<VoiceSource>("male");
 
   const authorText  = Array.isArray(authors) ? authors.join(", ") : authors;
   const voiceText   = `${poem.title}\n${poem.content}`.trim();
@@ -154,18 +196,70 @@ export default function PoemCard({
   const forestGreen = "#1a3d2b";
   const forestMid   = "#2d6a4f";
 
-  /* ── speak / stop wrappers (track speaking state locally) ── */
-  const handleSpeak = () => {
+  /* ── speak / stop wrappers (track speaking state locally) ──
+     Uses whichever voice the person selected via the toggle below
+     (voiceSource). Only falls back to the browser's SpeechSynthesis —
+     the original behavior, untouched — if THAT specific voice doesn't
+     have a file for this poem yet. It does not silently try the other
+     pregenerated voice instead; the person's choice is respected as-is. */
+  const handleSpeak = async () => {
     setIsSpeaking(true);
+
+    const audioUrl = await findAudioUrlFor(poem.title, voiceSource);
+
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      audioElRef.current = audio;
+
+      audio.onended = () => {
+        setIsSpeaking(false);
+        audioElRef.current = null;
+      };
+
+      audio.onerror = () => {
+        // File was listed as reachable but failed to actually decode/play
+        // (corrupt upload, wrong format, etc.) — fall back rather than
+        // leaving the button stuck on "ఆపండి" with nothing playing.
+        audioElRef.current = null;
+        speak(`${poem.title}. ${poem.content}`);
+      };
+
+      audio.play().catch(() => {
+        audioElRef.current = null;
+        speak(`${poem.title}. ${poem.content}`);
+      });
+
+      return;
+    }
+
+    // No pre-generated audio for THIS poem in the selected voice — falls
+    // back to the browser voice, same as before.
     speak(`${poem.title}. ${poem.content}`);
-    // reset speaking indicator after a generous timeout as fallback
-    const guard = setTimeout(() => setIsSpeaking(false), 60_000);
-    return () => clearTimeout(guard);
+    setTimeout(() => setIsSpeaking(false), 60_000);
   };
 
   const handleStop = () => {
     setIsSpeaking(false);
+
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.currentTime = 0;
+      audioElRef.current = null;
+    }
+
     stopSpeech();
+  };
+
+  // Switching voice mid-playback stops whatever's currently playing —
+  // otherwise the old voice keeps going while the toggle visually shows
+  // the new selection, which reads as broken.
+  const handleVoiceChange = (
+    _event: React.MouseEvent<HTMLElement>,
+    newSource: VoiceSource | null
+  ) => {
+    if (!newSource) return; // ignore re-clicking the already-selected option
+    if (isSpeaking) handleStop();
+    setVoiceSource(newSource);
   };
 
   return (
@@ -356,6 +450,29 @@ export default function PoemCard({
 
         {/* ── Action rows ── */}
         <Stack direction="column" spacing={1.25}>
+
+          {/* Voice choice — the LISTENER picks which pregenerated voice
+              to hear. Falls back to the browser voice automatically if
+              the selected one has no file for this particular poem yet
+              (most poems, during the 34-poem test phase). */}
+          <ToggleButtonGroup
+            value={voiceSource}
+            exclusive
+            onChange={handleVoiceChange}
+            size="small"
+            fullWidth
+            sx={{
+              "& .MuiToggleButton-root": {
+                textTransform: "none",
+                fontWeight: 700,
+                fontSize: "0.8rem",
+                py: 0.75,
+              },
+            }}
+          >
+            <ToggleButton value="male">🎙️ మగ స్వరం</ToggleButton>
+            <ToggleButton value="google">🔊 Google స్వరం</ToggleButton>
+          </ToggleButtonGroup>
 
           {/* Row 1 — Listen (or Stop) + Share */}
           <Stack direction="row" spacing={1}>
