@@ -59,10 +59,9 @@ const SITE_URL = "https://ratnalabala.vercel.app";
 
 // Pre-generated audio lookup — the LISTENER picks which voice to hear
 // (not an automatic priority order), via the toggle rendered below.
-// Filename (minus extension) must exactly match the poem's title, e.g. a
-// poem titled "అసహనం" needs a file at public/audio/male/అసహనం.wav (or
-// .mp3) matching whichever voice is selected. Both extensions are tried
-// since your two generation methods may not output the same format.
+// Filename must exactly match the poem's title, e.g. a poem titled
+// "అసహనం" needs a file at public/audio/male/అసహనం.mp3 or
+// public/audio/google/అసహనం.mp3, matching whichever voice is selected.
 type VoiceSource = "male" | "google";
 
 const VOICE_FOLDERS: Record<VoiceSource, string> = {
@@ -70,28 +69,23 @@ const VOICE_FOLDERS: Record<VoiceSource, string> = {
   google: "/audio/google/",
 };
 
-const AUDIO_EXTENSIONS = ["wav", "mp3"];
-
-function audioBaseName(title: string): string {
+function audioFileName(title: string): string {
   const cleaned = title.trim().replace(/[\\/:*?"<>|]+/g, "");
-  return cleaned || "poem";
+  return cleaned ? `${cleaned}.mp3` : "poem.mp3";
 }
 
 // HEAD request just checks whether THIS specific voice's file exists
-// (trying .wav then .mp3) before committing to play it — if neither
-// exists (expected for most poems during this 34-poem test phase), the
-// caller falls back to the browser voice rather than silently trying the
-// other pregenerated folder.
+// before committing to play it — if it doesn't (expected for most poems
+// during this 34-poem test phase), the caller falls back to the browser
+// voice rather than silently trying the other pregenerated folder.
 async function findAudioUrlFor(title: string, source: VoiceSource): Promise<string | null> {
-  const baseName = audioBaseName(title);
-  for (const ext of AUDIO_EXTENSIONS) {
-    const url = `${VOICE_FOLDERS[source]}${encodeURIComponent(baseName)}.${ext}`;
-    try {
-      const res = await fetch(url, { method: "HEAD" });
-      if (res.ok) return url;
-    } catch {
-      // network hiccup — try the next extension rather than giving up
-    }
+  const filename = audioFileName(title);
+  const url = `${VOICE_FOLDERS[source]}${encodeURIComponent(filename)}`;
+  try {
+    const res = await fetch(url, { method: "HEAD" });
+    if (res.ok) return url;
+  } catch {
+    // network hiccup — treat same as "not available"
   }
   return null;
 }
