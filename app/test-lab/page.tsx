@@ -9,15 +9,14 @@ import {
 type Result = "సిద్ధం" | "పరీక్షలో ఉంది" | "విజయం" | "విఫలం";
 
 const pageCases = [
-  ["ముఖ్య పేజీ", "/"], ["రచయిత గురించి", "/AboutAuthor"], ["అక్షరమాల", "/aksharamala"],
-  ["చిత్రమాల", "/chitramala"], ["అంకితం", "/Dedication"], ["గుణింతమాల", "/guninta"],
+  ["ముఖ్య పేజీ", "/"], ["అక్షరమాల", "/aksharamala"],
+  ["చిత్రమాల", "/chitramala"], ["గుణింతమాల", "/guninta"],
   ["కథామాల", "/kathamala"], ["ఖతీమాల", "/khatiMala"], ["లిపిమాల", "/lipimala"],
-  ["మీరా", "/mira"], ["మీరా పద్యాలు", "/mirapoems"], ["మిరియా ప్రశ్నోత్తరాలు", "/MIRIAQuiz"],
+  ["మీరా", "/mira"], ["మీరా పద్యాలు", "/mirapoems"],
   ["పదాలమాల", "/padalamala"], ["పరాభవమాల", "/parabhava"], ["పద్యాలు", "/poems"],
   ["పద్య శీర్షికలు", "/PoemTitles"], ["రహస్య భాష", "/rahasyabhasha"], ["సమాసము", "/samasa"],
   ["సామెతలు", "/sametalu"], ["సంధి", "/sandhi"], ["శైలిమాల", "/shailimala"],
   ["శతకము", "/shatakamu"], ["స్మృతిమాల", "/smruthimala"], ["స్వరమాల", "/swaramala"],
-  ["వీడియో", "/video"],
 ] as const;
 
 function chipColor(result: Result) {

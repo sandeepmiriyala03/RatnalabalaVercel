@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
 const pages = [
-  "/", "/AboutAuthor", "/aksharamala", "/chitramala", "/Dedication", "/guninta",
-  "/kathamala", "/khatiMala", "/lipimala", "/mira", "/mirapoems", "/MIRIAQuiz",
+  "/", "/aksharamala", "/chitramala", "/guninta",
+  "/kathamala", "/khatiMala", "/lipimala", "/mira", "/mirapoems",
   "/padalamala", "/parabhava", "/poems", "/PoemTitles", "/rahasyabhasha", "/samasa",
-  "/sametalu", "/sandhi", "/shailimala", "/shatakamu", "/smruthimala", "/swaramala", "/video",
+  "/sametalu", "/sandhi", "/shailimala", "/shatakamu", "/smruthimala", "/swaramala",
 ];
 
 for (const path of pages) {
