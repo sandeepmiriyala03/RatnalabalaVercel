@@ -58,10 +58,11 @@ const DEFAULT_FOCAL_POINT = "50% 20%";
 const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
 const SITE_URL = "https://ratnalabala.vercel.app";
 
-// Voice choice — THREE real options now, all generated ON THE FLY by
-// calling /api/tts (a Python serverless function on Vercel) with the
-// poem's text. No pre-generated files, no /public/audio folders, no
-// batch job — every click generates fresh, live.
+// Voice choice — THREE real options, all generated ON THE FLY by
+// calling /api/tts (a plain Node.js Next.js Route Handler, same
+// convention as your existing /api/poems route — no Python, no separate
+// runtime) with the poem's text. No pre-generated files, no
+// /public/audio folders, no batch job — every click generates fresh.
 type VoiceOption = "mohan" | "shruti" | "google";
 
 const VOICE_LABELS: Record<VoiceOption, string> = {
@@ -70,13 +71,28 @@ const VOICE_LABELS: Record<VoiceOption, string> = {
   google: "🔊 Google TTS",
 };
 
-function ttsUrl(text: string, voice: VoiceOption): string {
-  const params = new URLSearchParams({
-    text,
-    source: voice === "google" ? "google" : "edge",
-    voice: voice === "shruti" ? "female" : "male",
+// POST with a JSON body — NOT a GET query string. Telugu text explodes
+// in size once URL-encoded (each Telugu character is 3 UTF-8 bytes,
+// percent-encoded to ~9 URL characters), which was hitting URL-length
+// limits upstream and causing a 400 before the function even ran. A
+// POST body has no such limit.
+async function fetchTtsAudio(text: string, voice: VoiceOption): Promise<Blob> {
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text,
+      source: voice === "google" ? "google" : "edge",
+      voice: voice === "shruti" ? "female" : "male",
+    }),
   });
-  return `/api/tts?${params.toString()}`;
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`TTS request failed: ${res.status} ${errText}`);
+  }
+
+  return res.blob();
 }
 
 // Optional background music, mixed quietly under the narration — a
@@ -129,7 +145,7 @@ export default function PoemCard({
   const [voiceOpen,   setVoiceOpen]   = useState(false);
   const [isSpeaking,  setIsSpeaking]  = useState(false);
   const [voiceChoice, setVoiceChoice] = useState<VoiceOption>("mohan");
-  const [bgMusicOn,   setBgMusicOn]   = useState(false);
+  const [bgMusicOn,   setBgMusicOn]   = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const authorText  = Array.isArray(authors) ? authors.join(", ") : authors;
@@ -224,10 +240,7 @@ export default function PoemCard({
     const text = `${poem.title}. ${poem.content}`;
 
     try {
-      const res = await fetch(ttsUrl(text, voiceChoice));
-      if (!res.ok) throw new Error(`TTS request failed: ${res.status}`);
-
-      const blob = await res.blob();
+      const blob = await fetchTtsAudio(text, voiceChoice);
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
       audioElRef.current = audio;
@@ -497,8 +510,8 @@ export default function PoemCard({
           </Stack>
 
           {/* Background music toggle — optional, quiet, mixed under the
-              narration via a second simultaneous <audio> element. Off by
-              default so nobody gets surprised by unexpected music. */}
+              narration via a second simultaneous <audio> element. On by
+              default per request — person can still switch it off. */}
           <FormControlLabel
             sx={{ ml: 0.5, justifyContent: "flex-start" }}
             control={

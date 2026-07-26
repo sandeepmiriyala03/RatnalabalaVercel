@@ -1,39 +1,48 @@
 """
 api/tts.py — generates poem audio ON THE FLY, live, when someone clicks
 the Listen button. No pre-generated files, no /public/audio folders to
-fill, no 1140-file batch job — this replaces that entire approach with a
-simple "generate right now, given this text" call.
+fill, no batch job.
+
+Uses POST with a JSON body (not GET with a query string) specifically
+because Telugu text explodes in size once URL-encoded — each Telugu
+character is 3 UTF-8 bytes, and percent-encoding turns each byte into
+"%XX" (3 ASCII chars), so a single Telugu letter can become 9 characters
+of URL. A full poem quickly exceeds URL-length limits enforced upstream
+by Vercel's infrastructure, causing a 400 before this code even runs. A
+POST body has no such limit.
 
 Supports both engines you were comparing:
-  ?source=edge   -> Microsoft Edge neural voice (male: te-IN-MohanNeural,
-                     female: te-IN-ShrutiNeural)
-  ?source=google -> Google Translate's TTS engine (via gTTS) — one voice
-                     only, but often sounds more natural for Telugu
+  source: "edge"   -> Microsoft Edge neural voice
+                       (voice: "male" -> te-IN-MohanNeural,
+                        voice: "female" -> te-IN-ShrutiNeural)
+  source: "google" -> Google Translate's TTS engine (via gTTS) — one
+                       voice only, "voice" is ignored for this source
 
 DEPLOY REQUIREMENTS:
-  - This file lives at the project ROOT under /api/tts.py (a sibling of
-    /app, /public — NOT inside app/api/, which is reserved for your
-    Next.js route handlers). Vercel auto-detects .py files in a
-    top-level /api folder as separate Python serverless functions,
-    alongside your existing Next.js app.
-  - A requirements.txt at the project root (see the one provided
-    alongside this file) so Vercel installs edge-tts + gTTS for this
-    function.
+  - Lives at the project ROOT under /api/tts.py (sibling of /app,
+    /public — NOT inside app/api/, which is reserved for Next.js route
+    handlers).
+  - requirements.txt at the project root (edge-tts, gTTS).
+  - vercel.json declaring the python3.12 runtime for this file.
 
 CALLED FROM THE FRONTEND LIKE:
-  fetch(`/api/tts?text=${encodeURIComponent(text)}&source=edge&voice=male`)
+  fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, source: 'edge', voice: 'male' }),
+  })
   -> returns raw MP3 audio bytes directly as the response body.
 """
 
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
 import asyncio
 import io
+import json
 
 import edge_tts
 from gtts import gTTS
 
-MAX_TEXT_LENGTH = 2000  # sanity cap — a poem is short; this blocks abuse via giant payloads
+MAX_TEXT_LENGTH = 5000  # sanity cap to block abuse via giant payloads
 
 
 async def generate_edge(text: str, voice_choice: str) -> bytes:
@@ -54,14 +63,21 @@ def generate_gtts(text: str) -> bytes:
 
 
 class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        query = parse_qs(urlparse(self.path).query)
-        text = query.get("text", [""])[0].strip()
-        source = query.get("source", ["edge"])[0]
-        voice_choice = query.get("voice", ["male"])[0]
+    def do_POST(self):
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            raw_body = self.rfile.read(content_length) if content_length else b"{}"
+            payload = json.loads(raw_body.decode("utf-8"))
+        except (ValueError, json.JSONDecodeError):
+            self._error(400, "Invalid JSON body.")
+            return
+
+        text = str(payload.get("text", "")).strip()
+        source = payload.get("source", "edge")
+        voice_choice = payload.get("voice", "male")
 
         if not text:
-            self._error(400, "Missing 'text' parameter.")
+            self._error(400, "Missing 'text' field in request body.")
             return
 
         if len(text) > MAX_TEXT_LENGTH:
@@ -91,5 +107,6 @@ class handler(BaseHTTPRequestHandler):
     def _error(self, code: int, message: str):
         self.send_response(code)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(message.encode("utf-8"))

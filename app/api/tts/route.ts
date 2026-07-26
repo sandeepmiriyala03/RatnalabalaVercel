@@ -1,110 +1,100 @@
+// app/api/tts/route.ts
+//
+// Generates poem audio ON THE FLY, live, when someone clicks Listen.
+// No pre-generated files, no Python, no separate serverless runtime —
+// this is a normal Next.js Route Handler, exactly like your existing
+// app/api/poems/route.ts. That matters: mixing a top-level /api/*.py
+// file alongside app/api/*/route.ts can actually break the Next.js
+// routes entirely (a real, reported Vercel issue) — staying in pure
+// Node.js sidesteps that risk completely.
+//
+// Engines:
+//   source: "edge"   -> Microsoft Edge neural voice, via @andresaya/edge-tts
+//                        (voice: "male" -> te-IN-MohanNeural,
+//                         voice: "female" -> te-IN-ShrutiNeural)
+//   source: "google" -> Google Translate's TTS engine, via google-tts-api
+//                        (one voice only; "voice" is ignored for this source)
+//
+// Called from the frontend exactly as before:
+//   fetch('/api/tts', {
+//     method: 'POST',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ text, source: 'edge', voice: 'male' }),
+//   })
+
 import { NextRequest, NextResponse } from "next/server";
+import { EdgeTTS } from "@andresaya/edge-tts";
+import * as googleTTS from "google-tts-api";
 
-export const dynamic = "force-dynamic";
+export const runtime = "nodejs"; // needs real Node APIs, not Edge runtime
 
-/**
- * GET /api/tts?text=...&lang=...
- *
- * Server-side proxy to Google Translate TTS.
- * Bypasses CORS — the browser never touches translate.googleapis.com directly.
- * Returns raw MP3 audio bytes with Content-Type: audio/mpeg.
- */
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const text = searchParams.get("text");
-  const lang = searchParams.get("lang");
+const MAX_TEXT_LENGTH = 5000; // sanity cap against abuse via giant payloads
 
-  if (!text || !lang) {
+async function generateEdge(text: string, voiceChoice: string): Promise<Buffer> {
+  const voice = voiceChoice === "female" ? "te-IN-ShrutiNeural" : "te-IN-MohanNeural";
+  const tts = new EdgeTTS();
+  await tts.synthesize(text, voice);
+  return tts.toBuffer(); // NOT getAudioData() — that method doesn't exist on this class
+}
+
+async function generateGoogle(text: string): Promise<Buffer> {
+  // Google's endpoint caps individual requests at ~200 characters — a
+  // full poem exceeds that, so getAllAudioBase64 splits it into
+  // multiple chunks (by sentence-ish punctuation) and returns each
+  // chunk's audio separately. MP3 frames are self-contained, so
+  // concatenating the raw bytes of sequential chunks plays back fine
+  // as one continuous file.
+  const chunks = await googleTTS.getAllAudioBase64(text, {
+    lang: "te",
+    slow: false,
+  });
+
+  const buffers = chunks.map((chunk) => Buffer.from(chunk.base64, "base64"));
+  return Buffer.concat(buffers);
+}
+
+export async function POST(req: NextRequest) {
+  let payload: { text?: string; source?: string; voice?: string };
+
+  try {
+    payload = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const text = (payload.text ?? "").trim();
+  const source = payload.source ?? "edge";
+  const voiceChoice = payload.voice ?? "male";
+
+  if (!text) {
+    return NextResponse.json({ error: "Missing 'text' field." }, { status: 400 });
+  }
+
+  if (text.length > MAX_TEXT_LENGTH) {
     return NextResponse.json(
-      { error: "Missing required query params: text, lang" },
+      { error: `Text too long (max ${MAX_TEXT_LENGTH} characters).` },
       { status: 400 }
     );
   }
 
-  // Google Translate TTS — same endpoint the browser-side code was trying to hit
-  // Splitting long text into ≤200-char chunks to stay within Google's limit
-  const chunks = splitText(text.trim(), 200);
-
   try {
-    const audioBuffers = await Promise.all(
-      chunks.map((chunk) => fetchGoogleTTS(chunk, lang))
-    );
+    const audioBuffer =
+      source === "google"
+        ? await generateGoogle(text)
+        : await generateEdge(text, voiceChoice);
 
-    // Concatenate all MP3 chunks into one buffer
-    const total = audioBuffers.reduce((s, b) => s + b.byteLength, 0);
-    const merged = new Uint8Array(total);
-    let offset = 0;
-    for (const buf of audioBuffers) {
-      merged.set(new Uint8Array(buf), offset);
-      offset += buf.byteLength;
-    }
-
-    return new NextResponse(merged, {
+    return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
         "Content-Type": "audio/mpeg",
-        "Content-Length": String(merged.byteLength),
-        // Don't cache — text/lang combos are dynamic
         "Cache-Control": "no-store",
       },
     });
-  } catch (err: any) {
-    console.error("[/api/tts] fetch failed:", err?.message);
+  } catch (err) {
+    console.error("TTS generation failed:", err);
     return NextResponse.json(
-      { error: "TTS fetch failed", detail: err?.message ?? "unknown" },
-      { status: 502 }
+      { error: "TTS generation failed." },
+      { status: 500 }
     );
   }
-}
-
-/* ── helpers ─────────────────────────────────────────────────── */
-
-async function fetchGoogleTTS(text: string, lang: string): Promise<ArrayBuffer> {
-  // Google Translate TTS endpoint (same one used by browser gtts libraries)
-  const url =
-    `https://translate.googleapis.com/translate_tts` +
-    `?client=gtx` +
-    `&tl=${encodeURIComponent(lang)}` +
-    `&q=${encodeURIComponent(text)}` +
-    `&ie=UTF-8`;
-
-  const res = await fetch(url, {
-    headers: {
-      // Must send a browser-like UA, otherwise Google returns 403
-      "User-Agent":
-        "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
-      Referer: "https://translate.google.com/",
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(`Google TTS returned HTTP ${res.status} for lang="${lang}"`);
-  }
-
-  return res.arrayBuffer();
-}
-
-/**
- * Split text on word boundaries into chunks of ≤ maxLen chars.
- * Google TTS silently truncates queries longer than ~200 chars.
- */
-function splitText(text: string, maxLen: number): string[] {
-  if (text.length <= maxLen) return [text];
-
-  const chunks: string[] = [];
-  let remaining = text;
-
-  while (remaining.length > maxLen) {
-    // Try to break at a sentence boundary first
-    let cut = remaining.lastIndexOf(".", maxLen);
-    if (cut < maxLen * 0.5) cut = remaining.lastIndexOf(" ", maxLen);
-    if (cut <= 0) cut = maxLen; // hard cut if no boundary found
-
-    chunks.push(remaining.slice(0, cut + 1).trim());
-    remaining = remaining.slice(cut + 1).trim();
-  }
-
-  if (remaining.length > 0) chunks.push(remaining);
-  return chunks;
 }
