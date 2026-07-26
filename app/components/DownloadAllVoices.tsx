@@ -10,11 +10,13 @@ import {
   DialogContentText,
   DialogTitle,
   FormControl,
+  FormControlLabel,
   InputLabel,
   LinearProgress,
   MenuItem,
   Select,
   Stack,
+  Switch,
   Typography,
 } from "@mui/material";
 import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
@@ -33,6 +35,12 @@ const VOICE_LABELS: Record<VoiceOption, string> = {
   google: "🔊 Google TTS",
 };
 
+// Same background track/volume as the per-poem player in PoemCard.tsx —
+// kept in sync manually since this is a separate, self-contained
+// component (same pattern as the duplicated fetchTtsAudio helper).
+const BG_MUSIC_SRC = "/audio/bg-music-guitar-loop.wav";
+const BG_MUSIC_VOLUME = 0.18;
+
 type Props = {
   poems: Poem[];
 };
@@ -44,11 +52,12 @@ const ZIP_CHUNK_SIZE = 100;
 
 // Rough per-poem time budget for the upfront estimate — live TTS
 // generation + network round trip, not instant like poster capture.
+// Background-music mixing adds a bit more per-poem time on top of this.
 const ESTIMATED_SECONDS_PER_POEM = 3;
 
-function safeFileName(title: string, index: number): string {
+function safeFileName(title: string, index: number, ext: "mp3" | "wav"): string {
   const cleaned = title.trim().replace(/[\\/:*?"<>|]+/g, "").slice(0, 60);
-  return cleaned ? `${cleaned}.mp3` : `poem-${index + 1}.mp3`;
+  return cleaned ? `${cleaned}.${ext}` : `poem-${index + 1}.${ext}`;
 }
 
 function formatEstimate(totalPoems: number): string {
@@ -86,6 +95,92 @@ async function fetchTtsAudioWithRetry(
   return null;
 }
 
+// Encodes a rendered AudioBuffer as a playable WAV Blob — no browser
+// ships a built-in MP3 encoder, so mixed (voice + background music)
+// output comes out as WAV instead. Standard, well-known technique.
+function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const bitDepth = 16;
+  const bytesPerSample = bitDepth / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataLength = buffer.length * blockAlign;
+  const arrayBuffer = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(arrayBuffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+
+  writeString(0, "RIFF");
+  view.setUint32(4, 36 + dataLength, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitDepth, true);
+  writeString(36, "data");
+  view.setUint32(40, dataLength, true);
+
+  const channelData: Float32Array[] = [];
+  for (let ch = 0; ch < numChannels; ch++) channelData.push(buffer.getChannelData(ch));
+
+  let offset = 44;
+  for (let i = 0; i < buffer.length; i++) {
+    for (let ch = 0; ch < numChannels; ch++) {
+      const sample = Math.max(-1, Math.min(1, channelData[ch][i]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+      offset += 2;
+    }
+  }
+
+  return new Blob([arrayBuffer], { type: "audio/wav" });
+}
+
+// Mixes the voice clip with a LOOPED background track using an
+// OfflineAudioContext (renders faster than real-time, doesn't play
+// audibly during export) — same volume the person hears live via the
+// per-poem toggle. bgBuffer is decoded ONCE outside the per-poem loop
+// and reused, since re-fetching/decoding the same short loop 1000+
+// times would be wasted work.
+async function mixWithBackgroundMusic(
+  voiceBlob: Blob,
+  bgBuffer: AudioBuffer,
+  audioCtx: AudioContext
+): Promise<Blob> {
+  const voiceArrayBuffer = await voiceBlob.arrayBuffer();
+  const voiceBuffer = await audioCtx.decodeAudioData(voiceArrayBuffer);
+
+  const sampleRate = voiceBuffer.sampleRate;
+  const duration = voiceBuffer.duration;
+  const offlineCtx = new OfflineAudioContext(
+    2,
+    Math.ceil(duration * sampleRate),
+    sampleRate
+  );
+
+  const voiceSource = offlineCtx.createBufferSource();
+  voiceSource.buffer = voiceBuffer;
+  voiceSource.connect(offlineCtx.destination);
+  voiceSource.start(0);
+
+  const bgSource = offlineCtx.createBufferSource();
+  bgSource.buffer = bgBuffer;
+  bgSource.loop = true;
+  const bgGain = offlineCtx.createGain();
+  bgGain.gain.value = BG_MUSIC_VOLUME;
+  bgSource.connect(bgGain).connect(offlineCtx.destination);
+  bgSource.start(0);
+  bgSource.stop(duration); // background stops exactly when the voice ends
+
+  const renderedBuffer = await offlineCtx.startRendering();
+  return audioBufferToWavBlob(renderedBuffer);
+}
+
 /* 📦 DownloadAllVoices
    Same UX pattern as DownloadAllPosters.tsx (chunked zips, cancel button,
    upfront time-estimate confirmation) but far simpler internally — no
@@ -95,6 +190,7 @@ export default function DownloadAllVoices({ poems }: Props) {
   const cancelRef = useRef(false);
 
   const [voiceChoice, setVoiceChoice] = useState<VoiceOption>("mohan");
+  const [includeBgMusic, setIncludeBgMusic] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -126,6 +222,19 @@ export default function DownloadAllVoices({ poems }: Props) {
       let itemsInCurrentChunk = 0;
       let failures = 0;
 
+      // Decode the background track ONCE, reused for every poem's mix —
+      // re-fetching/decoding the same short loop 1000+ times would be
+      // pure waste. Only created if the toggle is actually on.
+      let audioCtx: AudioContext | null = null;
+      let bgBuffer: AudioBuffer | null = null;
+
+      if (includeBgMusic) {
+        audioCtx = new AudioContext();
+        const bgRes = await fetch(BG_MUSIC_SRC);
+        const bgArrayBuffer = await bgRes.arrayBuffer();
+        bgBuffer = await audioCtx.decodeAudioData(bgArrayBuffer);
+      }
+
       const downloadCurrentZip = async () => {
         if (itemsInCurrentChunk === 0) return;
         const blob = await zip.generateAsync({ type: "blob" });
@@ -148,11 +257,28 @@ export default function DownloadAllVoices({ poems }: Props) {
 
         const poem = poems[i];
         const text = `${poem.title}. ${poem.content}`;
-        const blob = await fetchTtsAudioWithRetry(text, voiceChoice);
+        const voiceBlob = await fetchTtsAudioWithRetry(text, voiceChoice);
 
-        if (blob) {
-          zip.file(safeFileName(poem.title, i), blob);
-          itemsInCurrentChunk += 1;
+        if (voiceBlob) {
+          try {
+            const finalBlob =
+              includeBgMusic && bgBuffer && audioCtx
+                ? await mixWithBackgroundMusic(voiceBlob, bgBuffer, audioCtx)
+                : voiceBlob;
+
+            zip.file(
+              safeFileName(poem.title, i, includeBgMusic ? "wav" : "mp3"),
+              finalBlob
+            );
+            itemsInCurrentChunk += 1;
+          } catch (mixErr) {
+            // Mixing failed for this one poem (rare — bad decode, etc.)
+            // — fall back to the plain voice-only clip rather than
+            // dropping the poem entirely.
+            console.error("Background music mix failed, using voice-only:", mixErr);
+            zip.file(safeFileName(poem.title, i, "mp3"), voiceBlob);
+            itemsInCurrentChunk += 1;
+          }
         } else {
           failures += 1;
           setFailedCount(failures);
@@ -166,6 +292,7 @@ export default function DownloadAllVoices({ poems }: Props) {
       }
 
       await downloadCurrentZip();
+      audioCtx?.close();
 
       if (cancelRef.current) {
         setErrorMsg(
@@ -221,6 +348,24 @@ export default function DownloadAllVoices({ poems }: Props) {
         </Button>
       </Stack>
 
+      <FormControlLabel
+        sx={{ mt: 1 }}
+        control={
+          <Switch
+            size="small"
+            checked={includeBgMusic}
+            disabled={exporting}
+            onChange={(e) => setIncludeBgMusic(e.target.checked)}
+          />
+        }
+        label={
+          <Typography sx={{ fontSize: "0.82rem", fontWeight: 600 }}>
+            🎵 నేపథ్య సంగీతం కూడా చేర్చండి (ఆన్‌గా ఉంటే వెబ్‌సైట్‌లో వినేదే
+            డౌన్‌లోడ్ అవుతుంది)
+          </Typography>
+        }
+      />
+
       {exporting && (
         <LinearProgress
           variant="determinate"
@@ -252,6 +397,14 @@ export default function DownloadAllVoices({ poems }: Props) {
             ఇది పూర్తవ్వడానికి {formatEstimate(poems.length)} పట్టవచ్చు — ప్రతి
             పద్యం సర్వర్‌పై నిజ సమయంలో తయారవుతుంది (పోస్టర్ డౌన్‌లోడ్ లాగా
             తక్షణం కాదు).
+            {includeBgMusic && (
+              <>
+                {" "}
+                నేపథ్య సంగీతం కూడా చేర్చడం వల్ల ఫైళ్ళు{" "}
+                <strong>.wav</strong> ఫార్మాట్‌లో (mp3 కన్నా పెద్దవిగా)
+                డౌన్‌లోడ్ అవుతాయి.
+              </>
+            )}
             {poems.length > ZIP_CHUNK_SIZE && (
               <>
                 {" "}
