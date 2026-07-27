@@ -11,7 +11,7 @@ import {
 import PoemCard from "@/app/components/PoemCard";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";
 import DownloadAllVoices from "../components/DownloadAllVoices";
-
+import PoemRadio from "@/app/components/Poemradio";
 interface Poem {
   title: string;
   content: string;
@@ -148,6 +148,11 @@ const PoemList: React.FC = () => {
       <Typography align="center" sx={{ mb: 2 }}>
         మొత్తం పద్యాల సంఖ్య: <strong>{filtered.length}</strong>
       </Typography>
+  {!loading && !error && filtered.length > 0 && (
+
+        <PoemRadio poems={filtered} />
+
+      )}
 
       <TextField
         label="పద్యం కోసం వెతకండి..."

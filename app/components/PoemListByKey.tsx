@@ -13,6 +13,7 @@ import PoemCardNew from "@/app/components/PoemCardNew";
 import { POETRY_COLLECTIONS } from "@/types/poetry";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";
 import DownloadAllVoices from "@/app/components/DownloadAllVoices";
+import PoemRadio from "@/app/components/Poemradio";
 interface Poem {
   title: string;
   content: string;
@@ -168,6 +169,14 @@ const PoemListByKey: React.FC<Props> = ({
           {error}
         </Typography>
       )}
+
+
+           
+            {!loading && !error && filtered.length > 0 && (
+      
+              <PoemRadio poems={filtered} />
+      
+            )}
        {/* Download every currently-filtered poem's poster as one ZIP.
                 THIS is the button that was missing — it did not exist anywhere
                 in this file before. */}
@@ -180,6 +189,7 @@ const PoemListByKey: React.FC<Props> = ({
               />
       
             )}
+      
       
             {/* Download every currently-filtered poem's VOICE audio as one
                 ZIP — same idea as the poster ZIP above, but each file is a

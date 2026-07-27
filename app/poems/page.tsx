@@ -15,6 +15,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import PoemCard from "@/app/components/PoemCard";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";
 import DownloadAllVoices from "@/app/components/DownloadAllVoices";
+import PoemRadio from "@/app/components/Poemradio";
 
 interface Poem {
   title: string;
@@ -185,6 +186,15 @@ export default function PoemList() {
       <Typography align="center" mb={3}>
       మొత్తం పద్యాలు: <strong>{poems.length}</strong>
       </Typography>
+
+      {/* RADIO — "own private FM station" player. Lives above search so
+          it's the first thing visible; plays through whatever is
+          currently filtered, same set the list/downloads below use. */}
+      {!loading && !error && filtered.length > 0 && (
+
+        <PoemRadio poems={filtered} />
+
+      )}
 
       {/* SEARCH */}
 
