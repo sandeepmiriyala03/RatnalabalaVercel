@@ -9,12 +9,16 @@ const TELUGU_FONT = "'Noto Serif Telugu','Noto Serif',Georgia,serif";
 
 /* ── config ──────────────────────────────────────────────────── */
 const TEL = {
-  label: "Telugu", flag: "🌺",
+  label: "తెలుగు", flag: "🌺",
   webSpeechLang: "te-IN",
-  bgColor: "#1a3d2b",
-  sampleText: "నమస్కారం! నేను AksharaTantra.",
+  bgColor: "#FFEFC7",
+  sampleText: "నమస్కారం పిల్లలూ! ఇప్పుడు మీ కథ లేదా పద్యం వినిపిస్తాను.",
 };
 const MAX = 1000;
+
+// Closing line shown + spoken at the end of every poem/video — Sri
+// Krishnadevaraya's centuries-old, widely-quoted line celebrating Telugu.
+const CLOSING_LINE = "దేశ భాషలందు తెలుగు లెస్స";
 
 const PROFILES = {
   mobile:    { W: 540,  H: 960,  fps: 30, label: "Mobile" },
@@ -258,13 +262,52 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
+/* ── small decorative Indian flag (simplified, not exact official
+   proportions — a stylized tricolor + wheel, drawn purely with canvas
+   primitives for a festive header touch). Centered at (cx, topY), width
+   w, using a standard ~3:2 flag aspect ratio. */
+function drawIndianFlag(ctx: CanvasRenderingContext2D, cx: number, topY: number, w: number) {
+  const h = w * (2 / 3);
+  const x = cx - w / 2;
+  const bandH = h / 3;
+
+  // pole
+  ctx.fillStyle = "rgba(120,90,50,0.9)";
+  ctx.fillRect(x - 4, topY - 4, 4, h + 10);
+
+  ctx.fillStyle = "#FF9933"; ctx.fillRect(x, topY, w, bandH);
+  ctx.fillStyle = "#FFFFFF"; ctx.fillRect(x, topY + bandH, w, bandH);
+  ctx.fillStyle = "#138808"; ctx.fillRect(x, topY + bandH * 2, w, bandH);
+
+  // simple chakra: navy circle outline + spokes, centered in the white band
+  const ccx = x + w / 2;
+  const ccy = topY + bandH * 1.5;
+  const r = bandH * 0.32;
+  ctx.strokeStyle = "#000080";
+  ctx.lineWidth = Math.max(1, r * 0.09);
+  ctx.beginPath(); ctx.arc(ccx, ccy, r, 0, Math.PI * 2); ctx.stroke();
+  for (let i = 0; i < 24; i++) {
+    const ang = (Math.PI * 2 * i) / 24;
+    ctx.beginPath();
+    ctx.moveTo(ccx, ccy);
+    ctx.lineTo(ccx + Math.cos(ang) * r, ccy + Math.sin(ang) * r);
+    ctx.stroke();
+  }
+
+  // thin outline around the whole flag
+  ctx.strokeStyle = "rgba(0,0,0,0.15)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, topY, w, h);
+}
+
 /* ── canvas draw: talking character frame ───────────────────────
    Draws the character once per video frame. mouthOpen (0..1) comes from
    the narration's volume envelope at that instant — this is what makes
    the mouth appear to move in sync with speech, without true phoneme-
    level lip sync (that needs a GPU model; see chat notes). blink and
    bobOffset add small idle-life touches so the character doesn't look
-   frozen between words. */
+   frozen between words. isEnding switches the caption panel to the
+   closing tagline card for the final stretch of the video. */
 function drawTalkingFrame(
   ctx: CanvasRenderingContext2D,
   W: number, H: number,
@@ -272,7 +315,8 @@ function drawTalkingFrame(
   charImg: HTMLImageElement | null,
   mouthOpen: number,
   blink: boolean,
-  tSec: number
+  tSec: number,
+  isEnding: boolean = false
 ) {
   // ── Bright, sunny kids-theme background — sky blue fading into a warm
   // cream, with a soft sun and a grass strip at the base, echoing the
@@ -282,6 +326,18 @@ function drawTalkingFrame(
   g.addColorStop(0.55, "#CFE9F5");
   g.addColorStop(1, "#FFEFC7");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // a couple of small twinkling stars for extra sparkle
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  const starPositions = [[W * 0.12, H * 0.08], [W * 0.65, H * 0.05]];
+  for (const [sx, sy] of starPositions) {
+    const twinkle = 0.5 + 0.5 * Math.sin(tSec * 3 + sx);
+    ctx.globalAlpha = 0.4 + 0.5 * twinkle;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
 
   // soft sun in the corner
   ctx.beginPath();
@@ -298,24 +354,28 @@ function drawTalkingFrame(
 
   ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillRect(0, 0, W, H * 0.1);
 
+  // ── Indian flag header — sits above the label pill, above the kids
+  // scene ("cartoon kids below Indian flag").
+  drawIndianFlag(ctx, W / 2, H * 0.018, W * 0.16);
+
   ctx.textAlign = "center";
   ctx.fillStyle = "rgba(43,38,32,0.55)";
   ctx.font = `bold ${Math.floor(W/28)}px sans-serif`;
-  ctx.fillText(" స్వరమాల", W/2, H*0.06);
-  const bW=140,bH=30,bx=(W-bW)/2,by=H*0.078;
+  ctx.fillText("✍️ స్వరమాల", W/2, H*0.135);
+  const bW=140,bH=30,bx=(W-bW)/2,by=H*0.153;
   ctx.fillStyle="#FF8A5B"; ctx.beginPath(); ctx.roundRect(bx,by,bW,bH,15); ctx.fill();
   ctx.fillStyle="#ffffff"; ctx.font=`600 ${Math.floor(W/37)}px sans-serif`;
   ctx.fillText(`${TEL.flag} ${TEL.label}`, W/2, by+bH*0.7);
 
   // ── Group scene stage: a wide rounded panel, contain-fit (not cropped)
   // so all seven children stay fully visible — a circular crop like a
-  // single-portrait avatar would slice off most of the garoup.
+  // single-portrait avatar would slice off most of the group.
   const stageW = W * 0.92;
   const imgAspect = charImg ? charImg.width / charImg.height : 2.04; // fallback matches source art
   const stageH = stageW / imgAspect;
   const stageX = (W - stageW) / 2;
   const bob = Math.sin(tSec * 2) * (stageH * 0.01); // gentle idle bob
-  const stageY = H * 0.14 + bob;
+  const stageY = H * 0.2 + bob;
 
   ctx.save();
   ctx.beginPath();
@@ -336,16 +396,20 @@ function drawTalkingFrame(
     ctx.drawImage(charImg, dx, dy, dw, dh);
 
     // One small mouth per child, all animated off the same volume-driven
-    // openness value — reads as the whole group reciting together.
-    ctx.fillStyle = "rgba(60,20,20,0.85)";
-    for (const a of GROUP_MOUTH_ANCHORS) {
-      const mx = dx + dw * a.x;
-      const my = dy + dh * a.y;
-      const mw = dw * a.w;
-      const mh = Math.max(dh * a.h * mouthOpen, dh * 0.004);
-      ctx.beginPath();
-      ctx.ellipse(mx, my, mw / 2, mh / 2, 0, 0, Math.PI * 2);
-      ctx.fill();
+    // openness value — reads as the whole group reciting together. Held
+    // closed during the closing tagline card, since nobody's "speaking"
+    // the sign-off line visually at that point.
+    if (!isEnding) {
+      ctx.fillStyle = "rgba(60,20,20,0.85)";
+      for (const a of GROUP_MOUTH_ANCHORS) {
+        const mx = dx + dw * a.x;
+        const my = dy + dh * a.y;
+        const mw = dw * a.w;
+        const mh = Math.max(dh * a.h * mouthOpen, dh * 0.004);
+        ctx.beginPath();
+        ctx.ellipse(mx, my, mw / 2, mh / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     // Blinking is skipped for the multi-face scene — seven simultaneous
     // blinks reads as flickering rather than lifelike; the mouth motion
@@ -364,35 +428,62 @@ function drawTalkingFrame(
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // ── Poem text, in the lower half below the scene. A soft white panel
-  // sits behind the text so it stays readable regardless of what's
-  // directly behind it (sky, grass, or the scene edge).
-  const fs = Math.max(18, Math.floor(W / 20));
-  const mwText = W - 100;
-  const words = text.split(" ");
-  const lines: string[] = [];
-  ctx.font = `bold ${fs}px ${TELUGU_FONT}`;
-  let cur = "";
-  for (const w of words) {
-    const t = cur ? cur + " " + w : w;
-    if (ctx.measureText(t).width > mwText && cur) { lines.push(cur); cur = w; } else cur = t;
-  }
-  if (cur) lines.push(cur);
   const textTop = stageY + stageH + H * 0.03;
   const availableH = H * 0.94 - textTop;
-  const maxLines = Math.max(2, Math.floor(availableH / (fs * 1.6)));
-  const dls = lines.slice(0, maxLines);
-  if (lines.length > maxLines) dls[dls.length - 1] += "…";
-  const lh = fs * 1.6;
 
-  ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.beginPath();
-  ctx.roundRect(50, textTop - fs * 0.3, W - 100, dls.length * lh + fs * 0.4, 14);
-  ctx.fill();
+  if (isEnding) {
+    // ── Closing tagline card — a distinct, larger, tricolor-accented
+    // panel shown for the last stretch of every video, instead of the
+    // normal poem-text caption.
+    const cardH = availableH;
+    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    ctx.beginPath();
+    ctx.roundRect(40, textTop, W - 80, cardH, 18);
+    ctx.fill();
+    ctx.strokeStyle = "#FF9933";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(40, textTop, W - 80, cardH, 18);
+    ctx.stroke();
 
-  ctx.fillStyle = "#2B2620";
-  let y = textTop + lh * 0.6;
-  for (const l of dls) { ctx.fillText(l, W/2, y); y += lh; }
+    const closingFs = Math.max(20, Math.floor(W / 15));
+    ctx.font = `bold ${closingFs}px ${TELUGU_FONT}`;
+    ctx.fillStyle = "#0B5D2E";
+    const midY = textTop + cardH / 2;
+    ctx.fillText(CLOSING_LINE, W / 2, midY - closingFs * 0.15);
+
+    ctx.font = `500 ${Math.floor(W / 34)}px sans-serif`;
+    ctx.fillStyle = "#8B6F47";
+    ctx.fillText("🇮🇳", W / 2, midY + closingFs * 0.85);
+  } else {
+    // ── Poem text, in the lower half below the scene. A soft white
+    // panel sits behind the text so it stays readable regardless of
+    // what's directly behind it (sky, grass, or the scene edge).
+    const fs = Math.max(18, Math.floor(W / 20));
+    const mwText = W - 100;
+    const words = text.split(" ");
+    const lines: string[] = [];
+    ctx.font = `bold ${fs}px ${TELUGU_FONT}`;
+    let cur = "";
+    for (const w of words) {
+      const t = cur ? cur + " " + w : w;
+      if (ctx.measureText(t).width > mwText && cur) { lines.push(cur); cur = w; } else cur = t;
+    }
+    if (cur) lines.push(cur);
+    const maxLines = Math.max(2, Math.floor(availableH / (fs * 1.6)));
+    const dls = lines.slice(0, maxLines);
+    if (lines.length > maxLines) dls[dls.length - 1] += "…";
+    const lh = fs * 1.6;
+
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.beginPath();
+    ctx.roundRect(50, textTop - fs * 0.3, W - 100, dls.length * lh + fs * 0.4, 14);
+    ctx.fill();
+
+    ctx.fillStyle = "#2B2620";
+    let y = textTop + lh * 0.6;
+    for (const l of dls) { ctx.fillText(l, W/2, y); y += lh; }
+  }
 
   ctx.fillStyle = "rgba(139,111,71,0.9)"; ctx.font = `400 ${Math.floor(W/45)}px sans-serif`;
   ctx.fillText("రత్నాలబాల -జ్ఞానమాల", W/2, H - grassH - H*0.015);
@@ -402,7 +493,7 @@ function drawTalkingFrame(
    thumbnail preview — same visual, character with mouth closed, no
    blink, so the PNG matches the video's look. */
 function drawSlide(ctx: CanvasRenderingContext2D, W: number, H: number, text: string, charImg: HTMLImageElement | null) {
-  drawTalkingFrame(ctx, W, H, text, charImg, 0, false, 0);
+  drawTalkingFrame(ctx, W, H, text, charImg, 0, false, 0, false);
 }
 
 /* ── video ───────────────────────────────────────────────────── */
@@ -437,6 +528,10 @@ async function makeVideo(
   let smoothedOpen = 0;
   const blinkCycleFrames = fps * 4; // roughly one blink every 4 seconds
 
+  // Last ~2.5 seconds of every video switch to the closing tagline card,
+  // capped so a very short clip doesn't spend its entire duration on it.
+  const closingFrames = Math.min(Math.round(fps * 2.5), Math.floor(total * 0.4));
+
   for(let i=0;i<total;i++){
     const ts=Math.round((i*1_000_000)/fps);
 
@@ -458,8 +553,9 @@ async function makeVideo(
 
     const blinkFrame = i % blinkCycleFrames;
     const blink = blinkFrame >= blinkCycleFrames - 4; // ~4-frame blink
+    const isEnding = i >= total - closingFrames;
 
-    drawTalkingFrame(c2, W, H, text, charImg, smoothedOpen, blink, i / fps);
+    drawTalkingFrame(c2, W, H, text, charImg, smoothedOpen, blink, i / fps, isEnding);
 
     const f=new VideoFrame(canvas,{timestamp:ts,duration:Math.round(1_000_000/fps)});
     ve.encode(f); f.close();
@@ -589,6 +685,9 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
   const generate = async () => {
     if (!text.trim() || loading) return;
     const AT = text;
+    // Spoken narration includes the closing tagline at the end, matching
+    // what the video's closing card shows for the final stretch.
+    const narrationText = `${AT} ${CLOSING_LINE}.`;
     setLoading(true); setAudioUrl(null); setVidUrl(null); setAf(null);
     setSlideReady(false); setStatusMsg(""); setError(""); setPct(10);
     try {
@@ -596,12 +695,12 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
       let audioBlob:Blob|null=null; let hasAudio=false;
       try {
         setStatusMsg("తెలుగు ధ్వని తయారవుతోంది…"); setPct(25);
-        const r = await fetchTtsFloat(AT, voiceChoice);
+        const r = await fetchTtsFloat(narrationText, voiceChoice);
         audioF=r.audioFloat; audioSr=r.sampleRate; audioBlob=r.blob; hasAudio=true;
         setStatusMsg("ధ్వని సిద్ధం ✅"); setPct(45);
       } catch {
         setStatusMsg("ఆఫ్‌లైన్ వాయిస్ ఉపయోగిస్తున్నాం…");
-        await speakWS(AT, TEL.webSpeechLang);
+        await speakWS(narrationText, TEL.webSpeechLang);
         audioSr=22050; audioF=new Float32Array(audioSr*5); setPct(45);
       }
 
@@ -626,6 +725,9 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
       if (canvasRef.current) {
         setStatusMsg("వీడియో రెండర్ అవుతోంది (మాట్లాడే బొమ్మతో)…"); setPct(75);
         try {
+          // The video draws the ORIGINAL poem text (AT) throughout, then
+          // automatically swaps to the closing tagline card for the last
+          // stretch — see makeVideo's isEnding logic.
           const vb = await makeVideo(AT, videoAudioF, audioSr, profile, canvasRef.current, hasAudio, charImgRef.current);
           setVidUrl(URL.createObjectURL(vb));
           setStatusMsg(hasAudio ? "సిద్ధం! డౌన్‌లోడ్ చేయండి 🎉" : "వీడియో సిద్ధం ✅");
@@ -656,7 +758,7 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
         <div style={{background:C.successBg,border:`1px solid ${C.successBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",gap:9,alignItems:"flex-start"}}>
           {Ic.info()}
           <p style={{fontSize:12,color:C.successText,margin:0,lineHeight:1.7}}>
-            తెలుగు టెక్స్ట్‌ని ఎంచుకున్న స్వరం + సంగీతంతో <strong>MP3 + MP4 (మాట్లాడే బొమ్మతో) + PNG</strong>గా మారుస్తాం. ఇంటర్నెట్ అవసరం.
+            తెలుగు టెక్స్ట్‌ని ఎంచుకున్న స్వరం + సంగీతంతో <strong>MP3 + MP4 (మాట్లాడే బొమ్మతో) + PNG</strong>గా మారుస్తాం.
           </p>
         </div>
 
