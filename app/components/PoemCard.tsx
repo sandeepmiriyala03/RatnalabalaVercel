@@ -5,11 +5,11 @@ import {
   Box, Typography, Card, CardContent, Divider,
   Button, Stack, Collapse,
   Select, MenuItem, FormControl, InputLabel,
-  FormControlLabel, Switch,
+  Slider,
   alpha, useTheme, useMediaQuery,
 } from "@mui/material";
 import VolumeUpRoundedIcon      from "@mui/icons-material/VolumeUpRounded";
-
+import MovieRoundedIcon          from "@mui/icons-material/MovieRounded";
 import AutoAwesomeRoundedIcon    from "@mui/icons-material/AutoAwesomeRounded";
 import ExpandMoreRoundedIcon     from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon     from "@mui/icons-material/ExpandLessRounded";
@@ -18,8 +18,8 @@ import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
 
 // Same warm cream editorial palette as PoemCardNew.tsx / ShareButtons.tsx.
-// Hardcoded (not theme.palette.*) on purpose: the poster capture must look
-// identical regardless of the app's light/dark mode or user theme settings.
+// Hardcoded (not theme.palette.*) on purpose: the poster/video capture must
+// look identical regardless of the app's light/dark mode or user theme.
 const POSTER_COLOR = {
   bg: "#F7F2EA",
   ink: "#2B2620",
@@ -32,37 +32,20 @@ const POSTER_COLOR = {
 // Default illustration, used when the author isn't in KAVI_IMAGE_MAP below.
 const DEFAULT_KAVI_IMAGE_SRC = "/CartoonStyle.png";
 
-// Per-author illustration lookup. Add one entry per poet whose name should
-// get its own cartoon instead of the shared default. The key must match the
-// `authors` string exactly as passed into <PoemCard authors={...} />
-// (see AUTHORS in PoemList.tsx). Save each PNG under /public with any name
-// you like, and point to it here.
 const KAVI_IMAGE_MAP: Record<string, string> = {
   "డాక్టర్ మిరియాల రామకృష్ణ": "/MiriaPen.jpg",
-  // "మరో కవి పేరు": "/AnotherPoet.png",
 };
 
-// Per-author focal point for the close-up crop below (objectPosition).
-// Use this when an illustration's subject isn't centered — e.g. if the
-// face sits higher/lower or left/right of frame. Falls back to a sensible
-// default (top-ish center, where most portrait-style faces land) when a
-// name isn't listed here.
 const KAVI_FOCAL_MAP: Record<string, string> = {
   "డాక్టర్ మిరియాల రామకృష్ణ": "50% 15%",
-  // "మరో కవి పేరు": "50% 25%",
 };
 const DEFAULT_FOCAL_POINT = "50% 20%";
 
-// Small-caps footer tagline + URL — same as PoemCardNew.tsx. Adjust to your
-// actual site name/URL.
 const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
 const SITE_URL = "https://ratnalabala.vercel.app";
 
-// Voice choice — THREE real options, all generated ON THE FLY by
-// calling /api/tts (a plain Node.js Next.js Route Handler, same
-// convention as your existing /api/poems route — no Python, no separate
-// runtime) with the poem's text. No pre-generated files, no
-// /public/audio folders, no batch job — every click generates fresh.
+// Voice choice — generated ON THE FLY by calling /api/tts with the poem's
+// text. No pre-generated files, no batch job — every click generates fresh.
 type VoiceOption = "mohan" | "shruti" | "google";
 
 const VOICE_LABELS: Record<VoiceOption, string> = {
@@ -71,11 +54,22 @@ const VOICE_LABELS: Record<VoiceOption, string> = {
   google: "🔊 Google TTS",
 };
 
-// POST with a JSON body — NOT a GET query string. Telugu text explodes
-// in size once URL-encoded (each Telugu character is 3 UTF-8 bytes,
-// percent-encoded to ~9 URL characters), which was hitting URL-length
-// limits upstream and causing a 400 before the function even ran. A
-// POST body has no such limit.
+// Background music — same genre set as the PoemRadio station player, so the
+// choice feels consistent wherever someone listens in the app. "none" plays
+// narration with silence underneath, same as the old toggle's "off" state.
+type MusicOption = "none" | "guitar" | "tabla" | "drums" | "flute" | "veena";
+
+const MUSIC_TRACKS: Record<MusicOption, { label: string; src: string | null }> = {
+  none:   { label: "🔇 సంగీతం లేదు",   src: null },
+  guitar: { label: "🎸 గిటార్",         src: "/audio/bg-music-guitar-loop.wav" },
+  tabla:  { label: "🥁 తబలా",          src: "/audio/bg-music-tabla-loop.wav" },
+  drums:  { label: "🪘 డ్రమ్స్",        src: "/audio/bg-music-drums-loop.wav" },
+  flute:  { label: "🎶 వేణువు",         src: "/audio/bg-music-flute-loop.wav" },
+  veena:  { label: "🎻 వీణ",           src: "/audio/bg-music-veena-loop.wav" },
+};
+
+const BG_MUSIC_VOLUME_DEFAULT = 0.18;
+
 async function fetchTtsAudio(text: string, voice: VoiceOption): Promise<Blob> {
   const res = await fetch("/api/tts", {
     method: "POST",
@@ -94,13 +88,6 @@ async function fetchTtsAudio(text: string, voice: VoiceOption): Promise<Blob> {
 
   return res.blob();
 }
-
-// Optional background music, mixed quietly under the narration — a
-// simple placeholder loop; swap this file for a proper licensed track
-// whenever you have one. Kept deliberately quiet (see BG_MUSIC_VOLUME)
-// so it never competes with the spoken poem.
-const BG_MUSIC_SRC = "/audio/bg-music-guitar-loop.wav";
-const BG_MUSIC_VOLUME = 0.18;
 
 /* ── animated waveform bars shown while speaking ── */
 function SpeakingBars() {
@@ -139,69 +126,51 @@ export default function PoemCard({
   const theme    = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const poemRef   = useRef<HTMLDivElement>(null);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
-  const bgMusicElRef = useRef<HTMLAudioElement | null>(null);
+  const poemRef       = useRef<HTMLDivElement>(null);
+  const audioElRef    = useRef<HTMLAudioElement | null>(null);
+  const bgMusicElRef  = useRef<HTMLAudioElement | null>(null);
+
+  // Video export refs — kept separate from the live-playback refs above so
+  // "listen" and "download as video" never fight over the same <audio>
+  // element if a person does both back to back.
+  const videoRecorderRef  = useRef<MediaRecorder | null>(null);
+  const videoAudioCtxRef  = useRef<AudioContext | null>(null);
+
   const [voiceOpen,   setVoiceOpen]   = useState(false);
   const [isSpeaking,  setIsSpeaking]  = useState(false);
   const [voiceChoice, setVoiceChoice] = useState<VoiceOption>("mohan");
-  const [bgMusicOn,   setBgMusicOn]   = useState(true);
+  const [musicChoice, setMusicChoice] = useState<MusicOption>("guitar");
+  const [musicVolume, setMusicVolume] = useState(BG_MUSIC_VOLUME_DEFAULT);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const [isRenderingVideo, setIsRenderingVideo] = useState(false);
+  const [videoStatus, setVideoStatus] = useState<string | null>(null);
+  const [videoError, setVideoError]   = useState<string | null>(null);
 
   const authorText  = Array.isArray(authors) ? authors.join(", ") : authors;
   const voiceText   = `${poem.title}\n${poem.content}`.trim();
 
-  // Pick the illustration based on the author. If `authors` is an array
-  // (multiple poets), this checks each name in turn and uses the first
-  // match found in KAVI_IMAGE_MAP; falls back to the default cartoon.
   const kaviImageSrc = useMemo(() => {
-    const names = Array.isArray(authors)
-      ? authors
-      : authors
-      ? [authors]
-      : [];
-
+    const names = Array.isArray(authors) ? authors : authors ? [authors] : [];
     for (const name of names) {
-      if (KAVI_IMAGE_MAP[name.trim()]) {
-        return KAVI_IMAGE_MAP[name.trim()];
-      }
+      if (KAVI_IMAGE_MAP[name.trim()]) return KAVI_IMAGE_MAP[name.trim()];
     }
-
     return DEFAULT_KAVI_IMAGE_SRC;
   }, [authors]);
 
-  // Matching focal point for the close-up crop, keyed off the same author
-  // lookup used for kaviImageSrc above.
   const kaviFocalPoint = useMemo(() => {
-    const names = Array.isArray(authors)
-      ? authors
-      : authors
-      ? [authors]
-      : [];
-
+    const names = Array.isArray(authors) ? authors : authors ? [authors] : [];
     for (const name of names) {
-      if (KAVI_FOCAL_MAP[name.trim()]) {
-        return KAVI_FOCAL_MAP[name.trim()];
-      }
+      if (KAVI_FOCAL_MAP[name.trim()]) return KAVI_FOCAL_MAP[name.trim()];
     }
-
     return DEFAULT_FOCAL_POINT;
   }, [authors]);
 
-  // Split into individual lines, same as PoemCardNew.tsx — each line gets
-  // its own data-poster-line element so ShareButtons.tsx's onclone can size
-  // them independently for the exported poster, and so a wrapped line never
-  // shares wrap-flow with the next logical line.
   const contentLines = useMemo(
-    () =>
-      poem.content
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean),
+    () => poem.content.split("\n").map((line) => line.trim()).filter(Boolean),
     [poem.content]
   );
 
-  /* ── colours ── */
   const forestGreen = "#1a3d2b";
   const forestMid   = "#2d6a4f";
 
@@ -214,10 +183,11 @@ export default function PoemCard({
   };
 
   const startBgMusicIfEnabled = () => {
-    if (!bgMusicOn) return;
-    const bg = new Audio(BG_MUSIC_SRC);
+    const track = MUSIC_TRACKS[musicChoice];
+    if (!track.src) return;
+    const bg = new Audio(track.src);
     bg.loop = true;
-    bg.volume = BG_MUSIC_VOLUME;
+    bg.volume = musicVolume;
     bgMusicElRef.current = bg;
     // Background music failing to load/play is non-critical — the poem
     // narration itself still works fine without it, so this is a silent
@@ -227,12 +197,7 @@ export default function PoemCard({
     });
   };
 
-  /* ── speak / stop wrappers (track speaking state locally) ──
-     Generates audio ON THE FLY by calling /api/tts (Python serverless
-     function) with the poem's text and the person's selected voice — no
-     pre-generated files, no batch job. Falls back to the browser's
-     SpeechSynthesis only if the live generation call itself fails
-     (network issue, cold-start timeout, server error). */
+  /* ── speak / stop wrappers (live playback, unchanged in spirit) ── */
   const handleSpeak = async () => {
     setIsSpeaking(true);
     setIsGenerating(true);
@@ -263,8 +228,6 @@ export default function PoemCard({
       startBgMusicIfEnabled();
       await audio.play();
     } catch {
-      // Live generation failed — fall back to the browser voice rather
-      // than leaving the button stuck with nothing playing.
       setIsGenerating(false);
       startBgMusicIfEnabled();
       speak(text);
@@ -289,12 +252,151 @@ export default function PoemCard({
     stopSpeech();
   };
 
-  // Switching voice mid-playback stops whatever's currently playing —
-  // otherwise the old voice keeps going while the dropdown visually shows
-  // the new selection, which reads as broken.
   const handleVoiceChange = (event: any) => {
     if (isSpeaking) handleStop();
     setVoiceChoice(event.target.value as VoiceOption);
+  };
+
+  const handleMusicChange = (event: any) => {
+    const next = event.target.value as MusicOption;
+    setMusicChoice(next);
+    // If music is currently playing under a live narration, swap the bed
+    // in place rather than requiring a stop/start — same behavior as the
+    // PoemRadio station player.
+    if (isSpeaking) {
+      stopBgMusic();
+      startBgMusicIfEnabled();
+    }
+  };
+
+  /* ── VIDEO EXPORT ──────────────────────────────────────────────
+     Turns the poster (data-poster-root) + a freshly generated narration
+     clip (+ optional background music) into one downloadable video file.
+     No server involved: html2canvas captures the poster into a canvas,
+     canvas.captureStream() turns that into a live video track, and the
+     Web Audio API mixes narration + music into a matching audio track.
+     MediaRecorder muxes both into a single .webm file — browsers can't
+     encode mp4 directly, but .webm plays fine in browsers, WhatsApp, and
+     most social platforms. */
+  const handleDownloadVideo = async () => {
+    if (isRenderingVideo || !poemRef.current) return;
+
+    setIsRenderingVideo(true);
+    setVideoError(null);
+    setVideoStatus("పోస్టర్ తయారు చేస్తోంది…");
+
+    let audioCtx: AudioContext | null = null;
+    let narrationUrl: string | null = null;
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+
+      // Fixed capture width so the exported video looks the same
+      // regardless of the viewer's current screen size.
+      const captureCanvas = await html2canvas(poemRef.current, {
+        backgroundColor: POSTER_COLOR.bg,
+        useCORS: true,
+        scale: 2,
+        windowWidth: 900,
+      });
+
+      setVideoStatus("వాయిస్ తయారు చేస్తోంది…");
+
+      const text = `${poem.title}. ${poem.content}`;
+      const narrationBlob = await fetchTtsAudio(text, voiceChoice);
+      narrationUrl = URL.createObjectURL(narrationBlob);
+
+      const narrationEl = new Audio(narrationUrl);
+      narrationEl.crossOrigin = "anonymous";
+
+      const musicTrack = MUSIC_TRACKS[musicChoice];
+      const musicEl = musicTrack.src ? new Audio(musicTrack.src) : null;
+      if (musicEl) {
+        musicEl.loop = true;
+        musicEl.crossOrigin = "anonymous";
+      }
+
+      // Wait for narration metadata so we know it's actually loaded before
+      // wiring it into the Web Audio graph.
+      await new Promise<void>((resolve, reject) => {
+        narrationEl.addEventListener("loadedmetadata", () => resolve(), { once: true });
+        narrationEl.addEventListener("error", () => reject(new Error("narration load failed")), { once: true });
+      });
+
+      audioCtx = new AudioContext();
+      videoAudioCtxRef.current = audioCtx;
+      const dest = audioCtx.createMediaStreamDestination();
+
+      const narrationSource = audioCtx.createMediaElementSource(narrationEl);
+      narrationSource.connect(dest);
+      narrationSource.connect(audioCtx.destination); // audible while rendering
+
+      if (musicEl) {
+        const musicSource = audioCtx.createMediaElementSource(musicEl);
+        const musicGain = audioCtx.createGain();
+        musicGain.gain.value = musicVolume;
+        musicSource.connect(musicGain).connect(dest);
+        musicSource.connect(musicGain).connect(audioCtx.destination);
+      }
+
+      // 2 fps is plenty for a static poster — keeps the file small since
+      // nothing in the frame is actually moving.
+      const videoStream = captureCanvas.captureStream(2);
+      const combinedStream = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks(),
+      ]);
+
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : "video/webm";
+
+      const recorder = new MediaRecorder(combinedStream, { mimeType });
+      videoRecorderRef.current = recorder;
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      setVideoStatus("వీడియో రికార్డ్ అవుతోంది…");
+
+      await new Promise<void>((resolve, reject) => {
+        recorder.onstop = () => resolve();
+        recorder.onerror = () => reject(new Error("recording failed"));
+
+        recorder.start();
+        narrationEl.play().catch(reject);
+        musicEl?.play().catch(() => {
+          // background music failing is non-critical for the video too
+        });
+
+        narrationEl.onended = () => {
+          musicEl?.pause();
+          recorder.stop();
+        };
+      });
+
+      const videoBlob = new Blob(chunks, { type: "video/webm" });
+      const downloadUrl = URL.createObjectURL(videoBlob);
+      const cleanTitle = poem.title.trim().replace(/[\\/:*?"<>|]+/g, "").slice(0, 60) || "poem";
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = `${cleanTitle}.webm`;
+      link.click();
+      URL.revokeObjectURL(downloadUrl);
+
+      setVideoStatus(null);
+    } catch (err) {
+      console.error("Video export failed:", err);
+      setVideoError("వీడియో తయారు చేయడంలో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.");
+      setVideoStatus(null);
+    } finally {
+      if (narrationUrl) URL.revokeObjectURL(narrationUrl);
+      audioCtx?.close().catch(() => {});
+      videoAudioCtxRef.current = null;
+      videoRecorderRef.current = null;
+      setIsRenderingVideo(false);
+    }
   };
 
   return (
@@ -318,12 +420,11 @@ export default function PoemCard({
         "&:last-child": { pb: { xs: "20px", sm: "24px" } },
       }}>
 
-        {/* ── Poem body — this is the exact area html2canvas captures for
-            the share/poster image. Styled with fixed cream/ink tokens
-            (not theme.palette.*) so the exported poster looks identical
-            regardless of the app's light/dark mode. Same structure as
-            PoemCardNew.tsx: title -> hairline -> centered illustration ->
-            poem lines -> author -> hairline -> tagline/URL footer. ── */}
+        {/* ── Poem body — captured by both ShareButtons (poster image)
+            and handleDownloadVideo (poster + audio → video). Same
+            data-poster-* structure as before; unchanged except
+            crossOrigin hints on images so html2canvas never taints the
+            canvas it needs for video capture. ── */}
         <Box ref={poemRef} data-poster-root lang="te" sx={{
           textAlign: "center",
           bgcolor: POSTER_COLOR.bg,
@@ -350,14 +451,6 @@ export default function PoemCard({
               mx: "auto", mb: { xs: 2.5, sm: 3 },
             }} />
 
-            {/* Close-up illustration crop — a fixed circular window with
-                object-fit: cover, so the subject reads as "zoomed in"
-                regardless of how much empty space surrounds them in the
-                source file. data-poster-image now marks the CROP WRAPPER
-                (not the raw <img>) so ShareButtons.tsx's onclone can resize
-                the whole crop window consistently for the poster export.
-                The actual <img> carries data-poster-image-inner so the
-                export step can still reach it directly if needed. */}
             <Box
               data-poster-image
               sx={{
@@ -375,6 +468,7 @@ export default function PoemCard({
                 data-poster-image-inner
                 src={kaviImageSrc}
                 alt={authorText || poem.title}
+                crossOrigin="anonymous"
                 sx={{
                   width: "100%",
                   height: "100%",
@@ -385,7 +479,6 @@ export default function PoemCard({
               />
             </Box>
 
-            {/* Poem lines — single centered column */}
             <Box>
               {contentLines.map((line, i) => (
                 <Typography
@@ -416,7 +509,6 @@ export default function PoemCard({
               </Typography>
             )}
 
-            {/* data-poster-hide: internal nav label, not for the export */}
             {poetryName && (
               <Typography data-poster-hide variant="caption" sx={{
                 display: "block", mt: 0.5, letterSpacing: 1,
@@ -427,8 +519,6 @@ export default function PoemCard({
               </Typography>
             )}
 
-            {/* data-poster-footer: small-caps tagline + URL. Only meant to
-                stand out in the exported poster, kept subtle in-app. */}
             <Box
               data-poster-footer
               sx={{
@@ -454,14 +544,12 @@ export default function PoemCard({
                 {SITE_URL}
               </Typography>
 
-              {/* Full-width brand/footer illustration — needs a
-                  transparent-background PNG (not white bg) so it blends
-                  into the cream poster instead of showing a white box. */}
               <Box
                 component="img"
                 data-poster-footer-image
                 src="/cartoonkids1.png"
                 alt=""
+                crossOrigin="anonymous"
                 sx={{
                   width: "100%",
                   maxWidth: 460,
@@ -476,7 +564,6 @@ export default function PoemCard({
           </Box>
         </Box>
 
-        {/* ── Divider ── */}
         <Divider sx={{
           my: { xs: 2, sm: 2.5 },
           borderStyle: "dashed",
@@ -486,10 +573,8 @@ export default function PoemCard({
         {/* ── Action rows ── */}
         <Stack direction="column" spacing={1.25}>
 
-          {/* Voice choice — THREE real options, generated live via
-              /api/tts on click. No pre-generated files, no waiting on a
-              batch job — every poem, every voice, generated on demand. */}
-          <Stack direction="row" spacing={1} alignItems="center">
+          {/* Voice + music selectors, side by side on larger screens */}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
             <FormControl size="small" fullWidth>
               <InputLabel id={`voice-select-${poem.slug ?? poem.title}`}>
                 స్వరం ఎంచుకోండి
@@ -501,32 +586,47 @@ export default function PoemCard({
                 onChange={handleVoiceChange}
               >
                 {(Object.keys(VOICE_LABELS) as VoiceOption[]).map((v) => (
-                  <MenuItem key={v} value={v}>
-                    {VOICE_LABELS[v]}
-                  </MenuItem>
+                  <MenuItem key={v} value={v}>{VOICE_LABELS[v]}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl size="small" fullWidth>
+              <InputLabel id={`music-select-${poem.slug ?? poem.title}`}>
+                నేపథ్య సంగీతం
+              </InputLabel>
+              <Select
+                labelId={`music-select-${poem.slug ?? poem.title}`}
+                label="నేపథ్య సంగీతం"
+                value={musicChoice}
+                onChange={handleMusicChange}
+              >
+                {(Object.keys(MUSIC_TRACKS) as MusicOption[]).map((m) => (
+                  <MenuItem key={m} value={m}>{MUSIC_TRACKS[m].label}</MenuItem>
                 ))}
               </Select>
             </FormControl>
           </Stack>
 
-          {/* Background music toggle — optional, quiet, mixed under the
-              narration via a second simultaneous <audio> element. On by
-              default per request — person can still switch it off. */}
-          <FormControlLabel
-            sx={{ ml: 0.5, justifyContent: "flex-start" }}
-            control={
-              <Switch
-                size="small"
-                checked={bgMusicOn}
-                onChange={(e) => setBgMusicOn(e.target.checked)}
-              />
-            }
-            label={
-              <Typography sx={{ fontSize: "0.82rem", fontWeight: 600 }}>
-                🎵 నేపథ్య సంగీతం (తేలికపాటి గిటార్)
+          {musicChoice !== "none" && (
+            <Box sx={{ px: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                సంగీతం వాల్యూమ్
               </Typography>
-            }
-          />
+              <Slider
+                size="small"
+                value={musicVolume}
+                min={0}
+                max={0.5}
+                step={0.02}
+                onChange={(_, v) => {
+                  const vol = v as number;
+                  setMusicVolume(vol);
+                  if (bgMusicElRef.current) bgMusicElRef.current.volume = vol;
+                }}
+              />
+            </Box>
+          )}
 
           {/* Row 1 — Listen (or Stop) + Share */}
           <Stack direction="row" spacing={1}>
@@ -564,11 +664,7 @@ export default function PoemCard({
                 transition: "all 0.15s",
               }}
             >
-              {isSpeaking
-                ? "ఆపండి"
-                : isGenerating
-                ? "తయారవుతోంది…"
-                : "వినండి"}
+              {isSpeaking ? "ఆపండి" : isGenerating ? "తయారవుతోంది…" : "వినండి"}
             </Button>
 
             <Box sx={{ flex: "0 0 auto", display: "flex", alignItems: "stretch" }}>
@@ -577,7 +673,41 @@ export default function PoemCard({
 
           </Stack>
 
-          {/* Row 2 — AI Tools full-width */}
+          {/* Row 2 — Video export, full width */}
+          <Button
+            onClick={handleDownloadVideo}
+            disabled={isRenderingVideo}
+            variant="outlined"
+            fullWidth
+            startIcon={<MovieRoundedIcon fontSize="small" />}
+            sx={{
+              borderRadius: "10px",
+              py: { xs: 1.4, sm: 1.2 },
+              minHeight: { xs: 50, sm: 44 },
+              textTransform: "none",
+              fontWeight: 700,
+              fontSize: { xs: "0.92rem", sm: "0.85rem" },
+              borderColor: alpha(forestGreen, 0.4),
+              color: forestGreen,
+              "&:hover": {
+                borderColor: forestGreen,
+                background: alpha(forestGreen, 0.06),
+              },
+              "&:active": { transform: "scale(0.98)" },
+              transition: "all 0.15s",
+            }}
+          >
+            {isRenderingVideo ? (videoStatus ?? "వీడియో తయారవుతోంది…") : "వీడియోగా డౌన్‌లోడ్ చేయండి"}
+          </Button>
+
+          {videoError && (
+            <Typography variant="caption" color="error" sx={{ px: 0.5 }}>
+              {videoError}
+            </Typography>
+          )}
+
+          {/* Row 3 — AI Tools full-width (unchanged, TeluguVoice internals
+              not modified here) */}
           <Button
             onClick={() => setVoiceOpen(v => !v)}
             variant="outlined"
@@ -615,12 +745,11 @@ export default function PoemCard({
               transition: "all 0.15s",
             }}
           >
-              <span>ధ్వనికళాదర్శి మాల</span>
-            </Button>
+            <span>ధ్వనికళాదర్శి మాల</span>
+          </Button>
 
         </Stack>
 
-        {/* ── AI panel ── */}
         <Collapse in={voiceOpen} timeout={320} unmountOnExit>
           <Box sx={{
             mt: 2,

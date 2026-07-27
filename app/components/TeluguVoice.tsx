@@ -10,7 +10,7 @@ const TELUGU_FONT = "'Noto Serif Telugu','Noto Serif',Georgia,serif";
 /* ── config ──────────────────────────────────────────────────── */
 const TEL = {
   label: "Telugu", flag: "🌺",
-  webSpeechLang: "te-IN", googleTTSCode: "te",
+  webSpeechLang: "te-IN",
   bgColor: "#1a3d2b",
   sampleText: "నమస్కారం! నేను AksharaTantra.",
 };
@@ -24,6 +24,54 @@ const PROFILES = {
   twitter:   { W: 720,  H: 1280, fps: 30, label: "X / Twitter" },
 } as const;
 type PK = keyof typeof PROFILES;
+
+// Voice choice — same three options and same /api/tts contract as
+// PoemCard.tsx and PoemRadio.tsx, so behavior is consistent app-wide.
+type VoiceOption = "mohan" | "shruti" | "google";
+const VOICE_LABELS: Record<VoiceOption, string> = {
+  mohan: "🎙️ మగ స్వరం",
+  shruti: "👩 స్త్రీ స్వరం",
+  google: "🔊 Google TTS",
+};
+
+// Background music — same genre set used across the app.
+type MusicOption = "none" | "guitar" | "tabla" | "drums" | "flute" | "veena";
+const MUSIC_TRACKS: Record<MusicOption, { label: string; src: string | null }> = {
+  none:   { label: "🔇 సంగీతం లేదు", src: null },
+  guitar: { label: "🎸 గిటార్",       src: "/audio/bg-music-guitar-loop.wav" },
+  tabla:  { label: "🥁 తబలా",        src: "/audio/bg-music-tabla-loop.wav" },
+  drums:  { label: "🪘 డ్రమ్స్",      src: "/audio/bg-music-drums-loop.wav" },
+  flute:  { label: "🎶 వేణువు",       src: "/audio/bg-music-flute-loop.wav" },
+  veena:  { label: "🎻 వీణ",         src: "/audio/bg-music-veena-loop.wav" },
+};
+const MUSIC_VOLUME_DEFAULT = 0.18;
+
+// The scene shown "talking" in the video — a group of children walking
+// hand-in-hand, drawn edge-to-edge (contain-fit, not cropped) so the
+// whole group stays visible. Save the uploaded image into /public with
+// this exact filename.
+const TALKING_CHARACTER_SRC = "/cartoonkids1.png";
+
+// This scene has SEVERAL faces side by side rather than one portrait, so
+// instead of a single mouth anchor, this is a small mouth per child —
+// all animated together off the same volume-driven openness value, so
+// the whole group appears to recite the poem in unison. Each entry is a
+// fraction (0..1) of the drawn image's bounding box: x = mouth center
+// left-to-right, y = mouth center top-to-bottom, w/h = mouth size.
+//
+// These seven positions are estimated from the source image and are a
+// starting point, not exact — open kids-walking-group.png in any image
+// editor, hover over each child's mouth, and adjust the x/y fractions
+// (pixel position ÷ image width or height) until they land precisely.
+const GROUP_MOUTH_ANCHORS: { x: number; y: number; w: number; h: number }[] = [
+  { x: 0.075, y: 0.235, w: 0.028, h: 0.020 }, // leftmost boy (waving)
+  { x: 0.205, y: 0.205, w: 0.028, h: 0.020 }, // curly-haired boy
+  { x: 0.335, y: 0.250, w: 0.024, h: 0.018 }, // girl in dress
+  { x: 0.465, y: 0.230, w: 0.024, h: 0.018 }, // girl, center-left
+  { x: 0.585, y: 0.240, w: 0.024, h: 0.018 }, // boy, center-right
+  { x: 0.720, y: 0.195, w: 0.028, h: 0.020 }, // girl with hands raised
+  { x: 0.855, y: 0.220, w: 0.024, h: 0.018 }, // girl with bun, rightmost
+];
 
 /* ── inline SVG icons (no external dep) ─────────────────────── */
 const Ic = {
@@ -92,8 +140,20 @@ const PlatformIcon = ({ k }: { k: PK }) => {
 };
 
 /* ── audio helpers ───────────────────────────────────────────── */
-async function proxyTTS(text: string, code: string) {
-  const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(code)}`);
+
+// POST body (not GET query params) — matches the shared /api/tts contract
+// used by PoemCard.tsx and PoemRadio.tsx. Telugu text explodes in size
+// once URL-encoded, which breaks GET-based calls on longer poems.
+async function fetchTtsFloat(text: string, voice: VoiceOption) {
+  const res = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      text,
+      source: voice === "google" ? "google" : "edge",
+      voice: voice === "shruti" ? "female" : "male",
+    }),
+  });
   if (!res.ok) throw new Error(`TTS ${res.status}`);
   const buf = await res.arrayBuffer();
   const C = window.AudioContext || (window as any).webkitAudioContext;
@@ -103,6 +163,50 @@ async function proxyTTS(text: string, code: string) {
   const sr = dec.sampleRate;
   await tmp.close();
   return { audioFloat: af, sampleRate: sr, blob: new Blob([buf], { type: "audio/mpeg" }) };
+}
+
+// Mixes narration with a looped background track entirely client-side via
+// OfflineAudioContext, returning a single Float32Array at the narration's
+// sample rate/duration — ready to feed straight into the video encoder.
+// If the browser can't load/decode the music (missing file, offline,
+// codec issue), this quietly falls back to narration-only rather than
+// failing the whole video.
+async function mixWithMusicFloat32(
+  narrationFloat: Float32Array,
+  sr: number,
+  musicSrc: string,
+  volume: number
+): Promise<Float32Array> {
+  try {
+    const res = await fetch(musicSrc);
+    const musicBuf = await res.arrayBuffer();
+    const C = window.AudioContext || (window as any).webkitAudioContext;
+    const tmpCtx = new C();
+    const musicDecoded = await tmpCtx.decodeAudioData(musicBuf.slice(0));
+    await tmpCtx.close();
+
+    const offline = new OfflineAudioContext(1, narrationFloat.length, sr);
+
+    const narrationBuffer = offline.createBuffer(1, narrationFloat.length, sr);
+    narrationBuffer.copyToChannel(narrationFloat, 0);
+    const narrSource = offline.createBufferSource();
+    narrSource.buffer = narrationBuffer;
+    narrSource.connect(offline.destination);
+    narrSource.start(0);
+
+    const musicSource = offline.createBufferSource();
+    musicSource.buffer = musicDecoded; // Web Audio resamples automatically if rates differ
+    musicSource.loop = true;
+    const gain = offline.createGain();
+    gain.gain.value = volume;
+    musicSource.connect(gain).connect(offline.destination);
+    musicSource.start(0);
+
+    const rendered = await offline.startRendering();
+    return rendered.getChannelData(0);
+  } catch {
+    return narrationFloat;
+  }
 }
 
 function waitVoices(): Promise<SpeechSynthesisVoice[]> {
@@ -144,41 +248,168 @@ async function playF32(af: Float32Array, sr: number) {
   return new Promise<void>(res => { src.onended = () => res(); });
 }
 
-/* ── canvas draw ─────────────────────────────────────────────── */
-function drawSlide(ctx: CanvasRenderingContext2D, W: number, H: number, text: string) {
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null); // graceful fallback — caller draws without it
+    img.src = src;
+  });
+}
+
+/* ── canvas draw: talking character frame ───────────────────────
+   Draws the character once per video frame. mouthOpen (0..1) comes from
+   the narration's volume envelope at that instant — this is what makes
+   the mouth appear to move in sync with speech, without true phoneme-
+   level lip sync (that needs a GPU model; see chat notes). blink and
+   bobOffset add small idle-life touches so the character doesn't look
+   frozen between words. */
+function drawTalkingFrame(
+  ctx: CanvasRenderingContext2D,
+  W: number, H: number,
+  text: string,
+  charImg: HTMLImageElement | null,
+  mouthOpen: number,
+  blink: boolean,
+  tSec: number
+) {
+  // ── Bright, sunny kids-theme background — sky blue fading into a warm
+  // cream, with a soft sun and a grass strip at the base, echoing the
+  // daytime outdoor scene in the walking-kids illustration.
   const g = ctx.createLinearGradient(0, 0, W, H);
-  g.addColorStop(0, "#2d6a4f"); g.addColorStop(1, "#0a0a1a");
+  g.addColorStop(0, "#8ECBEA");
+  g.addColorStop(0.55, "#CFE9F5");
+  g.addColorStop(1, "#FFEFC7");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = "rgba(255,255,255,0.07)"; ctx.fillRect(0, 0, W, H * 0.12);
+
+  // soft sun in the corner
+  ctx.beginPath();
+  ctx.arc(W * 0.86, H * 0.09, W * 0.07, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,214,102,0.85)";
+  ctx.fill();
+
+  // grass strip along the bottom, tying the frame to the scene's ground
+  const grassH = H * 0.05;
+  ctx.fillStyle = "#8FC96B";
+  ctx.fillRect(0, H - grassH, W, grassH);
+  ctx.fillStyle = "#7AB85A";
+  ctx.fillRect(0, H - grassH, W, grassH * 0.35);
+
+  ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.fillRect(0, 0, W, H * 0.1);
+
   ctx.textAlign = "center";
-  ctx.fillStyle = "rgba(255,255,255,0.6)";
+  ctx.fillStyle = "rgba(43,38,32,0.55)";
   ctx.font = `bold ${Math.floor(W/28)}px sans-serif`;
-  ctx.fillText("✍️ స్వరమాల", W/2, H*0.065);
-  const bW=140,bH=30,bx=(W-bW)/2,by=H*0.086;
-  ctx.fillStyle="rgba(255,255,255,0.14)"; ctx.beginPath(); ctx.roundRect(bx,by,bW,bH,15); ctx.fill();
-  ctx.fillStyle="rgba(255,255,255,0.88)"; ctx.font=`600 ${Math.floor(W/37)}px sans-serif`;
+  ctx.fillText(" స్వరమాల", W/2, H*0.06);
+  const bW=140,bH=30,bx=(W-bW)/2,by=H*0.078;
+  ctx.fillStyle="#FF8A5B"; ctx.beginPath(); ctx.roundRect(bx,by,bW,bH,15); ctx.fill();
+  ctx.fillStyle="#ffffff"; ctx.font=`600 ${Math.floor(W/37)}px sans-serif`;
   ctx.fillText(`${TEL.flag} ${TEL.label}`, W/2, by+bH*0.7);
-  const fs=Math.max(20,Math.floor(W/17));
-  ctx.font=`bold ${fs}px ${TELUGU_FONT}`; ctx.fillStyle="#fff";
-  ctx.shadowColor="rgba(0,0,0,0.45)"; ctx.shadowBlur=10;
-  const mw=W-100; const words=text.split(" "); const lines:string[]=[];
-  let cur="";
-  for (const w of words) {
-    const t=cur?cur+" "+w:w;
-    if (ctx.measureText(t).width>mw&&cur){lines.push(cur);cur=w;}else cur=t;
+
+  // ── Group scene stage: a wide rounded panel, contain-fit (not cropped)
+  // so all seven children stay fully visible — a circular crop like a
+  // single-portrait avatar would slice off most of the garoup.
+  const stageW = W * 0.92;
+  const imgAspect = charImg ? charImg.width / charImg.height : 2.04; // fallback matches source art
+  const stageH = stageW / imgAspect;
+  const stageX = (W - stageW) / 2;
+  const bob = Math.sin(tSec * 2) * (stageH * 0.01); // gentle idle bob
+  const stageY = H * 0.14 + bob;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(stageX, stageY, stageW, stageH, 16);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  ctx.fill();
+  ctx.clip();
+
+  if (charImg) {
+    // contain-fit: whole image visible, letterboxed inside the stage if
+    // its aspect ratio doesn't exactly match.
+    const scale = Math.min(stageW / charImg.width, stageH / charImg.height);
+    const dw = charImg.width * scale;
+    const dh = charImg.height * scale;
+    const dx = stageX + (stageW - dw) / 2;
+    const dy = stageY + (stageH - dh) / 2;
+    ctx.drawImage(charImg, dx, dy, dw, dh);
+
+    // One small mouth per child, all animated off the same volume-driven
+    // openness value — reads as the whole group reciting together.
+    ctx.fillStyle = "rgba(60,20,20,0.85)";
+    for (const a of GROUP_MOUTH_ANCHORS) {
+      const mx = dx + dw * a.x;
+      const my = dy + dh * a.y;
+      const mw = dw * a.w;
+      const mh = Math.max(dh * a.h * mouthOpen, dh * 0.004);
+      ctx.beginPath();
+      ctx.ellipse(mx, my, mw / 2, mh / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Blinking is skipped for the multi-face scene — seven simultaneous
+    // blinks reads as flickering rather than lifelike; the mouth motion
+    // alone is enough to sell "talking" here.
+  } else {
+    // Scene image missing/failed to load — fall back to a plain panel
+    // rather than breaking the render.
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fillRect(stageX, stageY, stageW, stageH);
   }
-  if(cur)lines.push(cur);
-  const dls=lines.slice(0,8); if(lines.length>8)dls[7]+="…";
-  const lh=fs*1.7; let y=H/2-(dls.length*lh)/2+fs*0.4;
-  for(const l of dls){ctx.fillText(l,W/2,y);y+=lh;}
-  ctx.shadowBlur=0;
-  ctx.fillStyle="rgba(255,255,255,0.07)"; ctx.fillRect(0,H*0.92,W,H*0.08);
-  ctx.fillStyle="rgba(255,255,255,0.42)"; ctx.font=`400 ${Math.floor(W/45)}px sans-serif`;
-  ctx.fillText("🇮🇳 Indic AI · AksharaTantra", W/2, H*0.965);
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.roundRect(stageX, stageY, stageW, stageH, 16);
+  ctx.strokeStyle = "rgba(255,255,255,0.25)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // ── Poem text, in the lower half below the scene. A soft white panel
+  // sits behind the text so it stays readable regardless of what's
+  // directly behind it (sky, grass, or the scene edge).
+  const fs = Math.max(18, Math.floor(W / 20));
+  const mwText = W - 100;
+  const words = text.split(" ");
+  const lines: string[] = [];
+  ctx.font = `bold ${fs}px ${TELUGU_FONT}`;
+  let cur = "";
+  for (const w of words) {
+    const t = cur ? cur + " " + w : w;
+    if (ctx.measureText(t).width > mwText && cur) { lines.push(cur); cur = w; } else cur = t;
+  }
+  if (cur) lines.push(cur);
+  const textTop = stageY + stageH + H * 0.03;
+  const availableH = H * 0.94 - textTop;
+  const maxLines = Math.max(2, Math.floor(availableH / (fs * 1.6)));
+  const dls = lines.slice(0, maxLines);
+  if (lines.length > maxLines) dls[dls.length - 1] += "…";
+  const lh = fs * 1.6;
+
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.beginPath();
+  ctx.roundRect(50, textTop - fs * 0.3, W - 100, dls.length * lh + fs * 0.4, 14);
+  ctx.fill();
+
+  ctx.fillStyle = "#2B2620";
+  let y = textTop + lh * 0.6;
+  for (const l of dls) { ctx.fillText(l, W/2, y); y += lh; }
+
+  ctx.fillStyle = "rgba(139,111,71,0.9)"; ctx.font = `400 ${Math.floor(W/45)}px sans-serif`;
+  ctx.fillText("రత్నాలబాల -జ్ఞానమాల", W/2, H - grassH - H*0.015);
+}
+
+/* Still-frame version, used for the static PNG export and the small
+   thumbnail preview — same visual, character with mouth closed, no
+   blink, so the PNG matches the video's look. */
+function drawSlide(ctx: CanvasRenderingContext2D, W: number, H: number, text: string, charImg: HTMLImageElement | null) {
+  drawTalkingFrame(ctx, W, H, text, charImg, 0, false, 0);
 }
 
 /* ── video ───────────────────────────────────────────────────── */
-async function makeVideo(text:string,af:Float32Array,sr:number,pk:PK,canvas:HTMLCanvasElement,hasAudio:boolean): Promise<Blob> {
+async function makeVideo(
+  text: string, af: Float32Array, sr: number, pk: PK,
+  canvas: HTMLCanvasElement, hasAudio: boolean, charImg: HTMLImageElement | null
+): Promise<Blob> {
   const {W,H,fps}=PROFILES[pk];
   canvas.width=W; canvas.height=H;
   const c2=canvas.getContext("2d",{alpha:false})!;
@@ -200,10 +431,36 @@ async function makeVideo(text:string,af:Float32Array,sr:number,pk:PK,canvas:HTML
       ae.encode(ad); ad.close();
     }catch{ae=null;}
   }
+
   const total=Math.ceil(dur*fps);
+  const samplesPerFrame = Math.max(1, Math.floor(sr / fps));
+  let smoothedOpen = 0;
+  const blinkCycleFrames = fps * 4; // roughly one blink every 4 seconds
+
   for(let i=0;i<total;i++){
     const ts=Math.round((i*1_000_000)/fps);
-    drawSlide(c2,W,H,text);
+
+    // Mouth openness for this frame, from the narration's RMS volume in
+    // the sample window covering this frame — smoothed across frames so
+    // the mouth doesn't flap on every tiny sample-level fluctuation.
+    let rawOpen = 0;
+    if (hasAudio) {
+      const start = i * samplesPerFrame;
+      const end = Math.min(start + samplesPerFrame, af.length);
+      if (end > start) {
+        let sumSq = 0;
+        for (let s = start; s < end; s++) sumSq += af[s] * af[s];
+        const rms = Math.sqrt(sumSq / (end - start));
+        rawOpen = Math.min(1, rms * 6.5); // gain tuned for typical TTS levels
+      }
+    }
+    smoothedOpen = smoothedOpen * 0.55 + rawOpen * 0.45;
+
+    const blinkFrame = i % blinkCycleFrames;
+    const blink = blinkFrame >= blinkCycleFrames - 4; // ~4-frame blink
+
+    drawTalkingFrame(c2, W, H, text, charImg, smoothedOpen, blink, i / fps);
+
     const f=new VideoFrame(canvas,{timestamp:ts,duration:Math.round(1_000_000/fps)});
     ve.encode(f); f.close();
     if(i%30===0)await new Promise(r=>setTimeout(r,0));
@@ -249,17 +506,14 @@ const C = {
 };
 
 const s = {
-  // containers
   card: {background:C.white,borderRadius:16,border:`1px solid ${C.border}`,overflow:"hidden"} as React.CSSProperties,
   surface: {background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:"12px 14px"} as React.CSSProperties,
-  // typography
   label: {fontSize:11,fontWeight:600,letterSpacing:"0.7px",textTransform:"uppercase" as const,color:C.textMuted,display:"block",marginBottom:8},
-  // buttons
+  select: {width:"100%",height:44,borderRadius:10,border:`1.5px solid ${C.border}`,background:C.white,color:C.textPrimary,fontSize:14,fontWeight:600,padding:"0 12px",fontFamily:"inherit",outline:"none",cursor:"pointer"} as React.CSSProperties,
   btnPrimary: {width:"100%",minHeight:54,borderRadius:14,background:`linear-gradient(135deg, ${C.forestMid}, ${C.forest})`,color:C.white,border:"none",fontSize:15,fontWeight:700,display:"flex" as const,alignItems:"center" as const,justifyContent:"center" as const,gap:9,cursor:"pointer",boxShadow:"0 4px 20px rgba(26,61,43,0.3)",WebkitTapHighlightColor:"transparent",letterSpacing:0.2,fontFamily:"inherit"} as React.CSSProperties,
   btnGhost: {width:"100%",minHeight:46,borderRadius:10,background:C.white,color:C.forest,border:`1.5px solid ${C.borderDark}`,fontSize:14,fontWeight:600,display:"flex" as const,alignItems:"center" as const,justifyContent:"center" as const,gap:7,cursor:"pointer",WebkitTapHighlightColor:"transparent",fontFamily:"inherit"} as React.CSSProperties,
   btnSolid: {width:"100%",minHeight:46,borderRadius:10,background:C.forest,color:C.white,border:"none",fontSize:14,fontWeight:600,display:"flex" as const,alignItems:"center" as const,justifyContent:"center" as const,gap:7,cursor:"pointer",boxShadow:"0 3px 12px rgba(26,61,43,0.25)",WebkitTapHighlightColor:"transparent",fontFamily:"inherit"} as React.CSSProperties,
   btnSm: {flex:1,minHeight:42,borderRadius:8,fontSize:13,fontWeight:600,display:"flex" as const,alignItems:"center" as const,justifyContent:"center" as const,gap:6,cursor:"pointer",WebkitTapHighlightColor:"transparent",fontFamily:"inherit",border:"none"} as React.CSSProperties,
-  // icons badge
   iconBadge: (bg:string) => ({width:30,height:30,borderRadius:8,background:bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0} as React.CSSProperties),
 };
 
@@ -277,6 +531,8 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
   const [pct, setPct] = useState(0);
   const [statusMsg, setStatusMsg] = useState("");
   const [profile, setProfile] = useState<PK>("mobile");
+  const [voiceChoice, setVoiceChoice] = useState<VoiceOption>("mohan");
+  const [musicChoice, setMusicChoice] = useState<MusicOption>("guitar");
   const [mounted, setMounted] = useState(false);
   const [audioUrl, setAudioUrl_] = useState<string|null>(null);
   const [vidUrl, setVidUrl_] = useState<string|null>(null);
@@ -287,10 +543,16 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
   const [playing, setPlaying] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const charImgRef = useRef<HTMLImageElement | null>(null);
   const prevAudio = useRef<string|null>(null);
   const prevVid = useRef<string|null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    // Preload the character image once — reused for every generate() call
+    // and for the still-thumbnail preview below.
+    loadImage(TALKING_CHARACTER_SRC).then(img => { charImgRef.current = img; });
+  }, []);
   useEffect(() => {
     if (initialText != null) {
       setText(initialText); setAudioUrl_(null); setVidUrl_(null); setAf(null);
@@ -315,7 +577,7 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
     if (!canvasRef.current) return;
     const {W,H} = PROFILES[profile];
     const c = canvasRef.current; c.width=W; c.height=H;
-    drawSlide(c.getContext("2d",{alpha:false})!, W, H, text);
+    drawSlide(c.getContext("2d",{alpha:false})!, W, H, text, charImgRef.current);
     dlFile(c.toDataURL("image/png"), `telugu_slide_${Date.now()}.png`);
   };
 
@@ -333,27 +595,38 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
       let audioF!: Float32Array; let audioSr=22050;
       let audioBlob:Blob|null=null; let hasAudio=false;
       try {
-        setStatusMsg("తెలుగు ధ్వని తయారవుతోంది…"); setPct(30);
-        const r = await proxyTTS(AT, TEL.googleTTSCode);
+        setStatusMsg("తెలుగు ధ్వని తయారవుతోంది…"); setPct(25);
+        const r = await fetchTtsFloat(AT, voiceChoice);
         audioF=r.audioFloat; audioSr=r.sampleRate; audioBlob=r.blob; hasAudio=true;
-        setStatusMsg("ధ్వని సిద్ధం ✅"); setPct(55);
+        setStatusMsg("ధ్వని సిద్ధం ✅"); setPct(45);
       } catch {
         setStatusMsg("ఆఫ్‌లైన్ వాయిస్ ఉపయోగిస్తున్నాం…");
         await speakWS(AT, TEL.webSpeechLang);
-        audioSr=22050; audioF=new Float32Array(audioSr*5); setPct(55);
+        audioSr=22050; audioF=new Float32Array(audioSr*5); setPct(45);
       }
+
+      // Mix in background music (client-side, no server round trip) before
+      // encoding — the played-back audio preview stays narration-only
+      // (audioBlob), but the video's embedded audio includes the mix.
+      let videoAudioF = audioF;
+      if (hasAudio && MUSIC_TRACKS[musicChoice].src) {
+        setStatusMsg("సంగీతం కలుపుతోంది…"); setPct(55);
+        videoAudioF = await mixWithMusicFloat32(audioF, audioSr, MUSIC_TRACKS[musicChoice].src!, MUSIC_VOLUME_DEFAULT);
+      }
+
       if (audioBlob) { setAf(audioF); setSr(audioSr); setAudioUrl(URL.createObjectURL(audioBlob)); }
       else { setAf(audioF); setSr(audioSr); }
+
       if (canvasRef.current) {
         const {W,H}=PROFILES[profile];
         canvasRef.current.width=W; canvasRef.current.height=H;
-        drawSlide(canvasRef.current.getContext("2d",{alpha:false})!, W, H, AT);
+        drawSlide(canvasRef.current.getContext("2d",{alpha:false})!, W, H, AT, charImgRef.current);
         setSlideReady(true);
       }
       if (canvasRef.current) {
-        setStatusMsg("వీడియో రెండర్ అవుతోంది…"); setPct(75);
+        setStatusMsg("వీడియో రెండర్ అవుతోంది (మాట్లాడే బొమ్మతో)…"); setPct(75);
         try {
-          const vb = await makeVideo(AT, audioF, audioSr, profile, canvasRef.current, hasAudio);
+          const vb = await makeVideo(AT, videoAudioF, audioSr, profile, canvasRef.current, hasAudio, charImgRef.current);
           setVidUrl(URL.createObjectURL(vb));
           setStatusMsg(hasAudio ? "సిద్ధం! డౌన్‌లోడ్ చేయండి 🎉" : "వీడియో సిద్ధం ✅");
           setPct(100);
@@ -372,7 +645,6 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
 
   return (
     <>
-      {/* hidden font preload */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Telugu:wght@400;700&display=swap" rel="stylesheet" />
@@ -384,7 +656,7 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
         <div style={{background:C.successBg,border:`1px solid ${C.successBorder}`,borderRadius:10,padding:"10px 12px",display:"flex",gap:9,alignItems:"flex-start"}}>
           {Ic.info()}
           <p style={{fontSize:12,color:C.successText,margin:0,lineHeight:1.7}}>
-            Google TTS ద్వారా తెలుగు టెక్స్ట్‌ని <strong>MP3 + MP4 + PNG</strong>గా మారుస్తాం. ఇంటర్నెట్ అవసరం.
+            తెలుగు టెక్స్ట్‌ని ఎంచుకున్న స్వరం + సంగీతంతో <strong>MP3 + MP4 (మాట్లాడే బొమ్మతో) + PNG</strong>గా మారుస్తాం. ఇంటర్నెట్ అవసరం.
           </p>
         </div>
 
@@ -416,6 +688,36 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
             }}>{text.length}/{MAX}</span>
           </div>
           {over && <p style={{color:"#ef4444",fontSize:12,margin:"4px 0 0"}}>అక్షర పరిమితి మించింది</p>}
+        </div>
+
+        {/* ── Voice + music selectors ── */}
+        <div style={{display:"flex",gap:10,flexWrap: isMobile ? "wrap" : "nowrap"}}>
+          <div style={{flex:1,minWidth:140}}>
+            <span style={s.label}>స్వరం</span>
+            <select
+              style={s.select}
+              value={voiceChoice}
+              disabled={loading}
+              onChange={e => setVoiceChoice(e.target.value as VoiceOption)}
+            >
+              {(Object.keys(VOICE_LABELS) as VoiceOption[]).map(v => (
+                <option key={v} value={v}>{VOICE_LABELS[v]}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{flex:1,minWidth:140}}>
+            <span style={s.label}>నేపథ్య సంగీతం</span>
+            <select
+              style={s.select}
+              value={musicChoice}
+              disabled={loading}
+              onChange={e => setMusicChoice(e.target.value as MusicOption)}
+            >
+              {(Object.keys(MUSIC_TRACKS) as MusicOption[]).map(m => (
+                <option key={m} value={m}>{MUSIC_TRACKS[m].label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* ── Format chips ── */}
@@ -464,7 +766,7 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
               <style>{`@keyframes tvbounce{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}`}</style>
             </span>
           ) : (
-            <>{Ic.mic("white")} ధ్వని + కళ + వీడియో సృష్టించండి</>
+            <>{Ic.mic("white")} మాట్లాడే బొమ్మ వీడియో సృష్టించండి</>
           )}
         </button>
 
@@ -497,13 +799,11 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
         {/* ══ Downloads card ══ */}
         {hasOutput && (
           <div style={s.card}>
-            {/* header */}
             <div style={{padding:"11px 14px",background:C.surface,borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:8}}>
               {Ic.dl(C.textMuted,15)}
               <span style={{fontSize:13,fontWeight:600,color:C.textPrimary}}>డౌన్‌లోడ్‌లు</span>
             </div>
 
-            {/* Audio */}
             {audioUrl && (
               <div style={{padding:"14px",borderBottom:`1px solid ${C.border}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
@@ -527,12 +827,11 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
               </div>
             )}
 
-            {/* Video */}
             {vidUrl && (
               <div style={{padding:"14px",borderBottom:`1px solid ${C.border}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
                   <div style={s.iconBadge(C.videoBg)}>{Ic.video()}</div>
-                  <span style={{fontSize:13,fontWeight:600,color:C.textPrimary}}>దర్శనమాల (MP4)</span>
+                  <span style={{fontSize:13,fontWeight:600,color:C.textPrimary}}>దర్శనమాల (MP4 · మాట్లాడే బొమ్మ)</span>
                 </div>
                 <div style={{borderRadius:12,overflow:"hidden",marginBottom:10,boxShadow:"0 4px 14px rgba(0,0,0,0.12)"}}>
                   <video controls playsInline src={vidUrl} style={{width:"100%",display:"block"}} />
@@ -545,7 +844,6 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
               </div>
             )}
 
-            {/* Image */}
             {slideReady && (
               <div style={{padding:"14px"}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
@@ -557,7 +855,7 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
                     ref={node=>{
                       if(!node||!text)return;
                       node.width=180; node.height=320;
-                      drawSlide(node.getContext("2d")!, 180, 320, text);
+                      drawSlide(node.getContext("2d")!, 180, 320, text, charImgRef.current);
                     }}
                     style={{width:60,borderRadius:6,border:`1px solid ${C.border}`,flexShrink:0,display:"block"}}
                   />
