@@ -192,7 +192,7 @@ async function mixWithMusicFloat32(
     const offline = new OfflineAudioContext(1, narrationFloat.length, sr);
 
     const narrationBuffer = offline.createBuffer(1, narrationFloat.length, sr);
-    narrationBuffer.copyToChannel(narrationFloat, 0);
+    narrationBuffer.copyToChannel(new Float32Array(narrationFloat), 0);
     const narrSource = offline.createBufferSource();
     narrSource.buffer = narrationBuffer;
     narrSource.connect(offline.destination);
