@@ -240,7 +240,7 @@ export default function Navbar() {
                 fontSize: "0.9rem", fontWeight: pathname === "/" ? 700 : 500,
                 "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
               }}>
-                🏠 హోమ్
+                🏠  రత్నాలబాల–జ్ఞానమాల
               </Typography>
             </Link>
 
@@ -305,7 +305,7 @@ export default function Navbar() {
               onClick={() => setDrawerOpen(false)}
               sx={{ bgcolor: pathname === "/" ? `${ACCENT}88` : "transparent", borderRadius: "8px", mb: 0.5 }}
             >
-              <ListItemText primary="🏠 రత్నాలబాల"
+              <ListItemText primary="🏠 రత్నాలబాల–జ్ఞానమాల"
                 primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem", fontFamily: "'Noto Serif Telugu', serif" }} />
             </ListItem>
 
