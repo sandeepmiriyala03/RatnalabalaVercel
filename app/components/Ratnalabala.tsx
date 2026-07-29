@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import {
   Box,
   Container,
@@ -8,9 +9,17 @@ import {
   Stack,
   Chip,
   Divider,
+  Button,
+  Collapse,
+  CircularProgress,
 } from "@mui/material";
 import Link from "next/link";
 import AgentPoemButton from "@/app/components/AgentPoemButton";
+import DownloadAllPosters from "@/app/components/DownloadAllPosters";
+import DownloadAllVoices from "../components/DownloadAllVoices";
+
+import PoemRadio from "@/app/components/Poemradio";
+import DownloadAllVideos from "@/app/components/DownloadAllVideos";
 
 import DiamondTwoToneIcon from "@mui/icons-material/DiamondTwoTone";
 import MenuBookTwoToneIcon from "@mui/icons-material/MenuBookTwoTone";
@@ -39,12 +48,24 @@ import SmartToyTwoToneIcon from "@mui/icons-material/SmartToyTwoTone";
 import AssignmentTwoToneIcon from "@mui/icons-material/AssignmentTwoTone";
 import CheckCircleTwoToneIcon from "@mui/icons-material/CheckCircleTwoTone";
 import LockTwoToneIcon from "@mui/icons-material/LockTwoTone";
+import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import type { SvgIconComponent } from "@mui/icons-material";
 
 // ── Accessible palette (unchanged) ──────────────────────────────────
 const ACCENTS = ["#14532D", "#0F766E", "#92400E", "#9A3412", "#6B21A8"];
 const MUTED_TEXT = "#475569";
 const PAGE_BG = "#FBF9F6";
+
+interface Poem {
+  title: string;
+  content: string;
+  slug?: string;
+}
+
+const POETRY_NAME = "రత్నాలబాల – జ్ఞానమాల";
+const AUTHORS: string | string[] = "మిరియాల వెంకటరత్నం";
 
 const NAV_GROUPS_RAW = [
   {
@@ -150,6 +171,36 @@ function SectionDivider({ Icon, color = ACCENTS[0] }: { Icon: SvgIconComponent; 
 }
 
 export default function RatnalabalaHighlights() {
+
+  const [poems, setPoems] = useState<Poem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toolsOpen, setToolsOpen] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/poems");
+        if (!res.ok) throw new Error();
+
+        const data: Record<string, string> = await res.json();
+        const arr: Poem[] = Object.entries(data).map(([title, content]) => ({
+          title,
+          content,
+          slug: title,
+        }));
+
+        setPoems(arr);
+      } catch {
+        setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
   return (
     <Box sx={{ position: "relative", overflow: "hidden", bgcolor: PAGE_BG }}>
       <Box
@@ -165,8 +216,7 @@ export default function RatnalabalaHighlights() {
       />
 
       <Container maxWidth="md" sx={{ py: { xs: 4, md: 6 } }}>
-        {/* ═══════════ 1. HERO — brand/title masthead, stays at the very
-            top since it's page identity, not a reorderable "section" ═══════════ */}
+        {/* ═══════════ 1. HERO ═══════════ */}
         <Reveal delay={0}>
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Stack direction="row" spacing={1.25} alignItems="center" justifyContent="center" sx={{ mb: 1 }}>
@@ -207,6 +257,8 @@ export default function RatnalabalaHighlights() {
             </Stack>
           </Box>
         </Reveal>
+
+        {/* ═══════════ 2. ABOUT THE PROJECT ═══════════ */}
         <Reveal delay={0.06}>
           <Card sx={{ mb: 3, borderLeft: `4px solid ${ACCENTS[2]}`, borderRadius: 3 }}>
             <CardContent>
@@ -217,13 +269,15 @@ export default function RatnalabalaHighlights() {
                 </Typography>
               </Stack>
               <Typography sx={{ fontSize: "0.95rem", color: "#1E293B", lineHeight: 1.75 }}>
-              రత్నాలబాల – జ్ఞానమాల ఒక ఉచిత, వాణిజ్యేతర హాబీ ప్రాజెక్ట్  తెలుగు పద్యాలు, శతకాలు, కథలు, సామెతలు వంటి సాహిత్య సంపదను ఆధునిక సాంకేతికత (AI, వాయిస్, OCR) సాయంతో అందరికీ సులభంగా చదవడానికి, వినడానికి, నేర్చుకోవడానికి వీలుగా ఒకే వేదికపైకి తెచ్చే ప్రయత్నం.
+                రత్నాలబాల – జ్ఞానమాల ఒక ఉచిత, వాణిజ్యేతర హాబీ ప్రాజెక్ట్ , తెలుగు పద్యాలు, శతకాలు, కథలు, సామెతలు వంటి
+                సాహిత్య సంపదను ఆధునిక సాంకేతికత (AI, వాయిస్, OCR) సాయంతో అందరికీ సులభంగా చదవడానికి, వినడానికి,
+                నేర్చుకోవడానికి వీలుగా ఒకే వేదికపైకి తెచ్చే ప్రయత్నం.
               </Typography>
             </CardContent>
           </Card>
         </Reveal>
 
-        {/* ═══════════ 3. TELUGU SAMPLE VERSE — second, as requested ═══════════ */}
+        {/* ═══════════ 3. TELUGU SAMPLE VERSE ═══════════ */}
         <Reveal delay={0.12}>
           <Card sx={{ mb: 3, borderLeft: `4px solid ${ACCENTS[3]}`, borderRadius: 3 }}>
             <CardContent>
@@ -242,11 +296,78 @@ export default function RatnalabalaHighlights() {
           </Card>
         </Reveal>
 
+        {/* ═══════════ NEW: RADIO + BULK DOWNLOAD TOOLS — placed right
+            after the sample verse, as requested. Loading/error states
+            mirror the pattern used on the poem list pages, since this
+            page now fetches its own poems. ═══════════ */}
+        {loading && (
+          <Stack alignItems="center" spacing={1.5} sx={{ py: 4 }}>
+            <CircularProgress size={28} />
+            <Typography sx={{ fontSize: "0.85rem", color: MUTED_TEXT }}>
+              పద్యాలు లోడ్ అవుతున్నాయి…
+            </Typography>
+          </Stack>
+        )}
+
+        {error && (
+          <Typography align="center" color="error" sx={{ py: 3, fontSize: "0.9rem" }}>
+            {error}
+          </Typography>
+        )}
+
+        {!loading && !error && poems.length > 0 && (
+          <Reveal delay={0.16}>
+            <Box sx={{ textAlign: "center", mb: 1.5 }}>
+              <Typography fontWeight={800} sx={{ fontSize: "1rem", color: "#1E293B" }}>
+                🎧 స్వరమాల రేడియో
+              </Typography>
+              <Typography sx={{ fontSize: "0.85rem", color: MUTED_TEXT }}>
+                ఒక్క బటన్‌తో, మీ స్వరం ఎంచుకుని అన్ని పద్యాలు వరుసగా వినండి — సొంత రేడియో స్టేషన్‌లా.
+              </Typography>
+            </Box>
+            <PoemRadio poems={poems} />
+          </Reveal>
+        )}
+
+        {!loading && !error && poems.length > 0 && (
+          <Reveal delay={0.2}>
+            <Box sx={{ mb: 3 }}>
+              <Button
+                onClick={() => setToolsOpen((v) => !v)}
+                variant="outlined"
+                fullWidth
+                startIcon={<DownloadForOfflineRoundedIcon fontSize="small" />}
+                endIcon={
+                  toolsOpen ? (
+                    <ExpandLessRoundedIcon fontSize="small" />
+                  ) : (
+                    <ExpandMoreRoundedIcon fontSize="small" />
+                  )
+                }
+                sx={{
+                  textTransform: "none", fontWeight: 700, borderRadius: "10px",
+                  borderColor: `${ACCENTS[0]}55`, color: ACCENTS[0],
+                  "&:hover": { borderColor: ACCENTS[0], bgcolor: `${ACCENTS[0]}0A` },
+                }}
+              >
+               సంచయమాల (పోస్టర్లు · వాయిస్‌లు · వీడియోలు)
+              </Button>
+
+              <Collapse in={toolsOpen} timeout={280} unmountOnExit>
+                <Stack spacing={2} sx={{ mt: 2 }}>
+                  <DownloadAllPosters poems={poems} authors={AUTHORS} poetryName={POETRY_NAME} />
+                  <DownloadAllVideos poems={poems} />
+                  <DownloadAllVoices poems={poems} />
+                </Stack>
+              </Collapse>
+            </Box>
+          </Reveal>
+        )}
+
         <SectionDivider Icon={MenuBookTwoToneIcon} color={ACCENTS[0]} />
 
-        {/* ═══════════ 4. MALAS / MODULE GRID — group labels removed,
-            one flat grid of all modules ═══════════ */}
-        <Reveal delay={0.18}>
+        {/* ═══════════ 4. MALAS / MODULE GRID ═══════════ */}
+        <Reveal delay={0.26}>
           <Box sx={{ mb: 2 }}>
             <Box
               sx={{
@@ -296,8 +417,8 @@ export default function RatnalabalaHighlights() {
         <SectionDivider Icon={CheckCircleTwoToneIcon} color={ACCENTS[1]} />
 
         {/* ═══════════ 5. REMAINING — Agent Spotlight, What You Can Do,
-            About the Voices, Footer, in that order ═══════════ */}
-        <Reveal delay={0.26}>
+            About the Voices ═══════════ */}
+        <Reveal delay={0.32}>
           <Box
             sx={{
               mb: 4, p: { xs: 2.5, md: 3 }, borderRadius: 4, textAlign: "center",
@@ -322,7 +443,7 @@ export default function RatnalabalaHighlights() {
                 <SmartToyTwoToneIcon sx={{ color: "#fff", fontSize: "1.4rem" }} />
               </Box>
               <Typography sx={{ fontWeight: 900, fontSize: { xs: "1.15rem", md: "1.35rem" }, color: "#fff" }}>
-                ఈరోజు నిర్ణయాత్మక మాల ఎంచుకున్న పద్యం
+                ఈరోజు నిర్ణయాత్మక మాల ఎంచుకున్న పద్యం.
               </Typography>
             </Stack>
 
@@ -336,7 +457,7 @@ export default function RatnalabalaHighlights() {
           </Box>
         </Reveal>
 
-        <Reveal delay={0.32}>
+        <Reveal delay={0.38}>
           <Box sx={{ p: { xs: 2, md: 2.5 }, mb: 2, borderRadius: 3, bgcolor: "#fff", border: "1px solid #e5e7eb", textAlign: "center" }}>
             <Typography fontWeight={800} sx={{ mb: 1.5, color: "#1E293B" }}>
               మీరు ఇక్కడ చేయగలవి
@@ -369,7 +490,7 @@ export default function RatnalabalaHighlights() {
           </Box>
         </Reveal>
 
-        <Reveal delay={0.38}>
+        <Reveal delay={0.44}>
           <Card sx={{ mb: 3, borderLeft: `4px solid ${ACCENTS[0]}`, borderRadius: 3 }}>
             <CardContent>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
@@ -426,7 +547,6 @@ export default function RatnalabalaHighlights() {
             </CardContent>
           </Card>
         </Reveal>
-
       </Container>
     </Box>
   );
