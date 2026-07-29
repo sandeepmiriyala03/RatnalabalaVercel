@@ -8,7 +8,7 @@ import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
 import FloatingAIButton from "@/app/components/FloatingAIButton";
 import FontControlsTelugu from "@/app/components/FontSelection";
 import { cacheAllPoems } from "@/lib/cachePoems";
-import { AppBar, Toolbar, Container, Box } from "@mui/material";
+import { AppBar, Toolbar, Container, Box, Typography } from "@mui/material";
 import AudioPlayer from "@/app/components/AudioPlayer";
 /* 🔤 Allowed Telugu Fonts */
 export type TeluguFont =
@@ -232,7 +232,10 @@ useEffect(() => {
           setFontSize={setFontSize}
         />
 
- {/* 🔊 Intro Audio */}
+ {/* 🔊 Intro Audio — this is the ONE place this block should live;
+     it renders above every page's content, so it must not be
+     duplicated inside individual pages (e.g. the homepage's
+     RatnalabalaHighlights.tsx). */}
     <Box
       sx={{
         mt: 2,
@@ -245,6 +248,9 @@ useEffect(() => {
     >
       <strong>🎧 రత్నాలబాల పరిచయ ఆడియో</strong>
       <AudioPlayer src="/audio/Intro.m4a" />
+      <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.85 }}>
+        Google NotebookLM సహాయంతో రూపొందించిన పరిచయ ఆడియో
+      </Typography>
     </Box>
 
       </Container>
