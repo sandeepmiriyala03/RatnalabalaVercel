@@ -9,11 +9,9 @@ interface ActionsComponentProps {
   onAnalyze: () => void;
   onClear: () => void;
   onCancel: () => void;
-
 }
 
 export function ActionsComponent({
-
   loading,
   file,
   lang,
@@ -21,12 +19,10 @@ export function ActionsComponent({
   onClear,
   onCancel,
 }: ActionsComponentProps) {
-  const isDisabled =
-    !file || loading || !lang || lang.length === 0;
+  const isDisabled = !file || loading || !lang || lang.length === 0;
 
   return (
     <div className="actions" aria-busy={loading}>
-      {/* 🔍 OCR Button */}
       <button
         type="button"
         onClick={onAnalyze}
@@ -37,7 +33,6 @@ export function ActionsComponent({
         {loading ? "🔄 OCR జరుగుతోంది…" : "🔍 OCR ప్రారంభించండి"}
       </button>
 
-      {/* ❌ Cancel (only while OCR running) */}
       {loading && (
         <button
           type="button"
@@ -49,7 +44,6 @@ export function ActionsComponent({
         </button>
       )}
 
-      {/* 🧹 Clear */}
       <button
         type="button"
         onClick={onClear}
