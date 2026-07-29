@@ -16,7 +16,7 @@ import PoemCard from "@/app/components/PoemCard";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";
 import DownloadAllVoices from "@/app/components/DownloadAllVoices";
 import PoemRadio from "@/app/components/Poemradio";
-
+import DownloadAllVideos from "@/app/components/DownloadAllVideos";
 interface Poem {
   title: string;
   content: string;
@@ -244,6 +244,13 @@ export default function PoemList() {
         />
 
       )}
+
+       
+        {!loading && !error && filtered.length > 0 && (
+      
+              <DownloadAllVideos poems={filtered} />
+      
+            )}
 
       {/* Download every currently-filtered poem's VOICE audio as one
           ZIP — same idea as the poster ZIP above, but each file is a
