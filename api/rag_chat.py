@@ -27,14 +27,21 @@ GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── Loaded once per warm function instance ──
 _index_items = None
+EMBEDDINGS_BLOB_URL = os.environ.get("EMBEDDINGS_BLOB_URL")
 
 
 def get_index() -> list[dict]:
     global _index_items
     if _index_items is None:
-        index_path = os.path.join(os.path.dirname(__file__), "embeddings_index.json")
-        with open(index_path, "r", encoding="utf-8") as f:
-            _index_items = json.load(f)
+        if not EMBEDDINGS_BLOB_URL:
+            raise Exception(
+                "EMBEDDINGS_BLOB_URL సెట్ చేయలేదు — /api/build_index ఒకసారి విజిట్ చేసి, "
+                "అది ఇచ్చిన url ను Environment Variables లో పెట్టండి."
+            )
+        res = requests.get(EMBEDDINGS_BLOB_URL, timeout=20)
+        if res.status_code != 200:
+            raise Exception(f"Embeddings blob fetch failed: {res.status_code}")
+        _index_items = res.json()
     return _index_items
 
 
