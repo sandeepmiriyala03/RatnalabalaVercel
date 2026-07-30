@@ -1,31 +1,11 @@
 # api/build_index.py
 #
-# RUNS ON VERCEL, NOT LOCALLY. This is the fix for "it should work in
-# Vercel only" — visiting this endpoint's URL once (in a browser, or
-# via curl) triggers the entire indexing pipeline server-side: fetch
-# poems, embed everything via Cohere, upload the result to Vercel Blob
-# storage (a real persistent file store, separate from your deployed
-# code). No local Python, no venv, no DNS issues, no committing a
-# JSON file to git.
+# RUNS ON VERCEL, NOT LOCALLY. Visit this endpoint's URL once to
+# trigger the full indexing pipeline server-side.
 #
-# Setup (once):
-#   1. Vercel dashboard → Storage → Create Database → Blob
-#      (this auto-adds BLOB_READ_WRITE_TOKEN to your project)
-#   2. Add to api/requirements.txt:  vercel_blob
-#   3. Deploy this file + the updated rag_chat.py
-#   4. Visit https://ratnalabala.vercel.app/api/build_index in your
-#      browser (or curl it) — ONE TIME. This takes maybe 10-30 seconds
-#      depending on how much data there is.
-#   5. Copy the "url" value from the JSON response it gives you
-#   6. Vercel → Settings → Environment Variables → add:
-#      EMBEDDINGS_BLOB_URL = <that url>
-#   7. Redeploy (or just wait — new deployments pick up new env vars
-#      automatically; existing warm functions may need a fresh deploy
-#      to see it)
-#
-# Re-run this same endpoint any time your poem/grammar data changes —
-# it always overwrites the same blob pathname, so EMBEDDINGS_BLOB_URL
-# never needs to change.
+# Static data below (అక్షరమాల, సంధిమాల, సమాసములు) is fixed content —
+# poems are NOT hardcoded here, they're always fetched live via
+# fetch_poems_flat() / fetch_shatakamu_all() below, same as before.
 
 import os
 import json
@@ -40,8 +20,6 @@ EMBED_MODEL = "embed-multilingual-v3.0"
 BATCH_SIZE = 90
 BLOB_PATHNAME = "embeddings_index.json"
 
-# This function calls your OWN site's APIs — since it's already
-# running as part of ratnalabala.vercel.app, this resolves fine.
 BASE_URL = "https://ratnalabala.vercel.app"
 
 
@@ -62,19 +40,148 @@ def embed_batch(texts: list[str], retries: int = 3) -> list[list[float]]:
 
 
 # ================================================================
-# STATIC DATA — paste your full arrays here (same as the local
-# version — this just moved to run inside a Vercel function instead)
+# STATIC DATA — అక్షరమాల (52), సంధిమాల (5), సమాసములు (6)
 # ================================================================
 
 AKSHARALU = [
+    # అచ్చులు (Swaralu) — 16
     {"letter": "అ", "word": "అరటి"}, {"letter": "ఆ", "word": "ఆవు"},
-    # ... మీ పూర్తి 51 అక్షరాల జాబితా ఇక్కడ
+    {"letter": "ఇ", "word": "ఇల్లు"}, {"letter": "ఈ", "word": "ఈక"},
+    {"letter": "ఉ", "word": "ఉడుత"}, {"letter": "ఊ", "word": "ఊయల"},
+    {"letter": "ఋ", "word": "ఋషి"}, {"letter": "ౠ", "word": "ౠ"},
+    {"letter": "ఎ", "word": "ఎలుక"}, {"letter": "ఏ", "word": "ఏనుగు"},
+    {"letter": "ఐ", "word": "ఐదు"}, {"letter": "ఒ", "word": "ఒంటె"},
+    {"letter": "ఓ", "word": "ఓడ"}, {"letter": "ఔ", "word": "ఔషధం"},
+    {"letter": "అం", "word": "అంకెలు"}, {"letter": "అః", "word": "అంతఃపురం"},
+    # హల్లులు (Vyanjanalu) — 36
+    {"letter": "క", "word": "కప్ప"}, {"letter": "ఖ", "word": "ఖడ్గం"},
+    {"letter": "గ", "word": "గడియారం"}, {"letter": "ఘ", "word": "ఘంట"},
+    {"letter": "ఙ", "word": "జ్ఞానము"}, {"letter": "చ", "word": "చక్రము"},
+    {"letter": "ఛ", "word": "ఛత్రము"}, {"letter": "జ", "word": "జడ"},
+    {"letter": "ఝ", "word": "ఝషము"}, {"letter": "ఞ", "word": "ఞ"},
+    {"letter": "ట", "word": "టపాకాయ"}, {"letter": "ఠ", "word": "కంఠము"},
+    {"letter": "డ", "word": "డప్పు"}, {"letter": "ఢ", "word": "ఢంకా"},
+    {"letter": "ణ", "word": "వీణ"}, {"letter": "త", "word": "తల"},
+    {"letter": "థ", "word": "రథము"}, {"letter": "ద", "word": "దంతము"},
+    {"letter": "ధ", "word": "ధనుస్సు"}, {"letter": "న", "word": "నత్త"},
+    {"letter": "ప", "word": "పడవ"}, {"letter": "ఫ", "word": "ఫలము"},
+    {"letter": "బ", "word": "బండి"}, {"letter": "భ", "word": "భవనము"},
+    {"letter": "మ", "word": "మద్దెల"}, {"letter": "య", "word": "యంత్రము"},
+    {"letter": "ర", "word": "రంగులు"}, {"letter": "ల", "word": "లత"},
+    {"letter": "వ", "word": "వల"}, {"letter": "శ", "word": "శంఖము"},
+    {"letter": "ష", "word": "షట్పదము"}, {"letter": "స", "word": "సంచి"},
+    {"letter": "హ", "word": "హంస"}, {"letter": "ళ", "word": "తాళము"},
+    {"letter": "క్ష", "word": "వృక్షము"}, {"letter": "ఱ", "word": "ఱంపము"},
 ]
+
 SANDHI_RULES: list[dict] = [
-    # ... మీ సంధి నియమాలు ఇక్కడ
+    {
+        "name": "సవర్ణదీర్ఘ సంధి", "category": "స్వర సంధి",
+        "rule": "అ, ఇ, ఉ, ఋ లకు సవర్ణములగు అచ్చులు పరమైనపుడు వాని దీర్ఘములు ఏకాదేశంబగును",
+        "examples": [
+            {"before": "సుర + అరులు", "after": "సురారులు"},
+            {"before": "ముని + ఇంద్ర", "after": "మునీంద్ర"},
+        ],
+    },
+    {
+        "name": "గుణసంధి", "category": "స్వర సంధి",
+        "rule": "అకారమునకు ఇ, ఉ, ఋ లు పరమయినపుడు ఏ, ఓ, ఆర్ లు ఏకాదేశముగా వచ్చెను",
+        "examples": [
+            {"before": "దేవ + ఇంద్ర", "after": "దేవేంద్ర"},
+            {"before": "సర్వ + ఉపగతుడు", "after": "సర్వోపగతుడు"},
+            {"before": "రాజ + ఋషి", "after": "రాజర్షి"},
+        ],
+    },
+    {
+        "name": "వృద్ధి సంధి", "category": "స్వర సంధి",
+        "rule": "అకారమునకు ఏ, ఐలు పరమైన ఐ కారమును; ఓ, ఔలు పరమైన ఔ కారమును ఏకాదేశముగా వచ్చును",
+        "examples": [
+            {"before": "రక్ష + ఏక", "after": "రక్షైక"},
+            {"before": "పద + ఔన్నత్యము", "after": "పదౌన్నత్యము"},
+        ],
+    },
+    {
+        "name": "యణాదేశ సంధి", "category": "స్వర సంధి",
+        "rule": "ఇ,ఉ,ఋ లకు అసవర్ణములగు అచ్చులు పరమగునపుడు వరుసగా య,వ,ర లు ఆదేశముగా వచ్చెను",
+        "examples": [
+            {"before": "అతి + అంత", "after": "అత్యంత"},
+            {"before": "మను + అంతరము", "after": "మన్వంతరము"},
+        ],
+    },
+    {
+        # NOTE: this rule's examples weren't visible in the source file
+        # (got cut off right after the rule text) — add its examples
+        # here in the same {"before": "...", "after": "..."} shape once
+        # you have them.
+        "name": "అనునాసిక సంధి", "category": "హల్ సంధి",
+        "rule": "క,చ,ట,త,ప లకు స,మ లు పరమైనపుడు వరుసగా జ,ణ,జ్ఞ,మ లు వికల్పముగా ఆదేశమగును",
+        "examples": [],
+    },
+    # NOTE: your original file likely has more sandhi rules beyond
+    # these 5 — add them here in the same shape if so.
 ]
+
 SAMASA_TYPES: list[dict] = [
-    # ... మీ సమాస రకాలు ఇక్కడ
+    {
+        "name": "తత్పురుష సమాసము", "category": "ముఖ్య సమాసాలు",
+        "definition": "విభక్తి ప్రత్యయము లోపించి ఏర్పడు సమాసము తత్పురుష సమాసము.",
+        "examples": [
+            {"samasa": "రామబాణము", "vigraha": "రాముని యొక్క బాణము"},
+            {"samasa": "రాజభటుడు", "vigraha": "రాజుయొక్క భటుడు"},
+            {"samasa": "చెట్టుకొమ్మ", "vigraha": "చెట్టు యొక్క కొమ్మ"},
+            {"samasa": "అజ్ఞానము", "vigraha": "జ్ఞానము లేనిది"},
+        ],
+    },
+    {
+        "name": "కర్మధారయ సమాసము", "category": "ముఖ్య సమాసాలు",
+        "definition": "విశేషణ, విశేష్యముల తో ఏర్పడు సమాసము కర్మధారయ సమాసము.",
+        "examples": [
+            {"samasa": "సరసపుమాట", "vigraha": "సరసమైన మాట"},
+            {"samasa": "ముఖారవిందము", "vigraha": "అరవిందము వంటి ముఖము"},
+            {"samasa": "విద్యాధనము", "vigraha": "విద్యయనెడి ధనము"},
+            {"samasa": "మధురానగరము", "vigraha": "మధుర అను పేరుగల నగరము"},
+        ],
+    },
+    {
+        "name": "ద్విగు సమాసము", "category": "ముఖ్య సమాసాలు",
+        "definition": "సంఖ్యా వాచకపదము పూర్వమున కలది ద్విగు సమాసము.",
+        "examples": [
+            {"samasa": "త్రిలోకి", "vigraha": "మూడు లోకముల సమాహారము"},
+            {"samasa": "పంచభూతాలు", "vigraha": "ఐదు భూతముల సమాహారము"},
+            {"samasa": "అష్టదిక్కులు", "vigraha": "ఎనిమిది దిక్కుల సమాహారము"},
+            {"samasa": "సప్తర్షులు", "vigraha": "ఏడుగురు ఋషుల సమాహారము"},
+        ],
+    },
+    {
+        "name": "ద్వంద్వ సమాసము", "category": "ముఖ్య సమాసాలు",
+        "definition": "ఉభయ పదముల అర్ధము ప్రధానముగా గలది ద్వంద్వ సమాసము.",
+        "examples": [
+            {"samasa": "రాధాకృష్ణులు", "vigraha": "రాధ యును కృష్ణుడును"},
+            {"samasa": "తల్లిదండ్రులు", "vigraha": "తల్లి యును తండ్రి యును"},
+            {"samasa": "సీతారాములు", "vigraha": "సీత యును రాముడును"},
+            {"samasa": "శివకేశవులు", "vigraha": "శివుడును కేశవుడును"},
+        ],
+    },
+    {
+        "name": "బహువ్రీహి సమాసము", "category": "ముఖ్య సమాసాలు",
+        "definition": "రెండు పదముల అర్థము లేక వేరైన మరొక అర్థము ప్రధానమైన సమాసము బహువ్రీహి.",
+        "examples": [
+            {"samasa": "పీతాంబరుడు", "vigraha": "పచ్చని వస్త్రము కలవాడు"},
+            {"samasa": "కమలాక్షుడు", "vigraha": "కమలముల వంటి కన్నులు కలవాడు"},
+            {"samasa": "చతుర్భుజుడు", "vigraha": "నాలుగు భుజములు కలవాడు"},
+            {"samasa": "గజాననుడు", "vigraha": "గజము వంటి ముఖము కలవాడు"},
+        ],
+    },
+    {
+        "name": "అవ్యయీభావ సమాసము", "category": "ముఖ్య సమాసాలు",
+        "definition": "అవ్యయము పూర్వపదముగా కలది అవ్యయీభావ సమాసము.",
+        "examples": [
+            {"samasa": "యథావిధి", "vigraha": "విధి ప్రకారం"},
+            {"samasa": "ప్రతిదినము", "vigraha": "దినము దినము"},
+            {"samasa": "ప్రత్యహము", "vigraha": "ప్రతి రోజు"},
+            {"samasa": "యథాశక్తి", "vigraha": "శక్తిని అనుసరించి"},
+        ],
+    },
 ]
 
 
@@ -85,14 +192,20 @@ def static_items() -> list[dict]:
                        "title": a["letter"], "folder": "అక్షరమాల"})
     for rule in SANDHI_RULES:
         ex = "; ".join(f"{e['before']} → {e['after']}" for e in rule.get("examples", []))
-        items.append({"text": f"{rule['name']}: {rule['rule']}. ఉదాహరణలు: {ex}",
-                       "title": rule["name"], "folder": "సంధిమాల"})
+        text = f"{rule['name']} ({rule['category']}): {rule['rule']}"
+        if ex:
+            text += f". ఉదాహరణలు: {ex}"
+        items.append({"text": text, "title": rule["name"], "folder": "సంధిమాల"})
     for s in SAMASA_TYPES:
         ex = "; ".join(f"{e['samasa']} = {e['vigraha']}" for e in s.get("examples", []))
         items.append({"text": f"{s['name']}: {s['definition']}. ఉదాహరణలు: {ex}",
                        "title": s["name"], "folder": "సమాసములు"})
     return items
 
+
+# ================================================================
+# POEMS — always fetched live via API, never hardcoded
+# ================================================================
 
 def fetch_poems_flat(path: str, folder: str) -> list[dict]:
     res = requests.get(f"{BASE_URL}{path}", timeout=20)
