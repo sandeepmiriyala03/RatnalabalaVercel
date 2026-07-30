@@ -17,26 +17,43 @@ from http.server import BaseHTTPRequestHandler
 COHERE_API_KEY = os.environ.get("COHERE_API_KEY")
 COHERE_EMBED_URL = "https://api.cohere.com/v1/embed"
 EMBED_MODEL = "embed-multilingual-v3.0"
-BATCH_SIZE = 90
+BATCH_SIZE = 32  # reduced from 90 as a hedge — trial-tier limits may be
+                  # stricter on payload size/count than just calls-per-minute
 BLOB_PATHNAME = "embeddings_index.json"
 
 BASE_URL = "https://ratnalabala.vercel.app"
 
 
-def embed_batch(texts: list[str], retries: int = 3) -> list[list[float]]:
+def embed_batch(texts: list[str], retries: int = 5) -> list[list[float]]:
     headers = {"Authorization": f"Bearer {COHERE_API_KEY}", "Content-Type": "application/json"}
     body = {"texts": texts, "model": EMBED_MODEL, "input_type": "search_document"}
-    last_error = None
-    for _ in range(retries):
-        res = requests.post(COHERE_EMBED_URL, headers=headers, json=body, timeout=30)
+    last_error = "(ఎప్పుడూ ఒక్క రెస్పాన్స్ కూడా రాలేదు — నెట్‌వర్క్ సమస్య కావొచ్చు)"
+
+    for attempt in range(retries):
+        try:
+            res = requests.post(COHERE_EMBED_URL, headers=headers, json=body, timeout=30)
+        except requests.exceptions.RequestException as e:
+            last_error = f"నెట్‌వర్క్ ఎర్రర్: {e}"
+            time.sleep(3)
+            continue
+
         if res.status_code == 200:
             return res.json()["embeddings"]
+
+        # Capture the REAL response body every time, including 429s —
+        # this is the bug that hid the actual reason before (it only
+        # captured non-429 errors, so repeated rate-limiting showed as
+        # "None" instead of Cohere's actual message).
+        last_error = f"HTTP {res.status_code}: {res.text[:300]}"
+
         if res.status_code == 429:
-            time.sleep(5)
+            wait = 8 * (attempt + 1)  # 8s, 16s, 24s, 32s, 40s — growing backoff
+            time.sleep(wait)
             continue
-        last_error = f"{res.status_code}: {res.text[:200]}"
+
         time.sleep(2)
-    raise Exception(f"Cohere embed failed: {last_error}")
+
+    raise Exception(f"Cohere embed failed after {retries} attempts: {last_error}")
 
 
 # ================================================================
