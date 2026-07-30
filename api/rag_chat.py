@@ -30,6 +30,8 @@ _index_items = None
 EMBEDDINGS_BLOB_URL = os.environ.get("EMBEDDINGS_BLOB_URL")
 
 
+
+
 def get_index() -> list[dict]:
     global _index_items
     if _index_items is None:

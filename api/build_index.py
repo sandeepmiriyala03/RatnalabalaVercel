@@ -220,6 +220,8 @@ def static_items() -> list[dict]:
     return items
 
 
+
+
 # ================================================================
 # POEMS — always fetched live via API, never hardcoded
 # ================================================================
