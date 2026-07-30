@@ -1,56 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { Alert, Box, Button, CircularProgress, Divider, Drawer, Paper, Stack } from "@mui/material";
-import { Dialog, DialogContent, DialogTitle, IconButton, Typography } from "@mui/material";
+import {
+  Alert, Box, Button, CircularProgress, Divider, Drawer, Paper, Stack,
+  TextField,
+} from "@mui/material";
+import { IconButton, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
 
-/*
-  ══════════════════════════════════════════════════════════════════
-  IMPROVEMENTS MADE HERE:
+/* ══════════════════════════════════════════════════════════════════
+   Unchanged from before — POETRY_COLLECTIONS, PoetryKey, and the
+   helper functions stay exactly as they were.
+══════════════════════════════════════════════════════════════════ */
 
-  1. PoetryKey is now DERIVED from POETRY_COLLECTIONS itself (via
-     `as const` + a mapped type), instead of being a hand-maintained
-     union that lives separately from the array. Before, adding a new
-     శతకం meant remembering to update TWO places (the union AND the
-     array) — miss one and TypeScript won't catch it. Now there's
-     only one place to edit; the type always matches the data.
-
-  2. Added `aliases` per collection — these feed directly into your
-     ChatbotWindow.tsx's COLLECTION_ALIASES instead of that file
-     hardcoding its own separate copy. Right now if you add a new
-     శతకం here, the chatbot has no idea it exists until you also go
-     edit ChatbotWindow.tsx by hand and add matching aliases there.
-     A helper function below (buildAliasMap) generates that map
-     automatically from this single source of truth.
-
-  3. Added getCollectionByKey() / getCollectionByAlias() helpers so
-     other files (ChatbotWindow, agent routes, etc.) don't need to
-     re-implement lookup logic themselves.
-
-  4. Flagged one data discrepancy below — see the comment on
-     TeaShatakam.
-  ══════════════════════════════════════════════════════════════════
-*/
-
-/* 📘 Poetry Meta */
 export interface PoetryMeta {
   key: string;
   label: string;
   authors: string | string[];
   totalPoems?: number;
-  // Short strings people might type to refer to this collection in
-  // chat/search (Telugu name, English short forms, abbreviations).
-  // "all" has none — it's a special case, not a real folder.
   aliases?: string[];
 }
 
-/* 📚 All Poetry Collections — single source of truth.
-   `as const` lets PoetryKey (below) derive its union type directly
-   from these `key` values, so the type and the data can never
-   silently drift apart. */
 export const POETRY_COLLECTIONS = [
- 
   {
     key: "Jandhyala",
     label: "తెలుగుబాల",
@@ -119,10 +91,6 @@ export const POETRY_COLLECTIONS = [
     label: "శ్రీ దాశరథీ కరుణాపయోనిధీ",
     authors: "శ్రీ భద్రాచల రామదాసు గారు",
     totalPoems: 115,
-    // NOTE — was 108 in the original file. Your actual poem dump has
-    // entries numbered up to 115 for this collection (padyam 001
-    // through 115). Double-check which number is right for your data
-    // and adjust if 108 was intentional (e.g. some numbers skipped).
     aliases: ["దాశరథీ", "దశరథి", "dasarathi", "dk"],
   },
   {
@@ -130,20 +98,11 @@ export const POETRY_COLLECTIONS = [
     label: "టీ శతకం",
     authors: "శ్రీ ప్రసాదరావు మిరియాల గారు",
     totalPoems: 108,
-    // NOTE — was 100 in the original file. Your actual data has 100
-    // "టీ శతకం" poems (1-100) PLUS 8 additional "కాఫీ శతకం" poems
-    // (101-108) stored under the same TeaShatakam folder/key — so the
-    // real total in this collection is 108, not 100. If you want Tea
-    // and Coffee tracked as separate counts, consider splitting this
-    // into two PoetryMeta entries instead of one.
     aliases: ["టీ", "కాఫీ", "tea", "coffee", "t"],
   },
 ] as const satisfies readonly PoetryMeta[];
 
-/* PoetryKey is now DERIVED, not hand-maintained separately. */
 export type PoetryKey = (typeof POETRY_COLLECTIONS)[number]["key"];
-
-/* ── Helpers — so other files don't reimplement this lookup logic ── */
 
 export function getCollectionByKey(key: string): PoetryMeta | undefined {
   return POETRY_COLLECTIONS.find((c) => c.key === key);
@@ -152,34 +111,37 @@ export function getCollectionByKey(key: string): PoetryMeta | undefined {
 export function getCollectionByAlias(alias: string): PoetryMeta | undefined {
   const normalized = alias.trim().toLowerCase();
   return POETRY_COLLECTIONS.find((c) => {
-    if (c.key.toLowerCase() === normalized) {
-      return true;
-    }
-
-    if (!("aliases" in c)) {
-      return false;
-    }
-
+    if (c.key.toLowerCase() === normalized) return true;
+    if (!("aliases" in c)) return false;
     return c.aliases.some((a) => a.toLowerCase() === normalized);
   });
 }
 
-/* Builds the same shape ChatbotWindow.tsx's COLLECTION_ALIASES used
-   to hardcode by hand — but generated automatically from the data
-   above. Use this in ChatbotWindow.tsx instead of a second hardcoded
-   copy: `const COLLECTION_ALIASES = buildAliasMap();` */
 export function buildAliasMap(): Record<string, PoetryKey> {
   const map: Record<string, PoetryKey> = {};
-
   for (const collection of POETRY_COLLECTIONS) {
     if (collection.key === "Jandhyala") continue;
-
     for (const alias of collection.aliases ?? []) {
       map[alias.toLowerCase()] = collection.key as PoetryKey;
     }
   }
-
   return map;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   NEW — chat message + RAG response shapes
+══════════════════════════════════════════════════════════════════ */
+
+interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface RagReply {
+  answer: string;
+  title: string;
+  folder: string;
+  content: string;
 }
 
 export default function ChatbotWindow({
@@ -191,12 +153,19 @@ export default function ChatbotWindow({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Existing random-pick feature — unchanged behavior.
   const [recommendation, setRecommendation] = useState<{
     title: string;
     content: string;
     folder: string;
     reason: string;
   } | null>(null);
+
+  // NEW — free-form chat, backed by /api/rag_chat.
+  const [query, setQuery] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatTurn[]>([]);
+  const [lastReply, setLastReply] = useState<RagReply | null>(null);
 
   const askForPoem = async () => {
     setIsLoading(true);
@@ -206,6 +175,38 @@ export default function ChatbotWindow({
       const data = await response.json();
       if (!response.ok || !data.success) throw new Error(data.error || "సిఫార్సు అందుబాటులో లేదు.");
       setRecommendation({ title: data.poem.title, content: data.poem.content, folder: data.poem.folder, reason: data.agentReason });
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "సమస్య ఏర్పడింది. మళ్లీ ప్రయత్నించండి.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // NEW — sends the typed question to the RAG endpoint, and keeps the
+  // conversation history so follow-ups ("ఇంకోటి చూపించు") have context.
+  const askRag = async () => {
+    if (!query.trim()) return;
+    const userMessage = query.trim();
+
+    setIsLoading(true);
+    setError("");
+    setQuery("");
+
+    try {
+      const response = await fetch("/api/rag_chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage, history: chatHistory }),
+      });
+      const data: RagReply & { error?: string } = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error || "జవాబు రాలేదు.");
+
+      setLastReply(data);
+      setChatHistory((prev) => [
+        ...prev,
+        { role: "user", content: userMessage },
+        { role: "assistant", content: data.answer },
+      ]);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "సమస్య ఏర్పడింది. మళ్లీ ప్రయత్నించండి.");
     } finally {
@@ -224,36 +225,62 @@ export default function ChatbotWindow({
           <IconButton onClick={onClose} aria-label="సహాయకుడిని మూసివేయండి"><CloseIcon /></IconButton>
         </Stack>
         <Divider />
-        <Typography variant="body2" color="text.secondary">క్రింది బటన్ నొక్కితే సహాయకుడు సాహిత్య సేకరణలలో నుండి ఒక పద్యాన్ని ఎంచి, కారణంతో చూపిస్తాడు.</Typography>
+
+        {/* NEW — free-form chat input, backed by RAG */}
+        <Stack spacing={1}>
+          <Typography variant="body2" color="text.secondary">
+            ఒక భావం లేదా అంశం టైప్ చేయండి — ఉదా: &ldquo;ఓర్పు గురించి పద్యం&rdquo;
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="మీ ప్రశ్న..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && askRag()}
+              disabled={isLoading}
+            />
+            <IconButton onClick={askRag} disabled={isLoading || !query.trim()} aria-label="పంపండి" color="primary">
+              <SendRoundedIcon />
+            </IconButton>
+          </Stack>
+        </Stack>
+
+        {lastReply && (
+          <Paper sx={{ bgcolor: "secondary.50", border: "1px solid", borderColor: "secondary.light", borderRadius: 2, p: 2 }}>
+            <Typography variant="overline" color="secondary.main">సూచించిన సేకరణ: {lastReply.folder}</Typography>
+            <Typography variant="h6" fontWeight={700}>{lastReply.title}</Typography>
+            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1.5, maxHeight: 180, overflowY: "auto" }}>
+              {lastReply.content}
+            </Typography>
+            <Divider sx={{ my: 1.5 }} />
+            <Typography variant="body2" color="text.secondary">{lastReply.answer}</Typography>
+          </Paper>
+        )}
+
+        <Divider>లేదా</Divider>
+
+        {/* Existing random-pick button — unchanged */}
+        <Typography variant="body2" color="text.secondary">క్రింది బటన్ నొక్కితే సహాయకుడు సాహిత్య సేకరణలలో నుండి యాదృచ్ఛికంగా ఒక పద్యాన్ని ఎంచి చూపిస్తాడు.</Typography>
         <Button variant="contained" size="large" onClick={askForPoem} disabled={isLoading} startIcon={isLoading ? <CircularProgress size={18} color="inherit" /> : undefined}>
-          {isLoading ? "పద్యాన్ని వెతుకుతోంది…" : "నాకు ఒక పద్యం సూచించండి"}
+          {isLoading ? "పద్యాన్ని వెతుకుతోంది…" : "నాకు యాదృచ్ఛికంగా ఒక పద్యం సూచించండి"}
         </Button>
+
         {error && <Alert severity="error">{error}</Alert>}
-        {recommendation && <Paper sx={{ bgcolor: "primary.50", border: "1px solid", borderColor: "primary.light", borderRadius: 2, p: 2 }}>
-          <Typography variant="overline" color="primary.main">సూచించిన సేకరణ: {recommendation.folder}</Typography>
-          <Typography variant="h6" fontWeight={700}>{recommendation.title}</Typography>
-          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1.5, maxHeight: 220, overflowY: "auto" }}>{recommendation.content}</Typography>
-          <Divider sx={{ my: 1.5 }} />
-          <Typography variant="body2" color="text.secondary"><strong>ఎందుకు ఎంచింది:</strong> {recommendation.reason}</Typography>
-        </Paper>}
+
+        {recommendation && (
+          <Paper sx={{ bgcolor: "primary.50", border: "1px solid", borderColor: "primary.light", borderRadius: 2, p: 2 }}>
+            <Typography variant="overline" color="primary.main">సూచించిన సేకరణ: {recommendation.folder}</Typography>
+            <Typography variant="h6" fontWeight={700}>{recommendation.title}</Typography>
+            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1.5, maxHeight: 220, overflowY: "auto" }}>{recommendation.content}</Typography>
+            <Divider sx={{ my: 1.5 }} />
+            <Typography variant="body2" color="text.secondary"><strong>ఎందుకు ఎంచింది:</strong> {recommendation.reason}</Typography>
+          </Paper>
+        )}
+
         <Box sx={{ mt: "auto" }}><Typography variant="caption" color="text.secondary">ఈ సహాయకుడు ఎడమ వైపున అన్ని పేజీలలో అందుబాటులో ఉంటుంది.</Typography></Box>
       </Stack>
     </Drawer>
-  );
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <Typography variant="h6">భావాలమాల – AI సహాయకుడు</Typography>
-        <IconButton onClick={onClose} edge="end" aria-label="close chatbot">
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
-      <DialogContent>
-        <Typography variant="body1">
-          Chatbot experience is temporarily unavailable while the component is being restored.
-        </Typography>
-      </DialogContent>
-    </Dialog>
   );
 }
