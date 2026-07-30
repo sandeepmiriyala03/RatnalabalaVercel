@@ -17,11 +17,12 @@ import requests
 from http.server import BaseHTTPRequestHandler
 from typing import List
 
-HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN")  # no longer used for embeddings — kept only if referenced elsewhere
+COHERE_API_KEY = os.environ.get("COHERE_API_KEY")
+COHERE_EMBED_URL = "https://api.cohere.com/v1/embed"
+EMBED_MODEL = "embed-multilingual-v3.0"
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-EMBED_MODEL = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-HF_API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{EMBED_MODEL}"
 GROQ_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 # ── Loaded once per warm function instance ──
@@ -38,20 +39,26 @@ def get_index() -> list[dict]:
 
 
 def embed_query(text: str) -> list[float]:
-    if not HF_API_TOKEN:
-        raise Exception("HF_API_TOKEN సెట్ చేయలేదు — Vercel Environment Variables చెక్ చేయండి.")
-    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-    res = requests.post(HF_API_URL, headers=headers, json={"inputs": text})
+    """Uses Cohere's embed API — same model as build_index.py used to
+    index everything, so query and document vectors are comparable.
+    input_type='search_query' vs 'search_document' is Cohere's own
+    distinction for the two use cases; using the wrong one for either
+    side would silently degrade retrieval quality, not error out."""
+    if not COHERE_API_KEY:
+        raise Exception("COHERE_API_KEY సెట్ చేయలేదు — Vercel Environment Variables చెక్ చేయండి.")
+    headers = {
+        "Authorization": f"Bearer {COHERE_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "texts": [text],
+        "model": EMBED_MODEL,
+        "input_type": "search_query",
+    }
+    res = requests.post(COHERE_EMBED_URL, headers=headers, json=body, timeout=30)
     if res.status_code != 200:
-        raise Exception(f"HF embedding API error {res.status_code}: {res.text}")
-    vector = res.json()
-    if isinstance(vector[0], list):
-        # average token-level vectors into one sentence-level vector —
-        # plain Python, no numpy
-        n_tokens = len(vector)
-        dim = len(vector[0])
-        return [sum(vector[t][d] for t in range(n_tokens)) / n_tokens for d in range(dim)]
-    return vector
+        raise Exception(f"Cohere embedding API error {res.status_code}: {res.text}")
+    return res.json()["embeddings"][0]
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:

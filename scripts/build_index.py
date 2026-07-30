@@ -1,15 +1,18 @@
 # scripts/build_index.py
 #
-# ROBUST VERSION — fixes the core problem: the old script only wrote
-# embeddings_index.json at the very end, so any crash partway through
-# ~1450 sequential API calls (rate limit, network blip, closed
-# terminal) lost EVERYTHING. This version saves a checkpoint file
-# after every item, and RESUMES from where it left off if you run it
-# again — so an interrupted run costs you nothing.
+# SWITCHED TO COHERE — api-inference.huggingface.co was deprecated
+# by Hugging Face (moved to router.huggingface.co, and embeddings
+# support on the new router was still rolling out at time of writing).
+# Cohere's Embed model has been free since May 10, 2026 — no credit
+# card, 2,000 inputs/minute, strong multilingual quality. It also
+# accepts a BATCH of texts per call (up to 96), not one-at-a-time —
+# so the whole dataset now takes ~16 calls instead of ~1450.
 #
-# Also added: TEST_MODE, which processes only 5 items first, so you
-# can confirm your HF_API_TOKEN actually works before committing to
-# the long full run.
+# Setup:
+#   1. Free key: dashboard.cohere.com/api-keys (no card)
+#   2. pip install requests
+#   3. Set COHERE_API_KEY as an environment variable
+#   4. python scripts/build_index.py
 
 import os
 import json
@@ -17,24 +20,35 @@ import time
 import requests
 
 BASE_URL = "https://ratnalabala.vercel.app"
-HF_API_TOKEN = os.environ.get("HF_API_TOKEN", "hf_...")  # paste your token or set the env var
-EMBED_MODEL = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-HF_API_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{EMBED_MODEL}"
+COHERE_API_KEY = os.environ.get("COHERE_API_KEY", "your-key-here")
+COHERE_EMBED_URL = "https://api.cohere.com/v1/embed"
+EMBED_MODEL = "embed-multilingual-v3.0"
 
 CHECKPOINT_FILE = "embeddings_checkpoint.json"
 FINAL_FILE = "embeddings_index.json"
+BATCH_SIZE = 90  # under Cohere's per-call limit, safe margin
 
-# Set to True first to test with just 5 items — confirms your token
-# and the API call actually work before the full ~1450-item run.
-TEST_MODE = True
+TEST_MODE = True  # test with a small batch first, same idea as before
 
 
-def embed_text(text: str, retries: int = 4) -> list[float]:
-    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+def embed_batch(texts: list[str], retries: int = 4) -> list[list[float]]:
+    """One call embeds up to BATCH_SIZE texts at once — this is what
+    makes this version much faster/more robust than the old
+    one-call-per-item HF approach."""
+    headers = {
+        "Authorization": f"Bearer {COHERE_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "texts": texts,
+        "model": EMBED_MODEL,
+        "input_type": "search_document",  # use "search_query" at query time instead
+    }
+
     last_error = None
     for attempt in range(retries):
         try:
-            res = requests.post(HF_API_URL, headers=headers, json={"inputs": text}, timeout=30)
+            res = requests.post(COHERE_EMBED_URL, headers=headers, json=body, timeout=60)
         except requests.exceptions.RequestException as e:
             last_error = str(e)
             print(f"    నెట్‌వర్క్ ఎర్రర్, మళ్ళీ ప్రయత్నిస్తోంది... ({e})")
@@ -42,25 +56,19 @@ def embed_text(text: str, retries: int = 4) -> list[float]:
             continue
 
         if res.status_code == 200:
-            vector = res.json()
-            if isinstance(vector[0], list):
-                import statistics
-                vector = [statistics.mean(col) for col in zip(*vector)]
-            return vector
-
-        if res.status_code == 503:
-            wait = res.json().get("estimated_time", 10)
-            print(f"    మోడల్ లోడ్ అవుతోంది, {wait}s వేచి ఉండండి...")
-            time.sleep(wait)
-            continue
+            return res.json()["embeddings"]
 
         if res.status_code == 401:
             raise Exception(
-                "HF_API_TOKEN తప్పు లేదా చెల్లదు — huggingface.co/settings/tokens లో "
-                "మళ్ళీ చెక్ చేయండి."
+                "COHERE_API_KEY తప్పు లేదా చెల్లదు — dashboard.cohere.com/api-keys లో చెక్ చేయండి."
             )
 
-        last_error = f"HTTP {res.status_code}: {res.text[:200]}"
+        if res.status_code == 429:
+            print("    రేట్ లిమిట్ — 10 సెకన్లు వేచి ఉండి మళ్ళీ ప్రయత్నిస్తోంది...")
+            time.sleep(10)
+            continue
+
+        last_error = f"HTTP {res.status_code}: {res.text[:300]}"
         print(f"    ఎర్రర్ ({last_error}), మళ్ళీ ప్రయత్నిస్తోంది...")
         time.sleep(3)
 
@@ -68,7 +76,7 @@ def embed_text(text: str, retries: int = 4) -> list[float]:
 
 
 # ================================================================
-# STATIC DATA — paste your full arrays from the earlier version here
+# STATIC DATA — paste your full arrays here (same as before)
 # ================================================================
 
 AKSHARALU = [
@@ -142,39 +150,38 @@ def main():
 
     if TEST_MODE:
         all_items = all_items[:5]
-        print("⚠️  TEST_MODE ఆన్ చేయబడింది — కేవలం 5 అంశాలు మాత్రమే ప్రాసెస్ చేయబడతాయి.")
-        print("   ఇది సరిగ్గా పనిచేస్తే, TEST_MODE = False చేసి పూర్తి రన్ చేయండి.\n")
+        print("⚠️  TEST_MODE ఆన్ చేయబడింది — కేవలం 5 అంశాలు.\n")
 
-    # RESUME LOGIC — if a checkpoint already exists (from an earlier,
-    # interrupted run), pick up from where it left off instead of
-    # starting over and re-spending API calls on items already done.
     done_items = load_checkpoint()
     done_titles = {(item["folder"], item["title"]) for item in done_items}
     remaining = [item for item in all_items
                  if (item["folder"], item["title"]) not in done_titles]
 
     if done_items:
-        print(f"చెక్‌పాయింట్ దొరికింది — ఇప్పటికే {len(done_items)} పూర్తయ్యాయి, "
+        print(f"చెక్‌పాయింట్ దొరికింది — {len(done_items)} పూర్తయ్యాయి, "
               f"{len(remaining)} మిగిలి ఉన్నాయి. కొనసాగిస్తోంది...\n")
 
-    for i, item in enumerate(remaining):
+    print(f"మొత్తం {len(remaining)} అంశాలు, {BATCH_SIZE}-బ్యాచ్‌లుగా embed చేస్తోంది...")
+
+    for i in range(0, len(remaining), BATCH_SIZE):
+        batch = remaining[i:i + BATCH_SIZE]
+        texts = [item["text"] for item in batch]
+
         try:
-            item["vector"] = embed_text(item["text"])
-            done_items.append(item)
+            vectors = embed_batch(texts)
         except Exception as e:
-            print(f"\n❌ ఐటెమ్ '{item['title']}' వద్ద ఆగిపోయింది: {e}")
-            print(f"   ఇప్పటివరకు పూర్తయినవి ({len(done_items)}) సేవ్ చేయబడ్డాయి — "
-                  f"స్క్రిప్ట్‌ని మళ్ళీ నడిపితే ఇక్కడి నుండే కొనసాగుతుంది.")
+            print(f"\n❌ బ్యాచ్ {i}-{i+len(batch)} వద్ద ఆగిపోయింది: {e}")
+            print(f"   ఇప్పటివరకు పూర్తయినవి ({len(done_items)}) సేవ్ చేయబడ్డాయి.")
             save_checkpoint(done_items)
             return
 
-        if (i + 1) % 10 == 0:
-            save_checkpoint(done_items)  # ← the actual fix: save every 10 items
-            print(f"  {len(done_items)}/{len(all_items)} పూర్తయింది... (చెక్‌పాయింట్ సేవ్ చేయబడింది)")
+        for item, vector in zip(batch, vectors):
+            item["vector"] = vector
+            done_items.append(item)
 
-    save_checkpoint(done_items)
+        save_checkpoint(done_items)
+        print(f"  {len(done_items)}/{len(all_items)} పూర్తయింది... (చెక్‌పాయింట్ సేవ్ చేయబడింది)")
 
-    # All done — write the final file and clean up the checkpoint.
     with open(FINAL_FILE, "w", encoding="utf-8") as f:
         json.dump(done_items, f, ensure_ascii=False)
 
