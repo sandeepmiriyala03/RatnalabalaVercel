@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import {
   TextField,
   IconButton,
@@ -11,71 +12,46 @@ import {
 } from "@mui/material";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 
-export default function StreamingChat() {
+interface StreamingChatProps {
+  api?: string;
+}
+
+export default function StreamingChat({ api = "/api/chat" }: StreamingChatProps) {
   const [input, setInput] = useState("");
 
-  const {
-    messages,
-    sendMessage,
-    status,
-    error,
-  } = useChat({
-    api: "/api/chat",
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new DefaultChatTransport({ api }),
   });
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-
     if (!input.trim()) return;
-
-    try {
-      await sendMessage({
-        text: input,
-      });
-
-      setInput("");
-    } catch (err) {
-      console.error(err);
-    }
+    sendMessage({ text: input });
+    setInput("");
   };
 
   return (
     <Stack spacing={2}>
-      <Stack
-        spacing={1.5}
-        sx={{
-          maxHeight: 350,
-          overflowY: "auto",
-        }}
-      >
+      <Stack spacing={1.5} sx={{ maxHeight: 350, overflowY: "auto" }}>
         {messages.map((message) => (
           <Paper
             key={message.id}
             sx={{
               p: 1.5,
               maxWidth: "85%",
-              alignSelf:
-                message.role === "user"
-                  ? "flex-end"
-                  : "flex-start",
+              alignSelf: message.role === "user" ? "flex-end" : "flex-start",
             }}
           >
             <Typography sx={{ whiteSpace: "pre-wrap" }}>
               {message.parts.map((part, index) =>
-                part.type === "text" ? (
-                  <span key={index}>{part.text}</span>
-                ) : null
+                part.type === "text" ? <span key={index}>{part.text}</span> : null
               )}
             </Typography>
           </Paper>
         ))}
       </Stack>
 
-      {error && (
-        <Typography color="error">
-          {error.message}
-        </Typography>
-      )}
+      {error && <Typography color="error">{error.message}</Typography>}
 
       <form onSubmit={handleSubmit}>
         <Stack direction="row" spacing={1}>
@@ -87,15 +63,7 @@ export default function StreamingChat() {
             onChange={(e) => setInput(e.target.value)}
             disabled={status !== "ready"}
           />
-
-          <IconButton
-            type="submit"
-            color="primary"
-            disabled={
-              status !== "ready" ||
-              input.trim().length === 0
-            }
-          >
+          <IconButton type="submit" color="primary" disabled={status !== "ready" || input.trim().length === 0}>
             <SendRoundedIcon />
           </IconButton>
         </Stack>
