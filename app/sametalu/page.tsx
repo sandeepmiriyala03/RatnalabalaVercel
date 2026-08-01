@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -16,7 +16,7 @@ import {
 import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
 
 import SametaluList from "@/app/components/SametaluList";
-import PythonSametaluChat from "@/app/components/PythonSametaluChat"; 
+import PythonSametaluChat from "@/app/components/PythonSametaluChat";
 import {
   SAMETALU_GROUPS,
   TeluguLetter,
@@ -52,9 +52,24 @@ export default function SametaluPage() {
         <Chip label="🔤 అక్షర క్రమం" variant="outlined" />
       </Stack>
 
-      {/* 🎛 Dropdown — added a proper InputLabel; the old version had a
-          stray "అక్షర క్రమం" text sitting directly inside FormControl,
-          outside the Select, which isn't valid form-control usage. */}
+      {/* 🤖 MOVED TO TOP — the agent is now the first thing visible
+          after the title, ahead of the letter browser, making it the
+          primary way to interact with this page rather than a
+          secondary extra at the bottom. */}
+      <Paper sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "divider", mb: 4 }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+          <ChatBubbleOutlineRoundedIcon color="primary" fontSize="small" />
+          <Typography fontWeight={700}>ఏదైనా సామెత గురించి అడగండి</Typography>
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          ఉదా: &ldquo;కోతికి కొబ్బరికాయ దొరికినట్టు అంటే ఏమిటి?&rdquo; అని అడగండి.
+        </Typography>
+        <PythonSametaluChat />
+      </Paper>
+
+      <Divider sx={{ my: 4 }}>లేదా అక్షరాల వారీగా చూడండి</Divider>
+
+      {/* 🎛 Dropdown */}
       <FormControl size="small" sx={{ minWidth: 200, mx: "auto", display: "block" }}>
         <InputLabel id="letter-select-label">అక్షర క్రమం</InputLabel>
         <Select
@@ -75,24 +90,6 @@ export default function SametaluPage() {
 
       {/* 📜 List */}
       <SametaluList letter={letter} />
-
-      <Divider sx={{ my: 4 }}>లేదా అడగండి</Divider>
-
-      {/* 🤖 NEW — the agent, right here on this page. Since the Cohere
-          index already includes సామెతలమాల alongside everything else,
-          this can naturally answer "ఫలానా సామెత అర్థం ఏమిటి?" style
-          questions without any page-specific wiring — it's the same
-          /api/chat agent used elsewhere, just placed in this context. */}
-      <Paper sx={{ p: 2.5, borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
-          <ChatBubbleOutlineRoundedIcon color="primary" fontSize="small" />
-          <Typography fontWeight={700}>ఏదైనా సామెత గురించి అడగండి</Typography>
-        </Stack>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          ఉదా: &ldquo;కోతికి కొబ్బరికాయ దొరికినట్టు అంటే ఏమిటి?&rdquo; అని అడగండి.
-        </Typography>
-        <PythonSametaluChat />
-      </Paper>
     </Box>
   );
 }
