@@ -220,8 +220,6 @@ def static_items() -> list[dict]:
     return items
 
 
-
-
 # ================================================================
 # POEMS — always fetched live via API, never hardcoded
 # ================================================================
@@ -242,11 +240,40 @@ def fetch_shatakamu_all() -> list[dict]:
             for title, content in poems.items()]
 
 
+SAMETALU_FILES = [
+    "a", "aa", "am", "ba", "bha", "ca", "cha", "da", "da2", "dha", "dha2",
+    "e", "ee", "ga", "ha", "i", "ja", "ka", "ksha", "la", "ma", "na2",
+    "o", "oo", "pa", "ra", "sa", "sha", "ssa", "tha2", "u", "uu", "va",
+]
+
+
+def fetch_sametalu_all() -> list[dict]:
+    items = []
+    for filename in SAMETALU_FILES:
+        try:
+            res = requests.get(f"{BASE_URL}/ssmetalamala/{filename}.json", timeout=20)
+            res.raise_for_status()
+            data = res.json()
+            for s in data.get("sametalu", []):
+                text = s.get("text", "")
+                if text:
+                    items.append({
+                        "text": text,
+                        "title": text[:40],  # sametalu don't have separate titles — use the text itself, trimmed
+                        "folder": "సామెతల మాల",
+                    })
+        except Exception as e:
+            print(f"     {filename}.json fetch విఫలమైంది: {e}")
+            continue
+    return items
+
+
 def build_full_index() -> list[dict]:
     items = static_items()
     items += fetch_poems_flat("/api/poems", "పద్యాలవాల")
     items += fetch_poems_flat("/api/mirapoems", "మిరా")
     items += fetch_shatakamu_all()
+    items += fetch_sametalu_all()  # NEW
 
     for i in range(0, len(items), BATCH_SIZE):
         batch = items[i:i + BATCH_SIZE]
@@ -288,6 +315,3 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
-
-
-        
