@@ -1,10 +1,4 @@
-// app/components/PythonSametaluChat.tsx
-//
-// Calls api/sametalu_agent.py DIRECTLY — plain fetch, not the AI SDK's
-// useChat/streaming protocol, since that's TypeScript-specific
-// plumbing. This Python function just returns one JSON response per
-// request, so a simple request/response UI matches what it actually
-// does, rather than pretending it streams token-by-token.
+
 
 "use client";
 
