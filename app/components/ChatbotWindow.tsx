@@ -3,11 +3,12 @@
 import { useState } from "react";
 import {
   Alert, Box, Button, CircularProgress, Divider, Drawer, Paper, Stack,
-  TextField,
+  TextField, ToggleButtonGroup, ToggleButton,
 } from "@mui/material";
 import { IconButton, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import StreamingChat from "./StreamingChat";
 
 /* ══════════════════════════════════════════════════════════════════
    Unchanged from before — POETRY_COLLECTIONS, PoetryKey, and the
@@ -154,6 +155,13 @@ export default function ChatbotWindow({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // NEW — lets the user pick between the two chat implementations,
+  // rather than one replacing the other. "classic" = existing
+  // /api/rag_chat (Python, Cohere+Groq). "streaming" = new /api/chat
+  // (native TypeScript, Vercel AI SDK, same Cohere+Groq underneath,
+  // real token-by-token streaming).
+  const [chatMode, setChatMode] = useState<"classic" | "streaming">("classic");
+
   // Existing random-pick feature — unchanged behavior.
   const [recommendation, setRecommendation] = useState<{
     title: string;
@@ -226,37 +234,61 @@ export default function ChatbotWindow({
         </Stack>
         <Divider />
 
-        {/* NEW — free-form chat input, backed by RAG */}
-        <Stack spacing={1}>
-          <Typography variant="body2" color="text.secondary">
-            ఒక భావం లేదా అంశం టైప్ చేయండి — ఉదా: &ldquo;ఓర్పు గురించి పద్యం&rdquo;
-          </Typography>
-          <Stack direction="row" spacing={1}>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="మీ ప్రశ్న..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && askRag()}
-              disabled={isLoading}
-            />
-            <IconButton onClick={askRag} disabled={isLoading || !query.trim()} aria-label="పంపండి" color="primary">
-              <SendRoundedIcon />
-            </IconButton>
-          </Stack>
-        </Stack>
+        {/* NEW — toggle between the two chat implementations, kept as
+            separate options rather than one replacing the other. */}
+        <ToggleButtonGroup
+          value={chatMode}
+          exclusive
+          size="small"
+          fullWidth
+          onChange={(_, val) => val && setChatMode(val)}
+        >
+          <ToggleButton value="classic">క్లాసిక్ చాట్</ToggleButton>
+          <ToggleButton value="streaming">స్ట్రీమింగ్ చాట్ (కొత్తది)</ToggleButton>
+        </ToggleButtonGroup>
 
-        {lastReply && (
-          <Paper sx={{ bgcolor: "secondary.50", border: "1px solid", borderColor: "secondary.light", borderRadius: 2, p: 2 }}>
-            <Typography variant="overline" color="secondary.main">సూచించిన సేకరణ: {lastReply.folder}</Typography>
-            <Typography variant="h6" fontWeight={700}>{lastReply.title}</Typography>
-            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1.5, maxHeight: 180, overflowY: "auto" }}>
-              {lastReply.content}
-            </Typography>
-            <Divider sx={{ my: 1.5 }} />
-            <Typography variant="body2" color="text.secondary">{lastReply.answer}</Typography>
-          </Paper>
+        {chatMode === "classic" && (
+          <>
+            {/* free-form chat input, backed by Python /api/rag_chat */}
+            <Stack spacing={1}>
+              <Typography variant="body2" color="text.secondary">
+                ఒక భావం లేదా అంశం టైప్ చేయండి — ఉదా: &ldquo;ఓర్పు గురించి పద్యం&rdquo;
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="మీ ప్రశ్న..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && askRag()}
+                  disabled={isLoading}
+                />
+                <IconButton onClick={askRag} disabled={isLoading || !query.trim()} aria-label="పంపండి" color="primary">
+                  <SendRoundedIcon />
+                </IconButton>
+              </Stack>
+            </Stack>
+
+            {lastReply && (
+              <Paper sx={{ bgcolor: "secondary.50", border: "1px solid", borderColor: "secondary.light", borderRadius: 2, p: 2 }}>
+                <Typography variant="overline" color="secondary.main">సూచించిన సేకరణ: {lastReply.folder}</Typography>
+                <Typography variant="h6" fontWeight={700}>{lastReply.title}</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1.5, maxHeight: 180, overflowY: "auto" }}>
+                  {lastReply.content}
+                </Typography>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="body2" color="text.secondary">{lastReply.answer}</Typography>
+              </Paper>
+            )}
+          </>
+        )}
+
+        {chatMode === "streaming" && (
+          // New — native TypeScript, Vercel AI SDK, real token-by-token
+          // streaming. Same underlying Cohere+Groq, different backend
+          // implementation (app/api/chat/route.ts, not Python).
+          <StreamingChat />
         )}
 
         <Divider>లేదా</Divider>
