@@ -259,23 +259,81 @@ export default function RatnalabalaHighlights() {
         </Reveal>
 
         {/* ═══════════ 2. ABOUT THE PROJECT ═══════════ */}
-        <Reveal delay={0.06}>
-          <Card sx={{ mb: 3, borderLeft: `4px solid ${ACCENTS[2]}`, borderRadius: 3 }}>
-            <CardContent>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-                <AssignmentTwoToneIcon sx={{ color: ACCENTS[2], fontSize: "1.3rem" }} />
-                <Typography fontWeight={700} sx={{ color: "#1E293B" }}>
-                  ప్రాజెక్ట్ గురించి
-                </Typography>
-              </Stack>
-              <Typography sx={{ fontSize: "0.95rem", color: "#1E293B", lineHeight: 1.75 }}>
-                రత్నాలబాల – జ్ఞానమాల ఒక ఉచిత, వాణిజ్యేతర హాబీ ప్రాజెక్ట్ , తెలుగు పద్యాలు, శతకాలు, కథలు, సామెతలు వంటి
-                సాహిత్య సంపదను ఆధునిక సాంకేతికత (AI, వాయిస్, OCR) సాయంతో అందరికీ సులభంగా చదవడానికి, వినడానికి,
-                నేర్చుకోవడానికి వీలుగా ఒకే వేదికపైకి తెచ్చే ప్రయత్నం.
-              </Typography>
-            </CardContent>
-          </Card>
-        </Reveal>
+  <Reveal delay={0.06}>
+  <Card
+    sx={{
+      mb: 3,
+      borderLeft: `4px solid ${ACCENTS[2]}`,
+      borderRadius: 3,
+    }}
+  >
+    <CardContent>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+        <AssignmentTwoToneIcon
+          sx={{ color: ACCENTS[2], fontSize: "1.3rem" }}
+        />
+        <Typography fontWeight={700} sx={{ color: "#1E293B" }}>
+          ప్రాజెక్ట్ గురించి
+        </Typography>
+      </Stack>
+
+      <Typography
+        sx={{
+          fontSize: "0.95rem",
+          color: "#1E293B",
+          lineHeight: 1.9,
+          textAlign: "justify",
+        }}
+      >
+        <strong>రత్నాలబాల – జ్ఞానమాల</strong> ఒక{" "}
+        <strong>ఉచిత, వాణిజ్యేతర (Non-Commercial)</strong> హాబీ
+        ప్రాజెక్ట్. తెలుగు భాష, సాహిత్యం మరియు సంస్కృతిని ఆధునిక
+        సాంకేతికతతో అనుసంధానించి, భవిష్యత్ తరాలకు డిజిటల్ రూపంలో
+        భద్రపరచాలనే లక్ష్యంతో రూపొందించబడిన సమగ్ర తెలుగు సాహిత్య వేదిక.
+        తెలుగు పద్యాలు, శతకాలు, కథలు, సామెతలు, వ్యాకరణం, అక్షరాలు,
+        గుణింతాలు వంటి విలువైన సాహిత్య సంపదను ఒకే వేదికపై
+        అందుబాటులోకి తీసుకువస్తూ, చదవడానికి, వినడానికి, నేర్చుకోవడానికి,
+        అన్వేషించడానికి, సృష్టించడానికి మరియు పంచుకోవడానికి అవసరమైన
+        ఆధునిక డిజిటల్ సాధనాలను అందిస్తోంది.
+        <br />
+        <br />
+        ఈ వేదికలో ప్రస్తుతం{" "}
+        <strong>34 రత్నాలబాల పద్యాలు</strong>,{" "}
+        <strong>3 మిరా పద్యాలు</strong>,{" "}
+        <strong>10 శతకములు (1037 పద్యాలు)</strong>,{" "}
+        <strong>130 కథలు (4 వయస్సు గుంపులు)</strong>,{" "}
+        <strong>108 పరాభవమాల పద్యాలు</strong>,{" "}
+        <strong>145 తెలుగు పదాలు</strong>,{" "}
+        <strong>26 సంధులు</strong>,{" "}
+        <strong>34 వ్యంజనాలకు 16 గుణింత రూపాలు</strong> మరియు{" "}
+        <strong>AI ఆధారిత 1140+ పద్యాల విశ్లేషణ</strong> అందుబాటులో
+        ఉన్నాయి. మొత్తంగా ఈ వేదికలో{" "}
+        <strong>1,280+ పద్యాలు</strong>,{" "}
+        <strong>130 కథలు</strong>,{" "}
+        <strong>10 శతకములు</strong> మరియు అనేక తెలుగు విద్యా
+        వనరులు అందుబాటులో ఉన్నాయి.
+        <br />
+        <br />
+        <strong>Artificial Intelligence (AI)</strong>,{" "}
+        <strong>Google Text-to-Speech (TTS)</strong>,{" "}
+        <strong>Optical Character Recognition (OCR)</strong>,{" "}
+        <strong>Speech-to-Text</strong> మరియు{" "}
+        <strong>Privacy-First</strong> సాంకేతికతలతో తెలుగు
+        సాహిత్యాన్ని చదవడం, వినడం, అన్వేషించడం, పోస్టర్లు మరియు
+        వీడియోలుగా రూపొందించడం, OCR ద్వారా డిజిటల్ టెక్స్ట్‌గా
+        మార్చడం, Voice ద్వారా టైపింగ్ చేయడం వంటి సౌకర్యాలను ఈ
+        వేదిక అందిస్తుంది.
+        <br />
+        <br />
+        విద్యార్థులు, ఉపాధ్యాయులు, పరిశోధకులు మరియు ప్రపంచవ్యాప్తంగా
+        ఉన్న తెలుగు భాషాభిమానులకు సమగ్ర డిజిటల్ తెలుగు జ్ఞాన వేదికగా{" "}
+        <strong>రత్నాలబాల – జ్ఞానమాల</strong> నిరంతరం అభివృద్ధి
+        చెందుతూ, తెలుగు భాషా వారసత్వాన్ని ఆధునిక సాంకేతికతతో
+        భవిష్యత్ తరాలకు చేరవేయడానికి కృషి చేస్తోంది.
+      </Typography>
+    </CardContent>
+  </Card>
+</Reveal>
 
         {/* ═══════════ 3. TELUGU SAMPLE VERSE ═══════════ */}
         <Reveal delay={0.12}>
