@@ -12,7 +12,7 @@ import {
   Alert,
 } from "@mui/material";
 import type { TeluguFont } from "@/app/types/fonts"; // ✅ FIXED
-
+import PageLoadTime from '@/app/components/PageLoadTime';
 type Props = {
   fontFamily: TeluguFont;
   setFontFamily: React.Dispatch<React.SetStateAction<TeluguFont>>;
@@ -203,6 +203,9 @@ export default function FontControlsTelugu({
         >
           డిఫాల్ట్
         </Button>
+      </Box>
+      <Box>
+<PageLoadTime />
       </Box>
 
       <Snackbar
