@@ -1,9 +1,7 @@
-
-
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
-import { Box, Paper, Typography, Chip, Stack, Skeleton } from "@mui/material";
+import { Paper, Typography, Chip, Stack, Skeleton } from "@mui/material";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 
 interface FeaturedContentData {
@@ -14,9 +12,9 @@ interface FeaturedContentData {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  poem: "📖 పద్యం",
-  katha: "📚 కథ",
-  sameta: "💬 సామెత",
+  poem: "poem",
+  katha: "katha",
+  sameta: "sameta",
 };
 
 export default function FeaturedContent() {
@@ -40,8 +38,6 @@ export default function FeaturedContent() {
 
   useEffect(() => {
     fetchContent();
-    // Re-check every 5 minutes — catches the next 6-hour rotation
-    // for anyone who leaves the tab open, without a manual refresh.
     const interval = setInterval(fetchContent, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
@@ -55,39 +51,19 @@ export default function FeaturedContent() {
     );
   }
 
-  // Fails soft — if the agent hasn't run yet, or KV is unreachable,
-  // this section just doesn't render rather than showing an error
-  // to every visitor.
   if (error || !data) return null;
 
   return (
-    <Paper
-      sx={{
-        p: 3,
-        borderRadius: 3,
-        mb: 3,
-        border: "1px solid",
-        borderColor: "divider",
-        background: "linear-gradient(135deg, #FBF9F6 0%, #FFFFFF 100%)",
-      }}
-    >
+    <Paper sx={{ p: 3, borderRadius: 3, mb: 3, border: "1px solid", borderColor: "divider" }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
         <AutoAwesomeRoundedIcon color="primary" fontSize="small" />
-        <Typography fontWeight={700} sx={{ color: "#1E293B" }}>
-          ఈ సమయపు ఎంపిక
-        </Typography>
+        <Typography fontWeight={700}>Featured</Typography>
         <Chip label={CATEGORY_LABELS[data.category] ?? data.category} size="small" />
       </Stack>
-
-      <Typography fontWeight={600} sx={{ mb: 1 }}>
-        {data.title}
-      </Typography>
-      <Typography sx={{ whiteSpace: "pre-wrap", color: "text.secondary" }}>
-        {data.text}
-      </Typography>
-
+      <Typography fontWeight={600} sx={{ mb: 1 }}>{data.title}</Typography>
+      <Typography sx={{ whiteSpace: "pre-wrap", color: "text.secondary" }}>{data.text}</Typography>
       <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 2 }}>
-        చివరిసారి అప్‌డేట్: {new Date(data.updatedAt).toLocaleString("te-IN")}
+        Updated: {new Date(data.updatedAt).toLocaleString()}
       </Typography>
     </Paper>
   );
