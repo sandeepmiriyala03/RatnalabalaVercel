@@ -1,6 +1,7 @@
+// AGENTS.md → see "FontControlsTelugu Component Rules"
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Select,
@@ -11,15 +12,15 @@ import {
   Snackbar,
   Alert,
 } from "@mui/material";
-import type { TeluguFont } from "@/app/types/fonts"; // ✅ FIXED
-import PageLoadTime from '@/app/components/PageLoadTime';
+import BoltIcon from "@mui/icons-material/Bolt";
+import type { TeluguFont } from "@/app/types/fonts";
+
 type Props = {
   fontFamily: TeluguFont;
   setFontFamily: React.Dispatch<React.SetStateAction<TeluguFont>>;
   fontSize: number;
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
 };
-
 
 const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
   { label: "గురజాడ", value: "Gurajada" },
@@ -93,12 +94,9 @@ const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
   { label: "మండలి (Bold Italic)", value: "Mandali-BoldItalic" },
 
   { label: "పొట్టి శ్రీరాములు", value: "PottiSreeramulu" },
-  
-  { label: "తిరొ సుందర తెలుగు", value: "TiroSundaraTelugu-Regular" }
+
+  { label: "తిరొ సుందర తెలుగు", value: "TiroSundaraTelugu-Regular" },
 ];
-
-
-
 
 function getDeviceBounds() {
   if (typeof window === "undefined") return { min: 1.0, max: 2.0 };
@@ -115,6 +113,36 @@ export default function FontControlsTelugu({
 }: Props) {
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const { min, max } = getDeviceBounds();
+
+  /* ⚡ Load time — scoped to this component only */
+  const [loadTime, setLoadTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    const measure = () => {
+      const nav = performance.getEntriesByType(
+        "navigation"
+      )[0] as PerformanceNavigationTiming | undefined;
+
+      const time = nav
+        ? Math.round(nav.loadEventEnd - nav.startTime)
+        : Math.round(performance.now());
+
+      setLoadTime(time);
+    };
+
+    if (document.readyState === "complete") {
+      measure();
+    } else {
+      window.addEventListener("load", measure);
+      return () => window.removeEventListener("load", measure);
+    }
+  }, []);
+
+  const getSpeedColor = (ms: number) => {
+    if (ms < 800) return "#22c55e";
+    if (ms < 2000) return "#eab308";
+    return "#ef4444";
+  };
 
   const increase = () =>
     setFontSize((v) => Math.min(max, +(v + 0.2).toFixed(2)));
@@ -147,9 +175,7 @@ export default function FontControlsTelugu({
           <Select
             size="small"
             value={fontFamily}
-            onChange={(e) =>
-              setFontFamily(e.target.value as TeluguFont)
-            }
+            onChange={(e) => setFontFamily(e.target.value as TeluguFont)}
             sx={{
               minWidth: 180,
               height: 34,
@@ -167,10 +193,11 @@ export default function FontControlsTelugu({
             ))}
           </Select>
         </Box>
-<Typography variant="caption" sx={{ opacity: 0.8 }}>
-  ప్రస్తుతం <strong>{TELUGU_FONTS.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
-</Typography>
-    
+
+        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+          ప్రస్తుతం <strong>{TELUGU_FONTS.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
+        </Typography>
+
         {/* 🔠 Font Size */}
         <Box display="flex" alignItems="center" gap={1}>
           <Typography sx={{ fontSize: "0.9rem" }}>సైజ్</Typography>
@@ -204,9 +231,39 @@ export default function FontControlsTelugu({
           డిఫాల్ట్
         </Button>
       </Box>
-      <Box>
-<PageLoadTime />
-      </Box>
+
+      {/* ⚡ Load time — shown right after font family/size controls */}
+      {loadTime !== null && (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            mt: 1,
+          }}
+        >
+          <Box
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.4,
+              px: 1,
+              py: 0.3,
+              borderRadius: "999px",
+              border: "1px solid",
+              borderColor: `${getSpeedColor(loadTime)}55`,
+              backgroundColor: `${getSpeedColor(loadTime)}14`,
+            }}
+          >
+            <BoltIcon sx={{ fontSize: 13, color: getSpeedColor(loadTime) }} />
+            <Typography
+              variant="caption"
+              sx={{ fontSize: "0.7rem", color: "text.secondary" }}
+            >
+              పేజీ లోడ్ సమయం: {(loadTime / 1000).toFixed(2)}s
+            </Typography>
+          </Box>
+        </Box>
+      )}
 
       <Snackbar
         open={snackbarOpen}

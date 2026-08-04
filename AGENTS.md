@@ -1,30 +1,39 @@
-<!-- BEGIN:footer-rules -->
-# Fontselection Component Rules
+<!-- BEGIN:font-controls-rules -->
+# FontControlsTelugu Component Rules
 
 ## What it does
-Shows on every page: site tagline, view counter, current date, load time,
-and app/Next.js version info.
+Lets users pick a Telugu font and adjust font size, with a reset-to-default
+button and a confirmation snackbar. Used wherever readers customize how
+Telugu text displays.
 
 ## Simple rules for agents editing this file
 
-1. **Keep it lightweight.** This component renders on every route.
-   Don't add heavy libraries, images, or animations here.
+1. **Don't duplicate global components here.** `PageLoadTime`, `Footer`,
+   etc. already render once via `ClientWrapper`. Never re-import or
+   re-render them inside this component.
 
-2. **One API call per piece of data.** The view counter should POST once
-   and get the updated count back in the same response — never POST then
-   GET separately.
+2. **Keep the font list intact.** `TELUGU_FONTS` is a curated, ordered
+   list of 50+ fonts with Telugu labels. Don't reorder, rename, or remove
+   entries unless explicitly asked — adding new fonts is fine, append them
+   under a dated comment block like the existing "🆕 Newly Added" section.
 
-3. **Don't block page load.** All data (views, load time, build info)
-   must load *after* the page renders — never make the Footer wait on
-   a fetch before showing.
+3. **Respect device-based size bounds.** `getDeviceBounds()` gives
+   different min/max font sizes for mobile vs desktop. Don't hardcode a
+   single min/max — always go through this function.
 
-4. **Fail silently.** If an API call fails (views, build info), show a
-   placeholder like "…" — never crash the page or show an error to the user.
+4. **Font size changes are relative, not absolute.** Increase/decrease
+   adjust by `0.2` and clamp with `Math.min`/`Math.max`. Keep this pattern
+   for any new size-related controls.
 
-5. **Telugu text stays as-is.** Don't translate or reword the Telugu
-   strings unless explicitly asked.
+5. **Reset must always restore known-good defaults.** `restoreDefaults()`
+   sets font to `"Gurajada"` and size to `1.0` — these are the app's
+   canonical defaults. Don't change them without explicit instruction.
 
-6. **New info goes in the small strip at the bottom**, styled like the
-   existing chips (load time, version, commit) — not as a new full-width
-   line, to keep the footer compact.
-<!-- END:footer-rules -->
+6. **Telugu UI text stays as-is.** Don't translate or reword any Telugu
+   labels, button text, or snackbar messages unless explicitly asked.
+
+7. **This is a controlled component.** `fontFamily`/`fontSize` come in as
+   props with their setters. Never add local state that duplicates or
+   shadows them — always call `setFontFamily`/`setFontSize` from the
+   parent.
+<!-- END:font-controls-rules -->
