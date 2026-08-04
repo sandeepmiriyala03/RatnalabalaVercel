@@ -38,6 +38,7 @@ function fetchPoemSample(sampleSize: number): {
 
   for (const folder of POETRY_FOLDERS) {
     const dir = path.join(process.cwd(), folder);
+    
     if (!fs.existsSync(dir)) continue;
 
     const files = fs.readdirSync(dir).filter((f) => f.endsWith(".md"));

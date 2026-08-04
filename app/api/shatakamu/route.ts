@@ -37,8 +37,8 @@ export async function GET(request: Request) {
 
         files.forEach((file) => {
           if (!file.endsWith(".md")) return;
-
-          const filePath = path.join(poemsDir, file);
+const filePath = path.join(/* turbopackIgnore: true */ poemsDir, file);
+        
           const fileContent = fs.readFileSync(filePath, "utf-8");
 
           const { data, content } = matter(fileContent);
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
     }
 
     // ✅ CASE 2: Single collection (existing behavior)
-    const poemsDir = path.join(process.cwd(), key || "");
+   const poemsDir = path.join(process.cwd(), "content", key || "");
 
     if (!fs.existsSync(poemsDir)) {
       return NextResponse.json(
