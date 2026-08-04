@@ -1,0 +1,26 @@
+{
+  "runId": "wrun_01KZ6KADC035MMXVZA848435RD",
+  "deploymentId": "mserg9ig-db2b16f8-3193-401e-ba7f-d04084c387ab",
+  "workflowName": "workflow//eve//sessionTimeoutWorkflow",
+  "specVersion": 5,
+  "executionContext": {
+    "traceCarrier": {},
+    "workflowCoreVersion": "5.0.0-beta.38",
+    "features": {
+      "encryption": false
+    }
+  },
+  "input": {
+    "__type": "Uint8Array",
+    "data": "ZGV2bFtbMV0seyJkZWFkbGluZSI6MiwidG9rZW4iOjR9LFsiRGF0ZSIsM10sIjIwMjYtMDktMDNUMTQ6Mzc6MjQuMTQxWiIsImV2ZTpldmU6MmQ3NGNiZjctMjc3MC00YzQzLTgxZTItMmNkMDhiZjcxMTdiIl0="
+  },
+  "createdAt": "2026-08-04T14:37:24.225Z",
+  "startedAt": "2026-08-04T14:37:24.230Z",
+  "status": "cancelled",
+  "completedAt": "2026-08-04T14:37:24.512Z",
+  "updatedAt": "2026-08-04T14:37:24.512Z",
+  "attributes": {
+    "$rootRunId": "wrun_01KZ6KAD88BETTC59Q8NFEKZCJ",
+    "$parentRunId": "wrun_01KZ6KAD88BETTC59Q8NFEKZCJ"
+  }
+}

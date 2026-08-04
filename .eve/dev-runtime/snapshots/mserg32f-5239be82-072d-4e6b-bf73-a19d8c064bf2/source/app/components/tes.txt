@@ -1,0 +1,36 @@
+తుది, పూర్తి ప్రణాళిక — అన్ని 12 దశలు, వాస్తవ స్థితితో
+దశ	స్థితి	కాన్సెప్ట్	ప్రధాన అంశాలు	రత్నాలబాలలో అమలు చేయాల్సింది	ఫలితం
+1	✅ పూర్తి	Prompt Engineering & LLM	System Prompt, JSON Output, Streaming	/api/chat, sametalu_agent.py లలో ఇప్పటికే ఉంది	మెరుగైన తెలుగు సమాధానాలు — done
+2	✅ పూర్తి	RAG Optimization	Embeddings, Cosine Similarity	Cohere + cosine similarity, /api/chat లో deployed	ఖచ్చితమైన పద్యాల శోధన — done
+3	✅ పూర్తి (hand-rolled)	Graph Basics	State, Nodes, Edges	MiniGraph class — లైబ్రరీ కాదు, bundle-size కారణంగా	Search→Explain workflow — done
+4	✅ పూర్తి	Conditional Routing	Decision Making, Branching	route_after_search()	AI నిర్ణయాలు — done
+5	✅ పూర్తి	Tool Calling	Python Functions as Tools	search_ratnalabala_knowledge, find_sameta_for_word	Tool ఆధారిత AI — done
+6	✅ పూర్తి	Search Agent	Semantic Search	/api/chat పూర్తిగా ఇదే	మొదటి Agent — done
+7	🔨 తదుపరి (2-3 రోజులు)	Teacher Agent	Explanation, Meaning	సామెత/పద్యం దొరికాక, "ఎందుకు ఇది వాడతారు, ఎలాంటి సందర్భంలో" అనే రెండో వివరణ దశ జోడించడం (already ఉన్న explain_node pattern విస్తరణ)	AI గురువు
+8	🔨 తదుపరి (2-3 రోజులు)	Recommendation Agent	Reasoning, Ranking	Top 5 results వచ్చాక, "ఏది యూజర్ ఉద్దేశానికి బాగా సరిపోతుంది" అని LLM ఒకదాన్ని ఎంచుకునేలా — ఇప్పటికే ఉన్న search_ratnalabala_knowledge tool యొక్క ఫలితాల మీద ఒక అదనపు reasoning దశ	తెలివైన సిఫారసులు
+9	❌ నిజమైన గ్యాప్ (5-7 రోజులు)	Memory	Chat History, Preferences	ఇప్పటివరకు session-only — persistent గా (Vercel KV వాడి, ఇష్టమైన కవి/చదివిన పద్యాలు యూజర్ session దాటి గుర్తుంచుకోవడం)	Personalized AI
+10	⏸️ వాయిదా (10+ tools అయ్యేదాకా)	MCP	MCP Server/Tool	ప్రస్తుతం 3-4 tools మాత్రమే — అవసరం లేదు ఇంకా	—
+11	✅ పాక్షికం	Evaluation & Guardrails	Hallucination Check	eval_sametalu_agent.py (Evals ✅) — Guardrails (డేటా బయట సమాధానం ఇవ్వకుండా ఆపడం) ఇంకా లేదు	నమ్మకమైన AI — 50% done
+12	🔨 తుది దశ	Final Integration	అన్నీ కలపడం	7,8,9,11 పూర్తయ్యాక, అన్ని agents ని ఒకే coherent experience గా చూపించడం	పూర్తి Agentic AI
+📅 వాస్తవ, కుదించిన టైమ్‌లైన్ (30 రోజుల బదులు)
+వారం	పని
+వారం 1	దశ 7 (Teacher Agent) + దశ 8 (Recommendation Agent) — తెలిసిన pattern విస్తరణ, తక్కువ రిస్క్
+వారం 2	దశ 9 (Memory) — నిజమైన కొత్త సవాలు, ఎక్కువ సమయం అవసరం కావొచ్చు
+వారం 3	దశ 11 పూర్తి చేయడం (Guardrails) + దశ 12 (Final Integration)
+తర్వాత, ఐచ్ఛికం	దశ 10 (MCP) — tools సంఖ్య పెరిగినప్పుడే
+🎯 తదుపరి ఏకైక అడుగు
+
+దశ 7 (Teacher Agent) తో మొదలుపెట్టండి — ఇది తక్కువ రిస్క్, తెలిసిన pattern (already ఉన్న explain_node ని విస్తరించడమే). దీని కోసం idea కావాలా?
+
+phase 1 code giv me code all requied files  ui
+
+Architected complete Phase 1 implementation with UI components
+Architected complete Phase 1 implementation with UI components
+Phase 1 — Prompt Engineering & LLM: పూర్తి, స్వతంత్ర Playground
+
+ఇది ఇప్పటికే మీ agents లో వాడుతున్న భావనలే (System Prompt, Streaming) — కానీ ఇప్పుడు ఒక ప్రత్యేకమైన, hands-on playground గా, System Prompt vs User Prompt తేడా ప్రత్యక్షంగా చూడటానికి, JSON output మరియు streaming రెండూ ఒకే చోట ప్రయోగం చేయడానికి.
+
+Prep
+Prep
+
+

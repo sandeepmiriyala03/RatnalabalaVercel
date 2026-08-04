@@ -1,0 +1,1054 @@
+/* =====================================================
+   🔤 TELUGU FONT FACES (LOCAL)
+   Location: /public/Fonts/
+   ===================================================== */
+
+@font-face {
+  font-family: "Gurajada";
+  src: url("/Fonts/Gurajada-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "NTR";
+  src: url("/Fonts/NTR-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+/* =========================
+   OTHER TELUGU FONTS
+========================= */
+
+@font-face {
+  font-family: "Veturi";
+  src: url("/Fonts/Veturi.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sirivennela";
+  src: url("/Fonts/Sirivennela.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================
+   CHATHURA FAMILY
+========================= */
+
+@font-face {
+  font-family: "Chathura-Light";
+  src: url("/Fonts/Chathura-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Chathura-Regular";
+  src: url("/Fonts/Chathura-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Chathura-Thin";
+  src: url("/Fonts/Chathura-Thin.ttf") format("truetype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Chathura-Bold";
+  src: url("/Fonts/Chathura-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Chathura-ExtraBold";
+  src: url("/Fonts/Chathura-ExtraBold.ttf") format("truetype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================
+   REMAINING TELUGU FONTS
+========================= */
+
+@font-face {
+  font-family: "Ramaneeya";
+  src: url("/Fonts/RamaneeyaWin.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ramaraja";
+  src: url("/Fonts/Ramaraja-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "RaviPrakash";
+  src: url("/Fonts/RaviPrakash.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TANA";
+  src: url("/Fonts/TANA.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TenaliRamakrishna";
+  src: url("/Fonts/TenaliRamakrishna-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Timmana";
+  src: url("/Fonts/TimmanaRegular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ponnala-Regular";
+  src: url("/Fonts/Ponnala-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+/* =====================================================
+   🌐 CSS VARIABLES (THEME + TYPOGRAPHY)
+   ===================================================== */
+
+:root {
+  /* Colors */
+  --background: #ffffff;
+  --foreground: #1a1a1a;
+  --surface: #f7f7f8;
+  --surface-elevated: #ffffff;
+  --primary: #6200ee;
+  --secondary: #03dac6;
+  --border: #e5e7eb;
+  --muted-text: #6b7280;
+
+  /* Radius */
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  /* System fallback */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* ✅ TELUGU GLOBAL CONTROLS */
+  --telugu-font-family: "Ramaneeya";
+  --telugu-font-size: 1rem;
+
+  /* Motion */
+  --transition-fast: 0.15s ease;
+  --transition-medium: 0.25s ease;
+}
+
+/* 🌙 Dark Mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b0b0d;
+    --foreground: #e5e7eb;
+    --surface: #16161a;
+    --surface-elevated: #1f1f25;
+    --primary: #bb86fc;
+    --secondary: #03dac6;
+    --border: #2d2d36;
+    --muted-text: #9ca3af;
+  }
+}
+
+/* =====================================================
+   🧱 RESET & BASE
+   ===================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  max-width: 100vw;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* =====================================================
+   ✅ GLOBAL FONT APPLICATION
+   ===================================================== */
+
+body {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans);
+
+  font-size: var(--telugu-font-size);
+  line-height: 1.6;
+
+  background-color: var(--background);
+  color: var(--foreground);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* PWA safe area */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* =====================================================
+   🔒 FORCE TELUGU FONT — ALL MUI TYPOGRAPHY & TEXT
+   ===================================================== */
+
+.MuiTypography-root,
+.MuiTypography-h1,
+.MuiTypography-h2,
+.MuiTypography-h3,
+.MuiTypography-h4,
+.MuiTypography-h5,
+.MuiTypography-h6,
+.MuiTypography-subtitle1,
+.MuiTypography-subtitle2,
+.MuiTypography-body1,
+.MuiTypography-body2,
+.MuiTypography-caption,
+.MuiTypography-overline,
+
+/* Buttons */
+.MuiButton-root,
+.MuiButton-text,
+.MuiButton-contained,
+.MuiButton-outlined,
+.MuiIconButton-root,
+.MuiFab-root,
+
+/* Inputs & forms */
+.MuiInputBase-root,
+.MuiInput-root,
+.MuiOutlinedInput-root,
+.MuiFilledInput-root,
+.MuiInputLabel-root,
+.MuiFormLabel-root,
+.MuiFormHelperText-root,
+.MuiTextField-root,
+.MuiSelect-root,
+.MuiMenuItem-root,
+.MuiAutocomplete-root,
+.MuiAutocomplete-option,
+
+/* Lists & navigation */
+.MuiList-root,
+.MuiListItem-root,
+.MuiListItemText-root,
+.MuiListSubheader-root,
+.MuiMenu-root,
+.MuiMenu-list,
+.MuiBreadcrumbs-root,
+.MuiBottomNavigation-root,
+.MuiBottomNavigationAction-root,
+.MuiTabs-root,
+.MuiTab-root,
+
+/* Data display */
+.MuiChip-root,
+.MuiBadge-root,
+.MuiTooltip-tooltip,
+.MuiAvatar-root,
+.MuiDivider-root,
+.MuiPagination-root,
+.MuiPaginationItem-root,
+
+/* Tables */
+.MuiTable-root,
+.MuiTableHead-root,
+.MuiTableBody-root,
+.MuiTableRow-root,
+.MuiTableCell-root,
+.MuiTableSortLabel-root,
+
+/* Feedback */
+.MuiAlert-root,
+.MuiAlertTitle-root,
+.MuiSnackbar-root,
+.MuiSnackbarContent-root,
+
+/* Cards & surfaces */
+.MuiCard-root,
+.MuiCardHeader-root,
+.MuiCardHeader-title,
+.MuiCardHeader-subheader,
+.MuiCardContent-root,
+.MuiCardActions-root,
+.MuiPaper-root,
+.MuiAccordion-root,
+.MuiAccordionSummary-root,
+.MuiAccordionDetails-root,
+
+/* Dialogs & popups */
+.MuiDialog-root,
+.MuiDialogTitle-root,
+.MuiDialogContent-root,
+.MuiDialogContentText-root,
+.MuiDialogActions-root,
+.MuiPopover-root,
+.MuiDrawer-root {
+
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* =====================================================
+   🔗 LINKS
+   ===================================================== */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+a:hover {
+  opacity: 0.85;
+}
+
+/* =====================================================
+   🧩 SURFACES
+   ===================================================== */
+
+.surface {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.surface-elevated {
+  background: var(--surface-elevated);
+  border-radius: var(--radius);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* =====================================================
+   📱 MOBILE TUNING
+   ===================================================== */
+
+@media (max-width: 768px) {
+  body {
+    font-size: calc(var(--telugu-font-size) * 0.95);
+  }
+}
+
+/* =====================================================
+   ♿ ACCESSIBILITY
+   ===================================================== */
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+/* =====================================================
+   🧾 MUI LIST – MISSING / EDGE CLASSES
+   (Add this block separately at the END)
+   ===================================================== */
+
+/* List container variants */
+.MuiList-dense,
+.MuiList-padding {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* ListItem internal states */
+.MuiListItem-dense,
+.MuiListItem-gutters,
+.MuiListItem-padding {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* ListItemText internals */
+.MuiListItemText-primary,
+.MuiListItemText-secondary {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* ListItemIcon alignment text fallback */
+.MuiListItemIcon-root svg,
+.MuiListItemIcon-root span {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* List secondary action (rare but important) */
+.MuiListItemSecondaryAction-root {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+/* ListItemButton (if you ever use it) */
+.MuiListItemButton-root,
+.MuiListItemButton-dense {
+  font-family:
+    var(--telugu-font-family),
+    var(--font-sans) !important;
+}
+
+MuiTypography-root 
+/* ==============================.MuiTypography-root,=======================
+   🔤 INDIVIDUAL FONT CLASSES
+   (For specific use-cases)
+   ===================================================== */
+.chitramala-font-gurajada {
+  font-family: "Gurajada", system-ui;
+}
+
+.chitramala-font-ntr {
+  font-family: "NTR", system-ui;
+}
+
+.chitramala-font-veturi {
+  font-family: "Veturi", system-ui;
+}
+
+.chitramala-font-sirivennela {
+  font-family: "Sirivennela", system-ui;
+}
+
+.chitramala-font-chathura-light {
+  font-family: "Chathura-Light", system-ui;
+}
+
+.chitramala-font-chathura-regular {
+  font-family: "Chathura-Regular", system-ui;
+}
+
+.chitramala-font-chathura-thin {
+  font-family: "Chathura-Thin", system-ui;
+}
+
+.chitramala-font-chathura-bold {
+  font-family: "Chathura-Bold", system-ui;
+}
+
+.chitramala-font-chathura-extrabold {
+  font-family: "Chathura-ExtraBold", system-ui;
+}
+
+.chitramala-font-ramaneeya {
+  font-family: "Ramaneeya", system-ui;
+}
+
+.chitramala-font-ramaraja {
+  font-family: "Ramaraja", system-ui;
+}
+
+.chitramala-font-raviprakash {
+  font-family: "RaviPrakash", system-ui;
+}
+
+.chitramala-font-tana {
+  font-family: "TANA", system-ui;
+}
+
+.chitramala-font-tenali {
+  font-family: "TenaliRamakrishna", system-ui;
+}
+
+.chitramala-font-timmana {
+  font-family: "Timmana", system-ui;
+}
+
+.chitramala-font-ponnala {
+  font-family: "Ponnala-Regular", system-ui;
+}
+
+
+/* =========================
+   GIDUGU
+========================= */
+
+.chitramala-font-gidugu {
+  font-family: "Gidugu", system-ui;
+}
+
+.chitramala-font-gidugu-italic {
+  font-family: "Gidugu-Italic", system-ui;
+}
+
+/* =========================
+   LAKKI REDDY
+========================= */
+
+.chitramala-font-lakkireddy {
+  font-family: "LakkiReddy", system-ui;
+}
+
+/* =========================
+   NANDakam
+========================= */
+
+.chitramala-font-nandakam {
+  font-family: "Nandakam", system-ui;
+}
+
+.chitramala-font-nandakam-italic {
+  font-family: "Nandakam-Italic", system-ui;
+}
+
+/* =========================
+   PEDDANA
+========================= */
+
+.chitramala-font-peddana {
+  font-family: "Peddana", system-ui;
+}
+
+/* =========================
+   PURUSHOTHAMAA
+========================= */
+
+.chitramala-font-purushothamaa {
+  font-family: "Purushothamaa", system-ui;
+}
+
+.chitramala-font-purushothamaa-italic {
+  font-family: "Purushothamaa-Italic", system-ui;
+}
+
+/* =========================
+   RAMABHADRA
+========================= */
+
+.chitramala-font-ramabhadra {
+  font-family: "Ramabhadra", system-ui;
+}
+
+.chitramala-font-ramabhadra-italic {
+  font-family: "Ramabhadra-Italic", system-ui;
+}
+
+/* =========================
+   SREE KRUSHNADEVARAYA
+========================= */
+
+.chitramala-font-sreekrushnadevaraya {
+  font-family: "SreeKrushnadevaraya", system-ui;
+}
+
+.chitramala-font-sreekrushnadevaraya-italic {
+  font-family: "SreeKrushnadevaraya-Italic", system-ui;
+}
+
+/* =========================
+   SURANNA
+========================= */
+
+.chitramala-font-suranna {
+  font-family: "Suranna-Regular", system-ui;
+}
+
+.chitramala-font-suranna-bold {
+  font-family: "Suranna-Bold", system-ui;
+}
+
+.chitramala-font-suranna-italic {
+  font-family: "Suranna-Italic", system-ui;
+}
+
+.chitramala-font-suranna-bolditalic {
+  font-family: "Suranna-BoldItalic", system-ui;
+}
+
+/* =========================
+   SURAVARAM
+========================= */
+
+.chitramala-font-suravaram {
+  font-family: "Suravaram", system-ui;
+}
+
+.chitramala-font-suravaram-italic {
+  font-family: "Suravaram-Italic", system-ui;
+}
+
+
+/* =========================
+   GIDUGU
+========================= */
+
+@font-face {
+  font-family: "Gidugu";
+  src: url("/Fonts/Gidugu.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Gidugu-Italic";
+  src: url("/Fonts/Gidugu-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   LAKKI REDDY
+========================= */
+
+@font-face {
+  font-family: "LakkiReddy";
+  src: url("/Fonts/LakkiReddy.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================
+   NANDakam
+========================= */
+
+@font-face {
+  font-family: "Nandakam";
+  src: url("/Fonts/Nandakam.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nandakam-Italic";
+  src: url("/Fonts/Nandakam-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   PEDDANA
+========================= */
+
+@font-face {
+  font-family: "Peddana";
+  src: url("/Fonts/Peddana-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================
+   PURUSHOTHAMAA
+========================= */
+
+@font-face {
+  font-family: "Purushothamaa";
+  src: url("/Fonts/Purushothamaa.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Purushothamaa-Italic";
+  src: url("/Fonts/Purushothamaa-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   RAMABHADRA
+========================= */
+
+@font-face {
+  font-family: "Ramabhadra";
+  src: url("/Fonts/Ramabhadra.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ramabhadra-Italic";
+  src: url("/Fonts/Ramabhadra-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   SREE KRUSHNADEVARAYA
+========================= */
+
+@font-face {
+  font-family: "SreeKrushnadevaraya";
+  src: url("/Fonts/Sree Krushnadevaraya.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "SreeKrushnadevaraya-Italic";
+  src: url("/Fonts/Sree Krushnadevaraya-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   SURANNA
+========================= */
+
+@font-face {
+  font-family: "Suranna-Regular";
+  src: url("/Fonts/Suranna Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suranna-Bold";
+  src: url("/Fonts/Suranna Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suranna-Italic";
+  src: url("/Fonts/Suranna-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suranna-BoldItalic";
+  src: url("/Fonts/Suranna Bold Italic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* =========================
+   SURAVARAM
+========================= */
+
+@font-face {
+  font-family: "Suravaram";
+  src: url("/Fonts/Suravaram.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Suravaram-Italic";
+  src: url("/Fonts/Suravaram-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+/* =========================
+   🆕 Fonts added on 1/19/2026
+   ========================= */
+
+/* Annamayya */
+@font-face {
+  font-family: "Annamayya";
+  src: url("/Fonts/Annamayya.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Annamayya-Bold";
+  src: url("/Fonts/AnnamayyaBold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Annamayya-Italic";
+  src: url("/Fonts/AnnamayyaItalic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Annamayya-BoldItalic";
+  src: url("/Fonts/AnnamayyaBoldItalic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Dhurjati */
+@font-face {
+  font-family: "Dhurjati";
+  src: url("/Fonts/Dhurjati.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Dhurjati-Italic";
+  src: url("/Fonts/Dhurjati-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* JIMS */
+@font-face {
+  font-family: "JIMS";
+  src: url("/Fonts/JIMS.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JIMS-Italic";
+  src: url("/Fonts/JIMSItalic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* KanakaDurga */
+@font-face {
+  font-family: "KanakaDurga";
+  src: url("/Fonts/KanakaDurga.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "KanakaDurga-Italic";
+  src: url("/Fonts/KanakaDurga-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Mandali */
+@font-face {
+  font-family: "Mandali-Regular";
+  src: url("/Fonts/Mandali-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mandali-Bold";
+  src: url("/Fonts/Mandali-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mandali-Italic";
+  src: url("/Fonts/Mandali-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mandali-BoldItalic";
+  src: url("/Fonts/Mandali-Bold Italic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Nandakam */
+@font-face {
+  font-family: "Nandakam";
+  src: url("/Fonts/Nandakam.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nandakam-Italic";
+  src: url("/Fonts/Nandakam-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Potti Sreeramulu */
+@font-face {
+  font-family: "PottiSreeramulu";
+  src: url("/Fonts/Potti Sreeramulu.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "TiroSundaraTelugu-Regular";
+  src: url("/Fonts/TiroSundaraTelugu-Regular.ttf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* =========================
+   🆕 ANNAMAYYA
+========================= */
+
+.chitramala-font-annamayya {
+  font-family: "Annamayya", system-ui;
+}
+
+.chitramala-font-annamayya-bold {
+  font-family: "Annamayya-Bold", system-ui;
+}
+
+.chitramala-font-annamayya-italic {
+  font-family: "Annamayya-Italic", system-ui;
+}
+
+.chitramala-font-annamayya-bolditalic {
+  font-family: "Annamayya-BoldItalic", system-ui;
+}
+
+/* =========================
+   DHURJATI
+========================= */
+
+.chitramala-font-dhurjati {
+  font-family: "Dhurjati", system-ui;
+}
+
+.chitramala-font-dhurjati-italic {
+  font-family: "Dhurjati-Italic", system-ui;
+}
+
+/* =========================
+   JIMS
+========================= */
+
+.chitramala-font-jims {
+  font-family: "JIMS", system-ui;
+}
+
+.chitramala-font-jims-italic {
+  font-family: "JIMS-Italic", system-ui;
+}
+
+/* =========================
+   KANAKADURGA
+========================= */
+
+.chitramala-font-kanakadurga {
+  font-family: "KanakaDurga", system-ui;
+}
+
+.chitramala-font-kanakadurga-italic {
+  font-family: "KanakaDurga-Italic", system-ui;
+}
+
+/* =========================
+   MANDALI
+========================= */
+
+.chitramala-font-mandali {
+  font-family: "Mandali-Regular", system-ui;
+}
+
+.chitramala-font-mandali-bold {
+  font-family: "Mandali-Bold", system-ui;
+}
+
+.chitramala-font-mandali-italic {
+  font-family: "Mandali-Italic", system-ui;
+}
+
+.chitramala-font-mandali-bolditalic {
+  font-family: "Mandali-BoldItalic", system-ui;
+}
+
+/* =========================
+   NANDACAM
+========================= */
+
+.chitramala-font-nandakam {
+  font-family: "Nandakam", system-ui;
+}
+
+.chitramala-font-nandakam-italic {
+  font-family: "Nandakam-Italic", system-ui;
+}
+
+/* =========================
+   POTTI SREERAMULU
+========================= */
+
+.chitramala-font-pottisreeramulu {
+  font-family: "PottiSreeramulu", system-ui;
+}
+
+
+.chitramala-font-TiroSundaraTelugu-Regular {
+  font-family: "TiroSundaraTelugu-Regular", system-ui;
+}

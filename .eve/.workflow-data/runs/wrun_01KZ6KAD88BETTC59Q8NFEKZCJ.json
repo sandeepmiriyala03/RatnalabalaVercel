@@ -1,0 +1,31 @@
+{
+  "runId": "wrun_01KZ6KAD88BETTC59Q8NFEKZCJ",
+  "deploymentId": "mserg9ig-db2b16f8-3193-401e-ba7f-d04084c387ab",
+  "workflowName": "workflow//eve//workflowEntry",
+  "specVersion": 5,
+  "executionContext": {
+    "traceCarrier": {},
+    "workflowCoreVersion": "5.0.0-beta.38",
+    "features": {
+      "encryption": false
+    }
+  },
+  "input": {
+    "__type": "Uint8Array",
+    "data": "ZGV2bFtbMV0seyJpbnB1dCI6MiwibGltaXRzIjotMSwic2VyaWFsaXplZENvbnRleHQiOjR9LHsibWVzc2FnZSI6MywiY29udGV4dCI6LTEsIm91dHB1dFNjaGVtYSI6LTF9LCLgsKjgsL7gsJXgsYEgZmVhdHVyZWQgY29udGVudCDgsJrgsYLgsKrgsL/gsILgsJrgsYEiLHsiZXZlLmJ1bmRsZSI6NSwiZXZlLmNoYW5uZWwiOjgsImV2ZS5jaGFubmVsSW5zdHJ1bWVudGF0aW9uIjoxMSwiZXZlLmNvbnRpbnVhdGlvblRva2VuIjoxNCwiZXZlLm1vZGUiOjE1LCJldmUuYXV0aCI6MTYsImV2ZS5pbml0aWF0b3JBdXRoIjoxNiwiZXZlLmNhcGFiaWxpdGllcyI6MTl9LHsibm9kZUlkIjotMSwic291cmNlIjo2fSx7ImtpbmQiOjd9LCJkZXZlbG9wbWVudCIseyJraW5kIjo5LCJzdGF0ZSI6MTB9LCJodHRwIix7fSx7ImtpbmQiOjEyLCJtZXRhZGF0YSI6MTN9LCJjaGFubmVsOmV2ZSIse30sImV2ZTpldmU6MmQ3NGNiZjctMjc3MC00YzQzLTgxZTItMmNkMDhiZjcxMTdiIiwiY29udmVyc2F0aW9uIix7ImF0dHJpYnV0ZXMiOjE3LCJhdXRoZW50aWNhdG9yIjoxOCwicHJpbmNpcGFsSWQiOjE4LCJwcmluY2lwYWxUeXBlIjoxOH0se30sImxvY2FsLWRldiIseyJyZXF1ZXN0SW5wdXQiOjIwfSx0cnVlXQ=="
+  },
+  "createdAt": "2026-08-04T14:37:24.113Z",
+  "startedAt": "2026-08-04T14:37:24.141Z",
+  "status": "completed",
+  "output": {
+    "__type": "Uint8Array",
+    "data": "ZGV2bFt7Im91dHB1dCI6MX0sIiJd"
+  },
+  "completedAt": "2026-08-04T14:37:24.551Z",
+  "updatedAt": "2026-08-04T14:37:24.551Z",
+  "attributes": {
+    "$eve.type": "session",
+    "$eve.trigger": "http",
+    "$eve.title": "నాకు featured content చూపించు"
+  }
+}

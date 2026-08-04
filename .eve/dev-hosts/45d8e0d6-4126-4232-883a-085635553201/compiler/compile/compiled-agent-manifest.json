@@ -1,0 +1,167 @@
+{
+  "agentRoot": "C:\\Users\\vanis\\Github\\RatnalabalaVercel-main\\agent",
+  "appRoot": "C:\\Users\\vanis\\Github\\RatnalabalaVercel-main",
+  "channels": [
+    {
+      "kind": "channel",
+      "name": "eve",
+      "logicalPath": "channels/eve.ts",
+      "method": "GET",
+      "urlPath": "/eve/v1/info",
+      "sourceId": "channels/eve.ts",
+      "sourceKind": "module",
+      "adapterKind": "http"
+    },
+    {
+      "kind": "channel",
+      "name": "eve",
+      "logicalPath": "channels/eve.ts",
+      "method": "POST",
+      "urlPath": "/eve/v1/session",
+      "sourceId": "channels/eve.ts",
+      "sourceKind": "module",
+      "adapterKind": "http"
+    },
+    {
+      "kind": "channel",
+      "name": "eve",
+      "logicalPath": "channels/eve.ts",
+      "method": "POST",
+      "urlPath": "/eve/v1/session/reset",
+      "sourceId": "channels/eve.ts",
+      "sourceKind": "module",
+      "adapterKind": "http"
+    },
+    {
+      "kind": "channel",
+      "name": "eve",
+      "logicalPath": "channels/eve.ts",
+      "method": "POST",
+      "urlPath": "/eve/v1/session/clear",
+      "sourceId": "channels/eve.ts",
+      "sourceKind": "module",
+      "adapterKind": "http"
+    },
+    {
+      "kind": "channel",
+      "name": "eve",
+      "logicalPath": "channels/eve.ts",
+      "method": "POST",
+      "urlPath": "/eve/v1/session/compact",
+      "sourceId": "channels/eve.ts",
+      "sourceKind": "module",
+      "adapterKind": "http"
+    },
+    {
+      "kind": "channel",
+      "name": "eve",
+      "logicalPath": "channels/eve.ts",
+      "method": "POST",
+      "urlPath": "/eve/v1/session/:sessionId",
+      "sourceId": "channels/eve.ts",
+      "sourceKind": "module",
+      "adapterKind": "http"
+    },
+    {
+      "kind": "channel",
+      "name": "eve",
+      "logicalPath": "channels/eve.ts",
+      "method": "POST",
+      "urlPath": "/eve/v1/session/:sessionId/cancel",
+      "sourceId": "channels/eve.ts",
+      "sourceKind": "module",
+      "adapterKind": "http"
+    },
+    {
+      "kind": "channel",
+      "name": "eve",
+      "logicalPath": "channels/eve.ts",
+      "method": "GET",
+      "urlPath": "/eve/v1/session/:sessionId/stream",
+      "sourceId": "channels/eve.ts",
+      "sourceKind": "module",
+      "adapterKind": "http"
+    }
+  ],
+  "connections": [],
+  "config": {
+    "compaction": {},
+    "model": {
+      "id": "meta/llama-3.1-8b",
+      "routing": {
+        "kind": "external",
+        "provider": "groq"
+      },
+      "contextWindowTokens": 131000,
+      "source": {
+        "sourceKind": "module",
+        "logicalPath": "agent.ts",
+        "sourceId": "agent.ts"
+      }
+    },
+    "name": "ratnalabala",
+    "source": {
+      "sourceKind": "module",
+      "logicalPath": "agent.ts",
+      "sourceId": "agent.ts"
+    }
+  },
+  "diagnosticsSummary": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "disabledFrameworkTools": [],
+  "dynamicInstructions": [],
+  "dynamicSkills": [],
+  "dynamicTools": [],
+  "hooks": [],
+  "remoteAgents": [],
+  "sandbox": null,
+  "sandboxWorkspaces": [],
+  "schedules": [
+    {
+      "cron": "*/5 * * * *",
+      "hasRun": false,
+      "logicalPath": "schedules/every-6-hours.ts",
+      "name": "every-6-hours",
+      "sourceId": "schedules/every-6-hours.ts",
+      "sourceKind": "module",
+      "markdown": "pick_rotating_content tool వాడి, ప్రస్తుత సమయపు 6-గంటల స్లాట్‌కు తగిన కంటెంట్ ఎంచుకుని నిల్వ చేయి."
+    }
+  ],
+  "skills": [],
+  "tools": [
+    {
+      "description": "current 6-hour time slot based poem, katha, or sameta selector",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "trigger": {
+            "type": "string",
+            "description": "Optional trigger reason, not used"
+          }
+        }
+      },
+      "logicalPath": "tools/pick_rotating_content.ts",
+      "name": "pick_rotating_content",
+      "sourceId": "tools/pick_rotating_content.ts",
+      "sourceKind": "module"
+    }
+  ],
+  "workspaceResourceRoot": {
+    "logicalPath": "workspace-resources/__root__",
+    "rootEntries": []
+  },
+  "instructions": {
+    "name": "instructions",
+    "logicalPath": "instructions.md",
+    "markdown": "﻿# Featured Content Agent\n\nమీరు రత్నాలబాల (ratnalabala.vercel.app) యొక్క featured content agent.\n\n## మీ పని\n\nప్రతిసారి run అయినప్పుడు, pick_rotating_content tool వాడి ఒక్క కంటెంట్ (పద్యం, కథ, లేదా సామెత) తీసుకుని, landing page చూపించడానికి నిల్వ చేయండి.\n\n## Rotation నియమం\n\nప్రస్తుత 6-గంటల time slot బట్టి:\n- 00:00 → పద్యం\n- 06:00 → కథ\n- 12:00 → సామెత\n- 18:00 → పద్యం (cycle మళ్ళీ మొదలు)\n\n## ముఖ్యమైన నియమం\n\nఎప్పుడూ tool ద్వారానే నిజమైన కంటెంట్ తీసుకోండి — మీరే ఏదైనా పద్యం/కథ/సామెత కల్పించకండి.\n",
+    "sourceId": "instructions.md",
+    "sourceKind": "markdown"
+  },
+  "kind": "eve-agent-compiled-manifest",
+  "extensionMounts": [],
+  "subagentEdges": [],
+  "subagents": [],
+  "version": 38
+}

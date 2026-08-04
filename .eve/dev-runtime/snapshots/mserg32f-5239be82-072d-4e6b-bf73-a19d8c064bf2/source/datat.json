@@ -1,0 +1,7 @@
+{
+  "success": true,
+  "count": 1240,
+  "size_kb": 17545.4,
+  "url": "https://nfx8esbyk58h3emn.public.blob.vercel-storage.com/embeddings_index.json",
+  "note": "ఈ url ను EMBEDDINGS_BLOB_URL గా Vercel Environment Variables లో పెట్టండి."
+}

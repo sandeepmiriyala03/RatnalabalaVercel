@@ -1,0 +1,23 @@
+{
+  "updatedAt": "2026-08-04T14:37:24.389Z",
+  "durationMs": 7625,
+  "environment": {
+    "eveVersion": "0.29.5",
+    "nodeVersion": "v24.15.0",
+    "platform": "win32 arm64",
+    "vercelCliVersion": "58.3.0",
+    "vercelCliPath": "C:\\Users\\vanis\\AppData\\Roaming\\npm\\vercel",
+    "sessionsDirectory": {
+      "path": ".eve/.workflow-data",
+      "files": 1,
+      "bytes": 35
+    }
+  },
+  "session": {
+    "prompts": 1,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "toolCalls": {},
+    "subagents": 0
+  }
+}
