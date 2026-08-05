@@ -1,5 +1,4 @@
-//Logerror.md 
-
+// AGENTS.md → see "Homepage Rules"
 "use client";
 import { Box } from "@mui/material";
 
