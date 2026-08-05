@@ -4,6 +4,7 @@ import path from "path";
 import matter from "gray-matter";
 
 // ❗ IMPORTANT: keep this list in sync with POETRY_COLLECTIONS (except "all")
+// All folders below must live under: content/<FolderName>/
 const POETRY_FOLDERS = [
   "Jandhyala",
   "Sumati",
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
       let total = 0;
 
       for (const folder of POETRY_FOLDERS) {
-        const poemsDir = path.join(process.cwd(), folder);
+        const poemsDir = path.join(process.cwd(), "content", folder);
 
         if (!fs.existsSync(poemsDir)) continue;
 
@@ -37,8 +38,8 @@ export async function GET(request: Request) {
 
         files.forEach((file) => {
           if (!file.endsWith(".md")) return;
-const filePath = path.join(/* turbopackIgnore: true */ poemsDir, file);
-        
+
+          const filePath = path.join(poemsDir, file);
           const fileContent = fs.readFileSync(filePath, "utf-8");
 
           const { data, content } = matter(fileContent);
@@ -62,8 +63,8 @@ const filePath = path.join(/* turbopackIgnore: true */ poemsDir, file);
       });
     }
 
-    // ✅ CASE 2: Single collection (existing behavior)
-   const poemsDir = path.join(process.cwd(), "content", key || "");
+    // ✅ CASE 2: Single collection
+    const poemsDir = path.join(process.cwd(), "content", key || "");
 
     if (!fs.existsSync(poemsDir)) {
       return NextResponse.json(
