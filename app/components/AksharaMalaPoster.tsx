@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
-  Box, Typography, Card, CardContent, Divider, IconButton, Button, Stack, Tooltip
+  Box, Typography, Card, CardContent, Divider, IconButton, Button, Stack, Tooltip, CircularProgress
 } from "@mui/material";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
@@ -25,9 +25,19 @@ type Props = {
   enableRead?: boolean;
 };
 
+// Same Microsoft Edge voice used in DownloadAllVoices.tsx — "mohan"
+// (male). Cards are small/frequent, so no voice picker here; just the
+// better-quality voice as default, same /api/tts endpoint already
+// used for bulk export.
+const CARD_VOICE_SOURCE = "edge";
+const CARD_VOICE_GENDER = "male";
+
 const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
   const [isTracing, setIsTracing] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isLoadingVoice, setIsLoadingVoice] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // పేజీ మారినప్పుడు లేదా కంపోనెంట్ క్లోజ్ అయినప్పుడు వాయిస్ ఆగిపోవడానికి
   useEffect(() => {
@@ -35,13 +45,25 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
+      audioRef.current?.pause();
     };
   }, []);
 
-  const speak = useCallback(() => {
+  const stopSpeaking = useCallback(() => {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setIsSpeaking(false);
+  }, []);
+
+  // Fallback path — browser's built-in voice, used only if the
+  // Microsoft Edge voice API call fails (offline, network error, etc.)
+  const speakWithBrowserVoice = useCallback(() => {
     if (!("speechSynthesis" in window)) return;
 
-    window.speechSynthesis.cancel(); // పాత సౌండ్‌ని క్లియర్ చేస్తుంది
+    window.speechSynthesis.cancel();
 
     const textToSpeak = akshara.word
       ? `${akshara.letter} ... ${akshara.word}`
@@ -51,9 +73,61 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
     utterance.lang = "te-IN";
     utterance.rate = 0.8;
     utterance.pitch = 1.1;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
 
+    setIsSpeaking(true);
     window.speechSynthesis.speak(utterance);
   }, [akshara.letter, akshara.word]);
+
+  // Primary path — Microsoft Edge voice via /api/tts, same endpoint
+  // and voice quality already used in DownloadAllVoices.tsx.
+  const speak = useCallback(async () => {
+    stopSpeaking();
+
+    const textToSpeak = akshara.word
+      ? `${akshara.letter} ... ${akshara.word}`
+      : akshara.letter;
+
+    setIsLoadingVoice(true);
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: textToSpeak,
+          source: CARD_VOICE_SOURCE,
+          voice: CARD_VOICE_GENDER,
+        }),
+      });
+
+      if (!res.ok) throw new Error(`TTS API ${res.status}`);
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(url);
+      };
+      audio.onerror = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(url);
+      };
+
+      setIsLoadingVoice(false);
+      setIsSpeaking(true);
+      await audio.play();
+    } catch (err) {
+      // Edge voice failed (offline, API error, etc.) — fall back to
+      // the browser's built-in voice so listening still works.
+      console.error("[AksharaPosterCard] Edge TTS failed, falling back:", err);
+      setIsLoadingVoice(false);
+      speakWithBrowserVoice();
+    }
+  }, [akshara.letter, akshara.word, stopSpeaking, speakWithBrowserVoice]);
 
   return (
     <Card
@@ -97,7 +171,7 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
                   <Box
                     component="img"
                     src={akshara.image}
-                    alt={akshara.word || akshara.letter} // Word లేకపోతే Letter ని Alt టెక్స్ట్ గా వాడుతుంది
+                    alt={akshara.word || akshara.letter}
                     sx={{
                       width: "auto",
                       maxWidth: "100%",
@@ -152,27 +226,30 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
         >
           <Stack direction="row" spacing={1}>
             <Tooltip title="వినండి">
-              <IconButton
-                onClick={(e) => {
-                  // Prevents this click from bubbling up to the parent
-                  // card's onClick (which triggers the similar-words
-                  // lookup) — listening to a letter should NOT also
-                  // fire a similar-words API call.
-                  e.stopPropagation();
-                  speak();
-                }}
-                disabled={!enableRead}
-                sx={{ bgcolor: "primary.light", color: "white", "&:hover": { bgcolor: "primary.main" } }}
-              >
-                <VolumeUpIcon />
-              </IconButton>
+              <span>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    speak();
+                  }}
+                  disabled={!enableRead || isLoadingVoice}
+                  sx={{ bgcolor: "primary.light", color: "white", "&:hover": { bgcolor: "primary.main" } }}
+                >
+                  {isLoadingVoice ? (
+                    <CircularProgress size={20} sx={{ color: "white" }} />
+                  ) : (
+                    <VolumeUpIcon />
+                  )}
+                </IconButton>
+              </span>
             </Tooltip>
             <Tooltip title="ఆపండి">
               <IconButton
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.speechSynthesis.cancel();
+                  stopSpeaking();
                 }}
+                disabled={!isSpeaking}
                 color="error"
               >
                 <StopCircleIcon />
@@ -194,9 +271,6 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
               {isTracing ? "ముగించు" : "రాయండి"}
             </Button>
 
-            {/* Wrapper stops propagation for whatever internal share
-                icons/buttons ShareButtons renders, so sharing a poster
-                doesn't also trigger a similar-words lookup. */}
             <Box onClick={(e) => e.stopPropagation()}>
               <ShareButtons targetRef={posterRef} />
             </Box>
