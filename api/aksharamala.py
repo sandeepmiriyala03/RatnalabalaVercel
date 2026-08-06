@@ -1,14 +1,13 @@
 # api/aksharamala.py
 #
-# Data inlined DIRECTLY in this file — no cross-file import.
-# vercel.json's includeFiles did not resolve the import reliably on
-# this builder, so this removes the dependency entirely instead of
-# continuing to fight the bundler. Small duplication (same 44 entries
-# also live in aksharamala_similar.py) traded for guaranteed builds.
+# Search now ALSO checks sametalu data for the same term — added as
+# a plain inline function call, same file, no cross-file import
+# (avoids the exact problem we already hit once with aksharamala_data.py).
 #
 # GET /api/aksharamala?search=&type=all&page=1&page_size=4
 
 import json
+import requests
 from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler
 
@@ -67,6 +66,47 @@ AKSHARALU = [
     {"id": "v36", "type": "vyanjanalu", "letter": "ఱ", "word": "ఱంపము"},
 ]
 
+BASE_URL = "https://ratnalabala.vercel.app"
+
+SAMETALU_FILES = [
+    "a", "aa", "am", "ba", "bha", "ca", "cha", "da", "da2", "dha", "dha2",
+    "e", "ee", "ga", "ha", "i", "ja", "ka", "ksha", "la", "ma", "na2",
+    "o", "oo", "pa", "ra", "sa", "sha", "ssa", "tha2", "u", "uu", "va",
+]
+
+_sametalu_cache: list[str] | None = None
+
+
+def load_all_sametalu() -> list[str]:
+    """Same loading pattern as sametalu_agent.py — plain function
+    call within THIS file, not a cross-file import."""
+    global _sametalu_cache
+    if _sametalu_cache is not None:
+        return _sametalu_cache
+
+    all_texts = []
+    for filename in SAMETALU_FILES:
+        try:
+            res = requests.get(f"{BASE_URL}/ssmetalamala/{filename}.json", timeout=15)
+            res.raise_for_status()
+            data = res.json()
+            for s in data.get("sametalu", []):
+                text = s.get("text", "")
+                if text:
+                    all_texts.append(text)
+        except Exception:
+            continue
+
+    _sametalu_cache = all_texts
+    return all_texts
+
+
+def search_sametalu(term: str) -> list[str]:
+    if not term:
+        return []
+    sametalu = load_all_sametalu()
+    return [s for s in sametalu if term in s][:10]
+
 
 def filter_and_paginate(search: str, type_filter: str, page: int, page_size: int) -> dict:
     search = search.strip()
@@ -84,11 +124,15 @@ def filter_and_paginate(search: str, type_filter: str, page: int, page_size: int
     start = (page - 1) * page_size
     items = filtered[start:start + page_size]
 
+    # NEW — same search term also checked against sametalu data
+    sametalu_matches = search_sametalu(search)
+
     return {
         "items": items,
         "total_count": total_count,
         "page_count": page_count,
         "current_page": page,
+        "sametalu_matches": sametalu_matches,
     }
 
 
