@@ -1,9 +1,7 @@
 # api/aksharamala_similar.py
 #
 # "Similar words" lookup — triggered when a user clicks a letter/word
-# card. Pure data lookup against the SAME AKSHARALU dataset and
-# related JSON files (no Groq/LLM call — pure lookup, per the
-# requirement).
+# card. Pure data lookup, no Groq/LLM call.
 #
 # GET /api/aksharamala_similar?letter=అ&word=అరటి
 
@@ -12,24 +10,18 @@ import requests
 from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler
 
-from aksharamala import AKSHARALU  # reuse the same source of truth
+# Imports from the plain data module now, NOT from aksharamala.py
+# (a handler file) — avoids pulling that file's build context in,
+# and keeps this function's dependency graph minimal.
+from aksharamala_data import AKSHARALU
 
 BASE_URL = "https://ratnalabala.vercel.app"
-
-# If related word associations are hosted as JSON (same pattern as
-# sametalu's /ssmetalamala/*.json), point at those files here.
-# Adjust the path to wherever your akshara-relation JSON actually
-# lives — this mirrors the sametalu_agent.py loading pattern exactly.
 SAM_JSON_FOLDER = "sam"  # e.g. /sam/a.json, /sam/ka.json, etc.
 
 _related_cache: dict = {}
 
 
 def load_related_json(letter: str) -> list[dict]:
-    """
-    Fetches /{SAM_JSON_FOLDER}/{letter}.json if it exists — same
-    hosted-JSON pattern as sametalu. Cached per warm instance.
-    """
     if letter in _related_cache:
         return _related_cache[letter]
 
@@ -46,7 +38,6 @@ def load_related_json(letter: str) -> list[dict]:
 
 
 def find_similar(letter: str, word: str) -> dict:
-    # 1. Same-type matches from the existing dataset (free, instant)
     clicked = next((a for a in AKSHARALU if a["letter"] == letter), None)
     same_type = []
     if clicked:
@@ -55,8 +46,6 @@ def find_similar(letter: str, word: str) -> dict:
             if a["type"] == clicked["type"] and a["letter"] != letter
         ][:5]
 
-    # 2. Hosted JSON relations, if available (e.g. thematically
-    # related words prepared separately, same pattern as sametalu)
     json_related = load_related_json(letter)
 
     return {
