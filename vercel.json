@@ -1,7 +1,7 @@
 {
   "functions": {
-    "api/rag_chat.py": {
-      "includeFiles": "api/embeddings_index.json"
+    "api/*.py": {
+      "includeFiles": "api/*.py"
     }
   }
 }
