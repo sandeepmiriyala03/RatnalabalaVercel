@@ -40,46 +40,46 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
 
   const speak = useCallback(() => {
     if (!("speechSynthesis" in window)) return;
-    
+
     window.speechSynthesis.cancel(); // పాత సౌండ్‌ని క్లియర్ చేస్తుంది
-    
-    const textToSpeak = akshara.word 
-      ? `${akshara.letter} ... ${akshara.word}` 
+
+    const textToSpeak = akshara.word
+      ? `${akshara.letter} ... ${akshara.word}`
       : akshara.letter;
 
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = "te-IN";
     utterance.rate = 0.8;
     utterance.pitch = 1.1;
-    
+
     window.speechSynthesis.speak(utterance);
   }, [akshara.letter, akshara.word]);
 
   return (
-    <Card 
-      sx={{ 
-        borderRadius: 4, 
-        boxShadow: "0 10px 30px rgba(0,0,0,0.1)", 
-        overflow: "hidden", 
+    <Card
+      sx={{
+        borderRadius: 4,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+        overflow: "hidden",
         background: "#ffffff",
         transition: "transform 0.3s ease",
-        "&:hover": { transform: "translateY(-5px)" } 
+        "&:hover": { transform: "translateY(-5px)" }
       }}
     >
       <CardContent sx={{ p: 0 }}>
-        <Box 
-          ref={posterRef} 
-          sx={{ 
-            p: { xs: 2, sm: 3 }, 
-            textAlign: "center", 
+        <Box
+          ref={posterRef}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            textAlign: "center",
             bgcolor: "#fff",
             minHeight: { xs: 400, sm: 450 },
             display: "flex",
             flexDirection: "column"
           }}
         >
-          <Typography 
-            variant="overline" 
+          <Typography
+            variant="overline"
             sx={{ fontWeight: 800, color: "primary.main", letterSpacing: 2, fontSize: "1rem" }}
           >
             తెలుగు అక్షరమాల
@@ -109,22 +109,22 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
                 )}
 
                 <Box>
-                  <Typography 
-                    sx={{ 
-                      fontSize: { xs: "5rem", sm: "6.5rem" }, 
-                      fontWeight: 900, 
-                      lineHeight: 1.1, 
-                      color: "#1a237e" 
+                  <Typography
+                    sx={{
+                      fontSize: { xs: "5rem", sm: "6.5rem" },
+                      fontWeight: 900,
+                      lineHeight: 1.1,
+                      color: "#1a237e"
                     }}
                   >
                     {akshara.letter}
                   </Typography>
                   {akshara.word && (
-                    <Typography 
-                      variant="h4" 
-                      sx={{ 
-                        fontWeight: 700, 
-                        color: "secondary.dark", 
+                    <Typography
+                      variant="h4"
+                      sx={{
+                        fontWeight: 700,
+                        color: "secondary.dark",
                         mt: 1,
                         fontSize: { xs: "1.5rem", sm: "2rem" }
                       }}
@@ -139,21 +139,28 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
           <Divider sx={{ mt: 2 }} />
         </Box>
 
-        <Box 
-          sx={{ 
-            p: 2, 
-            bgcolor: "#fcfcfc", 
-            display: "flex", 
+        <Box
+          sx={{
+            p: 2,
+            bgcolor: "#fcfcfc",
+            display: "flex",
             flexDirection: { xs: "column", sm: "row" },
             gap: 2,
-            justifyContent: "space-between", 
-            alignItems: "center" 
+            justifyContent: "space-between",
+            alignItems: "center"
           }}
         >
           <Stack direction="row" spacing={1}>
             <Tooltip title="వినండి">
-              <IconButton 
-                onClick={speak} 
+              <IconButton
+                onClick={(e) => {
+                  // Prevents this click from bubbling up to the parent
+                  // card's onClick (which triggers the similar-words
+                  // lookup) — listening to a letter should NOT also
+                  // fire a similar-words API call.
+                  e.stopPropagation();
+                  speak();
+                }}
                 disabled={!enableRead}
                 sx={{ bgcolor: "primary.light", color: "white", "&:hover": { bgcolor: "primary.main" } }}
               >
@@ -161,8 +168,11 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
               </IconButton>
             </Tooltip>
             <Tooltip title="ఆపండి">
-              <IconButton 
-                onClick={() => window.speechSynthesis.cancel()} 
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.speechSynthesis.cancel();
+                }}
                 color="error"
               >
                 <StopCircleIcon />
@@ -175,12 +185,21 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
               variant={isTracing ? "contained" : "outlined"}
               color={isTracing ? "secondary" : "primary"}
               startIcon={isTracing ? <CloseIcon /> : <EditIcon />}
-              onClick={() => setIsTracing(!isTracing)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsTracing(!isTracing);
+              }}
               sx={{ borderRadius: 8, px: 3, fontWeight: 700, textTransform: "none" }}
             >
               {isTracing ? "ముగించు" : "రాయండి"}
             </Button>
-            <ShareButtons targetRef={posterRef} />
+
+            {/* Wrapper stops propagation for whatever internal share
+                icons/buttons ShareButtons renders, so sharing a poster
+                doesn't also trigger a similar-words lookup. */}
+            <Box onClick={(e) => e.stopPropagation()}>
+              <ShareButtons targetRef={posterRef} />
+            </Box>
           </Stack>
         </Box>
       </CardContent>
