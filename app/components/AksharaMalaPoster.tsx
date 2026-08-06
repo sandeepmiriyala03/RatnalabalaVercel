@@ -23,23 +23,24 @@ type Akshara = {
 type Props = {
   akshara: Akshara;
   enableRead?: boolean;
+  // NEW — voice gender comes from the parent's shared selector now,
+  // instead of being hardcoded per card.
+  voiceGender?: "male" | "female";
 };
 
-// Same Microsoft Edge voice used in DownloadAllVoices.tsx — "mohan"
-// (male). Cards are small/frequent, so no voice picker here; just the
-// better-quality voice as default, same /api/tts endpoint already
-// used for bulk export.
 const CARD_VOICE_SOURCE = "edge";
-const CARD_VOICE_GENDER = "male";
 
-const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
+const AksharaPosterCard: React.FC<Props> = ({
+  akshara,
+  enableRead = true,
+  voiceGender = "male",
+}) => {
   const [isTracing, setIsTracing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isLoadingVoice, setIsLoadingVoice] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // పేజీ మారినప్పుడు లేదా కంపోనెంట్ క్లోజ్ అయినప్పుడు వాయిస్ ఆగిపోవడానికి
   useEffect(() => {
     return () => {
       if ("speechSynthesis" in window) {
@@ -58,8 +59,11 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
     setIsSpeaking(false);
   }, []);
 
-  // Fallback path — browser's built-in voice, used only if the
-  // Microsoft Edge voice API call fails (offline, network error, etc.)
+  // Fallback path — browser's built-in voice. Note: browser
+  // speechSynthesis voice selection (male/female) depends entirely
+  // on what voices the OS/browser exposes for te-IN, which varies by
+  // device — this fallback uses whatever default voice is available,
+  // since forcing a specific gender isn't reliably controllable here.
   const speakWithBrowserVoice = useCallback(() => {
     if (!("speechSynthesis" in window)) return;
 
@@ -80,8 +84,8 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
     window.speechSynthesis.speak(utterance);
   }, [akshara.letter, akshara.word]);
 
-  // Primary path — Microsoft Edge voice via /api/tts, same endpoint
-  // and voice quality already used in DownloadAllVoices.tsx.
+  // Primary path — Microsoft Edge voice via /api/tts, now using the
+  // voiceGender selected in the parent's toggle instead of a fixed value.
   const speak = useCallback(async () => {
     stopSpeaking();
 
@@ -97,7 +101,7 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
         body: JSON.stringify({
           text: textToSpeak,
           source: CARD_VOICE_SOURCE,
-          voice: CARD_VOICE_GENDER,
+          voice: voiceGender,
         }),
       });
 
@@ -121,13 +125,11 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
       setIsSpeaking(true);
       await audio.play();
     } catch (err) {
-      // Edge voice failed (offline, API error, etc.) — fall back to
-      // the browser's built-in voice so listening still works.
       console.error("[AksharaPosterCard] Edge TTS failed, falling back:", err);
       setIsLoadingVoice(false);
       speakWithBrowserVoice();
     }
-  }, [akshara.letter, akshara.word, stopSpeaking, speakWithBrowserVoice]);
+  }, [akshara.letter, akshara.word, voiceGender, stopSpeaking, speakWithBrowserVoice]);
 
   return (
     <Card
@@ -225,7 +227,7 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true }) => {
           }}
         >
           <Stack direction="row" spacing={1}>
-            <Tooltip title="వినండి">
+            <Tooltip title={voiceGender === "male" ? "వినండి (మగ స్వరం)" : "వినండి (స్త్రీ స్వరం)"}>
               <span>
                 <IconButton
                   onClick={(e) => {

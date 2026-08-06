@@ -11,6 +11,8 @@ import {
   Container,
   CircularProgress,
   Alert,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 
 import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
@@ -31,6 +33,10 @@ type SimilarResult = {
   source: string;
 };
 
+// Voice gender choice, shared across ALL cards on this page — one
+// selector here instead of repeating a picker on every card.
+type VoiceGender = "male" | "female";
+
 const PAGE_SIZE = 100;
 
 // One place, easy to swap between local dev and deployed Python API
@@ -41,13 +47,15 @@ export default function AksharamalaParent() {
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<"all" | "swaralu" | "vyanjanalu">("all");
 
+  // NEW — voice gender, applies to every card's listen button
+  const [voiceGender, setVoiceGender] = useState<VoiceGender>("male");
+
   const [items, setItems] = useState<Akshara[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // NEW — సామెతలు (sametalu) matches for the current search term
   const [sametaluMatches, setSametaluMatches] = useState<string[]>([]);
 
   const [similar, setSimilar] = useState<SimilarResult | null>(null);
@@ -138,6 +146,28 @@ export default function AksharamalaParent() {
             <Chip label="హల్లులు" clickable color={typeFilter === "vyanjanalu" ? "primary" : "default"} onClick={() => handleFilter("vyanjanalu")} />
           </Stack>
 
+          {/* NEW — voice gender selector, applies to every card */}
+          <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ opacity: 0.75 }}>
+              🔊 స్వరం:
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              value={voiceGender}
+              exclusive
+              onChange={(_, v) => {
+                if (v) setVoiceGender(v);
+              }}
+            >
+              <ToggleButton value="male" sx={{ textTransform: "none", px: 2 }}>
+                🎙️ మగ స్వరం
+              </ToggleButton>
+              <ToggleButton value="female" sx={{ textTransform: "none", px: 2 }}>
+                👩 స్త్రీ స్వరం
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
+
           <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mb: 3 }}>
             <Chip label={`మొత్తం: ${totalCount}`} color="secondary" sx={{ fontWeight: 800 }} />
             <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
@@ -183,13 +213,13 @@ export default function AksharamalaParent() {
                 onClick={() => handleCardClick(a)}
                 sx={{ cursor: "pointer", flex: { xs: "1 1 100%", sm: "1 1 calc(50% - 16px)" }, maxWidth: { xs: "100%", sm: "440px" } }}
               >
-                <AksharaPosterCard akshara={a} enableRead={true} />
+                <AksharaPosterCard akshara={a} enableRead={true} voiceGender={voiceGender} />
               </Box>
             ))}
           </Box>
         )}
 
-        {/* NEW — సామెతలు (sametalu) matches for the search term */}
+        {/* సామెతలు matches for the search term */}
         {sametaluMatches.length > 0 && !loading && (
           <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
             <Typography fontWeight={700} sx={{ mb: 1 }}>సంబంధిత సామెతలు:</Typography>
