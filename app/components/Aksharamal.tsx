@@ -1,402 +1,193 @@
 "use client";
-
-import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
-  Box, Typography, Card, CardContent, Divider, IconButton, Button, Stack, Tooltip, CircularProgress
+  Box,
+  Typography,
+  Stack,
+  Chip,
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SearchIcon from "@mui/icons-material/Search";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
 import EditIcon from "@mui/icons-material/Edit";
-import CloseIcon from "@mui/icons-material/Close";
+import TouchAppIcon from "@mui/icons-material/TouchApp";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import MicIcon from "@mui/icons-material/Mic";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CancelIcon from "@mui/icons-material/Cancel";
+import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 
-import ShareButtons from "@/app/components/ShareBar";
-import AksharaTraceBoard from "./AksharaTraceBoard";
+import AksharamalaParent from "@/app/components/Aksharamal";
 
-type Akshara = {
-  id: string;
-  type: "swaralu" | "vyanjanalu" | "gunintalu";
-  letter: string;
-  word?: string;
-  image?: string;
-};
+/* ================= PAGE ================= */
 
-type Props = {
-  akshara: Akshara;
-  enableRead?: boolean;
-  voiceGender?: "male" | "female";
-};
-
-const CARD_VOICE_SOURCE = "edge";
-
-// Practice result — null means "haven't tried yet this round"
-type PracticeResult = { correct: boolean; message: string } | null;
-
-const AksharaPosterCard: React.FC<Props> = ({
-  akshara,
-  enableRead = true,
-  voiceGender = "male",
-}) => {
-  const [isTracing, setIsTracing] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isLoadingVoice, setIsLoadingVoice] = useState(false);
-  const posterRef = useRef<HTMLDivElement>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // NEW — pronunciation practice state
-  const [isListening, setIsListening] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
-  const [practiceResult, setPracticeResult] = useState<PracticeResult>(null);
-  const recognitionRef = useRef<any>(null);
-
-  useEffect(() => {
-    return () => {
-      if ("speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
-      audioRef.current?.pause();
-      recognitionRef.current?.stop();
-    };
-  }, []);
-
-  const stopSpeaking = useCallback(() => {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    audioRef.current?.pause();
-    audioRef.current = null;
-    setIsSpeaking(false);
-  }, []);
-
-  const speakWithBrowserVoice = useCallback(() => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-
-    const textToSpeak = akshara.word
-      ? `${akshara.letter} ... ${akshara.word}`
-      : akshara.letter;
-
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = "te-IN";
-    utterance.rate = 0.8;
-    utterance.pitch = 1.1;
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    setIsSpeaking(true);
-    window.speechSynthesis.speak(utterance);
-  }, [akshara.letter, akshara.word]);
-
-  const speak = useCallback(async () => {
-    stopSpeaking();
-
-    const textToSpeak = akshara.word
-      ? `${akshara.letter} ... ${akshara.word}`
-      : akshara.letter;
-
-    setIsLoadingVoice(true);
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: textToSpeak,
-          source: CARD_VOICE_SOURCE,
-          voice: voiceGender,
-        }),
-      });
-
-      if (!res.ok) throw new Error(`TTS API ${res.status}`);
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audioRef.current = audio;
-
-      audio.onended = () => {
-        setIsSpeaking(false);
-        URL.revokeObjectURL(url);
-      };
-      audio.onerror = () => {
-        setIsSpeaking(false);
-        URL.revokeObjectURL(url);
-      };
-
-      setIsLoadingVoice(false);
-      setIsSpeaking(true);
-      await audio.play();
-    } catch (err) {
-      console.error("[AksharaPosterCard] Edge TTS failed, falling back:", err);
-      setIsLoadingVoice(false);
-      speakWithBrowserVoice();
-    }
-  }, [akshara.letter, akshara.word, voiceGender, stopSpeaking, speakWithBrowserVoice]);
-
-  // NEW — pronunciation practice: listen, transcribe, check with Python
-  const handlePracticeClick = useCallback(() => {
-    const SpeechRecognitionCtor =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognitionCtor) {
-      setPracticeResult({
-        correct: false,
-        message: "మీ బ్రౌజర్‌లో వాయిస్ గుర్తింపు లేదు (Chrome వాడండి).",
-      });
-      return;
-    }
-
-    setPracticeResult(null);
-
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = "te-IN";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognitionRef.current = recognition;
-
-    recognition.onstart = () => setIsListening(true);
-
-    recognition.onresult = async (event: any) => {
-      const spokenText = event.results[0][0].transcript;
-      setIsListening(false);
-      setIsChecking(true);
-
-      try {
-        const targetWord = akshara.word || akshara.letter;
-        const res = await fetch("/api/pronunciation_check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ target_word: targetWord, spoken_text: spokenText }),
-        });
-
-        if (!res.ok) throw new Error(`Pronunciation check API ${res.status}`);
-
-        const result = await res.json();
-        setPracticeResult({ correct: result.correct, message: result.message });
-      } catch (err) {
-        console.error("[AksharaPosterCard] pronunciation check failed:", err);
-        setPracticeResult({
-          correct: false,
-          message: "తనిఖీ చేయడంలో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.",
-        });
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-      setPracticeResult({
-        correct: false,
-        message: "వినలేకపోయాను, మళ్ళీ ప్రయత్నించండి.",
-      });
-    };
-
-    recognition.onend = () => setIsListening(false);
-
-    recognition.start();
-  }, [akshara.letter, akshara.word]);
-
+export default function AksharamalaPage() {
   return (
-    <Card
+    <Box
       sx={{
-        borderRadius: 4,
-        boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
-        overflow: "hidden",
-        background: "#ffffff",
-        transition: "transform 0.3s ease",
-        "&:hover": { transform: "translateY(-5px)" }
+        maxWidth: 900,
+        mx: "auto",
+        p: 2,
       }}
     >
-      <CardContent sx={{ p: 0 }}>
-        <Box
-          ref={posterRef}
-          sx={{
-            p: { xs: 2, sm: 3 },
-            textAlign: "center",
-            bgcolor: "#fff",
-            minHeight: { xs: 400, sm: 450 },
-            display: "flex",
-            flexDirection: "column"
-          }}
-        >
-          <Typography
-            variant="overline"
-            sx={{ fontWeight: 800, color: "primary.main", letterSpacing: 2, fontSize: "1rem" }}
-          >
-            తెలుగు అక్షరమాల
+      {/* 🌼 TITLE */}
+      <Typography
+        variant="h3"
+        fontWeight={800}
+        sx={{
+          letterSpacing: "-0.5px",
+          background: "linear-gradient(90deg, #0f172a, #2563eb)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          fontWeight: 700,
+          fontSize: "calc(var(--telugu-font-size) * 1.8)",
+          textAlign: "center",
+        }}
+      >
+        అక్షరమాల
+      </Typography>
+
+      <Typography align="center" sx={{ opacity: 0.85, mb: 2 }}>
+        వినండి • చదవండి • నేర్చుకోండి
+      </Typography>
+
+      {/* 🧠 SIMPLE INFO */}
+      <Stack direction="row" spacing={1} justifyContent="center" mb={2} flexWrap="wrap">
+        <Chip label="👶 పిల్లల కోసం" />
+        <Chip label="🔊 వినే అవకాశం" />
+        <Chip label="🎤 ఉచ్చారణ సాధన" />
+        <Chip label="✍️ రాయడం సాధన" />
+        <Chip label="📱 సులభం" />
+      </Stack>
+
+      {/* 📖 ఈ పేజీ గురించి + ఎలా వాడాలి — end user కోసం, simple language */}
+      <Accordion
+        elevation={0}
+        sx={{
+          mb: 2,
+          borderRadius: "12px",
+          border: "1px solid",
+          borderColor: "divider",
+          "&:before": { display: "none" },
+        }}
+      >
+        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <MenuBookIcon color="primary" fontSize="small" />
+            <Typography fontWeight={700}>
+              ఈ పేజీ గురించి • ఎలా వాడాలి
+            </Typography>
+          </Stack>
+        </AccordionSummary>
+
+        <AccordionDetails>
+          <Typography sx={{ mb: 2, opacity: 0.85 }}>
+            ఇది తెలుగు అక్షరమాల నేర్చుకోవడానికి ఒక సులభమైన పేజీ — అచ్చులు,
+            హల్లులు, ప్రతి అక్షరానికి ఒక పదం, మరియు ఆ పదానికి సంబంధించిన
+            చిత్రం చూడొచ్చు. వినడం, చెప్పడం, రాయడం మూడూ ప్రాక్టీస్
+            చేయొచ్చు. కింద ఎలా వాడాలో దశలవారీగా చూడండి.
           </Typography>
-          <Divider sx={{ my: 1.5, borderBottomWidth: 2 }} />
 
-          <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {isTracing ? (
-              <Box sx={{ width: "100%", height: "100%", borderRadius: 2, overflow: "hidden" }}>
-                <AksharaTraceBoard letter={akshara.letter} />
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <SearchIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
+              <Box>
+                <Typography fontWeight={600}>వెతకడం</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  పైన ఉన్న సెర్చ్ బాక్స్‌లో ఏదైనా అక్షరం లేదా పదం టైప్
+                  చేయండి — ఉదాహరణకు &quot;ఎలుక&quot; అని టైప్ చేస్తే, ఆ
+                  పదానికి సంబంధించిన అక్షరం చూపిస్తుంది. దానితో పాటు, ఆ
+                  పదం ఉన్న సామెతలు కూడా కింద కనిపిస్తాయి.
+                </Typography>
               </Box>
-            ) : (
-              <Stack spacing={2} alignItems="center" sx={{ width: "100%" }}>
-                {akshara.image && (
-                  <Box
-                    component="img"
-                    src={akshara.image}
-                    alt={akshara.word || akshara.letter}
-                    sx={{
-                      width: "auto",
-                      maxWidth: "100%",
-                      height: { xs: 180, sm: 220 },
-                      objectFit: "contain",
-                      filter: "drop-shadow(0px 10px 15px rgba(0,0,0,0.1))"
-                    }}
-                  />
-                )}
+            </Stack>
 
-                <Box>
-                  <Typography
-                    sx={{
-                      fontSize: { xs: "5rem", sm: "6.5rem" },
-                      fontWeight: 900,
-                      lineHeight: 1.1,
-                      color: "#1a237e"
-                    }}
-                  >
-                    {akshara.letter}
-                  </Typography>
-                  {akshara.word && (
-                    <Typography
-                      variant="h4"
-                      sx={{
-                        fontWeight: 700,
-                        color: "secondary.dark",
-                        mt: 1,
-                        fontSize: { xs: "1.5rem", sm: "2rem" }
-                      }}
-                    >
-                      {akshara.word}
-                    </Typography>
-                  )}
-                </Box>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <TouchAppIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
+              <Box>
+                <Typography fontWeight={600}>వర్గం ఎంచుకోవడం</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  &quot;అచ్చులు&quot; లేదా &quot;హల్లులు&quot; బటన్ నొక్కి,
+                  ఆ వర్గానికి చెందిన అక్షరాలు మాత్రమే చూడొచ్చు.
+                  &quot;అన్నీ&quot; నొక్కితే మళ్ళీ అన్ని అక్షరాలు
+                  కనిపిస్తాయి.
+                </Typography>
+              </Box>
+            </Stack>
 
-                {/* NEW — pronunciation practice result feedback */}
-                {practiceResult && (
-                  <Stack
-                    direction="row"
-                    spacing={0.5}
-                    alignItems="center"
-                    sx={{
-                      mt: 1,
-                      px: 1.5,
-                      py: 0.5,
-                      borderRadius: "999px",
-                      bgcolor: practiceResult.correct ? "success.light" : "error.light",
-                    }}
-                  >
-                    {practiceResult.correct ? (
-                      <CheckCircleIcon fontSize="small" sx={{ color: "success.dark" }} />
-                    ) : (
-                      <CancelIcon fontSize="small" sx={{ color: "error.dark" }} />
-                    )}
-                    <Typography variant="body2" fontWeight={700}>
-                      {practiceResult.message}
-                    </Typography>
-                  </Stack>
-                )}
-              </Stack>
-            )}
-          </Box>
-          <Divider sx={{ mt: 2 }} />
-        </Box>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <RecordVoiceOverIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
+              <Box>
+                <Typography fontWeight={600}>స్వరం ఎంచుకోవడం</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  జాబితా పైన &quot;మగ స్వరం&quot; లేదా &quot;స్త్రీ
+                  స్వరం&quot; ఎంచుకోవచ్చు — మీరు ఎంచుకున్న స్వరంలోనే
+                  అన్ని అక్షరాలు వినిపిస్తాయి.
+                </Typography>
+              </Box>
+            </Stack>
 
-        <Box
-          sx={{
-            p: 2,
-            bgcolor: "#fcfcfc",
-            display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            gap: 2,
-            justifyContent: "space-between",
-            alignItems: "center"
-          }}
-        >
-          <Stack direction="row" spacing={1}>
-            <Tooltip title={voiceGender === "male" ? "వినండి (మగ స్వరం)" : "వినండి (స్త్రీ స్వరం)"}>
-              <span>
-                <IconButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    speak();
-                  }}
-                  disabled={!enableRead || isLoadingVoice}
-                  sx={{ bgcolor: "primary.light", color: "white", "&:hover": { bgcolor: "primary.main" } }}
-                >
-                  {isLoadingVoice ? (
-                    <CircularProgress size={20} sx={{ color: "white" }} />
-                  ) : (
-                    <VolumeUpIcon />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="ఆపండి">
-              <IconButton
-                onClick={(e) => {
-                  e.stopPropagation();
-                  stopSpeaking();
-                }}
-                disabled={!isSpeaking}
-                color="error"
-              >
-                <StopCircleIcon />
-              </IconButton>
-            </Tooltip>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <VolumeUpIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
+              <Box>
+                <Typography fontWeight={600}>వినడం</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  ప్రతి అక్షరం కార్డ్‌లో ఉన్న 🔊 బటన్ నొక్కితే, ఆ అక్షరం
+                  మరియు దాని పదం బిగ్గరగా చదివి వినిపిస్తుంది. ఆపాలంటే
+                  పక్కనే ఉన్న ఎరుపు బటన్ నొక్కండి.
+                </Typography>
+              </Box>
+            </Stack>
 
-            {/* NEW — "మీరు చెప్పండి" practice button */}
-            <Tooltip title="మీరు చెప్పండి">
-              <span>
-                <IconButton
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePracticeClick();
-                  }}
-                  disabled={isListening || isChecking}
-                  sx={{
-                    bgcolor: isListening ? "warning.main" : "secondary.light",
-                    color: "white",
-                    "&:hover": { bgcolor: "secondary.main" },
-                  }}
-                >
-                  {isListening || isChecking ? (
-                    <CircularProgress size={20} sx={{ color: "white" }} />
-                  ) : (
-                    <MicIcon />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <MicIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
+              <Box>
+                <Typography fontWeight={600}>మీరు చెప్పి ప్రాక్టీస్ చేయడం</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  🎤 బటన్ నొక్కి, అక్షరం లేదా పదాన్ని బిగ్గరగా చెప్పండి —
+                  మీరు సరిగ్గా పలికారో లేదో వెంటనే చూపిస్తుంది. తప్పైతే
+                  మళ్ళీ ప్రయత్నించవచ్చు. (దీనికి మైక్రోఫోన్ అనుమతి
+                  కావాలి, మరియు Chrome బ్రౌజర్‌లో బాగా పనిచేస్తుంది.)
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <EditIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
+              <Box>
+                <Typography fontWeight={600}>రాయడం నేర్చుకోవడం</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  &quot;రాయండి&quot; బటన్ నొక్కితే, ఆ అక్షరాన్ని మీ
+                  స్క్రీన్ మీద వేలితో లేదా మౌస్‌తో రాసి ప్రాక్టీస్
+                  చేయొచ్చు. రాసిన తర్వాత &quot;తనిఖీ చేయండి&quot; నొక్కితే
+                  మీరు ఎంత బాగా రాశారో చూపిస్తుంది. తప్పైతే తుడిచి మళ్ళీ
+                  ప్రయత్నించండి. &quot;ముగించు&quot; నొక్కితే మామూలు
+                  వ్యూకి తిరిగి వెళ్తుంది.
+                </Typography>
+              </Box>
+            </Stack>
+
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <TouchAppIcon color="secondary" fontSize="small" sx={{ mt: 0.3 }} />
+              <Box>
+                <Typography fontWeight={600}>సంబంధిత అక్షరాలు చూడడం</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  ఏదైనా అక్షరం కార్డ్ మీద (బటన్‌లు కాకుండా) నొక్కితే, ఆ
+                  అక్షరం వర్గానికి చెందిన ఇతర సంబంధిత అక్షరాలు కింద
+                  చూపిస్తుంది — కొత్త అక్షరాలు తెలుసుకోవడానికి ఇది
+                  ఉపయోగపడుతుంది.
+                </Typography>
+              </Box>
+            </Stack>
           </Stack>
+        </AccordionDetails>
+      </Accordion>
 
-          <Stack direction="row" spacing={1} sx={{ width: { xs: "100%", sm: "auto" }, justifyContent: "center" }}>
-            <Button
-              variant={isTracing ? "contained" : "outlined"}
-              color={isTracing ? "secondary" : "primary"}
-              startIcon={isTracing ? <CloseIcon /> : <EditIcon />}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsTracing(!isTracing);
-              }}
-              sx={{ borderRadius: 8, px: 3, fontWeight: 700, textTransform: "none" }}
-            >
-              {isTracing ? "ముగించు" : "రాయండి"}
-            </Button>
+      <Divider sx={{ my: 2 }} />
 
-            <Box onClick={(e) => e.stopPropagation()}>
-              <ShareButtons targetRef={posterRef} />
-            </Box>
-          </Stack>
-        </Box>
-      </CardContent>
-    </Card>
+      {/* 📜 MAIN CONTENT */}
+      <AksharamalaParent />
+    </Box>
   );
-};
-
-export default AksharaPosterCard;
+}
