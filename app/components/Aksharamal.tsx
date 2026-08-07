@@ -39,14 +39,10 @@ type VoiceGender = "male" | "female";
 // mounted simultaneously on load), suspected cause of the Out of
 // Memory crash. 12 keeps the "mostly see everything" feel while
 // mounting a fraction of the heavy components at once.
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 3;
 
 const API_BASE = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/api";
 
-// FIXED — debounce hook. Without this, every keystroke in the search
-// box fired an immediate API call (which internally triggers up to
-// 33 external sametalu JSON fetches server-side if uncached) —
-// rapid typing could stack many overlapping requests.
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
