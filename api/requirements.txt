@@ -1,11 +1,19 @@
 # api/requirements.txt
 #
 # Shared across all Python functions in this folder:
-#   requests     — used by build_index.py, sametalu_agent.py
+#   requests     — used by build_index.py, sametalu_agent.py,
+#                  aksharamala.py, aksharamala_similar.py
 #   vercel_blob  — used by build_index.py (embeddings storage)
 #   langgraph, langchain-core — used by sametalu_agent.py only
+#   Pillow       — used by trace_check.py (renders + compares
+#                  handwriting trace against actual letter shape,
+#                  no LLM involved)
+#
+# aksharamala.py, aksharamala_similar.py — requests only, rest stdlib
+# pronunciation_check.py — stdlib only (difflib), no extra dependency
 
 requests==2.32.3
 vercel_blob==0.2.3
 langgraph==0.2.60
 langchain-core==0.3.28
+Pillow==10.4.0
