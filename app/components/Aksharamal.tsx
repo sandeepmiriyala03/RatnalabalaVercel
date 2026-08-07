@@ -1,193 +1,270 @@
 "use client";
+
+import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Typography,
   Stack,
+  Typography,
+  TextField,
   Chip,
-  Divider,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
+  Box,
+  Pagination,
+  Container,
+  CircularProgress,
+  Alert,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import SearchIcon from "@mui/icons-material/Search";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import EditIcon from "@mui/icons-material/Edit";
-import TouchAppIcon from "@mui/icons-material/TouchApp";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import MicIcon from "@mui/icons-material/Mic";
-import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 
-import AksharamalaParent from "@/app/components/Aksharamal";
+import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
 
-/* ================= PAGE ================= */
+/* ================= TYPE ================= */
+type Akshara = {
+  id: string;
+  type: "swaralu" | "vyanjanalu" | "gunintalu";
+  letter: string;
+  word?: string;
+  image?: string;
+};
 
-export default function AksharamalaPage() {
+type SimilarResult = {
+  clicked: { letter: string; word: string };
+  same_type: Akshara[];
+  related_from_json: any[];
+  source: string;
+};
+
+type VoiceGender = "male" | "female";
+
+// FIXED — was 100 (all 44 cards, each with TTS/canvas/audio refs,
+// mounted simultaneously on load), suspected cause of the Out of
+// Memory crash. 12 keeps the "mostly see everything" feel while
+// mounting a fraction of the heavy components at once.
+const PAGE_SIZE = 12;
+
+const API_BASE = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/api";
+
+// FIXED — debounce hook. Without this, every keystroke in the search
+// box fired an immediate API call (which internally triggers up to
+// 33 external sametalu JSON fetches server-side if uncached) —
+// rapid typing could stack many overlapping requests.
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+export default function AksharamalaParent() {
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 400);
+
+  const [page, setPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState<"all" | "swaralu" | "vyanjanalu">("all");
+  const [voiceGender, setVoiceGender] = useState<VoiceGender>("male");
+
+  const [items, setItems] = useState<Akshara[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [sametaluMatches, setSametaluMatches] = useState<string[]>([]);
+
+  const [similar, setSimilar] = useState<SimilarResult | null>(null);
+  const [similarLoading, setSimilarLoading] = useState(false);
+
+  /* Fetch list — now triggered by DEBOUNCED search, not raw keystrokes */
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setErrorMsg(null);
+
+      const url = `${API_BASE}/aksharamala?${new URLSearchParams({
+        search: debouncedSearch,
+        type: typeFilter,
+        page: String(page),
+        page_size: String(PAGE_SIZE),
+      })}`;
+
+      try {
+        const res = await fetch(url);
+
+        if (!res.ok) {
+          const bodyText = await res.text();
+          console.error(`[Aksharamala] ${res.status} ${res.statusText}\n${bodyText}`);
+          setErrorMsg(`API ఎర్రర్ (${res.status}): ${bodyText.slice(0, 200) || res.statusText}`);
+          setItems([]);
+          setTotalCount(0);
+          setPageCount(1);
+          setSametaluMatches([]);
+          return;
+        }
+
+        const data = await res.json();
+        setItems(data.items || []);
+        setTotalCount(data.total_count || 0);
+        setPageCount(data.page_count || 1);
+        setSametaluMatches(data.sametalu_matches || []);
+      } catch (err) {
+        console.error("[Aksharamala] fetch failed:", err);
+        setErrorMsg(err instanceof Error ? err.message : "తెలియని ఎర్రర్ వచ్చింది.");
+        setItems([]);
+        setTotalCount(0);
+        setPageCount(1);
+        setSametaluMatches([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [debouncedSearch, typeFilter, page]);
+
+  const handleCardClick = async (a: Akshara) => {
+    setSimilarLoading(true);
+    setSimilar(null);
+    try {
+      const params = new URLSearchParams({ letter: a.letter, word: a.word || "" });
+      const res = await fetch(`${API_BASE}/aksharamala_similar?${params}`);
+      if (!res.ok) {
+        console.error(`[Aksharamala Similar] ${res.status} ${res.statusText}`);
+        return;
+      }
+      const data = await res.json();
+      setSimilar(data);
+    } catch (err) {
+      console.error("[Aksharamala Similar] fetch failed:", err);
+    } finally {
+      setSimilarLoading(false);
+    }
+  };
+
+  const handleFilter = (type: "all" | "swaralu" | "vyanjanalu") => {
+    setTypeFilter(type);
+    setPage(1);
+  };
+
   return (
-    <Box
-      sx={{
-        maxWidth: 900,
-        mx: "auto",
-        p: 2,
-      }}
-    >
-      {/* 🌼 TITLE */}
-      <Typography
-        variant="h3"
-        fontWeight={800}
-        sx={{
-          letterSpacing: "-0.5px",
-          background: "linear-gradient(90deg, #0f172a, #2563eb)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          fontWeight: 700,
-          fontSize: "calc(var(--telugu-font-size) * 1.8)",
-          textAlign: "center",
-        }}
-      >
-        అక్షరమాల
-      </Typography>
+    <Container maxWidth="md">
+      <Stack spacing={4} sx={{ py: 6 }}>
+        {/* HEADER */}
+        <Box textAlign="center">
+          <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" sx={{ mb: 2 }}>
+            <Chip label="అన్నీ" clickable color={typeFilter === "all" ? "primary" : "default"} onClick={() => handleFilter("all")} />
+            <Chip label="అచ్చులు" clickable color={typeFilter === "swaralu" ? "primary" : "default"} onClick={() => handleFilter("swaralu")} />
+            <Chip label="హల్లులు" clickable color={typeFilter === "vyanjanalu" ? "primary" : "default"} onClick={() => handleFilter("vyanjanalu")} />
+          </Stack>
 
-      <Typography align="center" sx={{ opacity: 0.85, mb: 2 }}>
-        వినండి • చదవండి • నేర్చుకోండి
-      </Typography>
+          <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ opacity: 0.75 }}>🔊 స్వరం:</Typography>
+            <ToggleButtonGroup
+              size="small"
+              value={voiceGender}
+              exclusive
+              onChange={(_, v) => { if (v) setVoiceGender(v); }}
+            >
+              <ToggleButton value="male" sx={{ textTransform: "none", px: 2 }}>🎙️ మగ స్వరం</ToggleButton>
+              <ToggleButton value="female" sx={{ textTransform: "none", px: 2 }}>👩 స్త్రీ స్వరం</ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
 
-      {/* 🧠 SIMPLE INFO */}
-      <Stack direction="row" spacing={1} justifyContent="center" mb={2} flexWrap="wrap">
-        <Chip label="👶 పిల్లల కోసం" />
-        <Chip label="🔊 వినే అవకాశం" />
-        <Chip label="🎤 ఉచ్చారణ సాధన" />
-        <Chip label="✍️ రాయడం సాధన" />
-        <Chip label="📱 సులభం" />
-      </Stack>
+          <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mb: 3 }}>
+            <Chip label={`మొత్తం: ${totalCount}`} color="secondary" sx={{ fontWeight: 800 }} />
+            <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
+          </Stack>
 
-      {/* 📖 ఈ పేజీ గురించి + ఎలా వాడాలి — end user కోసం, simple language */}
-      <Accordion
-        elevation={0}
-        sx={{
-          mb: 2,
-          borderRadius: "12px",
-          border: "1px solid",
-          borderColor: "divider",
-          "&:before": { display: "none" },
-        }}
-      >
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <MenuBookIcon color="primary" fontSize="small" />
-            <Typography fontWeight={700}>
-              ఈ పేజీ గురించి • ఎలా వాడాలి
+          <TextField
+            fullWidth
+            placeholder="అక్షరం లేదా పదం వెతకండి..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            sx={{ bgcolor: "white", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+          />
+        </Box>
+
+        {errorMsg && !loading && (
+          <Alert severity="error" sx={{ borderRadius: "12px" }}>
+            {errorMsg}
+            <br />
+            <Typography variant="caption" sx={{ opacity: 0.8 }}>
+              బ్రౌజర్ కన్సోల్ (F12) లో పూర్తి వివరాలు చూడండి.
             </Typography>
-          </Stack>
-        </AccordionSummary>
+          </Alert>
+        )}
 
-        <AccordionDetails>
-          <Typography sx={{ mb: 2, opacity: 0.85 }}>
-            ఇది తెలుగు అక్షరమాల నేర్చుకోవడానికి ఒక సులభమైన పేజీ — అచ్చులు,
-            హల్లులు, ప్రతి అక్షరానికి ఒక పదం, మరియు ఆ పదానికి సంబంధించిన
-            చిత్రం చూడొచ్చు. వినడం, చెప్పడం, రాయడం మూడూ ప్రాక్టీస్
-            చేయొచ్చు. కింద ఎలా వాడాలో దశలవారీగా చూడండి.
-          </Typography>
-
-          <Stack spacing={2}>
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <SearchIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>వెతకడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  పైన ఉన్న సెర్చ్ బాక్స్‌లో ఏదైనా అక్షరం లేదా పదం టైప్
-                  చేయండి — ఉదాహరణకు &quot;ఎలుక&quot; అని టైప్ చేస్తే, ఆ
-                  పదానికి సంబంధించిన అక్షరం చూపిస్తుంది. దానితో పాటు, ఆ
-                  పదం ఉన్న సామెతలు కూడా కింద కనిపిస్తాయి.
-                </Typography>
+        {loading ? (
+          <Box textAlign="center" sx={{ py: 10 }}>
+            <CircularProgress />
+          </Box>
+        ) : errorMsg ? null : items.length === 0 ? (
+          <Box textAlign="center" sx={{ py: 10 }}>
+            <Typography variant="h6" sx={{ opacity: 0.5 }}>క్షమించండి! ఏమీ దొరకలేదు.</Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center" }}>
+            {items.map((a) => (
+              <Box
+                key={a.id}
+                onClick={() => handleCardClick(a)}
+                sx={{ cursor: "pointer", flex: { xs: "1 1 100%", sm: "1 1 calc(50% - 16px)" }, maxWidth: { xs: "100%", sm: "440px" } }}
+              >
+                <AksharaPosterCard akshara={a} enableRead={true} voiceGender={voiceGender} />
               </Box>
+            ))}
+          </Box>
+        )}
+
+        {sametaluMatches.length > 0 && !loading && (
+          <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
+            <Typography fontWeight={700} sx={{ mb: 1 }}>సంబంధిత సామెతలు:</Typography>
+            <Stack spacing={0.5}>
+              {sametaluMatches.map((s, i) => (
+                <Typography key={i} sx={{ opacity: 0.85 }}>• {s}</Typography>
+              ))}
             </Stack>
+          </Box>
+        )}
 
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <TouchAppIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>వర్గం ఎంచుకోవడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  &quot;అచ్చులు&quot; లేదా &quot;హల్లులు&quot; బటన్ నొక్కి,
-                  ఆ వర్గానికి చెందిన అక్షరాలు మాత్రమే చూడొచ్చు.
-                  &quot;అన్నీ&quot; నొక్కితే మళ్ళీ అన్ని అక్షరాలు
-                  కనిపిస్తాయి.
-                </Typography>
-              </Box>
+        {similarLoading && (
+          <Box textAlign="center" sx={{ py: 2 }}>
+            <CircularProgress size={24} />
+          </Box>
+        )}
+
+        {similar && !similarLoading && (
+          <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
+            <Typography fontWeight={700} sx={{ mb: 1 }}>
+              &quot;{similar.clicked.letter}&quot; కి సంబంధించినవి
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {similar.same_type.map((s) => (
+                <Chip key={s.id} label={`${s.letter} — ${s.word || ""}`} />
+              ))}
             </Stack>
+          </Box>
+        )}
 
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <RecordVoiceOverIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>స్వరం ఎంచుకోవడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  జాబితా పైన &quot;మగ స్వరం&quot; లేదా &quot;స్త్రీ
-                  స్వరం&quot; ఎంచుకోవచ్చు — మీరు ఎంచుకున్న స్వరంలోనే
-                  అన్ని అక్షరాలు వినిపిస్తాయి.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <VolumeUpIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>వినడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  ప్రతి అక్షరం కార్డ్‌లో ఉన్న 🔊 బటన్ నొక్కితే, ఆ అక్షరం
-                  మరియు దాని పదం బిగ్గరగా చదివి వినిపిస్తుంది. ఆపాలంటే
-                  పక్కనే ఉన్న ఎరుపు బటన్ నొక్కండి.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <MicIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>మీరు చెప్పి ప్రాక్టీస్ చేయడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  🎤 బటన్ నొక్కి, అక్షరం లేదా పదాన్ని బిగ్గరగా చెప్పండి —
-                  మీరు సరిగ్గా పలికారో లేదో వెంటనే చూపిస్తుంది. తప్పైతే
-                  మళ్ళీ ప్రయత్నించవచ్చు. (దీనికి మైక్రోఫోన్ అనుమతి
-                  కావాలి, మరియు Chrome బ్రౌజర్‌లో బాగా పనిచేస్తుంది.)
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <EditIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>రాయడం నేర్చుకోవడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  &quot;రాయండి&quot; బటన్ నొక్కితే, ఆ అక్షరాన్ని మీ
-                  స్క్రీన్ మీద వేలితో లేదా మౌస్‌తో రాసి ప్రాక్టీస్
-                  చేయొచ్చు. రాసిన తర్వాత &quot;తనిఖీ చేయండి&quot; నొక్కితే
-                  మీరు ఎంత బాగా రాశారో చూపిస్తుంది. తప్పైతే తుడిచి మళ్ళీ
-                  ప్రయత్నించండి. &quot;ముగించు&quot; నొక్కితే మామూలు
-                  వ్యూకి తిరిగి వెళ్తుంది.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <TouchAppIcon color="secondary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>సంబంధిత అక్షరాలు చూడడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  ఏదైనా అక్షరం కార్డ్ మీద (బటన్‌లు కాకుండా) నొక్కితే, ఆ
-                  అక్షరం వర్గానికి చెందిన ఇతర సంబంధిత అక్షరాలు కింద
-                  చూపిస్తుంది — కొత్త అక్షరాలు తెలుసుకోవడానికి ఇది
-                  ఉపయోగపడుతుంది.
-                </Typography>
-              </Box>
-            </Stack>
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-
-      <Divider sx={{ my: 2 }} />
-
-      {/* 📜 MAIN CONTENT */}
-      <AksharamalaParent />
-    </Box>
+        {pageCount > 1 && (
+          <Box display="flex" justifyContent="center">
+            <Pagination
+              count={pageCount}
+              page={page}
+              onChange={(_, v) => {
+                setPage(v);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              color="primary"
+              size="large"
+              shape="rounded"
+            />
+          </Box>
+        )}
+      </Stack>
+    </Container>
   );
 }

@@ -8,6 +8,9 @@ import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
 import EditIcon from "@mui/icons-material/Edit";
 import CloseIcon from "@mui/icons-material/Close";
+import MicIcon from "@mui/icons-material/Mic";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
 
 import ShareButtons from "@/app/components/ShareBar";
 import AksharaTraceBoard from "./AksharaTraceBoard";
@@ -23,12 +26,12 @@ type Akshara = {
 type Props = {
   akshara: Akshara;
   enableRead?: boolean;
-  // NEW — voice gender comes from the parent's shared selector now,
-  // instead of being hardcoded per card.
   voiceGender?: "male" | "female";
 };
 
 const CARD_VOICE_SOURCE = "edge";
+
+type PracticeResult = { correct: boolean; message: string } | null;
 
 const AksharaPosterCard: React.FC<Props> = ({
   akshara,
@@ -41,12 +44,18 @@ const AksharaPosterCard: React.FC<Props> = ({
   const posterRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const [isListening, setIsListening] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const [practiceResult, setPracticeResult] = useState<PracticeResult>(null);
+  const recognitionRef = useRef<any>(null);
+
   useEffect(() => {
     return () => {
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
       audioRef.current?.pause();
+      recognitionRef.current?.stop();
     };
   }, []);
 
@@ -59,14 +68,8 @@ const AksharaPosterCard: React.FC<Props> = ({
     setIsSpeaking(false);
   }, []);
 
-  // Fallback path — browser's built-in voice. Note: browser
-  // speechSynthesis voice selection (male/female) depends entirely
-  // on what voices the OS/browser exposes for te-IN, which varies by
-  // device — this fallback uses whatever default voice is available,
-  // since forcing a specific gender isn't reliably controllable here.
   const speakWithBrowserVoice = useCallback(() => {
     if (!("speechSynthesis" in window)) return;
-
     window.speechSynthesis.cancel();
 
     const textToSpeak = akshara.word
@@ -84,8 +87,6 @@ const AksharaPosterCard: React.FC<Props> = ({
     window.speechSynthesis.speak(utterance);
   }, [akshara.letter, akshara.word]);
 
-  // Primary path — Microsoft Edge voice via /api/tts, now using the
-  // voiceGender selected in the parent's toggle instead of a fixed value.
   const speak = useCallback(async () => {
     stopSpeaking();
 
@@ -130,6 +131,69 @@ const AksharaPosterCard: React.FC<Props> = ({
       speakWithBrowserVoice();
     }
   }, [akshara.letter, akshara.word, voiceGender, stopSpeaking, speakWithBrowserVoice]);
+
+  const handlePracticeClick = useCallback(() => {
+    const SpeechRecognitionCtor =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      setPracticeResult({
+        correct: false,
+        message: "మీ బ్రౌజర్‌లో వాయిస్ గుర్తింపు లేదు (Chrome వాడండి).",
+      });
+      return;
+    }
+
+    setPracticeResult(null);
+
+    const recognition = new SpeechRecognitionCtor();
+    recognition.lang = "te-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognitionRef.current = recognition;
+
+    recognition.onstart = () => setIsListening(true);
+
+    recognition.onresult = async (event: any) => {
+      const spokenText = event.results[0][0].transcript;
+      setIsListening(false);
+      setIsChecking(true);
+
+      try {
+        const targetWord = akshara.word || akshara.letter;
+        const res = await fetch("/api/pronunciation_check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target_word: targetWord, spoken_text: spokenText }),
+        });
+
+        if (!res.ok) throw new Error(`Pronunciation check API ${res.status}`);
+
+        const result = await res.json();
+        setPracticeResult({ correct: result.correct, message: result.message });
+      } catch (err) {
+        console.error("[AksharaPosterCard] pronunciation check failed:", err);
+        setPracticeResult({
+          correct: false,
+          message: "తనిఖీ చేయడంలో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.",
+        });
+      } finally {
+        setIsChecking(false);
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      setPracticeResult({
+        correct: false,
+        message: "వినలేకపోయాను, మళ్ళీ ప్రయత్నించండి.",
+      });
+    };
+
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
+  }, [akshara.letter, akshara.word]);
 
   return (
     <Card
@@ -209,6 +273,30 @@ const AksharaPosterCard: React.FC<Props> = ({
                     </Typography>
                   )}
                 </Box>
+
+                {practiceResult && (
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    alignItems="center"
+                    sx={{
+                      mt: 1,
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: "999px",
+                      bgcolor: practiceResult.correct ? "success.light" : "error.light",
+                    }}
+                  >
+                    {practiceResult.correct ? (
+                      <CheckCircleIcon fontSize="small" sx={{ color: "success.dark" }} />
+                    ) : (
+                      <CancelIcon fontSize="small" sx={{ color: "error.dark" }} />
+                    )}
+                    <Typography variant="body2" fontWeight={700}>
+                      {practiceResult.message}
+                    </Typography>
+                  </Stack>
+                )}
               </Stack>
             )}
           </Box>
@@ -256,6 +344,29 @@ const AksharaPosterCard: React.FC<Props> = ({
               >
                 <StopCircleIcon />
               </IconButton>
+            </Tooltip>
+
+            <Tooltip title="మీరు చెప్పండి">
+              <span>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePracticeClick();
+                  }}
+                  disabled={isListening || isChecking}
+                  sx={{
+                    bgcolor: isListening ? "warning.main" : "secondary.light",
+                    color: "white",
+                    "&:hover": { bgcolor: "secondary.main" },
+                  }}
+                >
+                  {isListening || isChecking ? (
+                    <CircularProgress size={20} sx={{ color: "white" }} />
+                  ) : (
+                    <MicIcon />
+                  )}
+                </IconButton>
+              </span>
             </Tooltip>
           </Stack>
 
