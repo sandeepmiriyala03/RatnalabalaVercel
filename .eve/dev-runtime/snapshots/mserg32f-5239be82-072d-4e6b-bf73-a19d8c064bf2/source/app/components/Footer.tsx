@@ -86,7 +86,7 @@ useEffect(() => {
         <Divider sx={{ my: 0.8 }} />
 
         <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-          © {new Date().getFullYear()} సందీప్ మిరియాల — యుక్తిశాల AI
+          © {new Date().getFullYear()} యుక్తిశాల AI
         </Typography>
 
         <Typography
