@@ -35,9 +35,9 @@ const NAV_GROUPS = [
       { label: "అక్షరమాల",     path: "/aksharamala" },
       { label: "గుణింతమాల",     path: "/guninta" },
       { label: "పదాలమాల ",      path: "/padalamala" },
-       { label: "సామెతలమాల",    path: "/sametalu" },
+      { label: "సామెతలమాల",    path: "/sametalu" },
       { label: "సంధిమాల",     path: "/sandhi" },
-      { label: "సమాసముమాల",   path: "/samasa" }, 
+      { label: "సమాసముమాల",   path: "/samasa" },
     ],
   },
   {
@@ -49,7 +49,14 @@ const NAV_GROUPS = [
       { label: "లిపిమాల",      path: "/lipimala" },
       { label: "ఖతిమాల",       path: "/khatiMala" },
       { label: "విదురమాల", path: "/rahasyabhasha" },
-      { label: "శైలిమాల", path: "/shailimala" }, 
+      { label: "శైలిమాల", path: "/shailimala" },
+    ],
+  },
+  {
+    label: "గీతామాల",
+    icon: "🕉️",
+    items: [
+      { label: "భగవద్గీత చదవండి", path: "/geeta" },
     ],
   },
 ];
