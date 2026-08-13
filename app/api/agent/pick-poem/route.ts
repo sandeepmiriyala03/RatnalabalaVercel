@@ -37,7 +37,9 @@ function fetchPoemSample(sampleSize: number): {
   const all: PoemEntry[] = [];
 
   for (const folder of POETRY_FOLDERS) {
-    const dir = path.join(process.cwd(), folder);
+    // Scope filesystem access to the `content/` subfolder to avoid
+    // tracing the entire project during the Next/Turbopack build.
+    const dir = path.join(process.cwd(), "content", folder);
     
     if (!fs.existsSync(dir)) continue;
 

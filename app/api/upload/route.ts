@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const tempPath = path.join(
-      os.tmpdir(),
+      /* turbopackIgnore: true */ os.tmpdir(),
       `${Date.now()}-${safeName}`
     );
 

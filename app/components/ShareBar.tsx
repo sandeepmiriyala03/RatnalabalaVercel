@@ -10,7 +10,12 @@ type Props = {
   targetRef: React.RefObject<HTMLDivElement | null>;
 };
 
-export default function ShareButtons({ targetRef }: Props) {
+type OptionalShareProps = {
+  title?: string;
+  text?: string;
+};
+
+export default function ShareButtons({ targetRef, title, text }: Props & OptionalShareProps) {
 
   /* 🔹 Shared Telugu Text */
   const SHARE_TEXT =
@@ -49,12 +54,14 @@ export default function ShareButtons({ targetRef }: Props) {
     const file = new File([blob], "telugu-padyam.png", {
       type: "image/png",
     });
+    const shareTitle = title ?? "రత్నాలబాల – పద్యాలవాల – భావాలమాల";
+    const shareText = text ?? SHARE_TEXT;
 
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({
         files: [file],
-        title: "రత్నాలబాల – పద్యాలవాల – భావాలమాల",
-        text: SHARE_TEXT,
+        title: shareTitle,
+        text: shareText,
       });
     } else {
       download("social");
@@ -70,14 +77,14 @@ export default function ShareButtons({ targetRef }: Props) {
     link.download = "telugu-padyam.png";
     link.click();
 
-    const text = encodeURIComponent(
+    const textToTweet = encodeURIComponent(text ?? (
       "రత్నాలబాల – పద్యాలవాల – భావాలమాల\n" +
       "చదవండి – వినండి – పంచుకోండి.\n\n" +
       "🌐 https://ratnalabala.vercel.app/"
-    );
+    ));
 
     window.open(
-      `https://twitter.com/intent/tweet?text=${text}`,
+      `https://twitter.com/intent/tweet?text=${textToTweet}`,
       "_blank",
       "noopener,noreferrer"
     );
