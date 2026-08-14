@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useRef, useState, useMemo, useEffect } from "react";
 import {
@@ -57,7 +56,10 @@ const KAVI_FOCAL_MAP: Record<string, string> = {
   "డాక్టర్ మిరియాల రామకృష్ణ": "50% 15%",
   "శ్రీ ప్రసాదరావు మిరియాల గారు": "50% 15%",
 };
-const DEFAULT_FOCAL_POINT = "50% 20%";
+// GeethaMain.png is pre-cropped tight around both figures' faces/crowns,
+// so a centered position works — no per-image offset needed like the
+// wide source frame required.
+const DEFAULT_FOCAL_POINT = "50% 35%";
 
 const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
 const SITE_URL = "https://ratnalabala.vercel.app/";
@@ -175,12 +177,9 @@ export default function GeetaCard({
   const [musicChoice, setMusicChoice] = useState<MusicOption>("guitar");
   const [musicVolume, setMusicVolume] = useState(BG_MUSIC_VOLUME_DEFAULT);
 
- 
-
   const authorText = Array.isArray(authors) ? authors.join(", ") : authors;
 
   const posterTitle = `శ్లోకం ${verse}`;
-
 
   const voiceText = useMemo(
     () => buildNarrationText(sloka, meaning, authorText),
@@ -223,6 +222,23 @@ export default function GeetaCard({
         .filter(Boolean),
     [sloka]
   );
+
+  // Speaker-tag lines (e.g. "సంజయ ఉవాచ ।") can appear anywhere in the
+  // sloka block — at the top (verse 1, 2, 24, 47) or mid-block (verse
+  // 21, 25, 28). Pulled out so they render as a small caption above the
+  // sloka rather than blending into the bold verse text.
+  const { speakerTags, slokaBodyLines } = useMemo(() => {
+    const tags: string[] = [];
+    const body: string[] = [];
+    for (const line of slokaLines) {
+      if (line.includes("ఉవాచ")) {
+        tags.push(line);
+      } else {
+        body.push(line);
+      }
+    }
+    return { speakerTags: tags, slokaBodyLines: body };
+  }, [slokaLines]);
 
   useEffect(() => {
     return () => {
@@ -366,9 +382,6 @@ export default function GeetaCard({
     }
   };
 
-
-
-
   const shareTitle = `గీతామాల — శ్లోకం ${verse}${chapterLabel ? ` (${chapterLabel})` : ""}`;
 
   return (
@@ -390,7 +403,7 @@ export default function GeetaCard({
           "&:last-child": { pb: { xs: "20px", sm: "24px" } },
         }}
       >
-        {/* 📝 Poster — captured by both ShareButtons and handleDownloadVideo */}
+        {/* 📝 Poster — captured by ShareButtons */}
         <Box
           ref={posterRef}
           data-poster-root
@@ -467,9 +480,27 @@ export default function GeetaCard({
               />
             </Box>
 
+            {/* Speaker tag(s) — e.g. "సంజయ ఉవాచ ।" — set apart as a small
+                italic caption, same visual family as the అర్థం label,
+                so they read as a stage direction rather than verse text. */}
+            {speakerTags.length > 0 && (
+              <Typography
+                data-poster-speaker
+                sx={{
+                  fontStyle: "italic",
+                  fontSize: { xs: "0.78rem", sm: "0.82rem" },
+                  color: POSTER_COLOR.inkMuted,
+                  fontFamily: "'Noto Serif Telugu', serif",
+                  mb: 1,
+                }}
+              >
+                {speakerTags.join(" · ")}
+              </Typography>
+            )}
+
             {/* Sloka — Sanskrit, own visual block */}
             <Box sx={{ mb: 1.5 }}>
-              {slokaLines.map((line, i) => (
+              {slokaBodyLines.map((line, i) => (
                 <Typography
                   key={i}
                   data-poster-line
@@ -479,7 +510,7 @@ export default function GeetaCard({
                     lineHeight: { xs: 1.85, sm: 1.9, md: 2.1 },
                     color: POSTER_COLOR.ink,
                     fontFamily: "'Noto Serif Telugu', serif",
-                    mb: i === slokaLines.length - 1 ? 0 : { xs: 0.5, sm: 0.75, md: 1 },
+                    mb: i === slokaBodyLines.length - 1 ? 0 : { xs: 0.5, sm: 0.75, md: 1 },
                     overflowWrap: "break-word",
                   }}
                 >
@@ -671,8 +702,6 @@ export default function GeetaCard({
               <ShareButtons targetRef={posterRef} title={shareTitle} text={voiceText} />
             </Box>
           </Stack>
-
-        
 
           <Button
             onClick={() => setVoiceOpen((v) => !v)}
