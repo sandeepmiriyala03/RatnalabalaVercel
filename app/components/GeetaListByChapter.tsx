@@ -87,6 +87,15 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
 
   const sortVerses = (list: GeetaVerseItem[]) => list.sort((a, b) => a.verse - b.verse);
 
+  // The dataset's sloka/meaning strings sometimes come prefixed with a
+  // verse-reference tag like "BG18.1: " or "BG 18.1 - " baked into the
+  // text itself. Strip that off before it ever reaches GeetaCard, since
+  // the chapter/verse info is already shown separately via chapterLabel.
+  const stripVerseReference = (text: string): string =>
+    text
+      .replace(/^\s*BG\s*\d+[.:]\d+\s*[-:.]?\s*/i, "")
+      .trim();
+
   /* 📥 Load verses — now from the live /api/gita endpoint (Hugging Face
      under the hood), instead of static /geeta/chapterN.json files. */
   useEffect(() => {
@@ -106,12 +115,12 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
             const label = meta?.label ?? `అధ్యాయం ${chapterData.chapter}`;
             return chapterData.verses.map((v) => ({
               verse: v.verse,
-              sloka: v.sloka,
-              meaning: v.meaning,
+              sloka: stripVerseReference(v.sloka),
+              meaning: stripVerseReference(v.meaning),
               chapterLabel: `అధ్యాయం ${chapterData.chapter}: ${label}`,
               slug: `chapter${chapterData.chapter}-verse${v.verse}`,
-              w2wMeaning: v.w2wMeaning,
-              commentary: v.commentary,
+              w2wMeaning: v.w2wMeaning ? stripVerseReference(v.w2wMeaning) : v.w2wMeaning,
+              commentary: v.commentary ? stripVerseReference(v.commentary) : v.commentary,
               audio: v.audio,
             }));
           });
@@ -126,12 +135,12 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
         const data: GeetaChapterJson = await res.json();
         const items: GeetaVerseItem[] = data.verses.map((v) => ({
           verse: v.verse,
-          sloka: v.sloka,
-          meaning: v.meaning,
+          sloka: stripVerseReference(v.sloka),
+          meaning: stripVerseReference(v.meaning),
           chapterLabel: `అధ్యాయం ${data.chapter}: ${data.chapterName}`,
           slug: `chapter${data.chapter}-verse${v.verse}`,
-          w2wMeaning: v.w2wMeaning,
-          commentary: v.commentary,
+          w2wMeaning: v.w2wMeaning ? stripVerseReference(v.w2wMeaning) : v.w2wMeaning,
+          commentary: v.commentary ? stripVerseReference(v.commentary) : v.commentary,
           audio: v.audio,
         }));
         setVerses(sortVerses(items));
