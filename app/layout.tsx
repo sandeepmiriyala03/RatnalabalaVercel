@@ -47,11 +47,11 @@ export default function RootLayout({
   return (
     <html lang="te">
       <body>
-        <YuktaiClient >
+     
         <RootClientLayout>{children}</RootClientLayout>
         <Analytics />
         <SpeedInsights />
-        </YuktaiClient>
+ 
       </body>
     </html>
   );
