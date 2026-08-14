@@ -141,20 +141,38 @@
   font-style: normal;
   font-display: swap;
 }
+
 /* =====================================================
    🌐 CSS VARIABLES (THEME + TYPOGRAPHY)
+   =====================================================
+   Palette chosen to match the devotional/traditional feel
+   already present elsewhere in the app (poster colors in
+   GeetaCard: forest green #1a3d2b/#2d6a4f, bronze #8B6F47;
+   navbar logo: saffron→orange gradient) instead of the
+   generic Material-purple defaults this replaced.
    ===================================================== */
 
 :root {
-  /* Colors */
-  --background: #ffffff;
-  --foreground: #1a1a1a;
-  --surface: #f7f7f8;
+  /* Base surfaces — warm ivory instead of stark white, echoes the
+     poster background (#F7F2EA) used in GeetaCard */
+  --background: #fdfaf5;
+  --foreground: #241f1a;
+  --surface: #f7f2ea;
   --surface-elevated: #ffffff;
-  --primary: #6200ee;
-  --secondary: #03dac6;
-  --border: #e5e7eb;
-  --muted-text: #6b7280;
+
+  /* Brand colors */
+  --primary: #8b3a1f;         /* deep terracotta/maroon — traditional, warm, readable */
+  --primary-light: #b0552f;
+  --secondary: #1a3d2b;       /* forest green — matches GeetaCard poster border */
+  --secondary-light: #2d6a4f;
+
+  /* Accent — saffron/gold, echoes the navbar logo gradient */
+  --accent: #c9820a;
+  --accent-light: #e0a838;
+  --accent-gradient: linear-gradient(135deg, #f6b93b, #e67e22);
+
+  --border: #e4dacb;          /* matches poster hairline color */
+  --muted-text: #6b6258;      /* matches poster inkMuted */
 
   /* Radius */
   --radius: 12px;
@@ -173,17 +191,27 @@
   --transition-medium: 0.25s ease;
 }
 
-/* 🌙 Dark Mode */
+/* 🌙 Dark Mode — deep warm charcoal instead of flat near-black,
+   with the same terracotta/forest-green/gold identity carried through
+   at brighter, higher-contrast values for legibility */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b0b0d;
-    --foreground: #e5e7eb;
-    --surface: #16161a;
-    --surface-elevated: #1f1f25;
-    --primary: #bb86fc;
-    --secondary: #03dac6;
-    --border: #2d2d36;
-    --muted-text: #9ca3af;
+    --background: #17140f;
+    --foreground: #f0e9dd;
+    --surface: #211c15;
+    --surface-elevated: #2a241b;
+
+    --primary: #d97a4d;         /* lightened terracotta for dark-bg contrast */
+    --primary-light: #e59a72;
+    --secondary: #4a8f6c;       /* lightened forest green */
+    --secondary-light: #6bb38c;
+
+    --accent: #e0a838;
+    --accent-light: #f0c675;
+    --accent-gradient: linear-gradient(135deg, #f0c675, #e0a838);
+
+    --border: #3a3226;
+    --muted-text: #b3a894;
   }
 }
 
@@ -439,8 +467,7 @@ a:hover {
     var(--font-sans) !important;
 }
 
-MuiTypography-root 
-/* ==============================.MuiTypography-root,=======================
+/* =====================================================
    🔤 INDIVIDUAL FONT CLASSES
    (For specific use-cases)
    ===================================================== */
@@ -1047,7 +1074,6 @@ MuiTypography-root
 .chitramala-font-pottisreeramulu {
   font-family: "PottiSreeramulu", system-ui;
 }
-
 
 .chitramala-font-TiroSundaraTelugu-Regular {
   font-family: "TiroSundaraTelugu-Regular", system-ui;
