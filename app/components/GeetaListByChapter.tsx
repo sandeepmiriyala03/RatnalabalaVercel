@@ -38,12 +38,22 @@ interface GeetaVerseItem {
   meaning: string;
   chapterLabel: string;
   slug: string;
+  // Extra fields the live API returns that the old static JSON didn't have.
+  // Optional so nothing breaks if a chapter/verse is missing one.
+  w2wMeaning?: string;
+  commentary?: string;
+  audio?: string;
 }
 
+// Shape returned by /api/gita?chapter=N and /api/gita?chapter=all
+// (each item in the "all" array has this same shape).
 interface GeetaVerseRaw {
   verse: number;
   sloka: string;
   meaning: string;
+  w2wMeaning?: string;
+  commentary?: string;
+  audio?: string;
 }
 
 interface GeetaChapterJson {
@@ -61,10 +71,12 @@ interface Props {
 
 const ITEMS_PER_PAGE = 5;
 
+// Live API base — override via env var if you ever move this off the
+// same domain (e.g. testing against localhost:8000 during dev).
+const GITA_API_BASE =
+  process.env.NEXT_PUBLIC_GITA_API_BASE ?? "";
+
 const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) => {
-  // Kept as the RICH shape (verse, sloka, meaning separate) so
-  // GeetaCard can render sloka/meaning as distinct sections — not
-  // squashed into one generic "content" string like before.
   const [verses, setVerses] = useState<GeetaVerseItem[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -75,7 +87,8 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
 
   const sortVerses = (list: GeetaVerseItem[]) => list.sort((a, b) => a.verse - b.verse);
 
-  /* 📥 Load verses — from static JSON files */
+  /* 📥 Load verses — now from the live /api/gita endpoint (Hugging Face
+     under the hood), instead of static /geeta/chapterN.json files. */
   useEffect(() => {
     const fetchVerses = async () => {
       setLoading(true);
@@ -83,34 +96,31 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
 
       try {
         if (chapter === "all") {
-          const results = await Promise.allSettled(
-            GEETA_CHAPTERS.map((c) =>
-              fetch(`/geeta/chapter${c.key}.json`).then((r) => {
-                if (!r.ok) throw new Error();
-                return r.json() as Promise<GeetaChapterJson>;
-              })
-            )
-          );
+          const res = await fetch(`${GITA_API_BASE}/api/gita?chapter=all`);
+          if (!res.ok) throw new Error();
 
-          const merged: GeetaVerseItem[] = results
-            .filter((r): r is PromiseFulfilledResult<GeetaChapterJson> => r.status === "fulfilled")
-            .flatMap((r) => {
-              const meta = GEETA_CHAPTERS.find((c) => c.key === r.value.chapter);
-              const label = meta?.label ?? `అధ్యాయం ${r.value.chapter}`;
-              return r.value.verses.map((v) => ({
-                verse: v.verse,
-                sloka: v.sloka,
-                meaning: v.meaning,
-                chapterLabel: `అధ్యాయం ${r.value.chapter}: ${label}`,
-                slug: `chapter${r.value.chapter}-verse${v.verse}`,
-              }));
-            });
+          const allChapters: GeetaChapterJson[] = await res.json();
+
+          const merged: GeetaVerseItem[] = allChapters.flatMap((chapterData) => {
+            const meta = GEETA_CHAPTERS.find((c) => c.key === chapterData.chapter);
+            const label = meta?.label ?? `అధ్యాయం ${chapterData.chapter}`;
+            return chapterData.verses.map((v) => ({
+              verse: v.verse,
+              sloka: v.sloka,
+              meaning: v.meaning,
+              chapterLabel: `అధ్యాయం ${chapterData.chapter}: ${label}`,
+              slug: `chapter${chapterData.chapter}-verse${v.verse}`,
+              w2wMeaning: v.w2wMeaning,
+              commentary: v.commentary,
+              audio: v.audio,
+            }));
+          });
 
           setVerses(sortVerses(merged));
           return;
         }
 
-        const res = await fetch(`/geeta/chapter${chapter}.json`);
+        const res = await fetch(`${GITA_API_BASE}/api/gita?chapter=${chapter}`);
         if (!res.ok) throw new Error();
 
         const data: GeetaChapterJson = await res.json();
@@ -120,6 +130,9 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
           meaning: v.meaning,
           chapterLabel: `అధ్యాయం ${data.chapter}: ${data.chapterName}`,
           slug: `chapter${data.chapter}-verse${v.verse}`,
+          w2wMeaning: v.w2wMeaning,
+          commentary: v.commentary,
+          audio: v.audio,
         }));
         setVerses(sortVerses(items));
       } catch {
