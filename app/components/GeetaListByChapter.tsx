@@ -59,7 +59,7 @@ interface Props {
   authors: string | string[];
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 5;
 
 const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) => {
   // Kept as the RICH shape (verse, sloka, meaning separate) so
@@ -255,7 +255,8 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
         </Box>
       )}
 
-      {/* ── ప్రతి verse ఇప్పుడు GeetaCard తో — sloka + meaning విడివిడిగా ── */}
+      {/* ── ప్రతి verse ఇప్పుడు GeetaCard తో — sloka + meaning విడివిడిగా,
+          మరియు poetryName కూడా PoemCardNew తో సమానంగా pass చేయబడుతుంది ── */}
       {!loading &&
         !error &&
         current.map((v) => (
@@ -266,6 +267,7 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
             meaning={v.meaning}
             chapterLabel={chapter === "all" ? v.chapterLabel : undefined}
             authors={authors}
+            poetryName={poetryName}
           />
         ))}
 
