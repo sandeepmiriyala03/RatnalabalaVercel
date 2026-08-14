@@ -59,16 +59,18 @@ export default function PwaInstallPrompt() {
 
   return (
     <>
-      {/* 📲 Floating Install FAB – LEFT SIDE */}
+      {/* 📲 Floating Install FAB – RIGHT SIDE, bigger icon */}
       <Fab
-        size="small"
+        size="medium"
         aria-label="Install App"
         onClick={() => setOpen(true)}
         sx={{
           position: 'fixed',
-          left: 12,
+          right: 12,
           bottom: 80,
           zIndex: 1600,
+          width: 64,
+          height: 64,
           background: 'linear-gradient(135deg, #00c6ff, #0072ff)',
           color: '#fff',
           '&:hover': {
@@ -76,17 +78,17 @@ export default function PwaInstallPrompt() {
           },
         }}
       >
-        <InstallMobileIcon fontSize="small" />
+        <InstallMobileIcon sx={{ fontSize: 32 }} />
       </Fab>
 
-      {/* 📦 Install Popup – LEFT SIDE */}
+      {/* 📦 Install Popup – RIGHT SIDE */}
       {open && (
         <Paper
           elevation={8}
           sx={{
             position: 'fixed',
             bottom: { xs: 140, md: 100 },
-            left: 16,
+            right: 16,
             maxWidth: 320,
             p: 2,
             zIndex: 1600,
