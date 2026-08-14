@@ -8,7 +8,7 @@ import type { Metadata, Viewport } from "next"; // Added Viewport type
 import YuktaiClient from "@/app/components/YuktaiClient"; 
 // Theme color and scaling now go here in Next.js 13.4+
 export const viewport: Viewport = {
-  themeColor: "#4A148C",
+  themeColor: "#8B3A1F", // matches --primary (terracotta) in globals.css
 };
 
 export const metadata: Metadata = {
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
 
 
   other: {
-    "msapplication-TileColor": "#4A148C",
+    "msapplication-TileColor": "#8B3A1F", // matches --primary (terracotta) in globals.css
     "msapplication-TileImage": "/icons/icon-192x192.png",
   },
 };
