@@ -56,7 +56,7 @@ const NAV_GROUPS = [
     label: "గీతామాల",
     icon: "🕉️",
     items: [
-      { label: "భగవద్గీత చదవండి", path: "/geeta" },
+      { label: "భగవద్గీత", path: "/geeta" },
     ],
   },
 ];
