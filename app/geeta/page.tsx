@@ -19,7 +19,7 @@ import {
   DEFAULT_CHAPTER_KEY,
 } from "@/types/geeta";
 
-const GEETA_AUTHORS = "వేద వ్యాసుడు";
+const GEETA_AUTHORS = "శ్రీ వ్యాస మహర్షి గారు";
 
 export default function GeetaPage() {
   const [selectedKey, setSelectedKey] = useState<number>(DEFAULT_CHAPTER_KEY);

@@ -56,10 +56,7 @@ const KAVI_FOCAL_MAP: Record<string, string> = {
   "డాక్టర్ మిరియాల రామకృష్ణ": "50% 15%",
   "శ్రీ ప్రసాదరావు మిరియాల గారు": "50% 15%",
 };
-// GeethaMain.png is pre-cropped tight around both figures' faces/crowns,
-// so a centered position works — no per-image offset needed like the
-// wide source frame required.
-const DEFAULT_FOCAL_POINT = "50% 35%";
+const DEFAULT_FOCAL_POINT = "50% 20%";
 
 const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
 const SITE_URL = "https://ratnalabala.vercel.app/";
@@ -94,7 +91,7 @@ const BG_MUSIC_VOLUME_DEFAULT = 0.18;
 function buildNarrationText(sloka: string, meaning: string, authorText?: string): string {
   const base = `${sloka} ${meaning}`.replace(/\n/g, " ").trim();
   const author = authorText?.trim();
-  return author ? `${base} ఈ వ్యాఖ్యానం అందించినవారు ${author}.` : base;
+  return author ? `${base} ఈ శ్లోకం రచించినవారు ${author}.` : base;
 }
 
 // POST with a JSON body — same contract as PoemCardNew.tsx's fetchTtsAudio.
@@ -282,7 +279,7 @@ export default function GeetaCard({
       ...sloka.split("\n"),
       "అర్థం",
       ...meaning.split("\n"),
-      ...(author ? [`ఈ వ్యాఖ్యానం అందించినవారు ${author}.`] : []),
+      ...(author ? [`ఈ శ్లోకం రచించినవారు ${author}.`] : []),
     ]
       .map((line) => line.trim())
       .filter(Boolean);
@@ -382,7 +379,7 @@ export default function GeetaCard({
     }
   };
 
-  const shareTitle = `గీతామాల — శ్లోకం ${verse}${chapterLabel ? ` (${chapterLabel})` : ""}`;
+  const shareTitle = `గీతామాల  శ్లోకం ${verse}${chapterLabel ? ` (${chapterLabel})` : ""}`;
 
   return (
     <Card
