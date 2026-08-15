@@ -17,6 +17,7 @@ import {
 } from "@mui/material";
 import BoltIcon from "@mui/icons-material/Bolt";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 import type { TeluguFont } from "@/app/types/fonts";
 import { useDeviceFontBounds } from "./useDeviceFontBounds";
 
@@ -36,10 +37,10 @@ export default function FontControlsTelugu({
   setFontSize,
 }: Props) {
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
+  const [agentApplied, setAgentApplied] = useState(false);
   const { min, max } = useDeviceFontBounds();
 
-  // Font list now comes straight from the Python backend instead of
-  // being hardcoded here.
+  // Font list comes from the Python backend instead of being hardcoded.
   const [teluguFonts, setTeluguFonts] = useState<FontOption[]>([]);
 
   useEffect(() => {
@@ -49,6 +50,26 @@ export default function FontControlsTelugu({
       .catch(() => {
         // API unreachable — leave the list empty rather than crashing.
       });
+  }, []);
+
+  // ── THE AGENTIC PART ──
+  // On mount, before the user touches anything: perceive the screen
+  // width, ask the Python agent (api/font_agent.py) to decide a font
+  // + size, and act on its answer automatically. No click required.
+  useEffect(() => {
+    const width = typeof window !== "undefined" ? window.innerWidth : 1024;
+
+    fetch(`/api/font_agent?content_type=ui&width=${width}`)
+      .then((res) => res.json())
+      .then((decision: { fontFamily: string; fontSizeMultiplier: number }) => {
+        setFontFamily(decision.fontFamily as TeluguFont);
+        setFontSize(+(1.0 * decision.fontSizeMultiplier).toFixed(2));
+        setAgentApplied(true);
+      })
+      .catch(() => {
+        // Agent unreachable — keep whatever default the parent passed in.
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -100,13 +121,18 @@ export default function FontControlsTelugu({
 
   const STEP = 0.1;
 
-  const increase = () =>
+  const increase = () => {
+    setAgentApplied(false); // manual override
     setFontSize((v) => Math.min(max, +(v + STEP).toFixed(2)));
+  };
 
-  const decrease = () =>
+  const decrease = () => {
+    setAgentApplied(false);
     setFontSize((v) => Math.max(min, +(v - STEP).toFixed(2)));
+  };
 
   const restoreDefaults = () => {
+    setAgentApplied(false);
     setFontFamily("Dhurjati");
     setFontSize(1.0);
     setSnackbarOpen(true);
@@ -132,6 +158,15 @@ export default function FontControlsTelugu({
           backgroundColor: "var(--surface, #f7f2ea)",
         }}
       >
+        {agentApplied && (
+          <Box display="flex" alignItems="center" gap={0.5} mb={1}>
+            <SmartToyIcon sx={{ fontSize: 14, color: "var(--primary, #8b3a1f)" }} />
+            <Typography variant="caption" sx={{ color: "var(--primary, #8b3a1f)" }}>
+              ఏజెంట్ ఎంచుకుంది
+            </Typography>
+          </Box>
+        )}
+
         <Box
           display="flex"
           flexDirection={{ xs: "column", md: "row" }}
@@ -148,7 +183,10 @@ export default function FontControlsTelugu({
             <Select
               size="small"
               value={fontFamily}
-              onChange={(e) => setFontFamily(e.target.value as TeluguFont)}
+              onChange={(e) => {
+                setAgentApplied(false);
+                setFontFamily(e.target.value as TeluguFont);
+              }}
               sx={{
                 minWidth: 180,
                 flex: 1,
@@ -222,7 +260,10 @@ export default function FontControlsTelugu({
                 min={min}
                 max={max}
                 step={STEP}
-                onChange={(_, v) => setFontSize(v as number)}
+                onChange={(_, v) => {
+                  setAgentApplied(false);
+                  setFontSize(v as number);
+                }}
                 aria-label="Font size"
                 sx={{ color: "var(--primary, #8b3a1f)", mx: 0.5 }}
               />
