@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Box,
   Select,
@@ -26,16 +27,62 @@ type Props = {
   setFontFamily: React.Dispatch<React.SetStateAction<TeluguFont>>;
   fontSize: number;
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
+  /** Optional manual override. Leave unset and the component figures
+   * out the content type automatically from the current URL — see
+   * PATH_CONTENT_TYPE below. Only pass this if a specific page needs
+   * to deliberately override what auto-detection would pick. */
+  contentType?: "sloka" | "ui" | "heading";
 };
 
 type FontOption = { label: string; value: TeluguFont };
+
+// ── AUTO-DETECTION TABLE ──
+// Built directly from NAV_GROUPS (Navbar.tsx) — one place to maintain
+// instead of setting contentType by hand on every page.
+//
+// "sloka" bucket = traditional/calligraphic fonts (verse, poem,
+// devotional long-form reading content) — used for the సాహిత్యం
+// (Literature) group and గీతామాల (Gita)
+// "ui" bucket = default, legibility-first fonts — used for వ్యాకరణం
+// (Grammar/reference tools) and కళలు (Arts/gallery pages), since
+// those are functional/browsing pages rather than long-form reading
+const PATH_CONTENT_TYPE: { prefix: string; type: "sloka" | "ui" | "heading" }[] = [
+  // సాహిత్యం (Literature) — verse/poem content
+  { prefix: "/poems", type: "sloka" },
+  { prefix: "/mirapoems", type: "sloka" },
+  { prefix: "/shatakamu", type: "sloka" },
+  { prefix: "/smruthimala", type: "sloka" },
+  { prefix: "/kathamala", type: "sloka" }, // stories — narrative prose, not verse, but still long-form; revisit if this reads better as "ui"
+  { prefix: "/parabhava", type: "sloka" },
+
+  // గీతామాల (Gita)
+  { prefix: "/geeta", type: "sloka" },
+
+  // వ్యాకరణం (Grammar/reference tools) — falls through to "ui" default,
+  // no entry needed: /aksharamala, /guninta, /padalamala, /sametalu,
+  // /sandhi, /samasa
+
+  // కళలు (Arts/gallery) — falls through to "ui" default, no entry
+  // needed: /chitramala, /swaramala, /lipimala, /khatiMala,
+  // /rahasyabhasha, /shailimala
+];
+
+function detectContentTypeFromPath(pathname: string): "sloka" | "ui" | "heading" {
+  const match = PATH_CONTENT_TYPE.find((rule) => pathname.startsWith(rule.prefix));
+  return match?.type ?? "ui";
+}
 
 export default function FontControlsTelugu({
   fontFamily,
   setFontFamily,
   fontSize,
   setFontSize,
+  contentType: contentTypeOverride,
 }: Props) {
+  const pathname = usePathname();
+  // Explicit prop wins if a page deliberately passes one; otherwise
+  // auto-detect from the current route.
+  const contentType = contentTypeOverride ?? detectContentTypeFromPath(pathname ?? "");
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const [agentApplied, setAgentApplied] = useState(false);
   const [agentReason, setAgentReason] = useState<string | null>(null);
@@ -60,7 +107,7 @@ export default function FontControlsTelugu({
   useEffect(() => {
     const width = typeof window !== "undefined" ? window.innerWidth : 1024;
 
-    fetch(`/api/main?endpoint=font_agent&content_type=ui&width=${width}`)
+    fetch(`/api/main?endpoint=font_agent&content_type=${contentType}&width=${width}`)
       .then((res) => res.json())
       .then((decision: { fontFamily: string; fontSizeMultiplier: number; reason: string }) => {
         setFontFamily(decision.fontFamily as TeluguFont);
@@ -71,8 +118,11 @@ export default function FontControlsTelugu({
       .catch(() => {
         // Agent unreachable — keep whatever default the parent passed in.
       });
+    // Re-runs whenever the route changes, since auto-detected
+    // contentType depends on pathname — navigating from /geeta to
+    // /poems (client-side, no full reload) should re-ask the agent.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     document.documentElement.style.setProperty(
