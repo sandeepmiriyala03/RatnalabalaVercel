@@ -1,23 +1,40 @@
 """
-api/main.py
+api/main/index.py
 
-Merges fonts.py and font_agent.py into ONE serverless function
-instead of two — reduces total function count by 1 toward the
-Hobby plan's 12-function limit.
+NOTE: moved from flat api/main.py into its own folder (api/main/) so
+it can have its OWN requirements.txt (gradio_client) without applying
+that dependency to every other flat function in api/ — same isolation
+pattern used for api/sametalu_agent/. URL stays /api/main either way
+(folder + index.py routes identically to a flat file).
 
-GET /api/main?endpoint=fonts
-    → same response as the old /api/fonts
+Handles THREE things in one function (keeps total function count down,
+same reasoning as the original fonts.py + font_agent.py merge):
 
-GET /api/main?endpoint=font_agent&content_type=sloka&width=390
-    → same response as the old /api/font_agent (reason field now in Telugu)
+  GET  /api/main?endpoint=fonts                          → font catalog
+  GET  /api/main?endpoint=font_agent&content_type=...     → font decision agent
+  POST /api/main?endpoint=svara   body: {text, voice}     → Svara TTS audio (audio/mpeg or audio/wav)
+
+Svara TTS calls kenpath/svara-tts-v1's free Hugging Face Space
+(https://huggingface.co/spaces/kenpath/svara-tts) via the official
+gradio_client Python library — moved here from route.ts's
+@gradio/client so the Next.js side no longer needs that npm dependency
+at all; it just POSTs to this endpoint like any other API call.
+
+IMPORTANT — same caveat as the JS version: the predict() parameter
+names below (language, gender, text_input, ...) are a best-effort
+match to the Space's visible UI labels. Before trusting this in
+production, visit https://kenpath-svara-tts.hf.space, click "Use via
+API" at the bottom, and confirm/adjust the parameter names below.
 """
 
 import json
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+from gradio_client import Client
+
 # ═══════════════════════════════════════════════════════════════
-# FONTS ENDPOINT — was api/fonts.py
+# FONTS ENDPOINT
 # ═══════════════════════════════════════════════════════════════
 
 FONT_CATALOG = [
@@ -79,8 +96,7 @@ def handle_fonts():
 
 
 # ═══════════════════════════════════════════════════════════════
-# FONT AGENT ENDPOINT — was api/font_agent.py
-# reason field now returned in Telugu instead of English
+# FONT AGENT ENDPOINT
 # ═══════════════════════════════════════════════════════════════
 
 UI_FONTS = ["Mandali-Regular", "NTR"]
@@ -96,12 +112,10 @@ def decide_font(content_type: str, width: int) -> dict:
         size_multiplier = 0.95 if is_narrow else 1.1
         size_note = "చిన్న స్క్రీన్ కోసం తగ్గించిన సైజ్‌లో" if is_narrow else "చదవడానికి వీలుగా కొంచెం పెద్ద సైజ్‌లో"
         reason = f"శ్లోకం/పద్య కంటెంట్ — సంప్రదాయ, కళాత్మక ఫాంట్‌ను {size_note} ఎంచుకున్నాను."
-
     elif content_type == "heading":
         font = HEADING_FONTS[0]
         size_multiplier = 1.0 if is_narrow else 1.2
         reason = "శీర్షిక/టైటిల్ టెక్స్ట్ — బోల్డ్, ప్రభావవంతమైన ఫాంట్‌ను ఎంచుకున్నాను."
-
     else:
         font = UI_FONTS[0]
         size_multiplier = 0.9 if is_narrow else 1.0
@@ -122,7 +136,56 @@ def handle_font_agent(query: dict):
 
 
 # ═══════════════════════════════════════════════════════════════
-# HANDLER — one function, dispatches by ?endpoint= query param
+# SVARA TTS ENDPOINT — POST only
+# ═══════════════════════════════════════════════════════════════
+
+_svara_client: Client | None = None
+
+
+def get_svara_client() -> Client:
+    global _svara_client
+    if _svara_client is None:
+        # gradio_client picks up HF_TOKEN from the environment automatically
+        # if set — helps avoid rate limits on the free Zero-GPU Space tier.
+        _svara_client = Client("kenpath/svara-tts")
+    return _svara_client
+
+
+def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
+    """Returns (audio_bytes, content_type)."""
+    client = get_svara_client()
+
+    result = client.predict(
+        language="Telugu",
+        gender="Female" if voice_choice == "female" else "Male",
+        text_input=text,
+        temperature=0.7,
+        top_p=0.7,
+        repetition_penalty=1.1,
+        max_new_tokens=1200,
+        api_name="/predict",
+    )
+
+    # gradio_client (Python) downloads File/Audio outputs to a local
+    # temp path automatically and returns that path as a string —
+    # unlike the JS client, which returns a URL you have to fetch
+    # yourself. Handle both a plain string path and a dict wrapper
+    # defensively, since the exact shape depends on Gradio version.
+    audio_path = result if isinstance(result, str) else result.get("value") or result.get("path")
+
+    if not audio_path:
+        raise RuntimeError(f"Svara Space returned no usable audio path. Raw result: {result!r}")
+
+    content_type = "audio/wav" if audio_path.lower().endswith(".wav") else "audio/mpeg"
+
+    with open(audio_path, "rb") as f:
+        audio_bytes = f.read()
+
+    return audio_bytes, content_type
+
+
+# ═══════════════════════════════════════════════════════════════
+# HANDLER
 # ═══════════════════════════════════════════════════════════════
 
 class handler(BaseHTTPRequestHandler):
@@ -134,6 +197,15 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_audio(self, audio_bytes: bytes, content_type: str):
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(audio_bytes)))
+        self.end_headers()
+        self.wfile.write(audio_bytes)
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -151,10 +223,41 @@ class handler(BaseHTTPRequestHandler):
 
         self._send_json(status, payload)
 
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        query = parse_qs(parsed.query)
+        endpoint = query.get("endpoint", [""])[0]
+
+        if endpoint != "svara":
+            self._send_json(400, {"error": "POST only supports ?endpoint=svara"})
+            return
+
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(content_length)
+            payload = json.loads(body) if body else {}
+        except (ValueError, json.JSONDecodeError):
+            self._send_json(400, {"error": "Invalid JSON body."})
+            return
+
+        text = (payload.get("text") or "").strip()
+        voice_choice = payload.get("voice", "male")
+
+        if not text:
+            self._send_json(400, {"error": "Missing 'text' field."})
+            return
+
+        try:
+            audio_bytes, content_type = handle_svara_tts(text, voice_choice)
+            self._send_audio(audio_bytes, content_type)
+        except Exception as e:
+            print(f"[Svara TTS] generation failed: {e}")
+            self._send_json(502, {"error": f"Svara TTS generation failed: {e}"})
+
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
 
@@ -167,4 +270,5 @@ if __name__ == "__main__":
     print(f"Starting local test server at http://localhost:{port}")
     print(f"Try: http://localhost:{port}/api/main?endpoint=fonts")
     print(f"Try: http://localhost:{port}/api/main?endpoint=font_agent&content_type=sloka&width=390")
+    print(f"POST http://localhost:{port}/api/main?endpoint=svara  body: {{\"text\": \"...\", \"voice\": \"male\"}}")
     HTTPServer(("localhost", port), handler).serve_forever()
