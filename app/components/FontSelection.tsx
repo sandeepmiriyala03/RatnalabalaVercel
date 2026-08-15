@@ -152,7 +152,7 @@ export default function FontControlsTelugu({
 
   const isAtMin = fontSize <= min;
   const isAtMax = fontSize >= max;
-  const isDefault = fontFamily === "Gurajada" && fontSize === 1.0;
+  const isDefault = fontFamily === "Mandali-Regular" && fontSize === 1.0;
 
   // Show size relative to the default (1.0) as a percentage — easier
   // to read at a glance than a raw multiplier like "1.4".
