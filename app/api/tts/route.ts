@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { EdgeTTS } from "@andresaya/edge-tts";
 import * as googleTTS from "google-tts-api";
+import { Client } from "@gradio/client";
 
 export const runtime = "nodejs"; // needs real Node APIs, not Edge runtime
 
@@ -23,16 +24,68 @@ async function generateGoogle(text: string): Promise<Buffer> {
   return Buffer.concat(buffers);
 }
 
-// ── TODO: Svara ──
-// Not yet wired to a real TTS provider. Once you confirm which
-// service "Svara" refers to (e.g. Sarvam AI, AI4Bharat, a Hugging
-// Face model), replace this stub with an actual API call — same
-// return shape (Promise<Buffer>) as generateEdge/generateGoogle
-// above, so the rest of the route doesn't need to change.
+// ── Svara: kenpath/svara-tts-v1, called via its free Hugging Face
+// Space (https://huggingface.co/spaces/kenpath/svara-tts), since the
+// underlying 3B-param model isn't deployed on HF's standard Inference
+// Providers (too large/GPU-heavy for that tier) — the Space is the
+// only free way to call it.
+//
+// IMPORTANT — parameter names below are a BEST-EFFORT match to the
+// Space's visible UI labels (Language, Gender, Text to speak,
+// Temperature, Top-p, Repetition Penalty, Max New Tokens). Gradio's
+// internal API parameter names aren't always identical to the
+// display labels. Before relying on this in production:
+//   1. Visit https://kenpath-svara-tts.hf.space
+//   2. Click "Use via API" at the bottom of the page
+//   3. Copy the exact parameter names/order shown there
+//   4. Adjust the object passed to client.predict() below to match
+//
+// Optional: add HF_TOKEN to your environment variables (a free
+// Hugging Face account token) — Spaces on the free "Zero GPU" tier
+// can queue/rate-limit anonymous requests; an authenticated request
+// generally gets priority.
+let svaraClient: Client | null = null;
+
+async function getSvaraClient(): Promise<Client> {
+  if (!svaraClient) {
+    svaraClient = await Client.connect("kenpath/svara-tts", {
+      hf_token: process.env.HF_TOKEN as `hf_${string}` | undefined,
+    });
+  }
+  return svaraClient;
+}
+
 async function generateSvara(text: string, voiceChoice: string): Promise<Buffer> {
-  throw new Error(
-    `Svara TTS (${voiceChoice}) is not yet configured. Add the real API call in generateSvara().`
-  );
+  const client = await getSvaraClient();
+
+  const result = await client.predict("/predict", {
+    language: "Telugu",
+    gender: voiceChoice === "female" ? "Female" : "Male",
+    text_input: text,
+    temperature: 0.7,
+    top_p: 0.7,
+    repetition_penalty: 1.1,
+    max_new_tokens: 1200,
+  });
+
+  // Gradio audio outputs typically come back as { url } or a direct
+  // path — handle both shapes defensively since the exact structure
+  // depends on the Space's Gradio version.
+  const data = result.data as any;
+  const audioInfo = Array.isArray(data) ? data[0] : data;
+  const audioUrl: string | undefined = audioInfo?.url ?? audioInfo?.path;
+
+  if (!audioUrl) {
+    throw new Error("Svara Space returned no audio URL — check response shape.");
+  }
+
+  const audioRes = await fetch(audioUrl);
+  if (!audioRes.ok) {
+    throw new Error(`Failed to download Svara audio: ${audioRes.status}`);
+  }
+
+  const arrayBuffer = await audioRes.arrayBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
 export async function POST(req: NextRequest) {
