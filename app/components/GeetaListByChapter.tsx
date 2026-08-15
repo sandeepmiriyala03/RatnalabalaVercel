@@ -282,15 +282,17 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
       {!loading &&
         !error &&
         current.map((v) => (
-          <GeetaCard
-            key={v.slug}
-            verse={v.verse}
-            sloka={v.sloka}
-            meaning={v.meaning}
-            chapterLabel={chapter === "all" ? v.chapterLabel : undefined}
-            authors={authors}
-            poetryName={poetryName}
-          />
+         <GeetaCard
+  key={v.slug}
+  verse={v.verse}
+  sloka={v.sloka}
+  meaning={v.meaning}
+  chapterLabel={chapter === "all" ? v.chapterLabel : undefined}
+  authors={authors}
+  poetryName={poetryName}
+  w2wMeaning={v.w2wMeaning}
+  commentary={v.commentary}
+/>
         ))}
 
       {!loading && !error && filtered.length > 0 && (
