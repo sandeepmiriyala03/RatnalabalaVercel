@@ -44,7 +44,7 @@ export default function FontControlsTelugu({
   const [teluguFonts, setTeluguFonts] = useState<FontOption[]>([]);
 
   useEffect(() => {
-    fetch("/api/fonts")
+    fetch("/api/main?endpoint=fonts")
       .then((res) => res.json())
       .then((data: FontOption[]) => setTeluguFonts(data))
       .catch(() => {
@@ -54,12 +54,12 @@ export default function FontControlsTelugu({
 
   // ── THE AGENTIC PART ──
   // On mount, before the user touches anything: perceive the screen
-  // width, ask the Python agent (api/font_agent.py) to decide a font
-  // + size, and act on its answer automatically. No click required.
+  // width, ask the Python agent to decide a font + size, and act on
+  // its answer automatically. No click required.
   useEffect(() => {
     const width = typeof window !== "undefined" ? window.innerWidth : 1024;
 
-    fetch(`/api/font_agent?content_type=ui&width=${width}`)
+    fetch(`/api/main?endpoint=font_agent&content_type=ui&width=${width}`)
       .then((res) => res.json())
       .then((decision: { fontFamily: string; fontSizeMultiplier: number }) => {
         setFontFamily(decision.fontFamily as TeluguFont);

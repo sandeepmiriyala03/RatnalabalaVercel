@@ -1,22 +1,33 @@
 """
-api/fonts.py
+api/main.py
 
-Single source of truth for the Telugu font catalog. FontControlsTelugu.tsx
-fetches this instead of hardcoding the font list — adding/removing a font
-means editing FONT_CATALOG below, no frontend redeploy needed.
+Merges fonts.py and font_agent.py into ONE serverless function
+instead of two — reduces your total function count by 1 toward the
+Hobby plan's 12-function limit.
 
-DEPLOYED:
-  GET /api/fonts  →  [{ "label": "గురజాడ", "value": "Gurajada" }, ...]
+Since Vercel routes by file path, this single file only gets ONE URL:
+/api/main. Both original endpoints now live under that same URL,
+distinguished by an `?endpoint=` query parameter:
 
-LOCAL TEST:
-  python fonts.py
-  → http://localhost:8003/api/fonts
+  GET /api/main?endpoint=fonts
+      → same response as the old /api/fonts
+
+  GET /api/main?endpoint=font_agent&content_type=sloka&width=390
+      → same response as the old /api/font_agent
+
+IMPORTANT: your Next.js frontend needs its fetch() calls updated to
+match (see the two fetch() calls to change, noted at the bottom of
+this file's docstring).
 """
 
 import json
 from http.server import BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 
-# The full catalog — moved here from the frontend's TELUGU_FONTS array.
+# ═══════════════════════════════════════════════════════════════
+# FONTS ENDPOINT — was api/fonts.py
+# ═══════════════════════════════════════════════════════════════
+
 FONT_CATALOG = [
     {"label": "గురజాడ", "value": "Gurajada"},
     {"label": "ఎన్‌టిఆర్", "value": "NTR"},
@@ -71,17 +82,83 @@ FONT_CATALOG = [
 ]
 
 
+def handle_fonts() -> tuple[int, dict | list]:
+    return 200, FONT_CATALOG
+
+
+# ═══════════════════════════════════════════════════════════════
+# FONT AGENT ENDPOINT — was api/font_agent.py
+# ═══════════════════════════════════════════════════════════════
+
+UI_FONTS = ["Mandali-Regular", "NTR"]
+SLOKA_FONTS = ["Annamayya", "SreeKrushnadevaraya", "Gurajada"]
+HEADING_FONTS = ["Chathura-ExtraBold", "Suranna-Bold"]
+
+
+def decide_font(content_type: str, width: int) -> dict:
+    is_narrow = width < 600
+
+    if content_type == "sloka":
+        font = SLOKA_FONTS[0]
+        size_multiplier = 0.95 if is_narrow else 1.1
+        reason = (
+            "Sloka/verse content — chose a traditional, calligraphic font "
+            f"{'at reduced size for narrow screen' if is_narrow else 'at slightly larger size for readability'}."
+        )
+    elif content_type == "heading":
+        font = HEADING_FONTS[0]
+        size_multiplier = 1.0 if is_narrow else 1.2
+        reason = "Heading/title text — chose a bold, high-impact font."
+    else:
+        font = UI_FONTS[0]
+        size_multiplier = 0.9 if is_narrow else 1.0
+        reason = (
+            "General UI text — chose a font designed for legibility "
+            f"{'at small phone sizes' if is_narrow else 'at standard desktop size'}."
+        )
+
+    return {"fontFamily": font, "fontSizeMultiplier": size_multiplier, "reason": reason}
+
+
+def handle_font_agent(query: dict) -> tuple[int, dict]:
+    content_type = query.get("content_type", ["ui"])[0]
+    try:
+        width = int(query.get("width", ["1024"])[0])
+    except ValueError:
+        width = 1024
+
+    return 200, decide_font(content_type, width)
+
+
+# ═══════════════════════════════════════════════════════════════
+# HANDLER — one function, dispatches by ?endpoint= query param
+# ═══════════════════════════════════════════════════════════════
+
 class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        body = json.dumps(FONT_CATALOG, ensure_ascii=False).encode("utf-8")
-        self.send_response(200)
+    def _send_json(self, status: int, payload):
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
-        # Cache at the edge/browser for an hour — this data changes rarely.
-        self.send_header("Cache-Control", "public, max-age=3600")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        query = parse_qs(parsed.query)
+        endpoint = query.get("endpoint", [""])[0]
+
+        if endpoint == "fonts":
+            status, payload = handle_fonts()
+        elif endpoint == "font_agent":
+            status, payload = handle_font_agent(query)
+        else:
+            status, payload = 400, {
+                "error": "Missing or invalid ?endpoint= param. Use 'fonts' or 'font_agent'."
+            }
+
+        self._send_json(status, payload)
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -91,10 +168,12 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
 
+# ── Local-only test runner ──
 if __name__ == "__main__":
     from http.server import HTTPServer
 
-    port = 8003
+    port = 8004
     print(f"Starting local test server at http://localhost:{port}")
-    print(f"Try: http://localhost:{port}/api/fonts")
+    print(f"Try: http://localhost:{port}/api/main?endpoint=fonts")
+    print(f"Try: http://localhost:{port}/api/main?endpoint=font_agent&content_type=sloka&width=390")
     HTTPServer(("localhost", port), handler).serve_forever()
