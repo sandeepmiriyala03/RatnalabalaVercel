@@ -28,6 +28,7 @@ API" at the bottom, and confirm/adjust the parameter names below.
 """
 
 import json
+import os
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -152,36 +153,37 @@ def get_svara_client() -> Client:
 
 
 def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
-    """Returns (audio_bytes, content_type)."""
-    client = get_svara_client()
+    """Generate Telugu speech using the Svara Hugging Face Gradio Space."""
 
+    client = get_svara_client()
+    gender = "Female" if voice_choice == "female" else "Male"
+
+    # Current Svara Space endpoint is /generate_speech (not /predict).
     result = client.predict(
-        language="Telugu",
-        gender="Female" if voice_choice == "female" else "Male",
-        text_input=text,
+        language="Telugu (తెలుగు)",
+        gender=gender,
+        text=text,
         temperature=0.7,
-        top_p=0.7,
+        top_p=0.8,
         repetition_penalty=1.1,
         max_new_tokens=1200,
-        api_name="/predict",
+        api_name="/generate_speech",
     )
 
-    # gradio_client (Python) downloads File/Audio outputs to a local
-    # temp path automatically and returns that path as a string —
-    # unlike the JS client, which returns a URL you have to fetch
-    # yourself. Handle both a plain string path and a dict wrapper
-    # defensively, since the exact shape depends on Gradio version.
-    audio_path = result if isinstance(result, str) else result.get("value") or result.get("path")
+    print("Svara raw result:", repr(result))
 
-    if not audio_path:
-        raise RuntimeError(f"Svara Space returned no usable audio path. Raw result: {result!r}")
+    if isinstance(result, str) and os.path.exists(result):
+        with open(result, "rb") as f:
+            return f.read(), "audio/wav"
 
-    content_type = "audio/wav" if audio_path.lower().endswith(".wav") else "audio/mpeg"
+    if isinstance(result, dict):
+        audio_path = result.get("path") or result.get("value") or result.get("name")
+        if audio_path and os.path.exists(audio_path):
+            with open(audio_path, "rb") as f:
+                return f.read(), "audio/wav"
 
-    with open(audio_path, "rb") as f:
-        audio_bytes = f.read()
+    raise RuntimeError(f"Svara Space returned an unsupported audio result: {result!r}")
 
-    return audio_bytes, content_type
 
 
 # ═══════════════════════════════════════════════════════════════
