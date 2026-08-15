@@ -38,6 +38,7 @@ export default function FontControlsTelugu({
 }: Props) {
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const [agentApplied, setAgentApplied] = useState(false);
+  const [agentReason, setAgentReason] = useState<string | null>(null);
   const { min, max } = useDeviceFontBounds();
 
   // Font list comes from the Python backend instead of being hardcoded.
@@ -61,10 +62,11 @@ export default function FontControlsTelugu({
 
     fetch(`/api/main?endpoint=font_agent&content_type=ui&width=${width}`)
       .then((res) => res.json())
-      .then((decision: { fontFamily: string; fontSizeMultiplier: number }) => {
+      .then((decision: { fontFamily: string; fontSizeMultiplier: number; reason: string }) => {
         setFontFamily(decision.fontFamily as TeluguFont);
         setFontSize(+(1.0 * decision.fontSizeMultiplier).toFixed(2));
         setAgentApplied(true);
+        setAgentReason(decision.reason);
       })
       .catch(() => {
         // Agent unreachable — keep whatever default the parent passed in.
@@ -123,16 +125,19 @@ export default function FontControlsTelugu({
 
   const increase = () => {
     setAgentApplied(false); // manual override
+    setAgentReason(null);
     setFontSize((v) => Math.min(max, +(v + STEP).toFixed(2)));
   };
 
   const decrease = () => {
     setAgentApplied(false);
+    setAgentReason(null);
     setFontSize((v) => Math.max(min, +(v - STEP).toFixed(2)));
   };
 
   const restoreDefaults = () => {
     setAgentApplied(false);
+    setAgentReason(null);
     setFontFamily("Dhurjati");
     setFontSize(1.0);
     setSnackbarOpen(true);
@@ -158,11 +163,21 @@ export default function FontControlsTelugu({
           backgroundColor: "var(--surface, #f7f2ea)",
         }}
       >
-        {agentApplied && (
-          <Box display="flex" alignItems="center" gap={0.5} mb={1}>
-            <SmartToyIcon sx={{ fontSize: 14, color: "var(--primary, #8b3a1f)" }} />
-            <Typography variant="caption" sx={{ color: "var(--primary, #8b3a1f)" }}>
-              ఏజెంట్ ఎంచుకుంది
+        {agentApplied && agentReason && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 0.75,
+              mb: 1.5,
+              p: 1,
+              borderRadius: "8px",
+              backgroundColor: "rgba(139, 58, 31, 0.06)",
+            }}
+          >
+            <SmartToyIcon sx={{ fontSize: 16, color: "var(--primary, #8b3a1f)", mt: 0.2 }} />
+            <Typography variant="caption" sx={{ color: "var(--primary, #8b3a1f)", lineHeight: 1.5 }}>
+              <strong>ఏజెంట్ ఎంచుకుంది:</strong> {agentReason}
             </Typography>
           </Box>
         )}
@@ -185,6 +200,7 @@ export default function FontControlsTelugu({
               value={fontFamily}
               onChange={(e) => {
                 setAgentApplied(false);
+                setAgentReason(null);
                 setFontFamily(e.target.value as TeluguFont);
               }}
               sx={{
@@ -262,6 +278,7 @@ export default function FontControlsTelugu({
                 step={STEP}
                 onChange={(_, v) => {
                   setAgentApplied(false);
+                  setAgentReason(null);
                   setFontSize(v as number);
                 }}
                 aria-label="Font size"

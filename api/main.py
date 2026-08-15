@@ -2,22 +2,14 @@
 api/main.py
 
 Merges fonts.py and font_agent.py into ONE serverless function
-instead of two — reduces your total function count by 1 toward the
+instead of two — reduces total function count by 1 toward the
 Hobby plan's 12-function limit.
 
-Since Vercel routes by file path, this single file only gets ONE URL:
-/api/main. Both original endpoints now live under that same URL,
-distinguished by an `?endpoint=` query parameter:
+GET /api/main?endpoint=fonts
+    → same response as the old /api/fonts
 
-  GET /api/main?endpoint=fonts
-      → same response as the old /api/fonts
-
-  GET /api/main?endpoint=font_agent&content_type=sloka&width=390
-      → same response as the old /api/font_agent
-
-IMPORTANT: your Next.js frontend needs its fetch() calls updated to
-match (see the two fetch() calls to change, noted at the bottom of
-this file's docstring).
+GET /api/main?endpoint=font_agent&content_type=sloka&width=390
+    → same response as the old /api/font_agent (reason field now in Telugu)
 """
 
 import json
@@ -82,12 +74,13 @@ FONT_CATALOG = [
 ]
 
 
-def handle_fonts() -> tuple[int, dict | list]:
+def handle_fonts():
     return 200, FONT_CATALOG
 
 
 # ═══════════════════════════════════════════════════════════════
 # FONT AGENT ENDPOINT — was api/font_agent.py
+# reason field now returned in Telugu instead of English
 # ═══════════════════════════════════════════════════════════════
 
 UI_FONTS = ["Mandali-Regular", "NTR"]
@@ -101,26 +94,24 @@ def decide_font(content_type: str, width: int) -> dict:
     if content_type == "sloka":
         font = SLOKA_FONTS[0]
         size_multiplier = 0.95 if is_narrow else 1.1
-        reason = (
-            "Sloka/verse content — chose a traditional, calligraphic font "
-            f"{'at reduced size for narrow screen' if is_narrow else 'at slightly larger size for readability'}."
-        )
+        size_note = "చిన్న స్క్రీన్ కోసం తగ్గించిన సైజ్‌లో" if is_narrow else "చదవడానికి వీలుగా కొంచెం పెద్ద సైజ్‌లో"
+        reason = f"శ్లోకం/పద్య కంటెంట్ — సంప్రదాయ, కళాత్మక ఫాంట్‌ను {size_note} ఎంచుకున్నాను."
+
     elif content_type == "heading":
         font = HEADING_FONTS[0]
         size_multiplier = 1.0 if is_narrow else 1.2
-        reason = "Heading/title text — chose a bold, high-impact font."
+        reason = "శీర్షిక/టైటిల్ టెక్స్ట్ — బోల్డ్, ప్రభావవంతమైన ఫాంట్‌ను ఎంచుకున్నాను."
+
     else:
         font = UI_FONTS[0]
         size_multiplier = 0.9 if is_narrow else 1.0
-        reason = (
-            "General UI text — chose a font designed for legibility "
-            f"{'at small phone sizes' if is_narrow else 'at standard desktop size'}."
-        )
+        size_note = "చిన్న ఫోన్ సైజ్‌లలో" if is_narrow else "సాధారణ డెస్క్‌టాప్ సైజ్‌లో"
+        reason = f"సాధారణ UI టెక్స్ట్ — {size_note} స్పష్టంగా కనిపించేలా రూపొందించిన ఫాంట్‌ను ఎంచుకున్నాను."
 
     return {"fontFamily": font, "fontSizeMultiplier": size_multiplier, "reason": reason}
 
 
-def handle_font_agent(query: dict) -> tuple[int, dict]:
+def handle_font_agent(query: dict):
     content_type = query.get("content_type", ["ui"])[0]
     try:
         width = int(query.get("width", ["1024"])[0])
