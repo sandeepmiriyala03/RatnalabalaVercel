@@ -18,7 +18,7 @@ import {
 import BoltIcon from "@mui/icons-material/Bolt";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import type { TeluguFont } from "@/app/types/fonts";
-import { useDeviceFontBounds } from "./useDeviceFontBounds"; // adjust path to wherever you place the hook file
+import { useDeviceFontBounds } from "./useDeviceFontBounds";
 
 type Props = {
   fontFamily: TeluguFont;
@@ -27,60 +27,7 @@ type Props = {
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
 };
 
-const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
-  { label: "గురజాడ", value: "Gurajada" },
-  { label: "ఎన్‌టిఆర్", value: "NTR" },
-  { label: "రమణీయ", value: "Ramaneeya" },
-  { label: "వేటూరి", value: "Veturi" },
-  { label: "సిరివెన్నెల", value: "Sirivennela" },
-  { label: "చతుర (Thin)", value: "Chathura-Thin" },
-  { label: "చతుర (Light)", value: "Chathura-Light" },
-  { label: "చతుర (Regular)", value: "Chathura-Regular" },
-  { label: "చతుర (Bold)", value: "Chathura-Bold" },
-  { label: "చతుర (ExtraBold)", value: "Chathura-ExtraBold" },
-  { label: "రామరాజ", value: "Ramaraja" },
-  { label: "రవి ప్రకాష్", value: "RaviPrakash" },
-  { label: "తెనాలి రామకృష్ణ", value: "TenaliRamakrishna" },
-  { label: "తిమ్మన", value: "Timmana" },
-  { label: "టానా", value: "TANA" },
-  { label: "గిడుగు", value: "Gidugu" },
-  { label: "గిడుగు (ఇటాలిక్)", value: "Gidugu-Italic" },
-  { label: "లక్కిరెడ్డి", value: "LakkiReddy" },
-  { label: "నందకం", value: "Nandakam" },
-  { label: "నందకం (ఇటాలిక్)", value: "Nandakam-Italic" },
-  { label: "పెద్దన", value: "Peddana" },
-  { label: "పురుషోత్తమ", value: "Purushothamaa" },
-  { label: "పురుషోత్తమ (ఇటాలిక్)", value: "Purushothamaa-Italic" },
-  { label: "రామభద్ర", value: "Ramabhadra" },
-  { label: "రామభద్ర (ఇటాలిక్)", value: "Ramabhadra-Italic" },
-  { label: "శ్రీ కృష్ణదేవరాయ", value: "SreeKrushnadevaraya" },
-  { label: "శ్రీ కృష్ణదేవరాయ (ఇటాలిక్)", value: "SreeKrushnadevaraya-Italic" },
-  { label: "సురన్న (Regular)", value: "Suranna-Regular" },
-  { label: "సురన్న (Bold)", value: "Suranna-Bold" },
-  { label: "సురన్న (Italic)", value: "Suranna-Italic" },
-  { label: "సురన్న (Bold Italic)", value: "Suranna-BoldItalic" },
-  { label: "సురవరం", value: "Suravaram" },
-  { label: "సురవరం (ఇటాలిక్)", value: "Suravaram-Italic" },
-  { label: "పొన్నల", value: "Ponnala-Regular" },
-  { label: "అన్నమయ్య", value: "Annamayya" },
-  { label: "అన్నమయ్య (Bold)", value: "Annamayya-Bold" },
-  { label: "అన్నమయ్య (Italic)", value: "Annamayya-Italic" },
-  { label: "అన్నమయ్య (Bold Italic)", value: "Annamayya-BoldItalic" },
-  { label: "ధూర్జటి", value: "Dhurjati" },
-  { label: "ధూర్జటి (ఇటాలిక్)", value: "Dhurjati-Italic" },
-  { label: "జిమ్స్", value: "JIMS" },
-  { label: "జిమ్స్ (ఇటాలిక్)", value: "JIMS-Italic" },
-  { label: "కనకదుర్గ", value: "KanakaDurga" },
-  { label: "కనకదుర్గ (ఇటాలిక్)", value: "KanakaDurga-Italic" },
-  { label: "మండలి (Regular)", value: "Mandali-Regular" },
-  { label: "మండలి (Bold)", value: "Mandali-Bold" },
-  { label: "మండలి (Italic)", value: "Mandali-Italic" },
-  { label: "మండలి (Bold Italic)", value: "Mandali-BoldItalic" },
-
-  { label: "పొట్టి శ్రీరాములు", value: "PottiSreeramulu" },
-
-  { label: "తిరొ సుందర తెలుగు", value: "TiroSundaraTelugu-Regular" },
-];
+type FontOption = { label: string; value: TeluguFont };
 
 export default function FontControlsTelugu({
   fontFamily,
@@ -90,6 +37,20 @@ export default function FontControlsTelugu({
 }: Props) {
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
   const { min, max } = useDeviceFontBounds();
+
+  // Font list now comes straight from the Python backend instead of
+  // being hardcoded here.
+  const [teluguFonts, setTeluguFonts] = useState<FontOption[]>([]);
+
+  useEffect(() => {
+    fetch("/api/fonts")
+      .then((res) => res.json())
+      .then((data: FontOption[]) => setTeluguFonts(data))
+      .catch(() => {
+        // API unreachable — leave the list empty rather than crashing.
+      });
+  }, []);
+
   useEffect(() => {
     document.documentElement.style.setProperty(
       "--telugu-font-size",
@@ -97,9 +58,10 @@ export default function FontControlsTelugu({
     );
   }, [fontSize]);
 
-  // If the device bounds change (resize/rotate) and the current value
-  // now falls outside the new min/max, clamp it back into range instead
-  // of silently leaving it stuck at an out-of-bounds number.
+  useEffect(() => {
+    document.documentElement.style.setProperty("--telugu-font-family", fontFamily);
+  }, [fontFamily]);
+
   useEffect(() => {
     if (fontSize < min) setFontSize(min);
     if (fontSize > max) setFontSize(max);
@@ -145,7 +107,7 @@ export default function FontControlsTelugu({
     setFontSize((v) => Math.max(min, +(v - STEP).toFixed(2)));
 
   const restoreDefaults = () => {
-    setFontFamily("Gurajada");
+    setFontFamily("Mandali-Regular");
     setFontSize(1.0);
     setSnackbarOpen(true);
   };
@@ -154,15 +116,10 @@ export default function FontControlsTelugu({
   const isAtMax = fontSize >= max;
   const isDefault = fontFamily === "Mandali-Regular" && fontSize === 1.0;
 
-  // Show size relative to the default (1.0) as a percentage — easier
-  // to read at a glance than a raw multiplier like "1.4".
   const sizePercent = Math.round(fontSize * 100);
 
-  // Telugu label for whichever font is currently selected, used in
-  // the confirmation message so people can see exactly what got
-  // applied instead of a generic "settings applied" message.
   const currentFontLabel =
-    TELUGU_FONTS.find((f) => f.value === fontFamily)?.label ?? fontFamily;
+    teluguFonts.find((f) => f.value === fontFamily)?.label ?? fontFamily;
 
   return (
     <>
@@ -200,7 +157,7 @@ export default function FontControlsTelugu({
                 backgroundColor: "var(--surface-elevated, #fff)",
               }}
             >
-              {TELUGU_FONTS.map((f) => (
+              {teluguFonts.map((f) => (
                 <MenuItem
                   key={f.value}
                   value={f.value}
@@ -212,7 +169,7 @@ export default function FontControlsTelugu({
             </Select>
           </Box>
 
-          {/* 🔠 Font Size — clearer +/- controls with a slider for fine control */}
+          {/* 🔠 Font Size */}
           <Box
             display="flex"
             flexDirection="column"
@@ -267,10 +224,7 @@ export default function FontControlsTelugu({
                 step={STEP}
                 onChange={(_, v) => setFontSize(v as number)}
                 aria-label="Font size"
-                sx={{
-                  color: "var(--primary, #8b3a1f)",
-                  mx: 0.5,
-                }}
+                sx={{ color: "var(--primary, #8b3a1f)", mx: 0.5 }}
               />
 
               <Tooltip title="పెద్దదిగా చేయండి">
@@ -319,19 +273,13 @@ export default function FontControlsTelugu({
         </Box>
 
         <Typography variant="caption" sx={{ opacity: 0.7, display: "block", mt: 1.5 }}>
-          ప్రస్తుతం <strong>{TELUGU_FONTS.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
+          ప్రస్తుతం <strong>{teluguFonts.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
         </Typography>
       </Paper>
 
-      {/* ⚡ Load time — shown right after font family/size controls */}
+      {/* ⚡ Load time */}
       {loadTime !== null && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            mt: 1,
-          }}
-        >
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
           <Box
             sx={{
               display: "inline-flex",
@@ -346,10 +294,7 @@ export default function FontControlsTelugu({
             }}
           >
             <BoltIcon sx={{ fontSize: 13, color: getSpeedColor(loadTime) }} />
-            <Typography
-              variant="caption"
-              sx={{ fontSize: "0.7rem", color: "text.secondary" }}
-            >
+            <Typography variant="caption" sx={{ fontSize: "0.7rem", color: "text.secondary" }}>
               పేజీ లోడ్ సమయం: {(loadTime / 1000).toFixed(2)}s
             </Typography>
           </Box>
