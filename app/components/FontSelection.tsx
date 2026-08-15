@@ -11,9 +11,14 @@ import {
   Button,
   Snackbar,
   Alert,
+  Paper,
+  Slider,
+  Tooltip,
 } from "@mui/material";
 import BoltIcon from "@mui/icons-material/Bolt";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import type { TeluguFont } from "@/app/types/fonts";
+import { useDeviceFontBounds } from "./useDeviceFontBounds"; // adjust path to wherever you place the hook file
 
 type Props = {
   fontFamily: TeluguFont;
@@ -98,13 +103,6 @@ const TELUGU_FONTS: { label: string; value: TeluguFont }[] = [
   { label: "తిరొ సుందర తెలుగు", value: "TiroSundaraTelugu-Regular" },
 ];
 
-function getDeviceBounds() {
-  if (typeof window === "undefined") return { min: 1.0, max: 2.0 };
-  return window.innerWidth < 960
-    ? { min: 0.9, max: 1.8 }
-    : { min: 1.0, max: 2.0 };
-}
-
 export default function FontControlsTelugu({
   fontFamily,
   setFontFamily,
@@ -112,7 +110,28 @@ export default function FontControlsTelugu({
   setFontSize,
 }: Props) {
   const [snackbarOpen, setSnackbarOpen] = React.useState(false);
-  const { min, max } = getDeviceBounds();
+  const { min, max } = useDeviceFontBounds();
+
+  // ── THE ACTUAL FIX ──
+  // fontSize was only ever changing in React state. Nothing wrote it
+  // into the --telugu-font-size CSS variable that globals.css reads
+  // (body { font-size: var(--telugu-font-size); }), so the slider/+/-
+  // buttons updated the number but the page never visually changed.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--telugu-font-size",
+      `${fontSize}rem`
+    );
+  }, [fontSize]);
+
+  // If the device bounds change (resize/rotate) and the current value
+  // now falls outside the new min/max, clamp it back into range instead
+  // of silently leaving it stuck at an out-of-bounds number.
+  useEffect(() => {
+    if (fontSize < min) setFontSize(min);
+    if (fontSize > max) setFontSize(max);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [min, max]);
 
   /* ⚡ Load time — scoped to this component only */
   const [loadTime, setLoadTime] = useState<number | null>(null);
@@ -144,11 +163,13 @@ export default function FontControlsTelugu({
     return "#ef4444";
   };
 
+  const STEP = 0.1;
+
   const increase = () =>
-    setFontSize((v) => Math.min(max, +(v + 0.2).toFixed(2)));
+    setFontSize((v) => Math.min(max, +(v + STEP).toFixed(2)));
 
   const decrease = () =>
-    setFontSize((v) => Math.max(min, +(v - 0.2).toFixed(2)));
+    setFontSize((v) => Math.max(min, +(v - STEP).toFixed(2)));
 
   const restoreDefaults = () => {
     setFontFamily("Gurajada");
@@ -156,81 +177,172 @@ export default function FontControlsTelugu({
     setSnackbarOpen(true);
   };
 
+  const isAtMin = fontSize <= min;
+  const isAtMax = fontSize >= max;
+  const isDefault = fontFamily === "Gurajada" && fontSize === 1.0;
+
+  // Show size relative to the default (1.0) as a percentage — easier
+  // to read at a glance than a raw multiplier like "1.4".
+  const sizePercent = Math.round(fontSize * 100);
+
   return (
     <>
-      <Box
-        display="flex"
-        flexDirection={{ xs: "column", md: "row" }}
-        alignItems="center"
-        justifyContent="space-between"
-        gap={2}
-        sx={{ width: "100%", p: 1 }}
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 2,
+          borderRadius: "12px",
+          borderColor: "var(--border, #e4dacb)",
+          backgroundColor: "var(--surface, #f7f2ea)",
+        }}
       >
-        {/* 🔤 Font Selector */}
-        <Box display="flex" alignItems="center" gap={1} flex={1}>
-          <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap" }}>
-            తెలుగు ఫాంట్
-          </Typography>
+        <Box
+          display="flex"
+          flexDirection={{ xs: "column", md: "row" }}
+          alignItems={{ xs: "stretch", md: "center" }}
+          justifyContent="space-between"
+          gap={2.5}
+        >
+          {/* 🔤 Font Selector */}
+          <Box display="flex" alignItems="center" gap={1} flex={1.2} minWidth={0}>
+            <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap", fontWeight: 600 }}>
+              తెలుగు ఫాంట్
+            </Typography>
 
-          <Select
+            <Select
+              size="small"
+              value={fontFamily}
+              onChange={(e) => setFontFamily(e.target.value as TeluguFont)}
+              sx={{
+                minWidth: 180,
+                flex: 1,
+                height: 36,
+                fontFamily: `${fontFamily}, system-ui`,
+                backgroundColor: "var(--surface-elevated, #fff)",
+              }}
+            >
+              {TELUGU_FONTS.map((f) => (
+                <MenuItem
+                  key={f.value}
+                  value={f.value}
+                  sx={{ fontFamily: `${f.value}, system-ui` }}
+                >
+                  {f.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </Box>
+
+          {/* 🔠 Font Size — clearer +/- controls with a slider for fine control */}
+          <Box
+            display="flex"
+            flexDirection="column"
+            gap={0.5}
+            flex={1}
+            minWidth={{ xs: "100%", md: 220 }}
+          >
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Typography sx={{ fontSize: "0.9rem", fontWeight: 600 }}>
+                అక్షర సైజ్
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "var(--primary, #8b3a1f)",
+                  minWidth: 42,
+                  textAlign: "right",
+                }}
+              >
+                {sizePercent}%
+              </Typography>
+            </Box>
+
+            <Box display="flex" alignItems="center" gap={1}>
+              <Tooltip title="చిన్నదిగా చేయండి">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={decrease}
+                    disabled={isAtMin}
+                    aria-label="Decrease font size"
+                    sx={{
+                      border: "1px solid",
+                      borderColor: "var(--border, #e4dacb)",
+                      width: 32,
+                      height: 32,
+                      fontSize: "0.8rem",
+                      "&:hover": { borderColor: "var(--primary, #8b3a1f)" },
+                    }}
+                  >
+                    అ
+                  </IconButton>
+                </span>
+              </Tooltip>
+
+              <Slider
+                size="small"
+                value={fontSize}
+                min={min}
+                max={max}
+                step={STEP}
+                onChange={(_, v) => setFontSize(v as number)}
+                aria-label="Font size"
+                sx={{
+                  color: "var(--primary, #8b3a1f)",
+                  mx: 0.5,
+                }}
+              />
+
+              <Tooltip title="పెద్దదిగా చేయండి">
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={increase}
+                    disabled={isAtMax}
+                    aria-label="Increase font size"
+                    sx={{
+                      border: "1px solid",
+                      borderColor: "var(--border, #e4dacb)",
+                      width: 32,
+                      height: 32,
+                      fontSize: "1.15rem",
+                      "&:hover": { borderColor: "var(--primary, #8b3a1f)" },
+                    }}
+                  >
+                    అ
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+          </Box>
+
+          {/* ♻️ Reset */}
+          <Button
+            variant="outlined"
             size="small"
-            value={fontFamily}
-            onChange={(e) => setFontFamily(e.target.value as TeluguFont)}
+            onClick={restoreDefaults}
+            disabled={isDefault}
+            startIcon={<RestartAltIcon fontSize="small" />}
             sx={{
-              minWidth: 180,
-              height: 34,
-              fontFamily: `${fontFamily}, system-ui`,
+              textTransform: "none",
+              whiteSpace: "nowrap",
+              borderColor: "var(--primary, #8b3a1f)",
+              color: "var(--primary, #8b3a1f)",
+              "&:hover": {
+                borderColor: "var(--primary, #8b3a1f)",
+                backgroundColor: "rgba(139, 58, 31, 0.08)",
+              },
             }}
           >
-            {TELUGU_FONTS.map((f) => (
-              <MenuItem
-                key={f.value}
-                value={f.value}
-                sx={{ fontFamily: `${f.value}, system-ui` }}
-              >
-                {f.label}
-              </MenuItem>
-            ))}
-          </Select>
+            డిఫాల్ట్
+          </Button>
         </Box>
 
-        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+        <Typography variant="caption" sx={{ opacity: 0.7, display: "block", mt: 1.5 }}>
           ప్రస్తుతం <strong>{TELUGU_FONTS.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
         </Typography>
-
-        {/* 🔠 Font Size */}
-        <Box display="flex" alignItems="center" gap={1}>
-          <Typography sx={{ fontSize: "0.9rem" }}>సైజ్</Typography>
-
-          <IconButton
-            size="small"
-            onClick={decrease}
-            sx={{ border: "1px solid #ccc", width: 30, height: 30 }}
-          >
-            అ
-          </IconButton>
-
-          <Typography>{fontSize.toFixed(1)}</Typography>
-
-          <IconButton
-            size="small"
-            onClick={increase}
-            sx={{ border: "1px solid #ccc", width: 30, height: 30 }}
-          >
-            అ
-          </IconButton>
-        </Box>
-
-        {/* ♻️ Reset */}
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={restoreDefaults}
-          sx={{ textTransform: "none" }}
-        >
-          డిఫాల్ట్
-        </Button>
-      </Box>
+      </Paper>
 
       {/* ⚡ Load time — shown right after font family/size controls */}
       {loadTime !== null && (
@@ -269,8 +381,21 @@ export default function FontControlsTelugu({
         open={snackbarOpen}
         autoHideDuration={2000}
         onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert severity="success" variant="filled">
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity="success"
+          variant="filled"
+          icon={<RestartAltIcon fontSize="small" />}
+          sx={{
+            backgroundColor: "var(--primary, #8b3a1f)",
+            color: "#fff",
+            fontWeight: 600,
+            borderRadius: "10px",
+            "& .MuiAlert-icon": { color: "#fff" },
+          }}
+        >
           సెట్టింగులు అమలయ్యాయి!
         </Alert>
       </Snackbar>

@@ -238,12 +238,24 @@ body {
    ✅ GLOBAL FONT APPLICATION
    ===================================================== */
 
+/* THE FIX: rem units (used throughout MUI's typography — buttons,
+   menu items, dialogs, and especially portaled components like Menu/
+   Dialog/Snackbar that mount as direct children of <body>, outside
+   the normal component tree) are always calculated relative to the
+   ROOT <html> element's font-size — never body's. Setting only
+   `body { font-size: ... }` (as before) changed body's own text but
+   left every rem-based MUI size untouched, since rem never looked at
+   body at all. Applying the variable to html makes every rem in the
+   app scale correctly, everywhere, including portaled components. */
+html {
+  font-size: var(--telugu-font-size);
+}
+
 body {
   font-family:
     var(--telugu-font-family),
     var(--font-sans);
 
-  font-size: var(--telugu-font-size);
   line-height: 1.6;
 
   background-color: var(--background);
@@ -394,7 +406,7 @@ a:hover {
    ===================================================== */
 
 @media (max-width: 768px) {
-  body {
+  html {
     font-size: calc(var(--telugu-font-size) * 0.95);
   }
 }
