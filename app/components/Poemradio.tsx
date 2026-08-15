@@ -29,13 +29,15 @@ interface Poem {
   slug?: string;
 }
 
-type VoiceOption = "mohan" | "shruti" | "google";
+type VoiceOption = "mohan" | "shruti" | "google" | "svara-male" | "svara-female";
 type MusicOption = "none" | "guitar" | "tabla" | "drums" | "flute" | "veena";
 
 const VOICE_LABELS: Record<VoiceOption, string> = {
   mohan: "🎙️ మగ స్వరం (Mohan)",
   shruti: "👩 స్త్రీ స్వరం (Shruti)",
   google: "🔊 Google TTS",
+  "svara-male": "🤖 Svara మగ",
+  "svara-female": "🤖 Svara స్త్రీ",
 };
 
 // Drop your own royalty-free loop files at these paths (public/audio/...).
@@ -51,6 +53,16 @@ const MUSIC_TRACKS: Record<MusicOption, { label: string; src: string | null }> =
 };
 
 const BG_VOLUME_DEFAULT = 0.18;
+
+// Resolves a VoiceOption into the { source, voice } shape the shared
+// /api/tts contract expects — same helper duplicated in TeluguVoice.tsx
+// and PoemCard.tsx, kept consistent across all three.
+function resolveTtsParams(voice: VoiceOption): { source: "edge" | "google" | "svara"; gender: "male" | "female" } {
+  if (voice === "google") return { source: "google", gender: "male" };
+  if (voice === "svara-male") return { source: "svara", gender: "male" };
+  if (voice === "svara-female") return { source: "svara", gender: "female" };
+  return { source: "edge", gender: voice === "shruti" ? "female" : "male" };
+}
 
 type Props = {
   poems: Poem[];
@@ -120,14 +132,11 @@ export default function PoemRadio({ poems, startIndex = 0 }: Props) {
 
       try {
         const text = `${poems[i].title}. ${poems[i].content}`;
+        const { source, gender } = resolveTtsParams(voice);
         const res = await fetch("/api/tts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text,
-            source: voice === "google" ? "google" : "edge",
-            voice: voice === "shruti" ? "female" : "male",
-          }),
+          body: JSON.stringify({ text, source, voice: gender }),
         });
         if (!res.ok) throw new Error("TTS failed");
         const blob = await res.blob();
