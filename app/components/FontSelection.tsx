@@ -107,14 +107,14 @@ export default function FontControlsTelugu({
     setFontSize((v) => Math.max(min, +(v - STEP).toFixed(2)));
 
   const restoreDefaults = () => {
-    setFontFamily("Mandali-Regular");
+    setFontFamily("Dhurjati");
     setFontSize(1.0);
     setSnackbarOpen(true);
   };
 
   const isAtMin = fontSize <= min;
   const isAtMax = fontSize >= max;
-  const isDefault = fontFamily === "Mandali-Regular" && fontSize === 1.0;
+  const isDefault = fontFamily === "Dhurjati" && fontSize === 1.0;
 
   const sizePercent = Math.round(fontSize * 100);
 
