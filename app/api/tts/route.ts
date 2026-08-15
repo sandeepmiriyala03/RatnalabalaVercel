@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { EdgeTTS } from "@andresaya/edge-tts";
 import * as googleTTS from "google-tts-api";
@@ -15,7 +14,6 @@ async function generateEdge(text: string, voiceChoice: string): Promise<Buffer> 
 }
 
 async function generateGoogle(text: string): Promise<Buffer> {
-
   const chunks = await googleTTS.getAllAudioBase64(text, {
     lang: "te",
     slow: false,
@@ -23,6 +21,18 @@ async function generateGoogle(text: string): Promise<Buffer> {
 
   const buffers = chunks.map((chunk) => Buffer.from(chunk.base64, "base64"));
   return Buffer.concat(buffers);
+}
+
+// ── TODO: Svara ──
+// Not yet wired to a real TTS provider. Once you confirm which
+// service "Svara" refers to (e.g. Sarvam AI, AI4Bharat, a Hugging
+// Face model), replace this stub with an actual API call — same
+// return shape (Promise<Buffer>) as generateEdge/generateGoogle
+// above, so the rest of the route doesn't need to change.
+async function generateSvara(text: string, voiceChoice: string): Promise<Buffer> {
+  throw new Error(
+    `Svara TTS (${voiceChoice}) is not yet configured. Add the real API call in generateSvara().`
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -50,10 +60,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const audioBuffer =
-      source === "google"
-        ? await generateGoogle(text)
-        : await generateEdge(text, voiceChoice);
+    let audioBuffer: Buffer;
+
+    if (source === "google") {
+      audioBuffer = await generateGoogle(text);
+    } else if (source === "svara") {
+      audioBuffer = await generateSvara(text, voiceChoice);
+    } else {
+      audioBuffer = await generateEdge(text, voiceChoice);
+    }
 
     return new NextResponse(new Uint8Array(audioBuffer), {
       status: 200,
@@ -65,7 +80,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("TTS generation failed:", err);
     return NextResponse.json(
-      { error: "TTS generation failed." },
+      { error: err instanceof Error ? err.message : "TTS generation failed." },
       { status: 500 }
     );
   }

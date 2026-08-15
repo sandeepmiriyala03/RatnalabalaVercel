@@ -29,13 +29,16 @@ const PROFILES = {
 } as const;
 type PK = keyof typeof PROFILES;
 
-// Voice choice — same three options and same /api/tts contract as
-// PoemCard.tsx and PoemRadio.tsx, so behavior is consistent app-wide.
-type VoiceOption = "mohan" | "shruti" | "google";
+// Voice choice — same /api/tts contract as PoemCard.tsx and
+// PoemRadio.tsx (source: "edge" | "google" | "svara", voice: "male" |
+// "female"), extended here with the two Svara options.
+type VoiceOption = "mohan" | "shruti" | "google" | "svara-male" | "svara-female";
 const VOICE_LABELS: Record<VoiceOption, string> = {
   mohan: "🎙️ మగ స్వరం",
   shruti: "👩 స్త్రీ స్వరం",
   google: "🔊 Google TTS",
+  "svara-male": "🤖 Svara మగ",
+  "svara-female": "🤖 Svara స్త్రీ",
 };
 
 // Background music — same genre set used across the app.
@@ -148,15 +151,21 @@ const PlatformIcon = ({ k }: { k: PK }) => {
 // POST body (not GET query params) — matches the shared /api/tts contract
 // used by PoemCard.tsx and PoemRadio.tsx. Telugu text explodes in size
 // once URL-encoded, which breaks GET-based calls on longer poems.
+// Resolves a VoiceOption into the { source, voice } shape the shared
+// /api/tts contract expects (same contract as PoemCard.tsx/PoemRadio.tsx).
+function resolveTtsParams(voice: VoiceOption): { source: "edge" | "google" | "svara"; gender: "male" | "female" } {
+  if (voice === "google") return { source: "google", gender: "male" };
+  if (voice === "svara-male") return { source: "svara", gender: "male" };
+  if (voice === "svara-female") return { source: "svara", gender: "female" };
+  return { source: "edge", gender: voice === "shruti" ? "female" : "male" };
+}
+
 async function fetchTtsFloat(text: string, voice: VoiceOption) {
+  const { source, gender } = resolveTtsParams(voice);
   const res = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text,
-      source: voice === "google" ? "google" : "edge",
-      voice: voice === "shruti" ? "female" : "male",
-    }),
+    body: JSON.stringify({ text, source, voice: gender }),
   });
   if (!res.ok) throw new Error(`TTS ${res.status}`);
   const buf = await res.arrayBuffer();

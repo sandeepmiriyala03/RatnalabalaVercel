@@ -40,12 +40,14 @@ const DEFAULT_FOCAL_POINT = "50% 20%";
 const SITE_TAGLINE = "చదవండి · వినండి · పంచుకోండి";
 const SITE_URL = "https://ratnalabala.vercel.app";
 
-type VoiceOption = "mohan" | "shruti" | "google";
+type VoiceOption = "mohan" | "shruti" | "google" | "svara-male" | "svara-female";
 
 const VOICE_LABELS: Record<VoiceOption, string> = {
   mohan: "🎙️ మగ స్వరం (Mohan)",
   shruti: "👩 స్త్రీ స్వరం (Shruti)",
   google: "🔊 Google TTS",
+  "svara-male": "🤖 Svara మగ",
+  "svara-female": "🤖 Svara స్త్రీ",
 };
 
 type MusicOption = "none" | "guitar" | "tabla" | "drums" | "flute" | "veena";
@@ -72,15 +74,23 @@ function buildNarrationText(title: string, content: string, authorText?: string)
   return author ? `${base} ఈ పద్యం రాసినవారు ${author}.` : base;
 }
 
+// Resolves a VoiceOption into the { source, voice } shape the shared
+// /api/tts contract expects — same helper as in TeluguVoice.tsx, kept
+// duplicated here since the two components are separate self-contained
+// files (see buildNarrationText comment above for the same pattern).
+function resolveTtsParams(voice: VoiceOption): { source: "edge" | "google" | "svara"; gender: "male" | "female" } {
+  if (voice === "google") return { source: "google", gender: "male" };
+  if (voice === "svara-male") return { source: "svara", gender: "male" };
+  if (voice === "svara-female") return { source: "svara", gender: "female" };
+  return { source: "edge", gender: voice === "shruti" ? "female" : "male" };
+}
+
 async function fetchTtsAudio(text: string, voice: VoiceOption): Promise<Blob> {
+  const { source, gender } = resolveTtsParams(voice);
   const res = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text,
-      source: voice === "google" ? "google" : "edge",
-      voice: voice === "shruti" ? "female" : "male",
-    }),
+    body: JSON.stringify({ text, source, voice: gender }),
   });
 
   if (!res.ok) {
