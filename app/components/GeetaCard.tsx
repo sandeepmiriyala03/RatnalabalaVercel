@@ -23,6 +23,8 @@ import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice from "@/app/components/TeluguVoice";
 
@@ -33,6 +35,8 @@ interface GeetaCardProps {
   chapterLabel?: string;
   authors?: string | string[];
   poetryName?: string;
+  w2wMeaning?: string;
+  commentary?: string;
 }
 
 // Identical poster palette to PoemCardNew.tsx — hardcoded on purpose so
@@ -158,6 +162,8 @@ export default function GeetaCard({
   chapterLabel,
   authors,
   poetryName,
+  w2wMeaning,
+  commentary,
 }: GeetaCardProps) {
   const theme = useTheme();
 
@@ -167,6 +173,8 @@ export default function GeetaCard({
   const stopRef = useRef(false);
 
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [w2wOpen, setW2wOpen] = useState(false);
+  const [commentaryOpen, setCommentaryOpen] = useState(false);
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -617,6 +625,117 @@ export default function GeetaCard({
             borderColor: alpha(theme.palette.divider, 0.5),
           }}
         />
+
+        {/* పద పద అర్థం (word-by-word) & వ్యాఖ్యానం (commentary) —
+            kept OUTSIDE the poster capture region (data-poster-root
+            above) on purpose: sharing a poster image with paragraphs
+            of commentary would be unwieldy. Collapsed by default so
+            casual readers get a clean card. */}
+        {(w2wMeaning || commentary) && (
+          <>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.25 }}>
+              {w2wMeaning && (
+                <Button
+                  onClick={() => setW2wOpen((v) => !v)}
+                  variant="outlined"
+                  size="small"
+                  startIcon={<MenuBookRoundedIcon fontSize="small" />}
+                  endIcon={w2wOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
+                  aria-expanded={w2wOpen}
+                  sx={{
+                    borderRadius: "10px",
+                    textTransform: "none",
+                    fontWeight: 700,
+                    borderColor: alpha(forestGreen, 0.3),
+                    color: forestGreen,
+                    "&:hover": { borderColor: forestGreen, background: alpha(forestGreen, 0.06) },
+                  }}
+                >
+                  పద పద అర్థం
+                </Button>
+              )}
+
+              {commentary && (
+                <Button
+                  onClick={() => setCommentaryOpen((v) => !v)}
+                  variant="outlined"
+                  size="small"
+                  startIcon={<AutoStoriesRoundedIcon fontSize="small" />}
+                  endIcon={commentaryOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
+                  aria-expanded={commentaryOpen}
+                  sx={{
+                    borderRadius: "10px",
+                    textTransform: "none",
+                    fontWeight: 700,
+                    borderColor: alpha(forestGreen, 0.3),
+                    color: forestGreen,
+                    "&:hover": { borderColor: forestGreen, background: alpha(forestGreen, 0.06) },
+                  }}
+                >
+                  వ్యాఖ్యానం
+                </Button>
+              )}
+            </Stack>
+
+            {w2wMeaning && (
+              <Collapse in={w2wOpen} timeout={280} unmountOnExit>
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: { xs: 1.5, sm: 2 },
+                    borderRadius: "12px",
+                    background: alpha(theme.palette.background.default, 0.6),
+                    border: `1px solid ${alpha(forestGreen, 0.18)}`,
+                  }}
+                >
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: forestGreen, mb: 1 }}>
+                    పద పద అర్థం
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: { xs: "0.88rem", sm: "0.92rem" },
+                      lineHeight: 1.85,
+                      color: "text.secondary",
+                      fontFamily: "'Noto Serif Telugu', serif",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {w2wMeaning}
+                  </Typography>
+                </Box>
+              </Collapse>
+            )}
+
+            {commentary && (
+              <Collapse in={commentaryOpen} timeout={280} unmountOnExit>
+                <Box
+                  sx={{
+                    mb: 2,
+                    p: { xs: 1.5, sm: 2 },
+                    borderRadius: "12px",
+                    background: alpha(theme.palette.background.default, 0.6),
+                    border: `1px solid ${alpha(forestGreen, 0.18)}`,
+                  }}
+                >
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: forestGreen, mb: 1 }}>
+                    వ్యాఖ్యానం
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: { xs: "0.88rem", sm: "0.92rem" },
+                      lineHeight: 1.85,
+                      color: "text.secondary",
+                      whiteSpace: "pre-line",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {commentary}
+                  </Typography>
+                </Box>
+              </Collapse>
+            )}
+          </>
+        )}
 
         <Stack direction="column" spacing={1.25}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>

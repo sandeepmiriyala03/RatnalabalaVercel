@@ -3,7 +3,7 @@ api/gita.py
 
 Single-file Vercel Python serverless function (native Vercel runtime —
 BaseHTTPRequestHandler, matching aksharamala.py / trace_check.py /
-sametalu_agent.py conventions in this folder — no Flask/FastAPI).
+sametalu_agent.py conventions in this project — no Flask/FastAPI).
 
 Fetches the Bhagavad Gita (Telugu) dataset live from Hugging Face's
 Datasets Server API and returns it grouped by chapter — no local
@@ -13,15 +13,26 @@ Dataset: ajaysadhu02/bhagavath-gita-telugu
 Columns (confirmed): sloka, verse, chapter, audio, w2w_meaning,
                       te_translation, commentry
 
-DEPLOYED ENDPOINTS (Vercel auto-routes api/gita.py → /api/gita):
+Confirmed live behavior (verified against production output):
+  - `audio` is a real playable MP3 URL (e.g. holy-bhagavad-gita.org),
+    not a filename/placeholder — safe to use directly in <audio src=...>
+  - `meaning` still includes the raw "BG 1.1:\r\n" style prefix —
+    intentionally left unstripped here; stripped client-side by
+    stripVerseReference() in GeetaListByChapter.tsx
+  - `commentary` sometimes contains stray tab characters from the
+    source dataset — cleaned up below (the one change from the
+    previously confirmed-working version)
+
+DEPLOYED ENDPOINTS (https://ratnalabala.vercel.app):
     GET /api/gita?chapter=1        → single chapter, verses sorted
     GET /api/gita?chapter=all      → every chapter, as a list
     GET /api/gita                  → same as ?chapter=all
 
-Dependencies: requests only (already in requirements.txt).
+Dependencies: requests only (already in api/requirements.txt).
 """
 
 import json
+import re
 import time
 from collections import defaultdict
 from http.server import BaseHTTPRequestHandler
@@ -42,6 +53,14 @@ CACHE_TTL_SECONDS = 60 * 60  # 1 hour
 #    cold starts will re-fetch, same as build_index.py's pattern) ──
 _cache: dict[int, dict] = {}
 _cached_at: float = 0.0
+
+
+def _clean_text(text: str | None) -> str | None:
+    """Collapse stray tabs/extra whitespace from source dataset text,
+    without touching intentional \\r\\n structure in `meaning`."""
+    if text is None:
+        return None
+    return re.sub(r"[\t]+", " ", text)
 
 
 def _fetch_page(offset: int) -> list[dict]:
@@ -74,7 +93,7 @@ def _group_by_chapter(rows: list[dict]) -> dict[int, dict]:
             "sloka": row.get("sloka"),
             "meaning": row.get("te_translation") or "",
             "w2wMeaning": row.get("w2w_meaning"),
-            "commentary": row.get("commentry"),
+            "commentary": _clean_text(row.get("commentry")),
             "audio": row.get("audio"),
         }
         grouped[row["chapter"]].append(verse_obj)
