@@ -10,7 +10,7 @@ import MusicNoteRoundedIcon from "@mui/icons-material/MusicNoteRounded";
    differs (e.g. a different number or a descriptive name). */
 const TRACKS = [
   { label: "శైలి 1", file: "Style1.mp3" },
-  { label: "శైలి 2", file: "Style2.mp3" },
+  { label: "శైలి 2", file: "style2.mp3" },
 ];
 
 export default function DownloadRingtones() {
