@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState,useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import ClientWrapper from "@/app/components/ClientWrapper";
 import Navbar from "@/app/components/Navbar";
 
@@ -8,7 +8,10 @@ import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
 import FloatingAIButton from "@/app/components/FloatingAIButton";
 import FontControlsTelugu from "@/app/components/FontSelection";
 import { cacheAllPoems } from "@/lib/cachePoems";
-import { AppBar, Toolbar, Container, Box, Typography } from "@mui/material";
+import { Container, Box, Typography, Button, Collapse } from "@mui/material";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
 import AudioPlayer from "@/app/components/AudioPlayer";
 /* 🔤 Allowed Telugu Fonts */
 export type TeluguFont =
@@ -97,6 +100,7 @@ export default function RootClientLayout({
   const [mounted, setMounted] = useState(false);
   const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
   const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
+  const [introOpen, setIntroOpen] = useState(false);
 const bootstrapRef = useRef(false);
 /* 🔁 1. MOUNT FIRST */
 useEffect(() => {
@@ -216,13 +220,14 @@ useEffect(() => {
 
   return (
     <>
-      <AppBar position="fixed" color="default">
-        <Toolbar>
-          <Navbar />
-        </Toolbar>
-      </AppBar>
-
-      <Toolbar />
+      {/* Navbar renders its own sticky AppBar internally — it was
+          previously wrapped in a SECOND AppBar + Toolbar here, which
+          nested one <header> inside another and likely caused the
+          double-bar/spacing confusion. Rendering it directly fixes
+          that; no compensating spacer Toolbar is needed either, since
+          "sticky" (unlike "fixed") doesn't remove the bar from
+          document flow. */}
+      <Navbar />
 
       <Container sx={{ mt: 1 }}>
         <FontControlsTelugu
@@ -232,26 +237,53 @@ useEffect(() => {
           setFontSize={setFontSize}
         />
 
- {/* 🔊 Intro Audio — this is the ONE place this block should live;
-     it renders above every page's content, so it must not be
-     duplicated inside individual pages (e.g. the homepage's
-     RatnalabalaHighlights.tsx). */}
-    <Box
-      sx={{
-        mt: 2,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 1,
-        textAlign: "center",
-      }}
-    >
-      <strong>🎧 రత్నాలబాల పరిచయ ఆడియో</strong>
-      <AudioPlayer src="/audio/Intro.m4a" />
-      <Typography variant="caption" color="text.secondary" sx={{ opacity: 0.85 }}>
-        Google NotebookLM సహాయంతో రూపొందించిన పరిచయ ఆడియో
-      </Typography>
-    </Box>
+        {/* 🔊 Intro Audio — collapsed by default so it doesn't sit open
+            and take up space above every single page's content. This is
+            still the ONE place this block lives; it must not be
+            duplicated inside individual pages (e.g. the homepage's
+            RatnalabalaHighlights.tsx). */}
+        <Box sx={{ mt: 2, textAlign: "center" }}>
+          <Button
+            onClick={() => setIntroOpen(v => !v)}
+            size="small"
+            startIcon={<HeadphonesRoundedIcon fontSize="small" />}
+            endIcon={introOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
+            sx={{
+              textTransform: "none",
+              fontWeight: 700,
+              color: "var(--primary)",
+              borderRadius: "999px",
+              px: 2,
+              "&:hover": { bgcolor: "var(--surface)" },
+              "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
+            }}
+          >
+            రత్నాలబాల పరిచయ ఆడియో
+          </Button>
+
+          <Collapse in={introOpen} timeout={240} unmountOnExit>
+            <Box
+              sx={{
+                mt: 1.5,
+                mx: "auto",
+                maxWidth: 420,
+                p: 2,
+                borderRadius: "var(--radius)",
+                border: "1.5px solid var(--border-strong)",
+                bgcolor: "var(--surface-elevated)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 1,
+              }}
+            >
+              <AudioPlayer src="/audio/Intro.m4a" />
+              <Typography variant="caption" sx={{ color: "var(--muted-text)" }}>
+                Google NotebookLM సహాయంతో రూపొందించిన పరిచయ ఆడియో
+              </Typography>
+            </Box>
+          </Collapse>
+        </Box>
 
       </Container>
 
