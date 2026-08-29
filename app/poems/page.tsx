@@ -248,7 +248,8 @@ export default function PoemList() {
        
         {!loading && !error && filtered.length > 0 && (
       
-              <DownloadAllVideos poems={filtered} />
+              <DownloadAllVideos poems={filtered}      authors={AUTHORS}
+        poetryName={POETRY_NAME}/>
       
             )}
 
