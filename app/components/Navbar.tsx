@@ -71,11 +71,28 @@ const SINGLE_ITEMS = [
 ];
 
 /* ═══════════════════════════════════════════
-   COLORS
+   COLORS — reused from globals.css's brand tokens
+   (forest green / gold / ivory) instead of a
+   one-off blue-and-yellow scheme unrelated to the
+   rest of the site. Using the CSS variables means
+   this bar also adapts correctly in dark mode for
+   free, since --secondary/--background/--accent-light
+   are already redefined there.
 ═══════════════════════════════════════════ */
-const BG      = "#1E5A8A";
-const TEXT    = "#FFFFFF";
-const ACCENT  = "#FFD166";
+const BG      = "var(--secondary)";     // forest green bar — matches the brand identity used everywhere else
+const TEXT    = "var(--background)";    // ivory (or dark-ivory in dark mode) — 11.6:1 / 8.2:1 against BG
+const ACCENT  = "var(--accent-light)";  // gold — same active-route highlight color used sitewide
+
+/* Text drawn ON TOP of the gold ACCENT pill needs its OWN fixed
+   color, not a mode-flipping variable. --accent-light is a similarly
+   bright/mid-tone gold in BOTH light mode (#e0a838) and dark mode
+   (#f0c675) — it's designed to read as a foreground accent against
+   the page background, not to host text on top of itself. Pairing it
+   with --foreground (which flips to a LIGHT ivory in dark mode) would
+   put light text on a light pill and fail badly (checked: ~1.4:1). A
+   constant dark ink stays readable against the gold pill either way
+   (7.7:1 in light-mode nav, 10.2:1 in dark-mode nav). */
+const ON_ACCENT = "#241f1a";
 
 /* ═══════════════════════════════════════════
    DESKTOP DROPDOWN
@@ -92,7 +109,7 @@ function DesktopGroup({ group }: { group: typeof NAV_GROUPS[0] }) {
         onClick={e => setAnchor(e.currentTarget)}
         endIcon={open ? <ExpandLessIcon sx={{ fontSize: 16 }} /> : <ExpandMoreIcon sx={{ fontSize: 16 }} />}
         sx={{
-          color: isActive ? BG : TEXT,
+          color: isActive ? ON_ACCENT : TEXT,
           bgcolor: isActive ? ACCENT : "transparent",
           px: 1.6, py: 0.8,
           borderRadius: "999px",
@@ -132,7 +149,10 @@ function DesktopGroup({ group }: { group: typeof NAV_GROUPS[0] }) {
                 fontFamily: "'Noto Serif Telugu', serif",
                 fontSize: "0.95rem",
                 fontWeight: active ? 700 : 400,
-                color: active ? BG : "text.primary",
+                /* Menu popovers render on a light Paper regardless of
+                   page theme, so the forest-green brand color (not
+                   ON_ACCENT) is the right high-contrast text here. */
+                color: active ? "var(--secondary)" : "text.primary",
                 bgcolor: active ? `${ACCENT}55` : "transparent",
                 borderRadius: "8px", mx: 0.5, my: 0.2,
                 "&:hover": { bgcolor: `${ACCENT}33` },
@@ -219,7 +239,7 @@ export default function Navbar() {
         href="#main-content"
         style={{ position: "absolute", left: "-999px", top: "auto", width: "1px", height: "1px", overflow: "hidden" }}
         onFocus={e => {
-          e.currentTarget.style.cssText = `left:16px;top:16px;width:auto;height:auto;padding:8px 12px;background:${ACCENT};color:#000;z-index:2000;position:fixed;`;
+          e.currentTarget.style.cssText = `left:16px;top:16px;width:auto;height:auto;padding:8px 12px;background:${ACCENT};color:${ON_ACCENT};z-index:2000;position:fixed;`;
         }}
       >
         Skip to content
@@ -241,7 +261,7 @@ export default function Navbar() {
             {/* Home */}
             <Link href="/" style={{ textDecoration: "none" }}>
               <Typography sx={{
-                color: pathname === "/" ? BG : TEXT,
+                color: pathname === "/" ? ON_ACCENT : TEXT,
                 bgcolor: pathname === "/" ? ACCENT : "transparent",
                 px: 1.6, py: 0.8, borderRadius: "999px",
                 fontSize: "0.9rem", fontWeight: pathname === "/" ? 700 : 500,
@@ -256,7 +276,7 @@ export default function Navbar() {
 
             <Link href="/test-lab" style={{ textDecoration: "none" }}>
               <Typography sx={{
-                color: pathname === "/test-lab" ? BG : TEXT,
+                color: pathname === "/test-lab" ? ON_ACCENT : TEXT,
                 bgcolor: pathname === "/test-lab" ? ACCENT : "transparent",
                 px: 1.6, py: 0.8, borderRadius: "999px",
                 fontSize: "0.9rem", fontWeight: pathname === "/test-lab" ? 700 : 500,

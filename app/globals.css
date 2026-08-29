@@ -150,41 +150,72 @@
    GeetaCard: forest green #1a3d2b/#2d6a4f, bronze #8B6F47;
    navbar logo: saffron→orange gradient) instead of the
    generic Material-purple defaults this replaced.
+
+   ♿ AUDIENCE: mostly 60+ Telugu readers. WCAG AA (4.5:1 text,
+   3:1 UI shape) is the legal floor, not the target here — every
+   text-carrying and boundary-carrying token below is pushed to
+   AAA (7:1) wherever the palette allows it, since age-related
+   contrast sensitivity loss means AA-minimum text that "passes"
+   a checker can still be genuinely hard to read comfortably.
+
+     --accent-text   6b4400 → 8.2:1 on --background   (was 5.7:1)
+     --border-strong 7a6650 → 5.2:1 on --background   (was 3.4:1)
+     --primary  (dark) e2916a → 7.4:1                 (was 6.0:1)
+     --secondary(dark) 6bbd93 → 8.2:1                 (was 4.8:1)
+     --border-strong(dark) 8f7a5c → 4.5:1              (was 3.5:1)
+
+   --accent and --border themselves stay vivid/soft — they're for
+   large decorative fills and hairlines only, never for text or a
+   functional edge; see --accent-text / --border-strong for those.
+
+   Two other senior-readability changes live outside this block:
+   the base font-size is raised (html { font-size }, below) and
+   the default focus ring / link underline are strengthened (see
+   the ACCESSIBILITY section near the bottom of this file).
    ===================================================== */
 
 :root {
   /* Base surfaces — warm ivory instead of stark white, echoes the
      poster background (#F7F2EA) used in GeetaCard */
   --background: #fdfaf5;
-  --foreground: #241f1a;
+  --foreground: #241f1a;      /* 15.8:1 on --background */
   --surface: #f7f2ea;
   --surface-elevated: #ffffff;
 
-  /* Brand colors */
-  --primary: #8b3a1f;         /* deep terracotta/maroon — traditional, warm, readable */
-  --primary-light: #b0552f;
-  --secondary: #1a3d2b;       /* forest green — matches GeetaCard poster border */
-  --secondary-light: #2d6a4f;
+  /* Brand colors — already text-safe as-is */
+  --primary: #8b3a1f;         /* 7.4:1 on --background — deep terracotta/maroon */
+  --primary-light: #b0552f;   /* 4.8:1 on --background */
+  --secondary: #1a3d2b;       /* 11.6:1 on --background — forest green */
+  --secondary-light: #2d6a4f; /* 6.1:1 on --background */
 
-  /* Accent — saffron/gold, echoes the navbar logo gradient */
-  --accent: #c9820a;
-  --accent-light: #e0a838;
-  --accent-gradient: linear-gradient(135deg, #f6b93b, #e67e22);
+  /* Accent — saffron/gold. Split into two roles: the vivid value
+     for large/graphical use, a darker text-safe value for anything
+     read as text (links, small icons with a label, captions). */
+  --accent: #c9820a;          /* 3.0:1 on --background — large decorative text, icons, fills only */
+  --accent-text: #6b4400;     /* 8.2:1 on --background — AAA. Use for links & any body/caption text */
+  --accent-light: #e0a838;    /* decorative tint only, not for text */
+  --accent-gradient: linear-gradient(135deg, #f6b93b, #e67e22); /* decorative fills/shapes only — ~1.7:1, NEVER use for text */
 
-  --border: #e4dacb;          /* matches poster hairline color */
-  --muted-text: #6b6258;      /* matches poster inkMuted */
+  /* Borders — same split as accent, for the same reason */
+  --border: #e4dacb;          /* ~1.3:1 — decorative hairlines/dividers only */
+  --border-strong: #7a6650;   /* 5.2:1 on --background — input outlines, card edges, anything that must read as a boundary */
+  --muted-text: #6b6258;      /* 5.7:1 on --background */
 
-  /* Radius */
-  --radius: 12px;
-  --radius-sm: 8px;
+  /* Radius — slightly larger than a typical default so buttons/cards
+     read as generous, easy-to-target shapes rather than small chips */
+  --radius: 14px;
+  --radius-sm: 10px;
 
   /* System fallback */
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
-  /* ✅ TELUGU GLOBAL CONTROLS */
+  /* ✅ TELUGU GLOBAL CONTROLS
+     Base size raised from 1rem to 1.125rem (~18px) as a senior-friendly
+     default — still fully overridable by any in-app font-size control
+     that already writes to this variable. */
   --telugu-font-family: "Ramaneeya";
-  --telugu-font-size: 1rem;
+  --telugu-font-size: 1.125rem;
 
   /* Motion */
   --transition-fast: 0.15s ease;
@@ -193,25 +224,32 @@
 
 /* 🌙 Dark Mode — deep warm charcoal instead of flat near-black,
    with the same terracotta/forest-green/gold identity carried through
-   at brighter, higher-contrast values for legibility */
+   at brighter, higher-contrast values for legibility.
+
+   Same audit applied here: a color that clears 3:1/4.5:1 on a LIGHT
+   background usually does not on a dark one (and vice versa), so
+   --accent-text and --border-strong get their own dark-mode values
+   rather than reusing the light-mode ones. */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #17140f;
-    --foreground: #f0e9dd;
+    --foreground: #f0e9dd;      /* 15.2:1 on --background */
     --surface: #211c15;
     --surface-elevated: #2a241b;
 
-    --primary: #d97a4d;         /* lightened terracotta for dark-bg contrast */
-    --primary-light: #e59a72;
-    --secondary: #4a8f6c;       /* lightened forest green */
-    --secondary-light: #6bb38c;
+    --primary: #e2916a;         /* 7.4:1 on --background — AAA. Lightened terracotta */
+    --primary-light: #e59a72;   /* 8.0:1 on --background */
+    --secondary: #6bbd93;       /* 8.2:1 on --background — AAA. Lightened forest green */
+    --secondary-light: #6bb38c; /* 7.4:1 on --background */
 
-    --accent: #e0a838;
-    --accent-light: #f0c675;
-    --accent-gradient: linear-gradient(135deg, #f0c675, #e0a838);
+    --accent: #e0a838;          /* 8.6:1 on --background — safe for text in dark mode too */
+    --accent-text: #e0a838;     /* same value works here, no extra darkening needed */
+    --accent-light: #f0c675;    /* 11.4:1 on --background — decorative tint */
+    --accent-gradient: linear-gradient(135deg, #f0c675, #e0a838); /* decorative fills/shapes only */
 
-    --border: #3a3226;
-    --muted-text: #b3a894;
+    --border: #3a3226;          /* ~1.5:1 — decorative hairlines/dividers only */
+    --border-strong: #8f7a5c;   /* 4.5:1 on --background — input outlines, card edges, focus rings */
+    --muted-text: #b3a894;      /* 7.8:1 on --background */
   }
 }
 
@@ -383,6 +421,18 @@ a:hover {
   opacity: 0.85;
 }
 
+/* Any inline text link (as opposed to a card/nav item styled as a
+   link) should get this class. Underlining by default — not just on
+   hover — means the link doesn't rely on color perception alone,
+   which matters for an older audience where contrast/color
+   discrimination is commonly reduced even when acuity is otherwise
+   fine. Pairs with --accent-text (AAA, 8.2:1) rather than --accent. */
+a.accent-link {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* =====================================================
    🧩 SURFACES
    ===================================================== */
@@ -401,6 +451,16 @@ a:hover {
     0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+/* Use for anything whose edge needs to actually be perceivable —
+   text inputs, selects, cards that carry meaning, custom checkboxes.
+   Swap any surface that previously relied on --border alone for this
+   when the boundary itself is functional information, not decoration. */
+.surface-outlined {
+  background: var(--surface-elevated);
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border-strong);
+}
+
 /* =====================================================
    📱 MOBILE TUNING
    ===================================================== */
@@ -416,8 +476,38 @@ a:hover {
    ===================================================== */
 
 :focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 3px;
+  outline: 3px solid var(--primary);
+  outline-offset: 4px;
+}
+
+/* --primary clears 3:1 non-text contrast against --background in both
+   light (7.4:1) and dark (7.4:1) mode, so this default focus ring is
+   safe on the page itself. Width/offset bumped from a typical 2px/3px
+   default — easier to spot for anyone navigating by keyboard with a
+   tremor or reduced vision. The one case contrast alone can't cover
+   automatically is a focused element whose OWN fill is --primary
+   (e.g. a solid primary button) — add this halo utility on those
+   specific components so the ring stays visible against its own
+   background. */
+.focus-ring-halo:focus-visible {
+  outline: 2px solid var(--surface-elevated);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--primary);
+}
+
+/* Visually hides content from sighted users while keeping it in the
+   accessibility tree — for skip links, form labels that are redundant
+   on-screen, etc. Common gap in hand-rolled global stylesheets. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
