@@ -1,19 +1,18 @@
 "use client"; // This component runs on the client side
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Typography, Button } from '@mui/material'; // Removed Select, MenuItem, FormControl, InputLabel
+import { Box, Typography, Button } from '@mui/material';
 
 export default function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   // The single default music track
-  const defaultMusicTrack = 'Default.mp3';
+  const defaultMusicTrack = 'Style1.mp3';
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   // Effect to set the audio source once when the component mounts
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.src = `/MusicPlayer/${defaultMusicTrack}`;
-     
     }
   }, []); // Empty dependency array ensures this runs only once on mount
 
@@ -36,20 +35,47 @@ export default function MusicPlayer() {
   };
 
   return (
-    <Box sx={{ mt: 6, p: 3, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 3, textAlign: 'center' }}>
-      <Typography variant="h5" component="h3" gutterBottom>
+    <Box
+      sx={{
+        mt: 6,
+        p: 3,
+        bgcolor: 'var(--surface-elevated)',
+        border: '1.5px solid var(--border-strong)',
+        borderRadius: 'var(--radius)',
+        textAlign: 'center',
+      }}
+    >
+      <Typography
+        variant="h5"
+        component="h3"
+        gutterBottom
+        sx={{ color: 'var(--foreground)', fontFamily: "'Noto Serif Telugu', serif" }}
+      >
         నేపథ్య సంగీతం
       </Typography>
-      
+
       <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-        <Button 
-          variant="contained" 
-          onClick={toggleMusic} 
-          sx={{ 
-            bgcolor: isPlaying ? 'error.main' : 'success.main', 
-            '&:hover': { 
-              bgcolor: isPlaying ? 'error.dark' : 'success.dark' 
-            } 
+        <Button
+          variant="contained"
+          onClick={toggleMusic}
+          sx={{
+            // Forest green while playing (a positive/active state, same
+            // role "success" played before) and maroon once stopped —
+            // both from the shared brand tokens instead of MUI's
+            // generic green/red defaults.
+            bgcolor: isPlaying ? 'var(--secondary)' : 'var(--primary)',
+            color: 'var(--background)',
+            fontWeight: 700,
+            borderRadius: '999px',
+            px: 3,
+            '&:hover': {
+              filter: 'brightness(1.1)',
+              bgcolor: isPlaying ? 'var(--secondary)' : 'var(--primary)',
+            },
+            '&:focus-visible': {
+              outline: '3px solid var(--primary)',
+              outlineOffset: '4px',
+            },
           }}
         >
           {isPlaying ? '⏹ సంగీతం ఆపండి' : '▶ సంగీతం ప్లే చేయండి'}

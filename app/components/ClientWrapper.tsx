@@ -18,7 +18,7 @@ export default function ClientWrapper({ children }: { children: ReactNode }) {
       {children}
        
       <Footer />
-     <MusicPlayer />
+     
       <GoToTopButton />
         
     </>

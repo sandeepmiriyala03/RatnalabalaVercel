@@ -13,6 +13,7 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
 import AudioPlayer from "@/app/components/AudioPlayer";
+import MusicPlayer from "@/app/components/MusicPlayer";
 /* 🔤 Allowed Telugu Fonts */
 export type TeluguFont =
   | "Gurajada"
@@ -293,6 +294,7 @@ useEffect(() => {
         </Box>
       </Container>
       <PwaInstallPrompt />
+      <MusicPlayer />
       <FloatingAIButton />
 
     </>
