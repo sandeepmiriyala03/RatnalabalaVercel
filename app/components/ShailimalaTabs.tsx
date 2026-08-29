@@ -35,8 +35,15 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
     return dot === -1 ? '' : filename.substring(dot + 1).toLowerCase();
   };
 
+  /* Downloading the raw file works fine on mobile browsers — this used
+     to bail out entirely on mobile (`if (!isDesktop) return`), which
+     was blocking something that actually works. What genuinely differs
+     by platform is INSTALLING the downloaded file as a system font
+     afterwards, which is an OS-level step outside any website's
+     control — desktop makes that a double-click, stock Android/iOS
+     don't offer an equivalent. The note below the tabs explains that
+     honestly instead of the download button silently doing nothing. */
   const handleSingleDownload = (originalName: string, folder: 'Fonts' | 'books') => {
-    if (!isDesktop) return;
     const finalName = folder === 'Fonts' ? formatToMalaName(originalName) : originalName;
     const link = document.createElement('a');
     link.href = `/${folder}/${originalName}`;
@@ -46,27 +53,37 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
     document.body.removeChild(link);
   };
 
+  /* Rebuilt to produce an actual ZIP (via the same jszip library the
+     rest of the app's bulk-download components already use), instead
+     of the previous version which concatenated every file's raw bytes
+     into one Blob and gzipped THAT — producing a ".tar.gz" that was
+     not a real tar archive and could not be extracted back into
+     individual usable fonts, on any platform. */
   const handleBulkDownload = async (files: string[], folder: 'Fonts' | 'books', archiveName: string) => {
-    if (!isDesktop) return;
     setIsDownloadingAll(true);
     try {
-      const blobs = await Promise.all(
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      await Promise.all(
         files.map(async (f) => {
           const res = await fetch(`/${folder}/${f}`);
           if (!res.ok) throw new Error(`Failed to fetch ${f}`);
-          return res.blob();
+          const blob = await res.blob();
+          const entryName = folder === 'Fonts' ? formatToMalaName(f) : f;
+          zip.file(entryName, blob);
         })
       );
-      const combined = new Blob(blobs, { type: 'application/octet-stream' });
-      const cs = new CompressionStream('gzip');
-      const compressed = new Response(combined.stream().pipeThrough(cs));
-      const blob = await compressed.blob();
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(zipBlob);
       const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', `${archiveName}.tar.gz`);
+      link.href = url;
+      link.setAttribute('download', `${archiveName}.zip`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Bulk download error:', err);
       alert('డౌన్‌లోడ్ లో లోపం వచ్చింది. మళ్ళీ ప్రయత్నించండి.');
@@ -77,10 +94,10 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
 
   if (isDesktop === null) {
     return (
-      <div className="flex items-center justify-center py-16 text-slate-400 text-sm">
-        <svg className="animate-spin w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 0', color: 'var(--muted-text)', fontSize: 14 }}>
+        <svg className="animate-spin" style={{ width: 16, height: 16, marginRight: 8 }} viewBox="0 0 24 24" fill="none">
+          <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
         </svg>
         పరిశీలిస్తోంది...
       </div>
@@ -100,81 +117,53 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
 
   const SpinnerIcon = () => (
     <svg style={{ width: 14, height: 14 }} className="animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+      <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
     </svg>
   );
 
   return (
     <div>
-      {/* Mobile restriction banner */}
-    {!isDesktop && (
-  <div
-    style={{
-      display: "flex",
-      gap: 12,
-      alignItems: "flex-start",
-      background: "#fef2f2",
-      border: "1px solid #fecaca",
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 24,
-    }}
-  >
-    <svg
-      style={{
-        width: 20,
-        height: 20,
-        color: "#ef4444",
-        flexShrink: 0,
-        marginTop: 2,
-      }}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <rect x="5" y="2" width="14" height="20" rx="2" />
-      <line
-        x1="12"
-        y1="18"
-        x2="12"
-        y2="18.01"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-    </svg>
-
-    <div>
-      <p
-        style={{
-          fontWeight: 600,
-          color: "#991b1b",
-          fontSize: 14,
-          margin: 0,
-        }}
-      >
-        Desktop required
-      </p>
-
-      <p
-        style={{
-          color: "#b91c1c",
-          fontSize: 12,
-          marginTop: 4,
-          lineHeight: 1.5,
-          marginBottom: 0,
-        }}
-      >
-        Downloads only work in desktop browsers. Please open this page on a
-        computer.
-      </p>
-    </div>
-  </div>
-)}
+      {/* Informational note, not a hard block — downloading works on
+          every device; only the "install as a system font" step after
+          downloading is desktop-only, and that's a genuine OS
+          limitation this code can't remove. */}
+      {!isDesktop && activeTab === 'Fonts' && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 12,
+            alignItems: 'flex-start',
+            background: 'var(--surface)',
+            border: '1px solid var(--border-strong)',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 24,
+          }}
+        >
+          <svg
+            style={{ width: 20, height: 20, color: 'var(--accent-text)', flexShrink: 0, marginTop: 2 }}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <div>
+            <p style={{ fontWeight: 600, color: 'var(--foreground)', fontSize: 14, margin: 0 }}>
+              ఫాంట్ ఫైల్ డౌన్‌లోడ్ అవుతుంది
+            </p>
+            <p style={{ color: 'var(--muted-text)', fontSize: 12, marginTop: 4, lineHeight: 1.5, marginBottom: 0 }}>
+              మీ ఫోన్‌లో ఫైల్ డౌన్‌లోడ్ అవుతుంది, కానీ దాన్ని సిస్టమ్ ఫాంట్‌గా వాడుకోవడానికి
+              మీ ఫోన్‌లో ఒక ఫాంట్ ఇన్‌స్టాలర్ యాప్ అవసరం కావచ్చు — ఇది ఫోన్ తయారీదారుని బట్టి
+              మారుతుంది. కంప్యూటర్‌లో అయితే డౌన్‌లోడ్ అయిన ఫైల్‌ను తెరిచి నేరుగా ఇన్‌స్టాల్ చేసుకోవచ్చు.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 24 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', marginBottom: 24 }}>
         {(['Fonts', 'books'] as const).map((tab) => {
           const isActive = activeTab === tab;
           const label = tab === 'Fonts' ? 'తెలుగు ఖతులు' : 'సాహిత్య గ్రంథాలు';
@@ -191,10 +180,10 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                 fontSize: 14,
                 fontWeight: 500,
                 border: 'none',
-                borderBottom: isActive ? '2px solid #4f46e5' : '2px solid transparent',
+                borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
                 marginBottom: -1,
                 background: 'transparent',
-                color: isActive ? '#4f46e5' : '#64748b',
+                color: isActive ? 'var(--primary)' : 'var(--muted-text)',
                 cursor: 'pointer',
                 transition: 'color 0.15s',
                 fontFamily: 'inherit',
@@ -214,12 +203,12 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
               {label}
               <span
                 style={{
-                  fontSize : 12,
+                  fontSize: 12,
                   padding: '1px 8px',
                   borderRadius: 20,
                   fontWeight: 500,
-                  background: isActive ? '#e0e7ff' : '#f1f5f9',
-                  color: isActive ? '#4338ca' : '#94a3b8',
+                  background: isActive ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--surface)',
+                  color: isActive ? 'var(--primary)' : 'var(--muted-text)',
                 }}
               >
                 {count}
@@ -241,10 +230,10 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
         }}
       >
         <div>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--foreground)', margin: 0 }}>
             {activeTab === 'Fonts' ? 'శైలిమాల కలెక్షన్' : 'జ్ఞానమాల గ్రంథాలు'}
           </h3>
-          <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 2, marginBottom: 0 }}>
+          <p style={{ fontSize: 13, color: 'var(--muted-text)', marginTop: 2, marginBottom: 0 }}>
             {activeTab === 'Fonts'
               ? 'విడిగా లేదా అన్నింటినీ ఒకే ప్యాకేజీగా డౌన్‌లోడ్ చేసుకోవచ్చు.'
               : 'సాహిత్య గ్రంథాల సంకలనాన్ని వీక్షించవచ్చు లేదా డౌన్‌లోడ్ చేసుకోవచ్చు.'}
@@ -254,19 +243,19 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
         {files.length > 0 && (
           <button
             onClick={() => handleBulkDownload(files, activeTab, archiveName)}
-            disabled={!isDesktop || isDownloadingAll}
+            disabled={isDownloadingAll}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              background: (!isDesktop || isDownloadingAll) ? '#e2e8f0' : '#4f46e5',
-              color: (!isDesktop || isDownloadingAll) ? '#94a3b8' : '#ffffff',
+              background: isDownloadingAll ? 'var(--surface)' : 'var(--primary)',
+              color: isDownloadingAll ? 'var(--muted-text)' : 'var(--background)',
               border: 'none',
               borderRadius: 8,
               padding: '8px 16px',
               fontSize: 13,
-              fontWeight: 500,
-              cursor: (!isDesktop || isDownloadingAll) ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              cursor: isDownloadingAll ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit',
               transition: 'background 0.15s',
             }}
@@ -283,27 +272,27 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
           style={{
             textAlign: 'center',
             padding: '56px 24px',
-            color: '#94a3b8',
+            color: 'var(--muted-text)',
             fontSize: 14,
-            border: '2px dashed #e2e8f0',
+            border: '2px dashed var(--border)',
             borderRadius: 12,
           }}
         >
           {activeTab === 'Fonts' ? 'ఫోల్డర్‌లో ఫాంట్ ఫైళ్లు ఏవీ లభించలేదు.' : 'ఫోల్డర్‌లో గ్రంథాల ప్రతులు ఏవీ లభించలేదు.'}
         </div>
       ) : (
-        <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border-strong)', borderRadius: 12, overflow: 'hidden' }}>
           {/* Table head */}
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: '40px 1fr 60px',
-              background: '#f8fafc',
-              borderBottom: '1px solid #e2e8f0',
+              background: 'var(--surface)',
+              borderBottom: '1px solid var(--border)',
               padding: '8px 12px',
               fontSize: 11,
               fontWeight: 600,
-              color: '#94a3b8',
+              color: 'var(--muted-text)',
               textTransform: 'uppercase',
               letterSpacing: '0.06em',
             }}
@@ -326,10 +315,10 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                   alignItems: 'center',
                   padding: '10px 12px',
                   fontSize: 14,
-                  borderBottom: index < files.length - 1 ? '1px solid #f1f5f9' : 'none',
+                  borderBottom: index < files.length - 1 ? '1px solid var(--border)' : 'none',
                 }}
               >
-                <div style={{ fontSize: 12, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+                <div style={{ fontSize: 12, color: 'var(--muted-text)', fontVariantNumeric: 'tabular-nums' }}>
                   {index + 1}
                 </div>
                 <div
@@ -338,43 +327,40 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
                     paddingRight: 8,
-                    color: '#1e293b',
+                    color: 'var(--foreground)',
                   }}
                 >
                   {base}
-                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 12, marginLeft: 2 }}>
+                  <span style={{ color: 'var(--muted-text)', fontFamily: 'monospace', fontSize: 12, marginLeft: 2 }}>
                     .{ext}
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                   <button
                     onClick={() => handleSingleDownload(file, activeTab)}
-                    disabled={!isDesktop}
                     title={`Download ${displayName}`}
                     aria-label={`Download ${displayName}`}
                     style={{
                       padding: '6px 8px',
                       borderRadius: 6,
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--border-strong)',
                       background: 'transparent',
-                      color: '#64748b',
-                      cursor: isDesktop ? 'pointer' : 'not-allowed',
-                      opacity: isDesktop ? 1 : 0.35,
+                      color: 'var(--muted-text)',
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       transition: 'all 0.15s',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isDesktop) return;
-                      (e.currentTarget as HTMLButtonElement).style.background = '#eef2ff';
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = '#c7d2fe';
-                      (e.currentTarget as HTMLButtonElement).style.color = '#4f46e5';
+                      (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--primary) 10%, transparent)';
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--primary)';
+                      (e.currentTarget as HTMLButtonElement).style.color = 'var(--primary)';
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                      (e.currentTarget as HTMLButtonElement).style.borderColor = '#e2e8f0';
-                      (e.currentTarget as HTMLButtonElement).style.color = '#64748b';
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-strong)';
+                      (e.currentTarget as HTMLButtonElement).style.color = 'var(--muted-text)';
                     }}
                   >
                     <DownloadIcon />
