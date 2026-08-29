@@ -217,7 +217,9 @@ export default function FontControlsTelugu({
   // Autocomplete works with the option object, not the raw string
   // value — this finds the FontOption matching the current fontFamily
   // so the input shows the right label instead of the raw value.
-  const selectedOption = sortedFonts.find((f) => f.value === fontFamily) ?? null;
+  // Falls back to `undefined` (not `null`) because `disableClearable`
+  // below narrows MUI's expected value type to exclude null.
+  const selectedOption = sortedFonts.find((f) => f.value === fontFamily) ?? undefined;
 
   return (
     <>
