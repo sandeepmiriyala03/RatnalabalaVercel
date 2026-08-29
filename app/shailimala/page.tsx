@@ -5,7 +5,7 @@ import ShailimalaTabs from '@/app/components/ShailimalaTabs';
 
 async function getTeluguFonts(): Promise<string[]> {
   try {
-    const dir = path.join(process.cwd(), 'public', 'fonts');
+    const dir = path.join(process.cwd(), 'public', 'Fonts');
     if (!fs.existsSync(dir)) return [];
     return fs.readdirSync(dir).filter((name) => {
       const ext = path.extname(name).toLowerCase();
