@@ -1,11 +1,12 @@
 // AGENTS.md → see "FontControlsTelugu Component Rules"
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Box,
-  Select,
+  Autocomplete,
+  TextField,
   MenuItem,
   Typography,
   IconButton,
@@ -99,6 +100,17 @@ export default function FontControlsTelugu({
         // API unreachable — leave the list empty rather than crashing.
       });
   }, []);
+
+  // A→Z, sorted by the Telugu label the user actually reads — not
+  // insertion order from the API, and not a plain JS string sort
+  // either, since that sorts by raw code-point order rather than real
+  // Telugu alphabetical order. localeCompare with the "te" locale
+  // gives correct Telugu collation (vowels/consonants in the right
+  // traditional sequence, matras ordered under their base letter, etc).
+  const sortedFonts = useMemo(
+    () => [...teluguFonts].sort((a, b) => a.label.localeCompare(b.label, "te")),
+    [teluguFonts]
+  );
 
   // ── THE AGENTIC PART ──
   // On mount, before the user touches anything: perceive the screen
@@ -202,6 +214,11 @@ export default function FontControlsTelugu({
   const currentFontLabel =
     teluguFonts.find((f) => f.value === fontFamily)?.label ?? fontFamily;
 
+  // Autocomplete works with the option object, not the raw string
+  // value — this finds the FontOption matching the current fontFamily
+  // so the input shows the right label instead of the raw value.
+  const selectedOption = sortedFonts.find((f) => f.value === fontFamily) ?? null;
+
   return (
     <>
       <Paper
@@ -239,38 +256,53 @@ export default function FontControlsTelugu({
           justifyContent="space-between"
           gap={2.5}
         >
-          {/* 🔤 Font Selector */}
+          {/* 🔤 Font Selector — Autocomplete instead of a plain Select
+              so it's actually searchable (type to filter by label),
+              with options sorted A→Z above via sortedFonts. */}
           <Box display="flex" alignItems="center" gap={1} flex={1.2} minWidth={0}>
             <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap", fontWeight: 600 }}>
               తెలుగు ఫాంట్
             </Typography>
 
-            <Select
+            <Autocomplete
               size="small"
-              value={fontFamily}
-              onChange={(e) => {
+              options={sortedFonts}
+              value={selectedOption}
+              getOptionLabel={(option) => option.label}
+              isOptionEqualToValue={(option, value) => option.value === value.value}
+              onChange={(_, newValue) => {
+                if (!newValue) return;
                 setAgentApplied(false);
                 setAgentReason(null);
-                setFontFamily(e.target.value as TeluguFont);
+                setFontFamily(newValue.value);
               }}
+              disableClearable
               sx={{
                 minWidth: 180,
                 flex: 1,
-                height: 36,
-                fontFamily: `${fontFamily}, system-ui`,
                 backgroundColor: "var(--surface-elevated, #fff)",
               }}
-            >
-              {teluguFonts.map((f) => (
-                <MenuItem
-                  key={f.value}
-                  value={f.value}
-                  sx={{ fontFamily: `${f.value}, system-ui` }}
-                >
-                  {f.label}
+              renderOption={(props, option) => (
+                <MenuItem {...props} key={option.value} sx={{ fontFamily: `${option.value}, system-ui` }}>
+                  {option.label}
                 </MenuItem>
-              ))}
-            </Select>
+              )}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="ఫాంట్ వెతకండి…"
+                  sx={{
+                    "& .MuiInputBase-root": {
+                      height: 36,
+                      fontFamily: `${fontFamily}, system-ui`,
+                    },
+                    "& .MuiOutlinedInput-notchedOutline": { borderColor: "var(--border, #e4dacb)" },
+                    "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "var(--primary, #8b3a1f)" },
+                    "& .Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "var(--primary, #8b3a1f)" },
+                  }}
+                />
+              )}
+            />
           </Box>
 
           {/* 🔠 Font Size */}

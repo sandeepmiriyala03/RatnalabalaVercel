@@ -89,6 +89,8 @@ FONT_CATALOG = [
     {"label": "మండలి (Bold Italic)", "value": "Mandali-BoldItalic"},
     {"label": "పొట్టి శ్రీరాములు", "value": "PottiSreeramulu"},
     {"label": "తిరొ సుందర తెలుగు", "value": "TiroSundaraTelugu-Regular"},
+      {"label": "నాట్స్", "value": "NATS"},
+    {"label": "నాట్స్ (ఇటాలిక్)", "value": "NATS-Italic"},
 ]
 
 

@@ -86,7 +86,10 @@ export type TeluguFont =
   | "Mandali-BoldItalic"
 
   | "PottiSreeramulu"
-  | "TiroSundaraTelugu-Regular"  ;
+  | "TiroSundaraTelugu-Regular"  
+  | "NATS"
+  | "NATS-Italic"
+  ;
 
 
 const DEFAULT_FONT: TeluguFont = "Ramaneeya";
