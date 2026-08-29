@@ -26,13 +26,20 @@ export default function RatnalabalaBackground() {
 
   return (
     <Container maxWidth="md" sx={{ py: { xs: 4, md: 6 } }}>
-      <Card>
+      <Card
+        sx={{
+          bgcolor: "var(--surface-elevated)",
+          border: "1.5px solid var(--border-strong)",
+          borderRadius: "var(--radius)",
+        }}
+      >
         <CardContent>
           <Typography
             variant="h5"
             align="center"
             gutterBottom
             fontWeight={700}
+            sx={{ color: "var(--foreground)", fontFamily: "'Noto Serif Telugu', serif" }}
           >
             రత్నభావాలు – భావరత్నాలు
           </Typography>
@@ -44,17 +51,31 @@ export default function RatnalabalaBackground() {
               fontFamily: "inherit",
               fontSize: "0.95rem",
               lineHeight: 1.8,
+              color: "var(--foreground)",
             }}
           >
             {ratnalabalaText}
           </Typography>
 
-          {/* 🔗 CTA BUTTON */}
+          {/* 🔗 CTA BUTTON — explicitly styled with the brand's primary
+              maroon/terracotta. Left as plain variant="contained" this
+              renders MUI's own default theme blue, since the site's CSS
+              variables don't reach MUI's palette unless a custom
+              ThemeProvider is set up (see note below the component). */}
           <Box textAlign="center" sx={{ mt: 4 }}>
             <Button
               variant="contained"
               size="large"
               onClick={() => router.push("/poems")}
+              sx={{
+                bgcolor: "var(--primary)",
+                color: "var(--background)",
+                fontWeight: 700,
+                borderRadius: "999px",
+                px: 4,
+                "&:hover": { filter: "brightness(1.1)", bgcolor: "var(--primary)" },
+                "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
+              }}
             >
               📖 పద్యాలు చదవండి
             </Button>

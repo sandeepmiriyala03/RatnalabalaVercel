@@ -8,13 +8,20 @@ export default function MiraIntro() {
 
   return (
     <Box sx={{ maxWidth: 700, mx: "auto", my: { xs: 3, md: 5 } }}>
-      <Card>
+      <Card
+        sx={{
+          bgcolor: "var(--surface-elevated)",
+          border: "1.5px solid var(--border-strong)",
+          borderRadius: "var(--radius)",
+        }}
+      >
         <CardContent>
           <Typography
             variant="h6"
             align="center"
             fontWeight={700}
             gutterBottom
+            sx={{ color: "var(--foreground)", fontFamily: "'Noto Serif Telugu', serif" }}
           >
             🖋️ డాక్టర్ శ్రీ మిరియాల రామకృష్ణ గారు
           </Typography>
@@ -24,7 +31,7 @@ export default function MiraIntro() {
             sx={{
               fontSize: "0.95rem",
               lineHeight: 1.8,
-              opacity: 0.9,
+              color: "var(--muted-text)",
             }}
           >
             ప్రముఖ తెలుగు రచయిత, పరిశోధకుడు. <br />
@@ -35,7 +42,11 @@ export default function MiraIntro() {
             తెలుగు సాహిత్యానికి విశేష సేవలందించారు.
           </Typography>
 
-          {/* 🔘 CTA BUTTONS */}
+          {/* 🔘 CTA BUTTONS — both explicitly styled with brand tokens.
+              Left as plain variant="outlined"/"contained" these render
+              MUI's own default theme blue (see the theme.ts note below
+              the component — this keeps happening because there's no
+              custom MUI theme yet). */}
           <Stack
             direction={{ xs: "column", sm: "row" }}
             justifyContent="center"
@@ -46,6 +57,15 @@ export default function MiraIntro() {
               variant="outlined"
               size="medium"
               onClick={() => router.push("/mira")}
+              sx={{
+                color: "var(--primary)",
+                borderColor: "var(--primary)",
+                borderWidth: "1.5px",
+                fontWeight: 700,
+                borderRadius: "999px",
+                "&:hover": { borderColor: "var(--primary)", bgcolor: "var(--surface)" },
+                "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
+              }}
             >
               📜 డాక్టర్ శ్రీ మిరియాల రామకృష్ణ గారి ప్రస్థానం
             </Button>
@@ -54,6 +74,14 @@ export default function MiraIntro() {
               variant="contained"
               size="medium"
               onClick={() => router.push("/mirapoems")}
+              sx={{
+                bgcolor: "var(--primary)",
+                color: "var(--background)",
+                fontWeight: 700,
+                borderRadius: "999px",
+                "&:hover": { filter: "brightness(1.1)", bgcolor: "var(--primary)" },
+                "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
+              }}
             >
               📖 పద్యాలు చదవండి
             </Button>
