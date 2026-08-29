@@ -14,6 +14,7 @@ import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
 import AudioPlayer from "@/app/components/AudioPlayer";
 import MusicPlayer from "@/app/components/MusicPlayer";
+import DownloadRingtones from "@/app/components/DownloadRingtones";
 /* 🔤 Allowed Telugu Fonts */
 export type TeluguFont =
   | "Gurajada"
@@ -280,11 +281,13 @@ useEffect(() => {
             >
               <AudioPlayer src="/audio/Intro.m4a" />
               <Typography variant="caption" sx={{ color: "var(--muted-text)" }}>
-                Google NotebookLM సహాయంతో రూపొందించిన పరిచయ ఆడియో
+            ఈ వెబ్‌సైట్ గురించి తెలుసుకోవడానికి ఈ ఆడియో వినండి.
               </Typography>
             </Box>
           </Collapse>
         </Box>
+
+        <DownloadRingtones />
 
       </Container>
 
