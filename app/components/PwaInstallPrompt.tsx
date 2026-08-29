@@ -73,12 +73,41 @@ export default function PwaInstallPrompt() {
      — that's a real platform limit, not something fixable here — so
      the best available help is clear manual steps, or a bookmark
      suggestion when even manual "Add to Home Screen" doesn't exist. */
+  const WELCOME_TEXT = 'స్వాగతం! రత్నాలబాల–జ్ఞానమాల ఇప్పుడు మీ ఫోన్‌లో సిద్ధంగా ఉంది.';
+
+  /* Spoken welcome, using the same /api/tts endpoint and voice contract
+     PoemCard already uses. This plays ALONGSIDE the visual Snackbar
+     below, not instead of it — audio-only would leave out anyone with
+     sound off or a hearing difficulty, so both channels carry the same
+     message. If TTS fails or the browser blocks autoplay, it fails
+     silently — the visual toast still confirms success either way. */
+  const playWelcomeVoice = async () => {
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: WELCOME_TEXT, source: 'edge', voice: 'male' }),
+      });
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play();
+    } catch {
+      // Silent by design — the visual toast is the fallback, not an error state.
+    }
+  };
+
   const handleFabClick = async () => {
     if (deferredPrompt) {
       await deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
       setDeferredPrompt(null);
-      if (choice.outcome === 'accepted') setShowWelcome(true);
+      if (choice.outcome === 'accepted') {
+        setShowWelcome(true);
+        playWelcomeVoice();
+      }
       return;
     }
     if (isIOS) return setSteps('ios');
@@ -189,7 +218,7 @@ export default function PwaInstallPrompt() {
             '& .MuiAlert-action': { color: 'var(--background)' },
           }}
         >
-         🎉 స్వాగతం! రత్నాలబాల–జ్ఞానమాల ఇప్పుడు మీ ఫోన్‌లో సిద్ధంగా ఉంది.
+          🎉 {WELCOME_TEXT}
         </Alert>
       </Snackbar>
     </>
