@@ -7,14 +7,83 @@ interface ShailimalaTabsProps {
   initialBooks: string[];
 }
 
+type InstallMethod = 'samsung' | 'xiaomi' | 'huawei' | 'androidOther' | 'ios' | 'desktop';
+
+function detectInstallMethod(): InstallMethod {
+  const ua = navigator.userAgent;
+  if (/iphone|ipad|ipod/i.test(ua)) return 'ios';
+  if (/SM-|Samsung/i.test(ua)) return 'samsung';
+  if (/Redmi|MI\s?\d|POCO|Xiaomi/i.test(ua)) return 'xiaomi';
+  if (/HUAWEI|HONOR/i.test(ua)) return 'huawei';
+  if (/android/i.test(ua)) return 'androidOther';
+  return 'desktop';
+}
+
+/* One honest set of steps per real, working method — not a single
+   generic paragraph. Distinguishes "this reliably works" from
+   "no dependable way without rooting the phone," since claiming a
+   universal method would be false (see the research behind this). */
+const INSTALL_STEPS: Record<InstallMethod, { title: string; steps: string[]; note?: string }> = {
+  samsung: {
+    title: 'Samsung ఫోన్‌లో ఇన్‌స్టాల్ చేయడం',
+    steps: [
+      'ముందుగా Settings → Display → Font Size and Style → Font Style చూడండి — కొన్ని One UI వెర్షన్లలో ఇక్కడే ఫైల్‌ను జోడించే ఆప్షన్ ఉంటుంది.',
+      'ఆ ఆప్షన్ కనిపించకపోతే, Play Store నుండి "iFont" యాప్ డౌన్‌లోడ్ చేయండి — ఇది Samsung ఫోన్లలో నమ్మదగినదిగా పనిచేస్తుంది.',
+      'iFont లో Samsung mode ఎంచుకుని, డౌన్‌లోడ్ చేసిన ఫాంట్ ఫైల్‌ను దిగుమతి (import) చేయండి, తర్వాత Set నొక్కండి.',
+    ],
+  },
+  xiaomi: {
+    title: 'Xiaomi / Redmi / POCO ఫోన్‌లో ఇన్‌స్టాల్ చేయడం',
+    steps: [
+      'Themes యాప్ తెరవండి → Me → Fonts విభాగం చూడండి.',
+      'అక్కడ మీ ఫైల్‌ను జోడించే ఆప్షన్ లేకపోతే, Play Store నుండి "iFont" యాప్ డౌన్‌లోడ్ చేయండి — ఇది MIUI/HyperOS ఫోన్లలో నమ్మదగినదిగా పనిచేస్తుంది.',
+      'ఫాంట్ ఫైల్‌ను దిగుమతి చేసి Set నొక్కండి.',
+    ],
+  },
+  huawei: {
+    title: 'Huawei / Honor ఫోన్‌లో ఇన్‌స్టాల్ చేయడం',
+    steps: [
+      'Themes యాప్‌లో Fonts విభాగం చూడండి.',
+      'లేకపోతే "iFont" యాప్ డౌన్‌లోడ్ చేయండి — ఇది EMUI ఫోన్లలో నమ్మదగినదిగా పనిచేస్తుంది.',
+      'ఫాంట్ ఫైల్‌ను దిగుమతి చేసి Set నొక్కండి.',
+    ],
+  },
+  androidOther: {
+    title: 'మీ ఆండ్రాయిడ్ ఫోన్‌లో ఇన్‌స్టాల్ చేయడం',
+    steps: [
+      'చాలా ఆండ్రాయిడ్ ఫోన్లు (Pixel, OnePlus, Oppo, Vivo వంటివి) రూట్ (root) చేయకుండా సిస్టమ్ ఫాంట్‌ను మార్చే అధికారిక మార్గాన్ని ఇవ్వవు — ఇది మీ ఫోన్ తయారీదారు పరిమితి, మా వెబ్‌సైట్ సమస్య కాదు.',
+      'ప్రత్యామ్నాయంగా, ఈ ఫాంట్‌ను కస్టమ్ ఫాంట్‌లకు మద్దతిచ్చే నిర్దిష్ట యాప్‌లలో (కొన్ని నోట్స్/కీబోర్డ్ యాప్‌లు) విడిగా వాడుకోవచ్చు.',
+    ],
+    note: 'రూట్ చేయడం ద్వారా సిస్టమ్-వైడ్‌గా మార్చడం సాధ్యమే, కానీ ఇది వారంటీని రద్దు చేస్తుంది మరియు రిస్క్‌తో కూడుకున్నది — సాధారణ వినియోగదారులకు సిఫారసు చేయము.',
+  },
+  ios: {
+    title: 'iPhone లో ఇన్‌స్టాల్ చేయడం',
+    steps: [
+      'App Store నుండి "AnyFont" వంటి ఫాంట్ ఇన్‌స్టాలర్ యాప్ డౌన్‌లోడ్ చేయండి.',
+      'డౌన్‌లోడ్ చేసిన ఫాంట్ ఫైల్‌ను ఆ యాప్ ద్వారా జోడించి, Settings → General → VPN & Device Management లో ప్రాంప్ట్ అయినప్పుడు అనుమతించండి.',
+    ],
+    note: 'Apple పరిమితి వల్ల ఇది Home Screen, Settings, Messages వంటి సిస్టమ్ భాగాలలో పనిచేయదు — Pages, Word వంటి కస్టమ్ ఫాంట్‌లకు మద్దతిచ్చే యాప్‌లలో మాత్రమే కనిపిస్తుంది. ఇది మా వెబ్‌సైట్ పరిమితి కాదు, Apple నియమం.',
+  },
+  desktop: {
+    title: 'కంప్యూటర్‌లో ఇన్‌స్టాల్ చేయడం',
+    steps: [
+      'డౌన్‌లోడ్ అయిన ఫాంట్ ఫైల్‌పై డబుల్-క్లిక్ చేయండి.',
+      'తెరుచుకున్న విండోలో "Install" నొక్కండి.',
+    ],
+  },
+};
+
 export default function ShailimalaTabs({ initialFonts, initialBooks }: ShailimalaTabsProps) {
   const [activeTab, setActiveTab] = useState<'Fonts' | 'books'>('Fonts');
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+  const [installMethod, setInstallMethod] = useState<InstallMethod>('desktop');
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
 
   useEffect(() => {
     const ua = window.navigator.userAgent.toLowerCase();
     setIsDesktop(!/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(ua));
+    setInstallMethod(detectInstallMethod());
   }, []);
 
   const formatToMalaName = (filename: string) => {
@@ -124,41 +193,58 @@ export default function ShailimalaTabs({ initialFonts, initialBooks }: Shailimal
 
   return (
     <div>
-      {/* Informational note, not a hard block — downloading works on
-          every device; only the "install as a system font" step after
-          downloading is desktop-only, and that's a genuine OS
-          limitation this code can't remove. */}
-      {!isDesktop && activeTab === 'Fonts' && (
-        <div
-          style={{
-            display: 'flex',
-            gap: 12,
-            alignItems: 'flex-start',
-            background: 'var(--surface)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 24,
-          }}
-        >
-          <svg
-            style={{ width: 20, height: 20, color: 'var(--accent-text)', flexShrink: 0, marginTop: 2 }}
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+      {/* Expandable install guide — content is specific to the detected
+          phone brand instead of one generic paragraph, since the real
+          working method differs a lot by manufacturer (see research
+          notes above INSTALL_STEPS). Available on every device,
+          including desktop, since the steps genuinely differ there too. */}
+      {activeTab === 'Fonts' && (
+        <div style={{ marginBottom: 24 }}>
+          <button
+            onClick={() => setShowInstallGuide((v) => !v)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'transparent',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 999,
+              padding: '8px 16px',
+              fontSize: 13,
+              fontWeight: 600,
+              color: 'var(--primary)',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
           >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          <div>
-            <p style={{ fontWeight: 600, color: 'var(--foreground)', fontSize: 14, margin: 0 }}>
-              ఫాంట్ ఫైల్ డౌన్‌లోడ్ అవుతుంది
-            </p>
-            <p style={{ color: 'var(--muted-text)', fontSize: 12, marginTop: 4, lineHeight: 1.5, marginBottom: 0 }}>
-              మీ ఫోన్‌లో ఫైల్ డౌన్‌లోడ్ అవుతుంది, కానీ దాన్ని సిస్టమ్ ఫాంట్‌గా వాడుకోవడానికి
-              మీ ఫోన్‌లో ఒక ఫాంట్ ఇన్‌స్టాలర్ యాప్ అవసరం కావచ్చు — ఇది ఫోన్ తయారీదారుని బట్టి
-              మారుతుంది. కంప్యూటర్‌లో అయితే డౌన్‌లోడ్ అయిన ఫైల్‌ను తెరిచి నేరుగా ఇన్‌స్టాల్ చేసుకోవచ్చు.
-            </p>
-          </div>
+            📲 ఫోన్‌లో ఎలా ఇన్‌స్టాల్ చేయాలి?
+          </button>
+
+          {showInstallGuide && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 16,
+                background: 'var(--surface)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 12,
+              }}
+            >
+              <p style={{ fontWeight: 700, color: 'var(--foreground)', fontSize: 14, margin: '0 0 8px' }}>
+                {INSTALL_STEPS[installMethod].title}
+              </p>
+              <ol style={{ margin: 0, paddingLeft: 20, color: 'var(--foreground)', fontSize: 13, lineHeight: 1.7 }}>
+                {INSTALL_STEPS[installMethod].steps.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ol>
+              {INSTALL_STEPS[installMethod].note && (
+                <p style={{ marginTop: 10, marginBottom: 0, fontSize: 12, color: 'var(--muted-text)', lineHeight: 1.6 }}>
+                  ⓘ {INSTALL_STEPS[installMethod].note}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
