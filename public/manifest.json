@@ -1,11 +1,11 @@
 {
-  "name": "Ratnalabala Poems",
-  "short_name": "Ratnalabala",
-  "description": "A collection of Telugu poems by Sri Miriyala Venkata Ratnam. Read, listen, share offline.",
+  "name": "రత్నాలబాల – జ్ఞానమాల",
+  "short_name": "రత్నాలబాల",
+  "description": "తెలుగు పద్యాలు, శతకాలు, కథలు, వ్యాకరణం — చదవండి, వినండి, ఆఫ్‌లైన్‌లో కూడా పంచుకోండి.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F3E5F5",
-  "theme_color": "#6A1B9A",
+  "background_color": "#FDFAF5",
+  "theme_color": "#8B3A1F",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -18,19 +18,7 @@
       "src": "/icons/book.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/book.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ],
   "categories": ["education", "books"],
