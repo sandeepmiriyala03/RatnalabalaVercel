@@ -10,71 +10,89 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
+/* Which manual-steps message to show. Only reached when there's no
+   direct install API — Chrome/Edge/Samsung Internet (any device) skip
+   this entirely via deferredPrompt. */
+type StepsKind = 'ios' | 'macSafari' | 'unsupported' | null;
+
+const STEP_TEXT: Record<Exclude<StepsKind, null>, string> = {
+  ios: '1. Safari లో ఈ సైట్ ఓపెన్ చేయండి\n2. Share బటన్ నొక్కండి\n3. "Add to Home Screen" ఎంచుకోండి',
+  macSafari: '1. మెనూ బార్‌లో File నొక్కండి\n2. "Add to Dock…" ఎంచుకోండి\n3. Add నొక్కండి',
+  unsupported:
+    'మీ బ్రౌజర్‌లో ప్రత్యక్ష యాప్ ఇన్‌స్టాల్ లభ్యం కాదు. ఈ పేజీని బుక్‌మార్క్ చేసుకోండి, లేదా Chrome / Edge బ్రౌజర్‌లో తెరిచి ఇన్‌స్టాల్ చేయండి.',
+};
+
 export default function PwaInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
 
   const [isIOS, setIsIOS] = useState(false);
+  const [isMacSafari, setIsMacSafari] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [showIOSSteps, setShowIOSSteps] = useState(false);
+  const [steps, setSteps] = useState<StepsKind>(null);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const ua = navigator.userAgent.toLowerCase();
-    const ios = /iphone|ipad|ipod/.test(ua);
-    setIsIOS(ios);
+
+    /* iPhone/iPod self-report honestly; iPadOS Safari has reported
+       itself as "Macintosh" since iPadOS 13, so touch capability is
+       the second signal that catches a real iPad disguised as a Mac. */
+    const appleTouch =
+      /iphone|ipad|ipod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    setIsIOS(appleTouch);
+
+    /* Desktop (non-touch) Mac running actual Safari, not Chrome/Edge/
+       Firefox (which all include "safari" in their UA string too). */
+    const macSafari =
+      !appleTouch &&
+      navigator.platform === 'MacIntel' &&
+      ua.includes('safari') &&
+      !ua.includes('chrome') &&
+      !ua.includes('crios') &&
+      !ua.includes('firefox') &&
+      !ua.includes('edg');
+    setIsMacSafari(macSafari);
 
     const installed =
       window.matchMedia('(display-mode: standalone)').matches ||
       (navigator as any).standalone === true;
-
     setIsInstalled(installed);
 
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setReady(true);
     };
-
     window.addEventListener('beforeinstallprompt', handler);
-
-    if (ios && !installed) {
-      setReady(true);
-    }
-
-    return () =>
-      window.removeEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  /* One click, straight to the browser's own install dialog — no
-     in-between confirm popup. iOS has no programmatic install API at
-     all (Apple only allows "Add to Home Screen" through Safari's own
-     Share menu, done by hand), so that's the one case a popup with
-     manual steps is unavoidable rather than a UX choice. */
+  /* On Chrome/Edge/Samsung Internet (desktop or mobile) this installs
+     in one click. Everywhere else there is no programmatic install API
+     — that's a real platform limit, not something fixable here — so
+     the best available help is clear manual steps, or a bookmark
+     suggestion when even manual "Add to Home Screen" doesn't exist. */
   const handleFabClick = async () => {
-    if (isIOS) {
-      setShowIOSSteps(true);
+    if (deferredPrompt) {
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      setDeferredPrompt(null);
+      if (choice.outcome === 'accepted') setShowWelcome(true);
       return;
     }
-    if (!deferredPrompt) return;
-
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    setDeferredPrompt(null);
-
-    if (choice.outcome === 'accepted') {
-      setShowWelcome(true);
-    }
+    if (isIOS) return setSteps('ios');
+    if (isMacSafari) return setSteps('macSafari');
+    setSteps('unsupported');
   };
 
-  if (isInstalled || !ready) return null;
+  if (isInstalled) return null;
 
   return (
     <>
-      {/* 📲 Install FAB — shows its label at all times (not just an
-          icon) so a 60+ user knows what tapping it does before the
-          first tap, and tapping it goes straight to install. */}
+      {/* Always rendered — on every browser and device — instead of
+          disappearing whenever no install event has fired. What
+          happens on click adapts per browser (see handleFabClick). */}
       <Fab
         variant="extended"
         aria-label="యాప్ ఇన్‌స్టాల్ చేయండి"
@@ -108,9 +126,9 @@ export default function PwaInstallPrompt() {
         ఇన్‌స్టాల్ చేయండి
       </Fab>
 
-      {/* 📦 iOS only — manual steps, since Apple gives no way to
-          trigger this programmatically. */}
-      {showIOSSteps && (
+      {/* Manual-steps popup — content swaps based on which browser was
+          detected (iOS / Mac Safari / no install support at all). */}
+      {steps && (
         <Paper
           elevation={8}
           sx={{
@@ -133,7 +151,7 @@ export default function PwaInstallPrompt() {
             <IconButton
               size="small"
               aria-label="మూసివేయండి"
-              onClick={() => setShowIOSSteps(false)}
+              onClick={() => setSteps(null)}
               sx={{
                 mt: -0.5, mr: -0.5,
                 color: 'var(--muted-text)',
@@ -144,17 +162,15 @@ export default function PwaInstallPrompt() {
             </IconButton>
           </div>
 
-          <Typography variant="body2" sx={{ mt: 1, lineHeight: 1.6, color: 'var(--foreground)' }}>
-            1. Safari లో ఈ సైట్ ఓపెన్ చేయండి<br />
-            2. Share బటన్ నొక్కండి<br />
-            3. “Add to Home Screen” ఎంచుకోండి
+          <Typography
+            variant="body2"
+            sx={{ mt: 1, lineHeight: 1.6, color: 'var(--foreground)', whiteSpace: 'pre-line' }}
+          >
+            {STEP_TEXT[steps]}
           </Typography>
         </Paper>
       )}
 
-      {/* 🎉 Welcome toast — shown once, right after a successful
-          install, instead of the app just silently closing the popup.
-          Reassures a first-time/senior user that it actually worked. */}
       <Snackbar
         open={showWelcome}
         autoHideDuration={6000}
@@ -173,7 +189,7 @@ export default function PwaInstallPrompt() {
             '& .MuiAlert-action': { color: 'var(--background)' },
           }}
         >
-          🎉 స్వాగతం! యాప్ విజయవంతంగా ఇన్‌స్టాల్ అయ్యింది.
+         🎉 స్వాగతం! రత్నాలబాల–జ్ఞానమాల ఇప్పుడు మీ ఫోన్‌లో సిద్ధంగా ఉంది.
         </Alert>
       </Snackbar>
     </>
