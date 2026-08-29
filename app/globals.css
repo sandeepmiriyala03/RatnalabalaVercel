@@ -253,6 +253,61 @@
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────
+   🔘 MANUAL THEME OVERRIDE
+   ─────────────────────────────────────────────────────────────────
+   Everything above only reacts to the OS/browser's own setting via
+   @media (prefers-color-scheme). That's a real gap — a person can't
+   flip the site's theme independently of their device, or override it
+   if their phone is set to dark but they specifically want light here
+   (a genuinely common ask for reading long Telugu text comfortably).
+
+   [data-theme="..."] on <html> is set by the toggle button (see
+   Navbar.tsx) and by a tiny blocking script in layout.tsx that applies
+   any saved choice before first paint, so there's no flash of the
+   wrong theme. An attribute selector on :root is more specific than a
+   plain :root inside a media query, so whichever of these applies
+   always wins over the OS preference above — but only once the person
+   has actually chosen a theme; before that, the media query above is
+   the only thing setting colors, so the site still respects the
+   device's setting by default. */
+
+:root[data-theme="light"] {
+  --background: #fdfaf5;
+  --foreground: #241f1a;
+  --surface: #f7f2ea;
+  --surface-elevated: #ffffff;
+  --primary: #8b3a1f;
+  --primary-light: #b0552f;
+  --secondary: #1a3d2b;
+  --secondary-light: #2d6a4f;
+  --accent: #c9820a;
+  --accent-text: #6b4400;
+  --accent-light: #e0a838;
+  --accent-gradient: linear-gradient(135deg, #f6b93b, #e67e22);
+  --border: #e4dacb;
+  --border-strong: #7a6650;
+  --muted-text: #6b6258;
+}
+
+:root[data-theme="dark"] {
+  --background: #17140f;
+  --foreground: #f0e9dd;
+  --surface: #211c15;
+  --surface-elevated: #2a241b;
+  --primary: #e2916a;
+  --primary-light: #e59a72;
+  --secondary: #6bbd93;
+  --secondary-light: #6bb38c;
+  --accent: #e0a838;
+  --accent-text: #e0a838;
+  --accent-light: #f0c675;
+  --accent-gradient: linear-gradient(135deg, #f0c675, #e0a838);
+  --border: #3a3226;
+  --border-strong: #8f7a5c;
+  --muted-text: #b3a894;
+}
+
 /* =====================================================
    🧱 RESET & BASE
    ===================================================== */

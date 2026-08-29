@@ -8,9 +8,11 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
+import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /* ═══════════════════════════════════════════
    NAV GROUPS
@@ -93,6 +95,82 @@ const ACCENT  = "var(--accent-light)";  // gold — same active-route highlight 
    constant dark ink stays readable against the gold pill either way
    (7.7:1 in light-mode nav, 10.2:1 in dark-mode nav). */
 const ON_ACCENT = "#241f1a";
+
+/* ═══════════════════════════════════════════
+   THEME TOGGLE
+   Reads whatever [data-theme] is already on <html> (set by the
+   blocking script in layout.tsx before paint, or left unset to follow
+   the OS setting), and lets the person override it either way. The
+   choice is saved to localStorage so it persists across visits.
+═══════════════════════════════════════════ */
+function useThemeToggle() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const current = document.documentElement.getAttribute("data-theme");
+    if (current === "dark") {
+      setIsDark(true);
+    } else if (current === "light") {
+      setIsDark(false);
+    } else {
+      // No explicit choice saved yet — reflect the OS setting so the
+      // button's icon/label starts in sync with what's actually shown.
+      setIsDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
+    }
+  }, []);
+
+  const toggle = () => {
+    const next = isDark ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      // Private browsing may block storage — the choice just won't
+      // persist across visits, which is a reasonable fallback.
+    }
+    setIsDark(!isDark);
+  };
+
+  return { isDark, toggle };
+}
+
+/* Labeled, not icon-only — a plain sun/moon icon can be ambiguous
+   about what tapping it does; the Telugu label removes that doubt
+   before the first tap, same reasoning as the install FAB. */
+function ThemeToggleButton({ variant = "bar" }: { variant?: "bar" | "list" }) {
+  const { isDark, toggle } = useThemeToggle();
+
+  if (variant === "list") {
+    return (
+      <ListItemButton onClick={toggle} sx={{ borderRadius: "8px", mb: 0.3 }}>
+        {isDark ? <LightModeRoundedIcon fontSize="small" sx={{ mr: 1.5 }} /> : <DarkModeRoundedIcon fontSize="small" sx={{ mr: 1.5 }} />}
+        <ListItemText
+          primary={isDark ? "లైట్ మోడ్‌కు మార్చండి" : "డార్క్ మోడ్‌కు మార్చండి"}
+          primaryTypographyProps={{ fontSize: "0.95rem", fontFamily: "'Noto Serif Telugu', serif" }}
+        />
+      </ListItemButton>
+    );
+  }
+
+  return (
+    <Button
+      onClick={toggle}
+      startIcon={isDark ? <LightModeRoundedIcon sx={{ fontSize: 18 }} /> : <DarkModeRoundedIcon sx={{ fontSize: 18 }} />}
+      sx={{
+        color: TEXT,
+        px: 1.6, py: 0.8,
+        borderRadius: "999px",
+        fontSize: "0.9rem",
+        fontWeight: 500,
+        textTransform: "none",
+        border: "1px solid rgba(255,255,255,0.4)",
+        "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
+      }}
+    >
+      {isDark ? "లైట్ మోడ్" : "డార్క్ మోడ్"}
+    </Button>
+  );
+}
 
 /* ═══════════════════════════════════════════
    DESKTOP DROPDOWN
@@ -297,6 +375,8 @@ export default function Navbar() {
                 💬 అభిప్రాయం
               </Typography>
             </a>
+
+            <ThemeToggleButton variant="bar" />
           </Box>
 
           {/* Mobile menu button */}
@@ -351,6 +431,10 @@ export default function Navbar() {
               <ListItemText primary="పరీక్షల కేంద్రం"
                 primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem" }} />
             </ListItem>
+
+            <Divider sx={{ my: 1 }} />
+
+            <ThemeToggleButton variant="list" />
 
             <Divider sx={{ my: 1 }} />
 
