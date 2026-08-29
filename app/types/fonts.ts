@@ -69,4 +69,7 @@ export type TeluguFont =
 
   | "PottiSreeramulu"
 
-  | "TiroSundaraTelugu-Regular";
+  | "TiroSundaraTelugu-Regular"
+
+  | "NATS"
+  | "NATS-Italic";

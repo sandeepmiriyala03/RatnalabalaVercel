@@ -1235,3 +1235,19 @@ a.accent-link {
 .chitramala-font-TiroSundaraTelugu-Regular {
   font-family: "TiroSundaraTelugu-Regular", system-ui;
 }
+@font-face {
+  font-family: "NATS";
+  src: url("/Fonts/NATS.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+ 
+@font-face {
+  font-family: "NATS-Italic";
+  src: url("/Fonts/NATS-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+ 
