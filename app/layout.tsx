@@ -4,11 +4,11 @@ import RootClientLayout from "./RootClientLayout";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next"; // Added Viewport type
-
-import YuktaiClient from "@/app/components/YuktaiClient"; 
-// Theme color and scaling now go here in Next.js 13.4+
 export const viewport: Viewport = {
-  themeColor: "#8B3A1F", // matches --primary (terracotta) in globals.css
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#8B3A1F" }, // matches --primary (light) in globals.css
+    { media: "(prefers-color-scheme: dark)", color: "#e2916a" },  // matches --primary (dark) in globals.css
+  ],
 };
 
 export const metadata: Metadata = {
@@ -47,11 +47,12 @@ export default function RootLayout({
   return (
     <html lang="te">
       <body>
-     
+
         <RootClientLayout>{children}</RootClientLayout>
+
         <Analytics />
         <SpeedInsights />
- 
+
       </body>
     </html>
   );
