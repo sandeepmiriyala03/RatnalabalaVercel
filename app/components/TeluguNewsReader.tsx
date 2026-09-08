@@ -41,6 +41,15 @@ const VOICE_LABELS: Record<VoiceOption, string> = {
   "browser-native": "📱 బ్రౌజర్ వాయిస్ (ఆఫ్‌లైన్)",
 };
 
+// Telugu Unicode block + ASCII digits + currency/percent/hyphen +
+// sentence punctuation + Telugu danda marks + whitespace.
+//
+// FIX: digits (0-9) were missing before, which silently stripped every
+// number out of news text ("23,44,396" -> gone) before it ever reached
+// the TTS engine. Mirrors the server-side sanitizer in
+// api/tts-news/index.py — kept in sync deliberately; the server
+// re-applies this regardless, this copy exists purely so the UI shows
+// an accurate character count and avoids sending obvious junk.
 const TELUGU_SANITIZE_RE = /[^\u0C00-\u0C7F0-9₹%\-.?,!\u0964\u0965\s]/g;
 
 function sanitizeTelugu(input: string): string {
@@ -121,13 +130,18 @@ export default function TeluguNewsReader() {
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const rafRef = useRef<number | null>(null);
 
+  const [selectedSample, setSelectedSample] = useState<string>("");
+
   const cleanText = sanitizeTelugu(rawText);
   const isBrowserVoice = voice === "browser-native";
   const busy = fetchingUrl || synthesizing || downloading;
 
   /* ───────── sample news picker ───────── */
-  const loadSample = (text: string) => {
-    setRawText(text);
+  const loadSample = (label: string) => {
+    const sample = SAMPLE_NEWS.find((s) => s.label === label);
+    if (!sample) return;
+    setSelectedSample(label);
+    setRawText(sample.text);
     setError(null);
   };
 
@@ -144,6 +158,7 @@ export default function TeluguNewsReader() {
       });
       const data = await parseJsonSafe(res);
       if (!res.ok) throw new Error(data.detail || "ఆర్టికల్ తీసుకురాలేకపోయాం.");
+      setSelectedSample("");
       setRawText((prev) => (prev ? `${prev}\n\n${data.text}` : data.text));
     } catch (e: any) {
       setError(e.message || "ఆర్టికల్ తీసుకురాలేకపోయాం.");
@@ -308,6 +323,37 @@ export default function TeluguNewsReader() {
     setPlaying(true);
   };
 
+  // Shared reset used whenever EITHER the voice OR the text changes.
+  // BUG FIX: previously only a voice change invalidated the cached
+  // audio/blob. Changing the sample news (or editing the textbox) left
+  // the OLD audio sitting in audioUrlRef/audioBlobRef, so Play kept
+  // replaying whatever was synthesized for the PREVIOUS text — e.g.
+  // switching from the temple/hundi sample to another sample still
+  // read the temple news. Now any text OR voice change stops playback,
+  // resets the position to 0 (not just pauses mid-clip), clears the
+  // cached blob/URL, and cancels any in-flight synthesize() request so
+  // a stale response can't land afterward either.
+  const resetPlayback = useCallback(() => {
+    requestIdRef.current += 1;
+
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+      audioBlobRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0; // explicit reset to zero, not just pause
+      audioRef.current.removeAttribute("src");
+    }
+    if (typeof window !== "undefined") {
+      window.speechSynthesis?.cancel();
+    }
+    setPlaying(false);
+    setSynthesizing(false);
+    stopVisualizer();
+  }, []);
+
   useEffect(() => {
     const el = audioRef.current;
     if (!el) return;
@@ -324,22 +370,9 @@ export default function TeluguNewsReader() {
     };
   }, []);
 
-  // Voice change invalidates any in-flight request AND cached audio
-  // immediately, so switching voices always takes effect right away.
+  // Voice change → reset playback, then check browser-voice availability.
   useEffect(() => {
-    requestIdRef.current += 1;
-
-    if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
-      audioUrlRef.current = null;
-      audioBlobRef.current = null;
-    }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.removeAttribute("src");
-    }
-    setPlaying(false);
-    setSynthesizing(false);
+    resetPlayback();
     setError(null);
 
     // Proactively warn if the browser has no Telugu voice installed —
@@ -360,7 +393,15 @@ export default function TeluguNewsReader() {
     } else {
       setBrowserVoiceWarning(null);
     }
-  }, [voice]);
+  }, [voice, resetPlayback]);
+
+  // Text change (typing, clearing, sample-news selection, URL fetch
+  // result) → reset playback too. THIS is the actual bug fix: without
+  // this effect, cached audio from the previous text survived a text
+  // change entirely.
+  useEffect(() => {
+    resetPlayback();
+  }, [cleanText, resetPlayback]);
 
   useEffect(() => {
     if (audioRef.current) audioRef.current.playbackRate = speed;
@@ -410,21 +451,23 @@ export default function TeluguNewsReader() {
           తెలుగు న్యూస్ రీడర్ 📰🔊
         </Typography>
 
-        {/* sample news — one-click test data, no typing needed */}
-        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
-          {SAMPLE_NEWS.map((sample) => (
-            <Chip
-              key={sample.label}
-              icon={<ArticleRoundedIcon fontSize="small" />}
-              label={sample.label}
-              size="small"
-              variant="outlined"
-              clickable
-              onClick={() => loadSample(sample.text)}
-              disabled={busy}
-            />
-          ))}
-        </Stack>
+        {/* sample news — dropdown, one-click test data, no typing needed */}
+        <FormControl size="small" fullWidth sx={{ mb: 2 }}>
+          <InputLabel>నమూనా వార్త ఎంచుకోండి</InputLabel>
+          <Select
+            label="నమూనా వార్త ఎంచుకోండి"
+            value={selectedSample}
+            onChange={(e) => loadSample(e.target.value as string)}
+            disabled={busy}
+            startAdornment={<ArticleRoundedIcon fontSize="small" sx={{ mr: 1, opacity: 0.6 }} />}
+          >
+            {SAMPLE_NEWS.map((sample) => (
+              <MenuItem key={sample.label} value={sample.label}>
+                {sample.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         {/* URL fetch */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
@@ -454,7 +497,10 @@ export default function TeluguNewsReader() {
           maxRows={14}
           placeholder="ఇక్కడ న్యూస్ ఆర్టికల్ పేస్ట్ చేయండి లేదా టైప్ చేయండి… లేదా పైన ఒక నమూనా వార్తను ఎంచుకోండి."
           value={rawText}
-          onChange={(e) => setRawText(e.target.value)}
+          onChange={(e) => {
+            setSelectedSample("");
+            setRawText(e.target.value);
+          }}
           sx={{ mb: 1 }}
         />
 
@@ -462,7 +508,14 @@ export default function TeluguNewsReader() {
           <Typography variant="caption" color="text.secondary">
             {charCount} అక్షరాలు (శుద్ధి చేసిన తెలుగు టెక్స్ట్ — సంఖ్యలతో సహా)
           </Typography>
-          <IconButton size="small" onClick={() => setRawText("")} disabled={!rawText || busy}>
+          <IconButton
+            size="small"
+            onClick={() => {
+              setSelectedSample("");
+              setRawText("");
+            }}
+            disabled={!rawText || busy}
+          >
             <DeleteOutlineRoundedIcon fontSize="small" />
           </IconButton>
         </Stack>
