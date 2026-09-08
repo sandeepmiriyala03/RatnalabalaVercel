@@ -26,30 +26,43 @@ import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 
-type VoiceOption =
-  | "sarvam-te-female"
-  | "sarvam-te-male"
-  | "te-IN-ShrutiNeural"
-  | "te-IN-MohanNeural"
-  | "browser-native";
+// ── Same 5-voice set as PoemCard.tsx / PoemRadio.tsx / TeluguVoice.tsx,
+// plus one extra offline-only option (browser-native) that never hits
+// the API at all, so it doesn't need to fit the {source, voice} shape.
+type VoiceOption = "mohan" | "shruti" | "google" | "svara-male" | "svara-female" | "browser-native";
 
 const VOICE_LABELS: Record<VoiceOption, string> = {
-  "sarvam-te-female": "🇮🇳 Sarvam AI — స్త్రీ స్వరం (Anushka)",
-  "sarvam-te-male": "🇮🇳 Sarvam AI — మగ స్వరం (Abhilash)",
-  "te-IN-ShrutiNeural": "🎙️ Edge TTS — Shruti (స్త్రీ)",
-  "te-IN-MohanNeural": "🎙️ Edge TTS — Mohan (మగ)",
+  mohan: "🎙️ మగ స్వరం (Edge — Mohan)",
+  shruti: "👩 స్త్రీ స్వరం (Edge — Shruti)",
+  google: "🔊 Google TTS",
+  "svara-male": "🤖 Svara మగ",
+  "svara-female": "🤖 Svara స్త్రీ",
   "browser-native": "📱 బ్రౌజర్ వాయిస్ (ఆఫ్‌లైన్)",
 };
+
+// Same resolver as TeluguVoice.tsx/PoemRadio.tsx — maps a VoiceOption to
+// the { source, voice } shape the shared /api/tts route expects. Kept
+// duplicated here (not imported) since this component may live in a
+// different bundle/route than those; if you already have a shared
+// lib/tts.ts, import resolveTtsParams from there instead of this copy.
+function resolveTtsParams(voice: VoiceOption): { source: "edge" | "google" | "svara"; gender: "male" | "female" } {
+  if (voice === "google") return { source: "google", gender: "male" };
+  if (voice === "svara-male") return { source: "svara", gender: "male" };
+  if (voice === "svara-female") return { source: "svara", gender: "female" };
+  return { source: "edge", gender: voice === "shruti" ? "female" : "male" };
+}
+
+// Matches MAX_TEXT_LENGTH in the /api/tts route — the server hard-rejects
+// anything longer, so this is enforced client-side too rather than
+// letting the user hit a generic 400 with no warning beforehand.
+const MAX_TEXT_LENGTH = 5000;
 
 // Telugu Unicode block + ASCII digits + currency/percent/hyphen +
 // sentence punctuation + Telugu danda marks + whitespace.
 //
-// FIX: digits (0-9) were missing before, which silently stripped every
-// number out of news text ("23,44,396" -> gone) before it ever reached
-// the TTS engine. Mirrors the server-side sanitizer in
-// api/tts-news/index.py — kept in sync deliberately; the server
-// re-applies this regardless, this copy exists purely so the UI shows
-// an accurate character count and avoids sending obvious junk.
+// FIX (carried over): digits (0-9) were originally missing here, which
+// silently stripped every number out of news text ("23,44,396" -> gone)
+// before it ever reached the TTS engine.
 const TELUGU_SANITIZE_RE = /[^\u0C00-\u0C7F0-9₹%\-.?,!\u0964\u0965\s]/g;
 
 function sanitizeTelugu(input: string): string {
@@ -70,9 +83,9 @@ async function parseJsonSafe(res: Response): Promise<any> {
 }
 
 // ── Sample news for one-click testing, covering a spread of common
-// news types so anyone can verify voices/number-reading without
-// typing anything themselves. Includes the exact temple hundi example
-// (heavy on numbers/amounts) that surfaced the digit-stripping bug.
+// news types so anyone can verify voices/number-reading without typing.
+// Includes the temple hundi example (heavy on numbers/amounts) that
+// surfaced the digit-stripping bug.
 const SAMPLE_NEWS: { label: string; text: string }[] = [
   {
     label: "దేవాలయం / హుండీ (సంఖ్యలు)",
@@ -109,7 +122,7 @@ const SAMPLE_NEWS: { label: string; text: string }[] = [
 export default function TeluguNewsReader() {
   const [rawText, setRawText] = useState("");
   const [articleUrl, setArticleUrl] = useState("");
-  const [voice, setVoice] = useState<VoiceOption>("te-IN-ShrutiNeural");
+  const [voice, setVoice] = useState<VoiceOption>("shruti");
   const [speed, setSpeed] = useState(1.0);
 
   const [fetchingUrl, setFetchingUrl] = useState(false);
@@ -118,6 +131,7 @@ export default function TeluguNewsReader() {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [browserVoiceWarning, setBrowserVoiceWarning] = useState<string | null>(null);
+  const [selectedSample, setSelectedSample] = useState<string>("");
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioBlobRef = useRef<Blob | null>(null);
@@ -130,10 +144,9 @@ export default function TeluguNewsReader() {
   const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
   const rafRef = useRef<number | null>(null);
 
-  const [selectedSample, setSelectedSample] = useState<string>("");
-
   const cleanText = sanitizeTelugu(rawText);
   const isBrowserVoice = voice === "browser-native";
+  const isOverLimit = cleanText.length > MAX_TEXT_LENGTH;
   const busy = fetchingUrl || synthesizing || downloading;
 
   /* ───────── sample news picker ───────── */
@@ -157,7 +170,7 @@ export default function TeluguNewsReader() {
         body: JSON.stringify({ url: articleUrl.trim() }),
       });
       const data = await parseJsonSafe(res);
-      if (!res.ok) throw new Error(data.detail || "ఆర్టికల్ తీసుకురాలేకపోయాం.");
+      if (!res.ok) throw new Error(data.detail || data.error || "ఆర్టికల్ తీసుకురాలేకపోయాం.");
       setSelectedSample("");
       setRawText((prev) => (prev ? `${prev}\n\n${data.text}` : data.text));
     } catch (e: any) {
@@ -231,16 +244,21 @@ export default function TeluguNewsReader() {
     drawVisualizer();
   }, [drawVisualizer]);
 
-  /* ───────── synthesize (server voices) — race-condition safe ───────── */
+  /* ───────── synthesize via the shared /api/tts contract ─────────
+     Body shape: { text, source: "edge"|"google"|"svara", voice: "male"|"female" }
+     — same contract PoemCard.tsx / PoemRadio.tsx / TeluguVoice.tsx use. */
   const synthesize = async (): Promise<Blob | null> => {
     if (!cleanText) {
       setError("దయచేసి తెలుగు టెక్స్ట్ నమోదు చేయండి.");
       return null;
     }
+    if (isOverLimit) {
+      setError(`టెక్స్ట్ చాలా పొడవుగా ఉంది — గరిష్టం ${MAX_TEXT_LENGTH} అక్షరాలు (ప్రస్తుతం ${cleanText.length}).`);
+      return null;
+    }
 
     const requestId = ++requestIdRef.current;
-    const requestedVoice = voice;
-    const requestedSpeed = speed;
+    const { source, gender } = resolveTtsParams(voice);
 
     setSynthesizing(true);
     setError(null);
@@ -248,14 +266,14 @@ export default function TeluguNewsReader() {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanText, voice: requestedVoice, speed: requestedSpeed }),
+        body: JSON.stringify({ text: cleanText, source, voice: gender }),
       });
 
       if (requestId !== requestIdRef.current) return null;
 
       if (!res.ok) {
         const data = await parseJsonSafe(res).catch(() => ({}));
-        throw new Error(data.detail || "వాయిస్ తయారు కాలేదు.");
+        throw new Error(data.error || "వాయిస్ తయారు కాలేదు.");
       }
 
       const blob = await res.blob();
@@ -323,16 +341,26 @@ export default function TeluguNewsReader() {
     setPlaying(true);
   };
 
-  // Shared reset used whenever EITHER the voice OR the text changes.
-  // BUG FIX: previously only a voice change invalidated the cached
-  // audio/blob. Changing the sample news (or editing the textbox) left
-  // the OLD audio sitting in audioUrlRef/audioBlobRef, so Play kept
-  // replaying whatever was synthesized for the PREVIOUS text — e.g.
-  // switching from the temple/hundi sample to another sample still
-  // read the temple news. Now any text OR voice change stops playback,
-  // resets the position to 0 (not just pauses mid-clip), clears the
-  // cached blob/URL, and cancels any in-flight synthesize() request so
-  // a stale response can't land afterward either.
+  useEffect(() => {
+    const el = audioRef.current;
+    if (!el) return;
+    const onEnded = () => {
+      setPlaying(false);
+      stopVisualizer();
+    };
+    const onPause = () => stopVisualizer();
+    el.addEventListener("ended", onEnded);
+    el.addEventListener("pause", onPause);
+    return () => {
+      el.removeEventListener("ended", onEnded);
+      el.removeEventListener("pause", onPause);
+    };
+  }, []);
+
+  // Shared reset used whenever EITHER the voice OR the text changes —
+  // fixes the bug where switching sample news / editing text still
+  // replayed audio synthesized for the PREVIOUS text, because only a
+  // voice change used to invalidate the cache.
   const resetPlayback = useCallback(() => {
     requestIdRef.current += 1;
 
@@ -354,30 +382,11 @@ export default function TeluguNewsReader() {
     stopVisualizer();
   }, []);
 
-  useEffect(() => {
-    const el = audioRef.current;
-    if (!el) return;
-    const onEnded = () => {
-      setPlaying(false);
-      stopVisualizer();
-    };
-    const onPause = () => stopVisualizer();
-    el.addEventListener("ended", onEnded);
-    el.addEventListener("pause", onPause);
-    return () => {
-      el.removeEventListener("ended", onEnded);
-      el.removeEventListener("pause", onPause);
-    };
-  }, []);
-
   // Voice change → reset playback, then check browser-voice availability.
   useEffect(() => {
     resetPlayback();
     setError(null);
 
-    // Proactively warn if the browser has no Telugu voice installed —
-    // rather than letting the user discover this only after clicking
-    // Play and hearing nothing.
     if (voice === "browser-native" && typeof window !== "undefined" && "speechSynthesis" in window) {
       const checkVoices = () => {
         const voices = window.speechSynthesis.getVoices();
@@ -395,10 +404,8 @@ export default function TeluguNewsReader() {
     }
   }, [voice, resetPlayback]);
 
-  // Text change (typing, clearing, sample-news selection, URL fetch
-  // result) → reset playback too. THIS is the actual bug fix: without
-  // this effect, cached audio from the previous text survived a text
-  // change entirely.
+  // Text change (typing, clearing, sample selection, URL fetch result)
+  // → reset playback too.
   useEffect(() => {
     resetPlayback();
   }, [cleanText, resetPlayback]);
@@ -505,8 +512,8 @@ export default function TeluguNewsReader() {
         />
 
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-          <Typography variant="caption" color="text.secondary">
-            {charCount} అక్షరాలు (శుద్ధి చేసిన తెలుగు టెక్స్ట్ — సంఖ్యలతో సహా)
+          <Typography variant="caption" color={isOverLimit ? "error.main" : "text.secondary"}>
+            {charCount} / {MAX_TEXT_LENGTH} అక్షరాలు (శుద్ధి చేసిన తెలుగు టెక్స్ట్ — సంఖ్యలతో సహా)
           </Typography>
           <IconButton
             size="small"
@@ -600,7 +607,7 @@ export default function TeluguNewsReader() {
         <Stack direction="row" spacing={1.5} justifyContent="center">
           <IconButton
             onClick={handlePlay}
-            disabled={synthesizing || !cleanText}
+            disabled={synthesizing || !cleanText || isOverLimit}
             sx={{
               bgcolor: "primary.main",
               color: "#fff",
@@ -622,7 +629,7 @@ export default function TeluguNewsReader() {
             variant="outlined"
             startIcon={downloading ? <CircularProgress size={16} /> : <DownloadRoundedIcon />}
             onClick={handleDownload}
-            disabled={downloading || !cleanText || isBrowserVoice}
+            disabled={downloading || !cleanText || isOverLimit || isBrowserVoice}
           >
             MP3 డౌన్‌లోడ్
           </Button>
