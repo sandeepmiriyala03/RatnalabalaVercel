@@ -18,3 +18,12 @@ langgraph==0.2.60
 langchain-core==0.3.28
 Pillow==10.4.0
 gradio_client==2.6.0
+
+fastapi
+uvicorn
+edge-tts
+httpx
+beautifulsoup4
+python-dotenv
+pypdf
+python-multipart
