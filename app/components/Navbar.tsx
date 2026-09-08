@@ -55,6 +55,13 @@ const NAV_GROUPS = [
     ],
   },
   {
+    label: "వాచకమాల",
+    icon: "📰",
+    items: [
+      { label: "తెలుగు వాచకి", path: "/news" }
+    ],
+  },
+  {
     label: "గీతామాల",
     icon: "🕉️",
     items: [
