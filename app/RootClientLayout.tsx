@@ -12,6 +12,7 @@ import { Container, Box, Typography, Button, Collapse } from "@mui/material";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import AudioPlayer from "@/app/components/AudioPlayer";
 import MusicPlayer from "@/app/components/MusicPlayer";
 import DownloadRingtones from "@/app/components/DownloadRingtones";
@@ -105,7 +106,16 @@ export default function RootClientLayout({
   const [mounted, setMounted] = useState(false);
   const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
   const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
-  const [introOpen, setIntroOpen] = useState(false);
+
+  /* 🔽 Accordion state: only ONE of "intro" / "ringtones" can be open
+     at a time. Both start closed (null) on every mount/page load so
+     the page never opens tall by default. */
+  const [openSection, setOpenSection] = useState<"intro" | "ringtones" | null>(null);
+
+  const toggleSection = (section: "intro" | "ringtones") => {
+    setOpenSection((prev) => (prev === section ? null : section));
+  };
+
 const bootstrapRef = useRef(false);
 /* 🔁 1. MOUNT FIRST */
 useEffect(() => {
@@ -242,31 +252,72 @@ useEffect(() => {
           setFontSize={setFontSize}
         />
 
-        {/* 🔊 Intro Audio — collapsed by default so it doesn't sit open
-            and take up space above every single page's content. This is
-            still the ONE place this block lives; it must not be
-            duplicated inside individual pages (e.g. the homepage's
-            RatnalabalaHighlights.tsx). */}
+        {/* 🔊🎵 Utility extras — Intro Audio + Ringtones.
+            Both are collapsed by default and act as a single accordion:
+            opening one automatically closes the other, so this block
+            never grows tall enough to push {children} out of view.
+            This is the ONE place either of these blocks lives; they
+            must not be duplicated inside individual pages. */}
         <Box sx={{ mt: 2, textAlign: "center" }}>
-          <Button
-            onClick={() => setIntroOpen(v => !v)}
-            size="small"
-            startIcon={<HeadphonesRoundedIcon fontSize="small" />}
-            endIcon={introOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
+          <Box
             sx={{
-              textTransform: "none",
-              fontWeight: 700,
-              color: "var(--primary)",
-              borderRadius: "999px",
-              px: 2,
-              "&:hover": { bgcolor: "var(--surface)" },
-              "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
+              display: "flex",
+              justifyContent: "center",
+              flexWrap: "wrap",
+              gap: 1,
             }}
           >
-            రత్నాలబాల పరిచయ ఆడియో
-          </Button>
+            <Button
+              onClick={() => toggleSection("intro")}
+              size="small"
+              startIcon={<HeadphonesRoundedIcon fontSize="small" />}
+              endIcon={
+                openSection === "intro" ? (
+                  <ExpandLessRoundedIcon fontSize="small" />
+                ) : (
+                  <ExpandMoreRoundedIcon fontSize="small" />
+                )
+              }
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                color: "var(--primary)",
+                borderRadius: "999px",
+                px: 2,
+                "&:hover": { bgcolor: "var(--surface)" },
+                "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
+              }}
+            >
+              రత్నాలబాల పరిచయ ఆడియో
+            </Button>
 
-          <Collapse in={introOpen} timeout={240} unmountOnExit>
+            <Button
+              onClick={() => toggleSection("ringtones")}
+              size="small"
+              startIcon={<DownloadRoundedIcon fontSize="small" />}
+              endIcon={
+                openSection === "ringtones" ? (
+                  <ExpandLessRoundedIcon fontSize="small" />
+                ) : (
+                  <ExpandMoreRoundedIcon fontSize="small" />
+                )
+              }
+              sx={{
+                textTransform: "none",
+                fontWeight: 700,
+                color: "var(--primary)",
+                borderRadius: "999px",
+                px: 2,
+                "&:hover": { bgcolor: "var(--surface)" },
+                "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
+              }}
+            >
+              రింగ్‌టోన్‌లు డౌన్‌లోడ్ చేయండి
+            </Button>
+          </Box>
+
+          {/* Intro audio panel */}
+          <Collapse in={openSection === "intro"} timeout={240} unmountOnExit>
             <Box
               sx={{
                 mt: 1.5,
@@ -284,14 +335,28 @@ useEffect(() => {
             >
               <AudioPlayer src="/audio/Intro.m4a" />
               <Typography variant="caption" sx={{ color: "var(--muted-text)" }}>
-            ఈ వెబ్‌సైట్ గురించి తెలుసుకోవడానికి ఈ ఆడియో వినండి.
+                ఈ వెబ్‌సైట్ గురించి తెలుసుకోవడానికి ఈ ఆడియో వినండి.
               </Typography>
             </Box>
           </Collapse>
+
+          {/* Ringtones panel */}
+          <Collapse in={openSection === "ringtones"} timeout={240} unmountOnExit>
+            <Box
+              sx={{
+                mt: 1.5,
+                mx: "auto",
+                maxWidth: 420,
+                p: 2,
+                borderRadius: "var(--radius)",
+                border: "1.5px solid var(--border-strong)",
+                bgcolor: "var(--surface-elevated)",
+              }}
+            >
+              <DownloadRingtones />
+            </Box>
+          </Collapse>
         </Box>
-
-        <DownloadRingtones />
-
       </Container>
 
       <Container sx={{ my: 3 }}>
