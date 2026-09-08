@@ -1,10 +1,20 @@
 """
-api/main/index.py
+api/main.py
 
-Single consolidated Python Serverless Function for Vercel. Everything
-lives in ONE file, ONE requirements.txt, ONE BaseHTTPRequestHandler —
-no FastAPI/uvicorn, no ASGI, no second function. This replaces the
-earlier split (api/main/ + api/tts-news/) now that both live here.
+Flat Python Serverless Function for Vercel — filename is literally
+main.py (not index.py) as requested, which means it CANNOT live inside
+an api/main/ folder: Vercel's folder-based routing only maps a folder
+to its parent's clean URL when the entry file is named index.py
+(api/main/index.py -> /api/main). A folder containing main.py would
+route to /api/main/main instead. So this lives as a flat file at
+api/main.py, which routes to /api/main directly — same URL as before.
+
+Trade-off from flattening: this file no longer has its OWN
+requirements.txt. It now shares api/requirements.txt with the other
+flat functions (build_index.py, sametalu_agent.py, aksharamala.py,
+etc.) — see that file's comments for the size-history context on why
+that sharing is handled carefully. httpx/edge-tts/beautifulsoup4 have
+been added there for this file's use.
 
   GET  /api/main?endpoint=fonts                          → font catalog
   GET  /api/main?endpoint=font_agent&content_type=...     → font decision agent
@@ -12,10 +22,14 @@ earlier split (api/main/ + api/tts-news/) now that both live here.
   POST /api/main?endpoint=tts            body: {text, voice, speed}  → Sarvam/Edge TTS (audio, chunked+parallel)
   POST /api/main?endpoint=extract-news   body: {url}                 → {text} (JSON)
 
-Dependencies: httpx, edge-tts, beautifulsoup4 — that's it. No fastapi,
-no uvicorn, no pypdf, no python-multipart (file upload was dropped).
+NOTE: the News Reader frontend (components/TeluguNewsReader.tsx)
+no longer calls the ?endpoint=tts route above — it now calls the real
+app/api/tts/route.ts directly (the shared TTS contract used by
+PoemCard/PoemRadio/TeluguVoice). ?endpoint=tts still works standalone
+if anything else wants it; ?endpoint=svara and ?endpoint=extract-news
+remain in active use.
 
-CHANGELOG (fixes carried over from the standalone tts-news version):
+CHANGELOG (fixes accumulated across this file's history):
   - Sarvam speaker names were WRONG before ("meera"/"arjun" don't
     exist). Verified against Sarvam's current docs: bulbul:v2's real
     speakers are anushka (female) / abhilash (male). "model" field
@@ -23,12 +37,19 @@ CHANGELOG (fixes carried over from the standalone tts-news version):
   - Sanitizer was stripping plain ASCII digits (0-9), which silently
     deleted every number from news text before TTS ever saw it.
     Digits, ₹, % and hyphen are now preserved.
-  - Svara TTS still calls the Space's plain REST "call API" via httpx
-    (no gradio_client) — same as before, kept for bundle size.
+  - Svara TTS calls the Space's plain REST "call API" via httpx (no
+    gradio_client, which alone was ~300MB of transitive deps).
+  - Svara's gender check was an exact case-sensitive string match
+    ("female" only) that silently fell back to Male on any mismatch —
+    now case/whitespace-insensitive, and logs what it received.
+  - Svara's SSE response parsing grabbed the FIRST "data:" line
+    regardless of its preceding "event:" line — usually a heartbeat's
+    "data: null" during Space cold-start, causing a false "no data"
+    error. Now tracks event type properly and only accepts "complete".
 
 Deploy notes:
   - Vercel's Python runtime uses the `handler` class below directly —
-    same as before, no ASGI auto-detection needed.
+    no ASGI, no FastAPI/uvicorn.
   - Set SARVAM_API_KEY for the sarvam-* voices, HF_TOKEN (optional)
     for Svara rate limits.
   - IMPORTANT — same caveat as always: Svara's `data` array order
@@ -176,10 +197,34 @@ def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
 
     Gradio 4+'s "call API" is a two-step HTTP exchange:
       1. POST /gradio_api/call/<api_name>  {"data": [...]}  -> {"event_id": "..."}
-      2. GET  /gradio_api/call/<api_name>/<event_id>        -> text/event-stream,
-         whose first "data:" line is the JSON result array.
+      2. GET  /gradio_api/call/<api_name>/<event_id>        -> a text/event-stream
+         of MULTIPLE messages, each shaped like:
+             event: <type>
+             data: <json>
+         Typical event types: "heartbeat" (data: null, sent repeatedly
+         while the Space is cold-starting/queued — Zero-GPU Spaces do
+         this often), "error" (data carries error info), and finally
+         "complete" (data carries the real result array).
+
+    FIX: this previously grabbed the FIRST "data:" line seen, with no
+    regard for which "event:" line preceded it. That line is very often
+    a heartbeat's "data: null" — which is falsy in Python, so the old
+    `if not result_data: raise ...` fired immediately with "returned no
+    data", when in reality the Space just hadn't finished yet. Now the
+    event type is tracked properly: heartbeats are skipped and waited
+    past, "error" raises immediately with the real error payload, and
+    only "complete" is accepted as the final result.
     """
-    gender = "Female" if voice_choice == "female" else "Male"
+    # FIX: this used to be `"Female" if voice_choice == "female" else "Male"`
+    # — an exact, case-sensitive match. Any mismatch (e.g. "Female" with a
+    # capital F, a trimmed/stray space, or an unexpected value from the
+    # caller) silently fell through to "Male" with NO error at all — which
+    # exactly matches "female never works, male always works" as a symptom.
+    # Now: case/whitespace-insensitive, and logs exactly what was received
+    # so a real mismatch shows up in Vercel logs instead of hiding forever.
+    normalized = (voice_choice or "").strip().lower()
+    gender = "Female" if normalized in ("female", "f", "woman") else "Male"
+    print(f"[Svara TTS] received voice_choice={voice_choice!r} -> gender={gender}")
 
     payload = {
         "data": [
@@ -195,21 +240,57 @@ def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
 
     call_url = f"{SVARA_SPACE_BASE}/gradio_api/call/{SVARA_API_NAME}"
 
-    with httpx.Client(timeout=60, headers=_svara_headers()) as client:
+    with httpx.Client(timeout=90, headers=_svara_headers()) as client:
         post_res = client.post(call_url, json=payload)
         post_res.raise_for_status()
         event_id = post_res.json()["event_id"]
+        print(f"[Svara TTS] event_id={event_id!r}, streaming for result...")
 
         result_data = None
+        current_event = None
         with client.stream("GET", f"{call_url}/{event_id}") as stream:
             for line in stream.iter_lines():
-                if not line or not line.startswith("data:"):
+                if not line:
+                    continue  # blank line = message boundary in SSE, not an error
+
+                if line.startswith("event:"):
+                    current_event = line[len("event:"):].strip()
+                    print(f"[Svara TTS] SSE event: {current_event}")
                     continue
-                result_data = json.loads(line[len("data:"):].strip())
-                break
+
+                if not line.startswith("data:"):
+                    continue
+
+                data_str = line[len("data:"):].strip()
+
+                if current_event == "heartbeat":
+                    # Space still queued/cold-starting — keep waiting.
+                    continue
+
+                if current_event == "error":
+                    raise RuntimeError(f"Svara Space reported an error: {data_str[:300]}")
+
+                try:
+                    parsed = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
+
+                if parsed is None:
+                    # A null payload under a non-heartbeat/non-error event
+                    # label (e.g. an unlabeled keep-alive) — keep waiting
+                    # rather than treating this as the final result.
+                    continue
+
+                result_data = parsed
+                if current_event == "complete" or current_event is None:
+                    break
 
     if not result_data:
-        raise RuntimeError("Svara Space returned no data over the call API.")
+        raise RuntimeError(
+            "Svara Space closed the stream without sending a 'complete' event. "
+            "This usually means the Space is asleep/cold-starting and took "
+            "longer than the request timeout — try again in a moment."
+        )
 
     audio_info = result_data[0] if isinstance(result_data, list) else result_data
     audio_path = None
@@ -302,6 +383,7 @@ async def synth_sarvam(text: str, voice: str, speed: float) -> bytes:
 
     speaker = SARVAM_SPEAKERS[voice]
     pace = max(0.3, min(3.0, speed))
+    print(f"[News TTS/Sarvam] voice={voice!r} -> speaker={speaker!r}, pace={pace}")
 
     async with httpx.AsyncClient(timeout=30) as client:
         res = await client.post(
@@ -355,6 +437,8 @@ async def _run_tts_pipeline_async(clean_text: str, voice: str, speed: float) -> 
 
 def handle_tts(text: str, voice: str, speed: float) -> tuple[bytes, str, str]:
     """Returns (audio_bytes, content_type, file_extension)."""
+    print(f"[News TTS] request received: voice={voice!r}, speed={speed!r}")
+
     clean = sanitize_telugu(text)
     if not clean:
         raise ValueError("టెక్స్ట్ ఖాళీగా ఉంది లేదా తెలుగు అక్షరాలు కనిపించలేదు.")
