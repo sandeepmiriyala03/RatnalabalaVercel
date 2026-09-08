@@ -1,43 +1,50 @@
 """
 api/main/index.py
 
-NOTE: moved from flat api/main.py into its own folder (api/main/) so
-it can have its OWN requirements.txt without applying that dependency
-to every other flat function in api/ — same isolation pattern used
-for api/sametalu_agent/ and api/tts-news/. URL stays /api/main either
-way (folder + index.py routes identically to a flat file).
-
-Handles THREE things in one function (keeps total function count down,
-same reasoning as the original fonts.py + font_agent.py merge):
+Single consolidated Python Serverless Function for Vercel. Everything
+lives in ONE file, ONE requirements.txt, ONE BaseHTTPRequestHandler —
+no FastAPI/uvicorn, no ASGI, no second function. This replaces the
+earlier split (api/main/ + api/tts-news/) now that both live here.
 
   GET  /api/main?endpoint=fonts                          → font catalog
   GET  /api/main?endpoint=font_agent&content_type=...     → font decision agent
-  POST /api/main?endpoint=svara   body: {text, voice}     → Svara TTS audio (audio/wav)
+  POST /api/main?endpoint=svara          body: {text, voice}         → Svara TTS (audio/wav)
+  POST /api/main?endpoint=tts            body: {text, voice, speed}  → Sarvam/Edge TTS (audio, chunked+parallel)
+  POST /api/main?endpoint=extract-news   body: {url}                 → {text} (JSON)
 
-Svara TTS calls kenpath/svara-tts-v1's free Hugging Face Space
-(https://huggingface.co/spaces/kenpath/svara-tts).
+Dependencies: httpx, edge-tts, beautifulsoup4 — that's it. No fastapi,
+no uvicorn, no pypdf, no python-multipart (file upload was dropped).
 
-⚠️ CHANGED: this used to go through the `gradio_client` Python package.
-That package's dependency tree (huggingface_hub, pandas, numpy, pillow,
-fsspec, websockets, ...) alone pushed this ONE serverless function's
-bundle past Vercel's 225MB limit (~350MB observed). Every Gradio 4+
-Space — including this one — exposes the exact same call underneath as
-a plain REST "call API", so we hit that directly with `httpx` instead.
-Net effect: identical behavior, ~300MB of dependencies removed, this
-function's requirements.txt is now just `httpx`.
+CHANGELOG (fixes carried over from the standalone tts-news version):
+  - Sarvam speaker names were WRONG before ("meera"/"arjun" don't
+    exist). Verified against Sarvam's current docs: bulbul:v2's real
+    speakers are anushka (female) / abhilash (male). "model" field
+    added too — it was missing.
+  - Sanitizer was stripping plain ASCII digits (0-9), which silently
+    deleted every number from news text before TTS ever saw it.
+    Digits, ₹, % and hyphen are now preserved.
+  - Svara TTS still calls the Space's plain REST "call API" via httpx
+    (no gradio_client) — same as before, kept for bundle size.
 
-IMPORTANT — same caveat as before: the `data` array order below
-(language, gender, text, temperature, top_p, repetition_penalty,
-max_new_tokens) is a best-effort match to the Space's visible UI field
-order, since that's what determines positional `data` order in
-Gradio's call API. Before trusting this in production, visit
-https://kenpath-svara-tts.hf.space, click "Use via API" at the bottom
-of any component, and confirm/adjust the order and endpoint name below
-against the actual cURL snippet shown there.
+Deploy notes:
+  - Vercel's Python runtime uses the `handler` class below directly —
+    same as before, no ASGI auto-detection needed.
+  - Set SARVAM_API_KEY for the sarvam-* voices, HF_TOKEN (optional)
+    for Svara rate limits.
+  - IMPORTANT — same caveat as always: Svara's `data` array order
+    (language, gender, text, temperature, top_p, repetition_penalty,
+    max_new_tokens) is a best-effort match to the Space's component
+    order. Verify via "Use via API" at https://kenpath-svara-tts.hf.space
+    before trusting this in production.
 """
 
+import asyncio
+import base64
+import io
 import json
 import os
+import re
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -148,13 +155,11 @@ def handle_font_agent(query: dict):
 
 
 # ═══════════════════════════════════════════════════════════════
-# SVARA TTS ENDPOINT — POST only
-# Now a direct httpx call against the Space's REST "call API"
-# instead of the gradio_client package. No SDK, no huge dep tree.
+# SVARA TTS — plain REST "call API" against the HF Space, no gradio_client
 # ═══════════════════════════════════════════════════════════════
 
 SVARA_SPACE_BASE = "https://kenpath-svara-tts.hf.space"
-SVARA_API_NAME = "generate_speech"  # matches the old api_name="/generate_speech"
+SVARA_API_NAME = "generate_speech"
 
 _HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
@@ -171,16 +176,11 @@ def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
 
     Gradio 4+'s "call API" is a two-step HTTP exchange:
       1. POST /gradio_api/call/<api_name>  {"data": [...]}  -> {"event_id": "..."}
-      2. GET  /gradio_api/call/<api_name>/<event_id>        -> a text/event-stream
-         whose final "data:" line is the JSON result array.
-
-    This is exactly what gradio_client did under the hood — we're just
-    skipping the SDK layer (and its ~300MB of transitive dependencies).
+      2. GET  /gradio_api/call/<api_name>/<event_id>        -> text/event-stream,
+         whose first "data:" line is the JSON result array.
     """
     gender = "Female" if voice_choice == "female" else "Male"
 
-    # Positional order must match the Space's component order for this
-    # endpoint — see the module docstring for how to verify this.
     payload = {
         "data": [
             "Telugu (తెలుగు)",  # language
@@ -206,15 +206,10 @@ def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
                 if not line or not line.startswith("data:"):
                     continue
                 result_data = json.loads(line[len("data:"):].strip())
-                # keep reading until the stream naturally closes after
-                # the final "complete" event, but we already have what
-                # we need once a data line parses successfully
                 break
 
     if not result_data:
         raise RuntimeError("Svara Space returned no data over the call API.")
-
-    print("Svara raw result:", repr(result_data))
 
     audio_info = result_data[0] if isinstance(result_data, list) else result_data
     audio_path = None
@@ -239,6 +234,172 @@ def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
 
 
 # ═══════════════════════════════════════════════════════════════
+# NEWS TTS — sanitizer + chunking + Sarvam/Edge dual engine
+# ═══════════════════════════════════════════════════════════════
+
+# Telugu Unicode block + ASCII digits (FIX: were missing, silently
+# deleting every number from news text) + currency/percent/hyphen +
+# sentence punctuation + Telugu danda marks + whitespace.
+_ALLOWED_RE = re.compile(r"[^\u0C00-\u0C7F0-9₹%\-.?,!\u0964\u0965\s]")
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def sanitize_telugu(text: str) -> str:
+    text = _ALLOWED_RE.sub(" ", text)
+    text = _WHITESPACE_RE.sub(" ", text).strip()
+    return text
+
+
+MAX_CHUNK_CHARS = 500
+
+
+def chunk_text(text: str, max_chars: int = MAX_CHUNK_CHARS) -> list[str]:
+    sentences = re.split(r"(?<=[.?!\u0964\u0965])\s+|\n+", text)
+    chunks: list[str] = []
+    current = ""
+
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+
+        if len(current) + len(sentence) + 1 <= max_chars:
+            current = f"{current} {sentence}".strip()
+            continue
+
+        if current:
+            chunks.append(current)
+            current = ""
+
+        if len(sentence) > max_chars:
+            for i in range(0, len(sentence), max_chars):
+                chunks.append(sentence[i : i + max_chars])
+        else:
+            current = sentence
+
+    if current:
+        chunks.append(current)
+
+    return chunks or ([text] if text else [])
+
+
+SARVAM_API_URL = "https://api.sarvam.ai/text-to-speech"
+SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
+
+# Verified against Sarvam's current docs. bulbul:v2 speakers — Female:
+# anushka, manisha, vidya, arya. Male: abhilash, karun, hitesh. The old
+# "meera"/"arjun" values don't exist on any Sarvam model.
+SARVAM_MODEL = "bulbul:v2"
+SARVAM_SPEAKERS = {
+    "sarvam-te-female": "anushka",
+    "sarvam-te-male": "abhilash",
+}
+
+
+async def synth_sarvam(text: str, voice: str, speed: float) -> bytes:
+    if not SARVAM_API_KEY:
+        raise RuntimeError("SARVAM_API_KEY is not configured on the server.")
+
+    speaker = SARVAM_SPEAKERS[voice]
+    pace = max(0.3, min(3.0, speed))
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        res = await client.post(
+            SARVAM_API_URL,
+            headers={"api-subscription-key": SARVAM_API_KEY},
+            json={
+                "inputs": [text],
+                "target_language_code": "te-IN",
+                "model": SARVAM_MODEL,
+                "speaker": speaker,
+                "speech_sample_rate": 22050,
+                "enable_preprocessing": True,
+                "pace": pace,
+            },
+        )
+        if res.status_code >= 400:
+            raise RuntimeError(f"Sarvam API {res.status_code}: {res.text[:300]}")
+        data = res.json()
+        return base64.b64decode(data["audios"][0])
+
+
+async def synth_edge(text: str, voice: str, speed: float) -> bytes:
+    import edge_tts
+
+    rate_pct = int(round((speed - 1.0) * 100))
+    rate_str = f"{'+' if rate_pct >= 0 else ''}{rate_pct}%"
+
+    communicator = edge_tts.Communicate(text, voice=voice, rate=rate_str)
+    buf = io.BytesIO()
+    async for chunk in communicator.stream():
+        if chunk["type"] == "audio":
+            buf.write(chunk["data"])
+
+    audio_bytes = buf.getvalue()
+    if not audio_bytes:
+        raise RuntimeError(f"Edge TTS returned no audio for voice '{voice}'.")
+    return audio_bytes
+
+
+async def synth_chunk(text: str, voice: str, speed: float) -> bytes:
+    if voice.startswith("sarvam-"):
+        return await synth_sarvam(text, voice, speed)
+    return await synth_edge(text, voice, speed)
+
+
+async def _run_tts_pipeline_async(clean_text: str, voice: str, speed: float) -> bytes:
+    chunks = chunk_text(clean_text)
+    parts = await asyncio.gather(*(synth_chunk(c, voice, speed) for c in chunks))
+    return b"".join(parts)
+
+
+def handle_tts(text: str, voice: str, speed: float) -> tuple[bytes, str, str]:
+    """Returns (audio_bytes, content_type, file_extension)."""
+    clean = sanitize_telugu(text)
+    if not clean:
+        raise ValueError("టెక్స్ట్ ఖాళీగా ఉంది లేదా తెలుగు అక్షరాలు కనిపించలేదు.")
+
+    valid_voices = {"sarvam-te-female", "sarvam-te-male", "te-IN-ShrutiNeural", "te-IN-MohanNeural"}
+    if voice not in valid_voices:
+        raise ValueError(f"చెల్లని వాయిస్: {voice}")
+
+    speed = max(0.5, min(2.0, speed))
+
+    audio_bytes = asyncio.run(_run_tts_pipeline_async(clean, voice, speed))
+
+    if voice.startswith("sarvam-"):
+        return audio_bytes, "audio/wav", "wav"
+    return audio_bytes, "audio/mpeg", "mp3"
+
+
+def handle_extract_news(url: str) -> str:
+    from bs4 import BeautifulSoup
+
+    with httpx.Client(
+        timeout=15, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"}
+    ) as client:
+        res = client.get(url)
+        res.raise_for_status()
+
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
+        tag.decompose()
+
+    article = soup.find("article")
+    candidates = article.find_all("p") if article else soup.find_all("p")
+
+    paragraphs = [p.get_text(" ", strip=True) for p in candidates]
+    paragraphs = [p for p in paragraphs if len(p) > 40]
+
+    text = sanitize_telugu("\n\n".join(paragraphs))
+    if not text:
+        raise ValueError("ఈ లింక్ నుండి తెలుగు ఆర్టికల్ టెక్స్ట్ దొరకలేదు.")
+
+    return text
+
+
+# ═══════════════════════════════════════════════════════════════
 # HANDLER
 # ═══════════════════════════════════════════════════════════════
 
@@ -252,14 +413,20 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_audio(self, audio_bytes: bytes, content_type: str):
+    def _send_audio(self, audio_bytes: bytes, content_type: str, filename: str):
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
         self.send_header("Content-Length", str(len(audio_bytes)))
         self.end_headers()
         self.wfile.write(audio_bytes)
+
+    def _read_json_body(self) -> dict:
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length)
+        return json.loads(body) if body else {}
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -282,31 +449,60 @@ class handler(BaseHTTPRequestHandler):
         query = parse_qs(parsed.query)
         endpoint = query.get("endpoint", [""])[0]
 
-        if endpoint != "svara":
-            self._send_json(400, {"error": "POST only supports ?endpoint=svara"})
-            return
-
         try:
-            content_length = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_length)
-            payload = json.loads(body) if body else {}
+            payload = self._read_json_body()
         except (ValueError, json.JSONDecodeError):
             self._send_json(400, {"error": "Invalid JSON body."})
             return
 
-        text = (payload.get("text") or "").strip()
-        voice_choice = payload.get("voice", "male")
+        if endpoint == "svara":
+            text = (payload.get("text") or "").strip()
+            voice_choice = payload.get("voice", "male")
+            if not text:
+                self._send_json(400, {"error": "Missing 'text' field."})
+                return
+            try:
+                audio_bytes, content_type = handle_svara_tts(text, voice_choice)
+                self._send_audio(audio_bytes, content_type, "svara_output.wav")
+            except Exception as e:
+                print(f"[Svara TTS] generation failed: {e}")
+                self._send_json(502, {"error": f"Svara TTS generation failed: {e}"})
 
-        if not text:
-            self._send_json(400, {"error": "Missing 'text' field."})
-            return
+        elif endpoint == "tts":
+            text = (payload.get("text") or "").strip()
+            voice = payload.get("voice", "te-IN-ShrutiNeural")
+            speed = payload.get("speed", 1.0)
+            if not text:
+                self._send_json(400, {"detail": "Missing 'text' field."})
+                return
+            try:
+                audio_bytes, content_type, ext = handle_tts(text, voice, float(speed))
+                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                self._send_audio(audio_bytes, content_type, f"telugu_news_{stamp}.{ext}")
+            except ValueError as e:
+                self._send_json(400, {"detail": str(e)})
+            except Exception as e:
+                print(f"[News TTS] generation failed: {e}")
+                self._send_json(502, {"detail": f"TTS generation failed: {e}"})
 
-        try:
-            audio_bytes, content_type = handle_svara_tts(text, voice_choice)
-            self._send_audio(audio_bytes, content_type)
-        except Exception as e:
-            print(f"[Svara TTS] generation failed: {e}")
-            self._send_json(502, {"error": f"Svara TTS generation failed: {e}"})
+        elif endpoint == "extract-news":
+            url = (payload.get("url") or "").strip()
+            if not url:
+                self._send_json(400, {"detail": "Missing 'url' field."})
+                return
+            try:
+                text = handle_extract_news(url)
+                self._send_json(200, {"text": text})
+            except ValueError as e:
+                self._send_json(422, {"detail": str(e)})
+            except Exception as e:
+                print(f"[extract-news] failed: {e}")
+                self._send_json(400, {"detail": f"URL fetch failed: {e}"})
+
+        else:
+            self._send_json(
+                400, {"error": "POST requires ?endpoint=svara | tts | extract-news"}
+            )
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -324,5 +520,7 @@ if __name__ == "__main__":
     print(f"Starting local test server at http://localhost:{port}")
     print(f"Try: http://localhost:{port}/api/main?endpoint=fonts")
     print(f"Try: http://localhost:{port}/api/main?endpoint=font_agent&content_type=sloka&width=390")
-    print(f"POST http://localhost:{port}/api/main?endpoint=svara  body: {{\"text\": \"...\", \"voice\": \"male\"}}")
+    print(f"POST http://localhost:{port}/api/main?endpoint=svara        body: {{\"text\": \"...\", \"voice\": \"male\"}}")
+    print(f"POST http://localhost:{port}/api/main?endpoint=tts          body: {{\"text\": \"...\", \"voice\": \"te-IN-ShrutiNeural\", \"speed\": 1.0}}")
+    print(f"POST http://localhost:{port}/api/main?endpoint=extract-news body: {{\"url\": \"https://...\"}}")
     HTTPServer(("localhost", port), handler).serve_forever()

@@ -46,6 +46,20 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // 4. Telugu News TTS API rewrites — point the clean external paths
+  // the frontend calls (/api/tts, /api/extract-news) at the single
+  // consolidated api/main/index.py function, which dispatches by
+  // ?endpoint= internally. Defined here (not just vercel.json)
+  // because Next.js rewrites work under BOTH `next dev` and Vercel
+  // deploys — vercel.json's `rewrites` only take effect on an actual
+  // Vercel deployment (or `vercel dev`), not under plain `next dev`.
+  async rewrites() {
+    return [
+      { source: "/api/tts", destination: "/api/main?endpoint=tts" },
+      { source: "/api/extract-news", destination: "/api/main?endpoint=extract-news" },
+    ];
+  },
+
   // 3. CORRECTED: 'turbopack' is now a top-level key in Next.js 16
   // We remove it from 'experimental' to avoid the "Unrecognized key" warning
   turbopack: {},

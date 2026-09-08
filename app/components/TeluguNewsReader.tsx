@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   FormControl,
   IconButton,
@@ -22,8 +23,8 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 
 type VoiceOption =
   | "sarvam-te-female"
@@ -33,23 +34,68 @@ type VoiceOption =
   | "browser-native";
 
 const VOICE_LABELS: Record<VoiceOption, string> = {
-  "sarvam-te-female": "🇮🇳 Sarvam AI — స్త్రీ స్వరం",
-  "sarvam-te-male": "🇮🇳 Sarvam AI — మగ స్వరం",
+  "sarvam-te-female": "🇮🇳 Sarvam AI — స్త్రీ స్వరం (Anushka)",
+  "sarvam-te-male": "🇮🇳 Sarvam AI — మగ స్వరం (Abhilash)",
   "te-IN-ShrutiNeural": "🎙️ Edge TTS — Shruti (స్త్రీ)",
   "te-IN-MohanNeural": "🎙️ Edge TTS — Mohan (మగ)",
   "browser-native": "📱 బ్రౌజర్ వాయిస్ (ఆఫ్‌లైన్)",
 };
 
-// Telugu Unicode block + sentence punctuation + Telugu danda marks + whitespace.
-// Mirrors the server-side sanitizer in api/tts-news/index.py — kept in
-// sync deliberately; the server re-applies this regardless, this copy
-// exists purely so the UI can show an accurate character count and
-// avoid sending obvious junk over the wire.
-const TELUGU_SANITIZE_RE = /[^\u0C00-\u0C7F.?,!\u0964\u0965\s]/g;
+const TELUGU_SANITIZE_RE = /[^\u0C00-\u0C7F0-9₹%\-.?,!\u0964\u0965\s]/g;
 
 function sanitizeTelugu(input: string): string {
   return input.replace(TELUGU_SANITIZE_RE, " ").replace(/\s+/g, " ").trim();
 }
+
+async function parseJsonSafe(res: Response): Promise<any> {
+  const raw = await res.text();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error(
+      res.ok
+        ? "సర్వర్ నుండి JSON కాకుండా వేరే రెస్పాన్స్ వచ్చింది."
+        : `API రూట్ దొరకలేదు లేదా సర్వర్ ఎర్రర్ (status ${res.status}).`
+    );
+  }
+}
+
+// ── Sample news for one-click testing, covering a spread of common
+// news types so anyone can verify voices/number-reading without
+// typing anything themselves. Includes the exact temple hundi example
+// (heavy on numbers/amounts) that surfaced the digit-stripping bug.
+const SAMPLE_NEWS: { label: string; text: string }[] = [
+  {
+    label: "దేవాలయం / హుండీ (సంఖ్యలు)",
+    text:
+      "శృంగార వల్లభ స్వామి హుండీ ఆదాయం లెక్కింపు\n\n" +
+      "పెద్దాపురం: తొలి తిరుపతి శృంగారవల్లభ స్వామి వారి దేవస్థానంలో మంగళవారం హుండీ లెక్కింపు నిర్వహించారు. 85 రోజుల కాలానికి సాధారణ హుండీ ద్వారా రూ.23,44,396, అన్నదానం హుండీ ద్వారా రూ.6,02,957 కలసి మొత్తం రూ.29,47,353 ఆదాయం సమకూరినట్లు ఈవో వడ్డి శ్రీనివాసరావు తెలిపారు. వీటితో పాటు 0.143 గ్రాముల బంగారం, 0.711 గ్రాముల వెండి కానుకలుగా వచ్చినట్లు పేర్కొన్నారు. దేవాదాయ శాఖ జిల్లా అధికారి వి. వెంకటేశ్వరరావు, డివిజనల్ ఇన్‌స్పెక్టర్ ఫణీంద్ర కుమార్, కాజులూరు ఈవో సోమరాజు, ధర్మకర్తల మండలి చైర్మన్ మొయిళ్ల సంధ్య కృష్ణమూర్తి, ఆలయ అర్చకులు, బ్యాంకు సిబ్బంది పాల్గొన్నారు.",
+  },
+  {
+    label: "క్రీడలు",
+    text:
+      "టీమిండియా విజయం\n\n" +
+      "సచిన్ స్టేడియంలో జరిగిన మ్యాచ్‌లో టీమిండియా 7 వికెట్ల తేడాతో ఆస్ట్రేలియాపై విజయం సాధించింది. కెప్టెన్ రోహిత్ శర్మ 87 బంతుల్లో 102 పరుగులు చేసి మ్యాన్ ఆఫ్ ద మ్యాచ్ అవార్డు అందుకున్నాడు. బౌలింగ్‌లో బుమ్రా 4 వికెట్లు తీసి రాణించాడు. తదుపరి మ్యాచ్ శుక్రవారం జరుగనుంది.",
+  },
+  {
+    label: "వాతావరణం",
+    text:
+      "రాష్ట్రంలో వర్ష సూచన\n\n" +
+      "వచ్చే 48 గంటల్లో ఆంధ్రప్రదేశ్, తెలంగాణలో అనేక ప్రాంతాల్లో మోస్తరు నుంచి భారీ వర్షాలు కురిసే అవకాశం ఉందని వాతావరణ శాఖ తెలిపింది. కోస్తా జిల్లాల్లో ఉష్ణోగ్రతలు 2 నుంచి 3 డిగ్రీలు తగ్గే అవకాశం ఉంది. మత్స్యకారులు సముద్రంలోకి వెళ్లవద్దని హెచ్చరించారు.",
+  },
+  {
+    label: "ఆర్థిక వార్తలు",
+    text:
+      "సెన్సెక్స్ లాభాల్లో ముగింపు\n\n" +
+      "బుధవారం స్టాక్ మార్కెట్ లాభాల్లో ముగిసింది. సెన్సెక్స్ 412 పాయింట్లు పెరిగి 74,586 వద్ద, నిఫ్టీ 118 పాయింట్లు పెరిగి 22,610 వద్ద స్థిరపడింది. బ్యాంకింగ్, ఐటి రంగాల షేర్లు లాభపడ్డాయి. రూపాయి డాలర్‌తో పోలిస్తే 83.12కి బలపడింది.",
+  },
+  {
+    label: "స్థానిక వార్తలు",
+    text:
+      "కొత్త రోడ్డు ప్రారంభం\n\n" +
+      "జిల్లా కేంద్రంలో రూ.4.5 కోట్ల వ్యయంతో నిర్మించిన నాలుగు కిలోమీటర్ల రహదారిని మంత్రి ప్రారంభించారు. ఈ రహదారి వల్ల పరిసర గ్రామాల ప్రజలకు రవాణా సౌకర్యం మెరుగుపడుతుందని అధికారులు తెలిపారు. కార్యక్రమంలో స్థానిక ప్రజాప్రతినిధులు, అధికారులు పాల్గొన్నారు.",
+  },
+];
 
 export default function TeluguNewsReader() {
   const [rawText, setRawText] = useState("");
@@ -58,15 +104,16 @@ export default function TeluguNewsReader() {
   const [speed, setSpeed] = useState(1.0);
 
   const [fetchingUrl, setFetchingUrl] = useState(false);
-  const [parsingFile, setParsingFile] = useState(false);
   const [synthesizing, setSynthesizing] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [browserVoiceWarning, setBrowserVoiceWarning] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioBlobRef = useRef<Blob | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -76,7 +123,13 @@ export default function TeluguNewsReader() {
 
   const cleanText = sanitizeTelugu(rawText);
   const isBrowserVoice = voice === "browser-native";
-  const busy = fetchingUrl || parsingFile || synthesizing || downloading;
+  const busy = fetchingUrl || synthesizing || downloading;
+
+  /* ───────── sample news picker ───────── */
+  const loadSample = (text: string) => {
+    setRawText(text);
+    setError(null);
+  };
 
   /* ───────── URL fetch ───────── */
   const handleFetchUrl = async () => {
@@ -89,43 +142,13 @@ export default function TeluguNewsReader() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: articleUrl.trim() }),
       });
-      const data = await res.json();
+      const data = await parseJsonSafe(res);
       if (!res.ok) throw new Error(data.detail || "ఆర్టికల్ తీసుకురాలేకపోయాం.");
       setRawText((prev) => (prev ? `${prev}\n\n${data.text}` : data.text));
     } catch (e: any) {
       setError(e.message || "ఆర్టికల్ తీసుకురాలేకపోయాం.");
     } finally {
       setFetchingUrl(false);
-    }
-  };
-
-  /* ───────── file upload (.txt / .pdf) ───────── */
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file later
-    if (!file) return;
-
-    setError(null);
-    setParsingFile(true);
-
-    try {
-      if (file.type === "text/plain" || file.name.endsWith(".txt")) {
-        const text = await file.text();
-        setRawText((prev) => (prev ? `${prev}\n\n${text}` : text));
-      } else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch("/api/extract-pdf", { method: "POST", body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || "PDF parse failed");
-        setRawText((prev) => (prev ? `${prev}\n\n${data.text}` : data.text));
-      } else {
-        throw new Error(".txt లేదా .pdf ఫైల్ మాత్రమే అనుమతించబడుతుంది.");
-      }
-    } catch (e: any) {
-      setError(e.message || "ఫైల్ చదవలేకపోయాం.");
-    } finally {
-      setParsingFile(false);
     }
   };
 
@@ -176,8 +199,7 @@ export default function TeluguNewsReader() {
     if (!audioEl) return;
 
     if (!audioCtxRef.current) {
-      const AudioCtx =
-        window.AudioContext || (window as any).webkitAudioContext;
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       audioCtxRef.current = new AudioCtx();
     }
     const ctx = audioCtxRef.current;
@@ -194,32 +216,45 @@ export default function TeluguNewsReader() {
     drawVisualizer();
   }, [drawVisualizer]);
 
-  /* ───────── synthesize (server voices) ───────── */
+  /* ───────── synthesize (server voices) — race-condition safe ───────── */
   const synthesize = async (): Promise<Blob | null> => {
     if (!cleanText) {
       setError("దయచేసి తెలుగు టెక్స్ట్ నమోదు చేయండి.");
       return null;
     }
+
+    const requestId = ++requestIdRef.current;
+    const requestedVoice = voice;
+    const requestedSpeed = speed;
+
     setSynthesizing(true);
     setError(null);
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanText, voice, speed }),
+        body: JSON.stringify({ text: cleanText, voice: requestedVoice, speed: requestedSpeed }),
       });
+
+      if (requestId !== requestIdRef.current) return null;
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = await parseJsonSafe(res).catch(() => ({}));
         throw new Error(data.detail || "వాయిస్ తయారు కాలేదు.");
       }
+
       const blob = await res.blob();
+      if (requestId !== requestIdRef.current) return null;
+
       audioBlobRef.current = blob;
       return blob;
     } catch (e: any) {
-      setError(e.message || "వాయిస్ తయారు కాలేదు.");
+      if (requestId === requestIdRef.current) {
+        setError(e.message || "వాయిస్ తయారు కాలేదు.");
+      }
       return null;
     } finally {
-      setSynthesizing(false);
+      if (requestId === requestIdRef.current) setSynthesizing(false);
     }
   };
 
@@ -239,7 +274,10 @@ export default function TeluguNewsReader() {
       utter.lang = "te-IN";
       utter.rate = speed;
       utter.onend = () => setPlaying(false);
-      utter.onerror = () => setPlaying(false);
+      utter.onerror = () => {
+        setPlaying(false);
+        setError("బ్రౌజర్ వాయిస్ ప్లే కాలేదు — పైన ఉన్న గమనిక చూడండి.");
+      };
       window.speechSynthesis.speak(utter);
       setPlaying(true);
       return;
@@ -286,9 +324,11 @@ export default function TeluguNewsReader() {
     };
   }, []);
 
-  // Changing the voice invalidates any cached audio so Play always
-  // reflects the currently selected voice rather than replaying stale audio.
+  // Voice change invalidates any in-flight request AND cached audio
+  // immediately, so switching voices always takes effect right away.
   useEffect(() => {
+    requestIdRef.current += 1;
+
     if (audioUrlRef.current) {
       URL.revokeObjectURL(audioUrlRef.current);
       audioUrlRef.current = null;
@@ -299,6 +339,27 @@ export default function TeluguNewsReader() {
       audioRef.current.removeAttribute("src");
     }
     setPlaying(false);
+    setSynthesizing(false);
+    setError(null);
+
+    // Proactively warn if the browser has no Telugu voice installed —
+    // rather than letting the user discover this only after clicking
+    // Play and hearing nothing.
+    if (voice === "browser-native" && typeof window !== "undefined" && "speechSynthesis" in window) {
+      const checkVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        const hasTelugu = voices.some((v) => v.lang?.toLowerCase().startsWith("te"));
+        setBrowserVoiceWarning(
+          hasTelugu
+            ? null
+            : "మీ పరికరంలో తెలుగు బ్రౌజర్ వాయిస్ ఇన్‌స్టాల్ చేయబడలేదు — వేరే వాయిస్ ఎంచుకోండి లేదా OS సెట్టింగ్స్‌లో తెలుగు వాయిస్ జోడించండి."
+        );
+      };
+      checkVoices();
+      window.speechSynthesis.onvoiceschanged = checkVoices;
+    } else {
+      setBrowserVoiceWarning(null);
+    }
   }, [voice]);
 
   useEffect(() => {
@@ -349,6 +410,22 @@ export default function TeluguNewsReader() {
           తెలుగు న్యూస్ రీడర్ 📰🔊
         </Typography>
 
+        {/* sample news — one-click test data, no typing needed */}
+        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
+          {SAMPLE_NEWS.map((sample) => (
+            <Chip
+              key={sample.label}
+              icon={<ArticleRoundedIcon fontSize="small" />}
+              label={sample.label}
+              size="small"
+              variant="outlined"
+              clickable
+              onClick={() => loadSample(sample.text)}
+              disabled={busy}
+            />
+          ))}
+        </Stack>
+
         {/* URL fetch */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
           <TextField
@@ -375,7 +452,7 @@ export default function TeluguNewsReader() {
           multiline
           minRows={6}
           maxRows={14}
-          placeholder="ఇక్కడ న్యూస్ ఆర్టికల్ పేస్ట్ చేయండి లేదా టైప్ చేయండి…"
+          placeholder="ఇక్కడ న్యూస్ ఆర్టికల్ పేస్ట్ చేయండి లేదా టైప్ చేయండి… లేదా పైన ఒక నమూనా వార్తను ఎంచుకోండి."
           value={rawText}
           onChange={(e) => setRawText(e.target.value)}
           sx={{ mb: 1 }}
@@ -383,27 +460,11 @@ export default function TeluguNewsReader() {
 
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
           <Typography variant="caption" color="text.secondary">
-            {charCount} అక్షరాలు (శుద్ధి చేసిన తెలుగు టెక్స్ట్)
+            {charCount} అక్షరాలు (శుద్ధి చేసిన తెలుగు టెక్స్ట్ — సంఖ్యలతో సహా)
           </Typography>
-          <Stack direction="row" spacing={1}>
-            <Button
-              size="small"
-              component="label"
-              startIcon={parsingFile ? <CircularProgress size={14} /> : <UploadFileRoundedIcon />}
-              disabled={busy}
-            >
-              ఫైల్ అప్‌లోడ్
-              <input
-                type="file"
-                hidden
-                accept=".txt,.pdf,text/plain,application/pdf"
-                onChange={handleFileChange}
-              />
-            </Button>
-            <IconButton size="small" onClick={() => setRawText("")} disabled={!rawText || busy}>
-              <DeleteOutlineRoundedIcon fontSize="small" />
-            </IconButton>
-          </Stack>
+          <IconButton size="small" onClick={() => setRawText("")} disabled={!rawText || busy}>
+            <DeleteOutlineRoundedIcon fontSize="small" />
+          </IconButton>
         </Stack>
 
         {error && (
@@ -411,6 +472,23 @@ export default function TeluguNewsReader() {
             {error}
           </Typography>
         )}
+
+        {browserVoiceWarning && (
+          <Typography variant="body2" sx={{ color: "warning.main", mb: 2 }}>
+            {browserVoiceWarning}
+          </Typography>
+        )}
+
+        {/* selected voice/language indicator */}
+        <Stack direction="row" justifyContent="center" sx={{ mb: 2 }}>
+          <Chip
+            label={`ఎంచుకున్నది: ${VOICE_LABELS[voice]}`}
+            color="primary"
+            variant="outlined"
+            size="small"
+            sx={{ fontWeight: 700 }}
+          />
+        </Stack>
 
         {/* voice + speed */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }}>
@@ -469,7 +547,7 @@ export default function TeluguNewsReader() {
         <Stack direction="row" spacing={1.5} justifyContent="center">
           <IconButton
             onClick={handlePlay}
-            disabled={synthesizing || (!cleanText && !audioUrlRef.current)}
+            disabled={synthesizing || !cleanText}
             sx={{
               bgcolor: "primary.main",
               color: "#fff",
@@ -497,7 +575,7 @@ export default function TeluguNewsReader() {
           </Button>
         </Stack>
 
-        {isBrowserVoice && (
+        {isBrowserVoice && !browserVoiceWarning && (
           <Typography
             variant="caption"
             display="block"

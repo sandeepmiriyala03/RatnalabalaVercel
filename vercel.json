@@ -3,5 +3,9 @@
     "api/*.py": {
       "includeFiles": "api/**"
     }
-  }
+  },
+  "rewrites": [
+    { "source": "/api/tts", "destination": "/api/main?endpoint=tts" },
+    { "source": "/api/extract-news", "destination": "/api/main?endpoint=extract-news" }
+  ]
 }
