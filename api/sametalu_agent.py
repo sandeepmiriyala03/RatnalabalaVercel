@@ -10,6 +10,17 @@
 # No langchain-groq (avoids pulling in extra transitive deps), no
 # torch/chromadb/sentence-transformers (those were the actual cause
 # of the earlier 1153MB bundle failure, not LangGraph itself).
+#
+# FIX (Sept 2026): "llama-3.3-70b-versatile" was decommissioned by
+# Groq on 2026-08-16 — confirmed via Groq's own changelog/deprecations
+# page. Before that date, calling it returned a 400 "model_decommissioned"
+# error; now that it's fully removed from routing, Groq returns a plain
+# 404 "Unknown request URL" instead, which is exactly the error this
+# file was hitting. Replaced with "openai/gpt-oss-120b", Groq's current
+# recommended general-purpose/reasoning replacement. If you want faster/
+# cheaper responses at slightly lower quality, "openai/gpt-oss-20b" is
+# the smaller sibling — same API shape, just swap the model string
+# below.
 
 import os
 import json
@@ -20,6 +31,10 @@ from langgraph.graph import StateGraph, END
 
 BASE_URL = "https://ratnalabala.vercel.app"
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+
+# Was "llama-3.3-70b-versatile" — decommissioned 2026-08-16. See fix
+# note above. Swap to "openai/gpt-oss-20b" for a faster/cheaper option.
+GROQ_MODEL = "openai/gpt-oss-120b"
 
 SAMETALU_FILES = [
     "a", "aa", "am", "ba", "bha", "ca", "cha", "da", "da2", "dha", "dha2",
@@ -60,7 +75,7 @@ def call_groq(prompt: str) -> str:
         "https://api.groq.com/openai/v1/chat/completions",
         headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
         json={
-            "model": "llama-3.3-70b-versatile",
+            "model": GROQ_MODEL,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0,
         },
