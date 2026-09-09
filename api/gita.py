@@ -23,6 +23,20 @@ Confirmed live behavior (verified against production output):
     source dataset — cleaned up below (the one change from the
     previously confirmed-working version)
 
+FIX (verse ordering bug): `verses.sort(key=lambda v: v["verse"])` had
+no type coercion. If the Hugging Face API ever returns `verse` as a
+string (JSON APIs commonly don't preserve numeric types strictly), a
+plain string sort orders "1", "10", "11", "2", "3"... instead of
+1, 2, 3...10, 11 — verse 10 would render immediately after verse 1.
+Reading through a chapter in that order looks exactly like "the next
+verse's content showing up in the current verse's slot." Fixed by
+forcing `int()` at sort time regardless of the API's actual type.
+NOTE: this is a verified, reproducible code-level fix — but if the
+dataset ITSELF has a row where sloka/translation/commentary are
+already misaligned with each other (a known risk with scraped
+datasets), that would be an upstream data issue this fix can't catch;
+see chat notes for how to isolate which case you're actually hitting.
+
 DEPLOYED ENDPOINTS (https://ratnalabala.vercel.app):
     GET /api/gita?chapter=1        → single chapter, verses sorted
     GET /api/gita?chapter=all      → every chapter, as a list
@@ -100,7 +114,15 @@ def _group_by_chapter(rows: list[dict]) -> dict[int, dict]:
 
     chapters: dict[int, dict] = {}
     for chapter_num, verses in grouped.items():
-        verses.sort(key=lambda v: v["verse"])
+        # FIX: sort key must force int — if the Hugging Face API ever
+        # returns `verse` as a string (JSON APIs commonly don't
+        # preserve numeric types strictly), a plain string sort orders
+        # "1", "10", "11", "2", "3"... instead of 1, 2, 3... 10, 11.
+        # That misordering is exactly what would look like "the next
+        # verse's content showing up in the current verse's slot" when
+        # rendered in sequence — verse 10 would appear immediately
+        # after verse 1, well before verses 2-9.
+        verses.sort(key=lambda v: int(v["verse"]))
         chapters[chapter_num] = {
             "chapter": chapter_num,
             "chapterName": f"అధ్యాయం {chapter_num}",  # no chapter-name column in dataset
