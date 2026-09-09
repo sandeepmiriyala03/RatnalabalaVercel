@@ -469,15 +469,19 @@ def handle_extract_news(url: str) -> str:
         "Accept-Language": "te-IN,te;q=0.9,en-IN;q=0.8,en;q=0.7",
     }
 
-    # Some sites (observed with redbeenews.com) block a given request
-    # inconsistently — the exact same URL pattern succeeds on one
-    # attempt and gets a 403 on another. That's not a hard wall we can
-    # code around, but it IS the kind of transient failure any HTTP
-    # client should tolerate with a short retry — the same pattern
-    # you'd use for a flaky server or rate limiter, nothing that spoofs
-    # sessions, rotates proxies, or otherwise tries to defeat detection.
-    MAX_ATTEMPTS = 3
-    RETRY_DELAY_SECONDS = 1.5
+    # Some sites (confirmed with redbeenews.com — the exact same URL
+    # failed 3+ times in a row, then succeeded on a later attempt with
+    # zero code changes) block requests inconsistently rather than
+    # permanently. That's the kind of transient failure any HTTP client
+    # should tolerate with retries — the same pattern you'd use for a
+    # flaky server or rate limiter. Increased from 3→5 attempts with
+    # growing delays between them, based on that direct evidence that
+    # persistence alone (not spoofing, not proxies) measurably helps
+    # here. Total added wait in the worst case is ~13s (2+3+4+4s), so
+    # this stays comfortably under typical serverless function time
+    # limits even when every attempt but the last one fails.
+    MAX_ATTEMPTS = 5
+    RETRY_DELAYS_SECONDS = [2, 3, 4, 4]  # one fewer than MAX_ATTEMPTS
 
     res = None
     last_error: httpx.HTTPStatusError | None = None
@@ -492,12 +496,12 @@ def handle_extract_news(url: str) -> str:
             except httpx.HTTPStatusError as e:
                 last_error = e
                 if e.response.status_code in (403, 429) and attempt < MAX_ATTEMPTS:
+                    delay = RETRY_DELAYS_SECONDS[attempt - 1]
                     print(
                         f"[extract-news] {url} got {e.response.status_code} "
-                        f"on attempt {attempt}/{MAX_ATTEMPTS}, retrying in "
-                        f"{RETRY_DELAY_SECONDS}s..."
+                        f"on attempt {attempt}/{MAX_ATTEMPTS}, retrying in {delay}s..."
                     )
-                    time.sleep(RETRY_DELAY_SECONDS)
+                    time.sleep(delay)
                     continue
                 break
 

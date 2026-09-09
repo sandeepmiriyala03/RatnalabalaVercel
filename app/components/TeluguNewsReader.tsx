@@ -23,6 +23,7 @@ import {
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
@@ -110,6 +111,7 @@ const GUIDE_STEPS: string[] = [
   "మీకు నచ్చిన గొంతు (మగ లేదా ఆడ) ఎంచుకోండి.",
   "మధ్యలో ఉన్న ▶ బటన్ నొక్కండి. వార్త వినిపిస్తుంది.",
   "వినడం ఆపాలంటే, అదే బటన్ మళ్ళీ నొక్కండి.",
+  "కుటుంబం, స్నేహితులకు పంపాలంటే ఆకుపచ్చ \"WhatsAppకు షేర్\" బటన్ నొక్కండి — నేరుగా WhatsApp తెరుచుకుంటుంది.",
   "వార్తను ఫోన్‌లో దాచుకోవాలంటే \"MP3 డౌన్‌లోడ్\" బటన్ నొక్కండి.",
   "కొత్త వార్త కోసం 🗑 బటన్ నొక్కి అన్నీ ఖాళీ చేయండి.",
 ];
@@ -307,6 +309,7 @@ export default function TeluguNewsReader() {
   const [synthesizing, setSynthesizing] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [browserVoiceWarning, setBrowserVoiceWarning] = useState<string | null>(null);
   const [selectedSample, setSelectedSample] = useState<string>("");
@@ -611,6 +614,62 @@ export default function TeluguNewsReader() {
     };
   }, []);
 
+  /* ───────── share directly to WhatsApp (or any app) — no download step ─────────
+     Uses the Web Share API (Level 2, file sharing) to hand the actual
+     audio file to the OS share sheet, so the person taps Share → picks
+     WhatsApp → done. This works on most modern mobile browsers (Chrome
+     Android, Safari iOS). On browsers/platforms without file-sharing
+     support (mainly desktop), we fall back to telling them to use the
+     MP3 Download button instead, rather than silently failing. */
+  const canShareFiles = (file: File): boolean => {
+    return (
+      typeof navigator !== "undefined" &&
+      "share" in navigator &&
+      "canShare" in navigator &&
+      (navigator as any).canShare({ files: [file] })
+    );
+  };
+
+  const handleShare = async () => {
+    if (isBrowserVoice) {
+      setError("బ్రౌజర్ వాయిస్‌ను షేర్ చేయలేం — వేరే వాయిస్ ఎంచుకోండి.");
+      return;
+    }
+    setSharing(true);
+    setError(null);
+    try {
+      const blob = audioBlobRef.current || (await synthesize());
+      if (!blob) return;
+
+      const stamp = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+      const file = new File([blob], `telugu_news_${stamp}.mp3`, {
+        type: blob.type || "audio/mpeg",
+      });
+
+      if (canShareFiles(file)) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: "తెలుగు వార్త వాయిస్",
+            text: "ఈ వార్తను వినండి 🔊",
+          });
+        } catch (err: any) {
+          // AbortError = person cancelled the share sheet themselves —
+          // not a real failure, so no error message for that case.
+          if (err?.name !== "AbortError") {
+            setError("షేర్ చేయడం విఫలమైంది — దయచేసి MP3 డౌన్‌లోడ్ చేసి ప్రయత్నించండి.");
+          }
+        }
+      } else {
+        setError(
+          "ఈ బ్రౌజర్‌లో నేరుగా షేర్ చేయడం సాధ్యం కాదు — దయచేసి 'MP3 డౌన్‌లోడ్' నొక్కి, ఆపై WhatsAppలో జత చేయండి."
+        );
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
   /* ───────── download mp3 ───────── */
   const handleDownload = async () => {
     if (isBrowserVoice) {
@@ -850,7 +909,7 @@ export default function TeluguNewsReader() {
         </Box>
 
         {/* controls */}
-        <Stack direction="row" spacing={1.5} justifyContent="center">
+        <Stack direction="row" spacing={1.5} justifyContent="center" flexWrap="wrap" useFlexGap>
           <IconButton
             onClick={handlePlay}
             disabled={synthesizing || !cleanText || isOverLimit}
@@ -870,6 +929,16 @@ export default function TeluguNewsReader() {
               <PlayArrowRoundedIcon />
             )}
           </IconButton>
+
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={sharing ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : <ShareRoundedIcon />}
+            onClick={handleShare}
+            disabled={sharing || !cleanText || isOverLimit || isBrowserVoice}
+          >
+            WhatsAppకు షేర్
+          </Button>
 
           <Button
             variant="outlined"
