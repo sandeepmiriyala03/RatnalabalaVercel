@@ -65,6 +65,7 @@ import io
 import json
 import os
 import re
+import time
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -459,19 +460,114 @@ def handle_tts(text: str, voice: str, speed: float) -> tuple[bytes, str, str]:
 def handle_extract_news(url: str) -> str:
     from bs4 import BeautifulSoup
 
-    with httpx.Client(
-        timeout=15, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"}
-    ) as client:
-        res = client.get(url)
-        res.raise_for_status()
+    browser_headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "te-IN,te;q=0.9,en-IN;q=0.8,en;q=0.7",
+    }
+
+    # Some sites (observed with redbeenews.com) block a given request
+    # inconsistently — the exact same URL pattern succeeds on one
+    # attempt and gets a 403 on another. That's not a hard wall we can
+    # code around, but it IS the kind of transient failure any HTTP
+    # client should tolerate with a short retry — the same pattern
+    # you'd use for a flaky server or rate limiter, nothing that spoofs
+    # sessions, rotates proxies, or otherwise tries to defeat detection.
+    MAX_ATTEMPTS = 3
+    RETRY_DELAY_SECONDS = 1.5
+
+    res = None
+    last_error: httpx.HTTPStatusError | None = None
+
+    with httpx.Client(timeout=15, follow_redirects=True, headers=browser_headers) as client:
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                res = client.get(url)
+                res.raise_for_status()
+                last_error = None
+                break
+            except httpx.HTTPStatusError as e:
+                last_error = e
+                if e.response.status_code in (403, 429) and attempt < MAX_ATTEMPTS:
+                    print(
+                        f"[extract-news] {url} got {e.response.status_code} "
+                        f"on attempt {attempt}/{MAX_ATTEMPTS}, retrying in "
+                        f"{RETRY_DELAY_SECONDS}s..."
+                    )
+                    time.sleep(RETRY_DELAY_SECONDS)
+                    continue
+                break
+
+    if last_error is not None:
+        if last_error.response.status_code in (403, 429):
+            raise ValueError(
+                "ఈ వెబ్‌సైట్ బాట్ డిటెక్షన్‌తో ఆటోమేటిక్ రిక్వెస్ట్‌లను బ్లాక్ చేస్తోంది "
+                f"({MAX_ATTEMPTS} ప్రయత్నాల తర్వాత కూడా) — ఇది ఈ సైట్ యొక్క పరిమితి, "
+                "మా కోడ్‌లో బగ్ కాదు. దయచేసి ఆర్టికల్ టెక్స్ట్‌ను నేరుగా కాపీ-పేస్ట్ చేయండి "
+                "లేదా కొద్దిసేపు తర్వాత మళ్లీ ప్రయత్నించండి."
+            )
+        raise last_error
 
     soup = BeautifulSoup(res.text, "html.parser")
 
     for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
         tag.decompose()
 
-    article = soup.find("article")
-    candidates = article.find_all("p") if article else soup.find_all("p")
+    # ── Try common article-body container selectors first, in priority
+    # order. Most Indian news CMS templates (Eenadu, Sakshi, TV9, ABN
+    # Andhra Jyothy, etc.) use SOME dedicated content div even when they
+    # skip the semantic <article> tag — these are the most common class
+    # names seen across that family of sites. Verified reachable
+    # (eenadu.net) but NOT verified against raw HTML from this
+    # environment (network access here can't run BeautifulSoup against
+    # arbitrary live sites) — if a given site's real class name isn't in
+    # this list, it silently falls through to the page-wide fallback
+    # below rather than failing outright.
+    CONTENT_SELECTORS = [
+        "article",
+        '[itemprop="articleBody"]',
+        ".story-content", ".storycontent", ".story_content",
+        ".article-content", ".articlebodycontent", ".article-body",
+        ".content-body", ".entry-content", ".post-content",
+        ".detail-content", ".full-details", ".art-content",
+        ".fullstory", ".storyPage", ".story-details",
+    ]
+
+    candidates = None
+    for selector in CONTENT_SELECTORS:
+        container = soup.select_one(selector)
+        if container:
+            found = container.find_all("p")
+            if found:
+                candidates = found
+                break
+
+    if candidates is None:
+        # No known container matched — fall back to EVERY <p> on the
+        # page, but only keep the LARGEST CONTIGUOUS run of qualifying
+        # (>40 char) paragraphs, not every long paragraph anywhere on
+        # the page. Real article bodies are one continuous block of
+        # consecutive <p> tags in the DOM; sidebar/related-story/
+        # most-read sections are separated from that block by other
+        # tags (headings, links, images) in between. This keeps a
+        # single scattered long teaser from a "most read" list out of
+        # the extracted text, without needing to know the site's exact
+        # class names.
+        all_p = soup.find_all("p")
+        best_run: list = []
+        current_run: list = []
+        for p in all_p:
+            text = p.get_text(" ", strip=True)
+            if len(text) > 40:
+                current_run.append(p)
+                if len(current_run) > len(best_run):
+                    best_run = current_run
+            else:
+                current_run = []
+        candidates = best_run
 
     paragraphs = [p.get_text(" ", strip=True) for p in candidates]
     paragraphs = [p for p in paragraphs if len(p) > 40]

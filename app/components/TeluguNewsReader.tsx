@@ -26,6 +26,9 @@ import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 
+// ── Microsoft Edge TTS only — Google and Svara removed per request.
+// browser-native kept as a bonus offline fallback (doesn't call any
+// API at all, so it doesn't conflict with "Microsoft only").
 type VoiceOption = "mohan" | "shruti" | "browser-native";
 
 const VOICE_LABELS: Record<VoiceOption, string> = {
@@ -40,7 +43,9 @@ function resolveTtsParams(voice: VoiceOption): { source: "edge"; gender: "male" 
   return { source: "edge", gender: voice === "shruti" ? "female" : "male" };
 }
 
-
+// Matches MAX_TEXT_LENGTH in the /api/tts route — the server hard-rejects
+// anything longer, so this is enforced client-side too rather than
+// letting the user hit a generic 400 with no warning beforehand.
 const MAX_TEXT_LENGTH = 5000;
 
 // Telugu Unicode block + ASCII digits + currency/percent/hyphen +
@@ -65,6 +70,24 @@ async function parseJsonSafe(res: Response): Promise<any> {
         ? "సర్వర్ నుండి JSON కాకుండా వేరే రెస్పాన్స్ వచ్చింది."
         : `API రూట్ దొరకలేదు లేదా సర్వర్ ఎర్రర్ (status ${res.status}).`
     );
+  }
+}
+
+// Validates that the input is an actual http/https URL before it's ever
+// sent to the backend — catches the case where someone types a random
+// word, a partial URL missing the scheme, or a non-http(s) scheme
+// (e.g. "ftp://", "javascript:") instead of a real article link. Using
+// the native URL constructor rather than a hand-rolled regex, since it
+// correctly handles the full range of valid URL syntax without us
+// having to reinvent that parsing.
+function isValidHttpUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
   }
 }
 
@@ -297,14 +320,23 @@ export default function TeluguNewsReader() {
 
   /* ───────── URL fetch ───────── */
   const handleFetchUrl = async () => {
-    if (!articleUrl.trim()) return;
+    const trimmedUrl = articleUrl.trim();
+    if (!trimmedUrl) return;
+
+    if (!isValidHttpUrl(trimmedUrl)) {
+      setError(
+        "ఇది సరైన URL కాదు — లింక్ తప్పనిసరిగా http:// లేదా https:// తో మొదలవ్వాలి (ఉదా: https://www.eenadu.net/...)."
+      );
+      return;
+    }
+
     setFetchingUrl(true);
     setError(null);
     try {
       const res = await fetch("/api/extract-news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: articleUrl.trim() }),
+        body: JSON.stringify({ url: trimmedUrl }),
       });
       const data = await parseJsonSafe(res);
       if (!res.ok) throw new Error(data.detail || data.error || "ఆర్టికల్ తీసుకురాలేకపోయాం.");
@@ -608,24 +640,31 @@ export default function TeluguNewsReader() {
         </FormControl>
 
         {/* URL fetch */}
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 0.5 }}>
           <TextField
             fullWidth
             size="small"
-            placeholder="న్యూస్ ఆర్టికల్ లింక్ పేస్ట్ చేయండి…"
+            placeholder="న్యూస్ ఆర్టికల్ లింక్ పేస్ట్ చేయండి… (https://... తో మొదలవ్వాలి)"
             value={articleUrl}
             onChange={(e) => setArticleUrl(e.target.value)}
+            error={articleUrl.trim().length > 0 && !isValidHttpUrl(articleUrl)}
           />
           <Button
             variant="outlined"
             startIcon={fetchingUrl ? <CircularProgress size={16} /> : <LinkRoundedIcon />}
             onClick={handleFetchUrl}
-            disabled={busy || !articleUrl.trim()}
+            disabled={busy || !articleUrl.trim() || !isValidHttpUrl(articleUrl)}
             sx={{ whiteSpace: "nowrap" }}
           >
             తీసుకురా
           </Button>
         </Stack>
+        {articleUrl.trim().length > 0 && !isValidHttpUrl(articleUrl) && (
+          <Typography variant="caption" sx={{ color: "error.main", display: "block", mb: 1.5 }}>
+            సరైన లింక్ కాదు — http:// లేదా https:// తో మొదలవ్వాలి.
+          </Typography>
+        )}
+        {!(articleUrl.trim().length > 0 && !isValidHttpUrl(articleUrl)) && <Box sx={{ mb: 2 }} />}
 
         {/* text box */}
         <TextField
