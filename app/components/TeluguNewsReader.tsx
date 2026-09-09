@@ -8,6 +8,7 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Collapse,
   FormControl,
   IconButton,
   InputLabel,
@@ -25,6 +26,9 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
+import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 
 // ── Microsoft Edge TTS only — Google and Svara removed per request.
 // browser-native kept as a bonus offline fallback (doesn't call any
@@ -96,6 +100,20 @@ function isValidHttpUrl(value: string): boolean {
 // to match lib/additionalNews.ts's export. The dropdown/loadSample code
 // below now consistently references THIS name — that mismatch was the
 // actual bug in the previous version (undefined SAMPLE_NEWS).
+// ── Step-by-step usage guide, written in plain, everyday Telugu with
+// no technical words (no "TTS", "URL", "sanitize", etc.) — aimed at
+// someone using this for the first time, e.g. an older reader in a
+// village setting who wants simple, concrete instructions, not app
+// jargon. Kept short: 6 steps, each one action.
+const GUIDE_STEPS: string[] = [
+  "కింద ఉన్న జాబితా నుండి ఒక వార్తను ఎంచుకోండి. లేదా, మీరే ఒక వార్తను టైప్ చేయండి.",
+  "మీకు నచ్చిన గొంతు (మగ లేదా ఆడ) ఎంచుకోండి.",
+  "మధ్యలో ఉన్న ▶ బటన్ నొక్కండి. వార్త వినిపిస్తుంది.",
+  "వినడం ఆపాలంటే, అదే బటన్ మళ్ళీ నొక్కండి.",
+  "వార్తను ఫోన్‌లో దాచుకోవాలంటే \"MP3 డౌన్‌లోడ్\" బటన్ నొక్కండి.",
+  "కొత్త వార్త కోసం 🗑 బటన్ నొక్కి అన్నీ ఖాళీ చేయండి.",
+];
+
 export const ADDITIONAL_NEWS: { label: string; text: string }[] = [
   {
     label: "దేవాలయం / హుండీ (సంఖ్యలు)",
@@ -292,6 +310,7 @@ export default function TeluguNewsReader() {
   const [error, setError] = useState<string | null>(null);
   const [browserVoiceWarning, setBrowserVoiceWarning] = useState<string | null>(null);
   const [selectedSample, setSelectedSample] = useState<string>("");
+  const [guideOpen, setGuideOpen] = useState(true);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioBlobRef = useRef<Blob | null>(null);
@@ -309,7 +328,13 @@ export default function TeluguNewsReader() {
   const isOverLimit = cleanText.length > MAX_TEXT_LENGTH;
   const busy = fetchingUrl || synthesizing || downloading;
 
-  /* ───────── sample news picker ───────── */
+  /* ───────── clear entire form ───────── */
+  const handleClearForm = () => {
+    setSelectedSample("");
+    setRawText("");
+    setArticleUrl("");
+    setError(null);
+  };
   const loadSample = (label: string) => {
     const sample = ADDITIONAL_NEWS.find((s) => s.label === label);
     if (!sample) return;
@@ -621,8 +646,58 @@ export default function TeluguNewsReader() {
           తెలుగు న్యూస్ రీడర్ 📰🔊
         </Typography>
 
+        {/* ── Simple step-by-step usage guide — plain language, large
+            text, defaulted OPEN so a first-time user sees it right
+            away without needing to know a toggle exists. */}
+        <Box sx={{ mb: 2 }}>
+          <Button
+            onClick={() => setGuideOpen((v) => !v)}
+            startIcon={<HelpOutlineRoundedIcon />}
+            endIcon={guideOpen ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+            sx={{ textTransform: "none", fontWeight: 700, fontSize: 15 }}
+          >
+            ఎలా ఉపయోగించాలి? (సులభమైన సూచనలు)
+          </Button>
+          <Collapse in={guideOpen} timeout={240} unmountOnExit>
+            <Box
+              sx={{
+                mt: 1,
+                p: 2,
+                bgcolor: "#FFF8E1",
+                borderRadius: 2,
+                border: "1px solid #FFE082",
+              }}
+            >
+              <Stack spacing={1.5}>
+                {GUIDE_STEPS.map((step, i) => (
+                  <Stack key={i} direction="row" spacing={1.5} alignItems="flex-start">
+                    <Box
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: "50%",
+                        bgcolor: "primary.main",
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 700,
+                        fontSize: 15,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {i + 1}
+                    </Box>
+                    <Typography sx={{ fontSize: 16, lineHeight: 1.6 }}>{step}</Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
+          </Collapse>
+        </Box>
+
         {/* sample news — dropdown, one-click test data, no typing needed */}
-        <FormControl size="small" fullWidth sx={{ mb: 2 }}>
+        <FormControl size="small" fullWidth sx={{ mb: 0.5 }}>
           <InputLabel>నమూనా వార్త ఎంచుకోండి</InputLabel>
           <Select
             label="నమూనా వార్త ఎంచుకోండి"
@@ -638,6 +713,9 @@ export default function TeluguNewsReader() {
             ))}
           </Select>
         </FormControl>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+          మొత్తం {ADDITIONAL_NEWS.length} నమూనా వార్తలు అందుబాటులో ఉన్నాయి
+        </Typography>
 
         {/* URL fetch */}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 0.5 }}>
@@ -687,11 +765,9 @@ export default function TeluguNewsReader() {
           </Typography>
           <IconButton
             size="small"
-            onClick={() => {
-              setSelectedSample("");
-              setRawText("");
-            }}
-            disabled={!rawText || busy}
+            onClick={handleClearForm}
+            disabled={(!rawText && !articleUrl) || busy}
+            title="మొత్తం ఫారం క్లియర్ చేయండి"
           >
             <DeleteOutlineRoundedIcon fontSize="small" />
           </IconButton>
