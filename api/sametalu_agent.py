@@ -1,26 +1,4 @@
 # api/sametalu_agent.py
-#
-# THE ACTUAL PYTHON LANGGRAPH AGENT, deployed on Vercel — not a
-# TypeScript rewrite. Place at project ROOT api/ folder (sibling to
-# app/, NOT inside app/api/) — same rule that caused the very first
-# "module not found" errors way back when paddleocr.py was
-# accidentally placed inside app/api/ instead of root api/.
-#
-# Kept deliberately lean: langgraph + langchain-core + requests only.
-# No langchain-groq (avoids pulling in extra transitive deps), no
-# torch/chromadb/sentence-transformers (those were the actual cause
-# of the earlier 1153MB bundle failure, not LangGraph itself).
-#
-# FIX (Sept 2026): "llama-3.3-70b-versatile" was decommissioned by
-# Groq on 2026-08-16 — confirmed via Groq's own changelog/deprecations
-# page. Before that date, calling it returned a 400 "model_decommissioned"
-# error; now that it's fully removed from routing, Groq returns a plain
-# 404 "Unknown request URL" instead, which is exactly the error this
-# file was hitting. Replaced with "openai/gpt-oss-120b", Groq's current
-# recommended general-purpose/reasoning replacement. If you want faster/
-# cheaper responses at slightly lower quality, "openai/gpt-oss-20b" is
-# the smaller sibling — same API shape, just swap the model string
-# below.
 
 import os
 import json
