@@ -7,6 +7,7 @@ import Navbar from "@/app/components/Navbar";
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
 import FloatingAIButton from "@/app/components/FloatingAIButton";
 import FontControlsTelugu from "@/app/components/FontSelection";
+import CookieConsentBanner, { getCookieConsent } from "@/app/components/CookieConsentBanner";
 import { cacheAllPoems } from "@/lib/cachePoems";
 import { Container, Box, Typography, Button, Collapse } from "@mui/material";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
@@ -162,11 +163,9 @@ useEffect(() => {
 
   bootstrapIndexedDB();
 }, [mounted]);
-
-  
-/* 📊 SIMPLE ANALYTICS (PAGE VIEW) */
 useEffect(() => {
   if (!mounted) return;
+  if (getCookieConsent() !== "accepted") return;
   fetch("/api/pageview", { method: "POST" }).catch(() => {});
 }, [mounted]);
 
@@ -228,20 +227,14 @@ useEffect(() => {
           opacity: 0.01 
         }}
       >
-        {/* Empty - prevents hydration mismatch */}
+
       </div>
     );
   }
 
   return (
     <>
-      {/* Navbar renders its own sticky AppBar internally — it was
-          previously wrapped in a SECOND AppBar + Toolbar here, which
-          nested one <header> inside another and likely caused the
-          double-bar/spacing confusion. Rendering it directly fixes
-          that; no compensating spacer Toolbar is needed either, since
-          "sticky" (unlike "fixed") doesn't remove the bar from
-          document flow. */}
+    
       <Navbar />
 
       <Container sx={{ mt: 1 }}>
@@ -251,13 +244,6 @@ useEffect(() => {
           fontSize={fontSize}
           setFontSize={setFontSize}
         />
-
-        {/* 🔊🎵 Utility extras — Intro Audio + Ringtones.
-            Both are collapsed by default and act as a single accordion:
-            opening one automatically closes the other, so this block
-            never grows tall enough to push {children} out of view.
-            This is the ONE place either of these blocks lives; they
-            must not be duplicated inside individual pages. */}
         <Box sx={{ mt: 2, textAlign: "center" }}>
           <Box
             sx={{
@@ -367,6 +353,7 @@ useEffect(() => {
       <PwaInstallPrompt />
       <MusicPlayer />
       <FloatingAIButton />
+      <CookieConsentBanner />
 
     </>
   );
