@@ -457,6 +457,54 @@ def handle_tts(text: str, voice: str, speed: float) -> tuple[bytes, str, str]:
     return audio_bytes, "audio/mpeg", "mp3"
 
 
+def extract_redbeenews_paragraphs(soup) -> list | None:
+    """Site-specific extraction for redbeenews.com.
+
+    Based on directly comparing 3 real articles from this site: every
+    one starts its real body with a paragraph containing the byline
+    signature "రెడ్ బీ న్యూస్" (e.g. "పెద్దాపురం, రెడ్ బీ న్యూస్,
+    ఆగష్టు 19 :"), and the "Related News" rail afterward renders as
+    heading-level tags (h4/h5 wrapping links), NOT <p> tags — so it
+    doesn't need separate filtering out.
+
+    This exists because the site also uses short bold sub-headings
+    between body paragraphs (e.g. "సమాచార లోపమే కారణం" — well under
+    40 characters), which the generic 40-char noise filter used
+    elsewhere in this file would wrongly treat as a break and could
+    fragment the article. Using the byline as a start anchor plus a
+    lower length threshold (>10 chars) avoids that specific problem
+    for this specific site's template, without loosening the general
+    fallback (which still needs the stricter 40-char threshold to
+    correctly reject other sites' short unrelated blurbs).
+
+    Returns None if the byline anchor isn't found (e.g. the site
+    changes its template), so the caller falls back to the generic
+    selector/contiguous-run extraction instead of failing outright.
+    """
+    all_p = soup.find_all("p")
+
+    anchor_index = None
+    for i, p in enumerate(all_p):
+        if "రెడ్ బీ న్యూస్" in p.get_text():
+            anchor_index = i
+            break
+
+    if anchor_index is None:
+        return None
+
+    body_paragraphs = []
+    for p in all_p[anchor_index:]:
+        text = p.get_text(" ", strip=True)
+        if not text:
+            continue
+        if "related news" in text.lower():
+            break  # in case a future template ever does wrap this in <p>
+        if len(text) > 10:
+            body_paragraphs.append(text)
+
+    return body_paragraphs or None
+
+
 def handle_extract_news(url: str) -> str:
     from bs4 import BeautifulSoup
 
@@ -520,61 +568,74 @@ def handle_extract_news(url: str) -> str:
     for tag in soup(["script", "style", "nav", "header", "footer", "aside", "form"]):
         tag.decompose()
 
-    # ── Try common article-body container selectors first, in priority
-    # order. Most Indian news CMS templates (Eenadu, Sakshi, TV9, ABN
-    # Andhra Jyothy, etc.) use SOME dedicated content div even when they
-    # skip the semantic <article> tag — these are the most common class
-    # names seen across that family of sites. Verified reachable
-    # (eenadu.net) but NOT verified against raw HTML from this
-    # environment (network access here can't run BeautifulSoup against
-    # arbitrary live sites) — if a given site's real class name isn't in
-    # this list, it silently falls through to the page-wide fallback
-    # below rather than failing outright.
-    CONTENT_SELECTORS = [
-        "article",
-        '[itemprop="articleBody"]',
-        ".story-content", ".storycontent", ".story_content",
-        ".article-content", ".articlebodycontent", ".article-body",
-        ".content-body", ".entry-content", ".post-content",
-        ".detail-content", ".full-details", ".art-content",
-        ".fullstory", ".storyPage", ".story-details",
-    ]
+    # ── Site-specific handling for redbeenews.com, based on directly
+    # observed structure across multiple real articles from this exact
+    # site (see extract_redbeenews_paragraphs docstring). Tried first,
+    # only for this domain, before falling through to the generic
+    # approach used for every other portal.
+    paragraphs: list | None = None
+    if "redbeenews.com" in urlparse(url).netloc:
+        redbee_paragraphs = extract_redbeenews_paragraphs(soup)
+        if redbee_paragraphs:
+            paragraphs = redbee_paragraphs
 
-    candidates = None
-    for selector in CONTENT_SELECTORS:
-        container = soup.select_one(selector)
-        if container:
-            found = container.find_all("p")
-            if found:
-                candidates = found
-                break
+    if paragraphs is None:
+        # ── Try common article-body container selectors first, in
+        # priority order. Most Indian news CMS templates (Eenadu,
+        # Sakshi, TV9, ABN Andhra Jyothy, etc.) use SOME dedicated
+        # content div even when they skip the semantic <article> tag —
+        # these are the most common class names seen across that
+        # family of sites. Verified reachable (eenadu.net) but NOT
+        # verified against raw HTML from this environment (network
+        # access here can't run BeautifulSoup against arbitrary live
+        # sites) — if a given site's real class name isn't in this
+        # list, it silently falls through to the page-wide fallback
+        # below rather than failing outright.
+        CONTENT_SELECTORS = [
+            "article",
+            '[itemprop="articleBody"]',
+            ".story-content", ".storycontent", ".story_content",
+            ".article-content", ".articlebodycontent", ".article-body",
+            ".content-body", ".entry-content", ".post-content",
+            ".detail-content", ".full-details", ".art-content",
+            ".fullstory", ".storyPage", ".story-details",
+        ]
 
-    if candidates is None:
-        # No known container matched — fall back to EVERY <p> on the
-        # page, but only keep the LARGEST CONTIGUOUS run of qualifying
-        # (>40 char) paragraphs, not every long paragraph anywhere on
-        # the page. Real article bodies are one continuous block of
-        # consecutive <p> tags in the DOM; sidebar/related-story/
-        # most-read sections are separated from that block by other
-        # tags (headings, links, images) in between. This keeps a
-        # single scattered long teaser from a "most read" list out of
-        # the extracted text, without needing to know the site's exact
-        # class names.
-        all_p = soup.find_all("p")
-        best_run: list = []
-        current_run: list = []
-        for p in all_p:
-            text = p.get_text(" ", strip=True)
-            if len(text) > 40:
-                current_run.append(p)
-                if len(current_run) > len(best_run):
-                    best_run = current_run
-            else:
-                current_run = []
-        candidates = best_run
+        candidates = None
+        for selector in CONTENT_SELECTORS:
+            container = soup.select_one(selector)
+            if container:
+                found = container.find_all("p")
+                if found:
+                    candidates = found
+                    break
 
-    paragraphs = [p.get_text(" ", strip=True) for p in candidates]
-    paragraphs = [p for p in paragraphs if len(p) > 40]
+        if candidates is None:
+            # No known container matched — fall back to EVERY <p> on the
+            # page, but only keep the LARGEST CONTIGUOUS run of qualifying
+            # (>40 char) paragraphs, not every long paragraph anywhere on
+            # the page. Real article bodies are one continuous block of
+            # consecutive <p> tags in the DOM; sidebar/related-story/
+            # most-read sections are separated from that block by other
+            # tags (headings, links, images) in between. This keeps a
+            # single scattered long teaser from a "most read" list out of
+            # the extracted text, without needing to know the site's exact
+            # class names.
+            all_p = soup.find_all("p")
+            best_run: list = []
+            current_run: list = []
+            for p in all_p:
+                text = p.get_text(" ", strip=True)
+                if len(text) > 40:
+                    current_run.append(p)
+                    if len(current_run) > len(best_run):
+                        best_run = current_run
+                else:
+                    current_run = []
+            candidates = best_run
+
+        paragraphs = [p.get_text(" ", strip=True) for p in candidates]
+        paragraphs = [p for p in paragraphs if len(p) > 40]
 
     text = sanitize_telugu("\n\n".join(paragraphs))
     if not text:
