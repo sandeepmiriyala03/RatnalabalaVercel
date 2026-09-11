@@ -180,11 +180,10 @@ def _svara_headers() -> dict:
     return headers
 
 
-def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
-    normalized = (voice_choice or "").strip().lower()
-    gender = "Female" if normalized in ("female", "f", "woman") else "Male"
-    log(f"[Svara TTS] received voice_choice={voice_choice!r} -> gender={gender}")
-
+def _call_svara_once(text: str, gender: str) -> tuple[bytes, str]:
+    """One attempt at the full Svara call (POST -> SSE stream -> audio
+    download). Raises on any failure; the caller (handle_svara_tts)
+    wraps this in a retry loop."""
     payload = {
         "data": [
             "Telugu (తెలుగు)", gender, text, 0.7, 0.8, 1.1, 1200,
@@ -213,7 +212,10 @@ def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
                 if current_event == "heartbeat":
                     continue
                 if current_event == "error":
-                    raise RuntimeError(f"Svara Space reported an error: {data_str[:300]}")
+                    # Permanent — the Space itself reported a real error
+                    # for this request, not a transient availability
+                    # issue. Retrying the exact same call won't help.
+                    raise ValueError(f"Svara Space reported an error: {data_str[:300]}")
                 try:
                     parsed = json.loads(data_str)
                 except json.JSONDecodeError:
@@ -225,9 +227,11 @@ def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
                     break
 
     if not result_data:
+        # Transient — most likely the Space was cold-starting and never
+        # got to "complete" within this attempt's window. Worth retrying.
         raise RuntimeError(
-            "Svara Space closed the stream without sending a 'complete' event. "
-            "This usually means the Space is asleep/cold-starting — try again in a moment."
+            "Svara Space closed the stream without sending a 'complete' event "
+            "(likely cold-starting)."
         )
 
     audio_info = result_data[0] if isinstance(result_data, list) else result_data
@@ -237,13 +241,64 @@ def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
     elif isinstance(audio_info, str):
         audio_path = audio_info
     if not audio_path:
-        raise RuntimeError(f"Svara Space returned an unsupported audio result: {result_data!r}")
+        raise ValueError(f"Svara Space returned an unsupported audio result: {result_data!r}")
 
     audio_url = audio_path if audio_path.startswith("http") else f"{SVARA_SPACE_BASE}/gradio_api/file={audio_path}"
-    with httpx.Client(timeout=30, headers=_svara_headers()) as client:
+    with httpx.Client(timeout=45, headers=_svara_headers()) as client:
         audio_res = client.get(audio_url)
         audio_res.raise_for_status()
         return audio_res.content, "audio/wav"
+
+
+def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
+    """Generate Telugu speech via the Svara Space, retrying on
+    transient failures.
+
+    FIX: this previously made exactly ONE attempt with no retry at
+    all — unlike extract-news, which already retries because we
+    directly observed external services (there, a news site; here, a
+    free Hugging Face Zero-GPU Space) failing inconsistently rather
+    than permanently. Free Spaces sleep after inactivity and can take
+    20-60+ seconds to wake; if the Space happened to be asleep, this
+    call failed outright with zero chance to recover — matching
+    exactly the "works sometimes, not others" symptom. Now retries up
+    to 3 times with backoff, but only for transient failure types
+    (httpx timeouts/connection errors, or our own "no complete event"
+    signal) — a genuine Space-reported error (ValueError above) is NOT
+    retried, since repeating the identical request won't fix a real
+    error.
+    """
+    normalized = (voice_choice or "").strip().lower()
+    gender = "Female" if normalized in ("female", "f", "woman") else "Male"
+    log(f"[Svara TTS] received voice_choice={voice_choice!r} -> gender={gender}")
+
+    MAX_ATTEMPTS = 3
+    RETRY_DELAYS_SECONDS = [3, 5]  # one fewer than MAX_ATTEMPTS
+
+    last_error: Exception | None = None
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            return _call_svara_once(text, gender)
+        except ValueError:
+            # Permanent failure (real error from the Space, or an
+            # unparseable result shape) — don't waste retries on it.
+            raise
+        except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError, RuntimeError) as e:
+            last_error = e
+            if attempt < MAX_ATTEMPTS:
+                delay = RETRY_DELAYS_SECONDS[attempt - 1]
+                log(
+                    f"[Svara TTS] attempt {attempt}/{MAX_ATTEMPTS} failed "
+                    f"({e}), retrying in {delay}s..."
+                )
+                time.sleep(delay)
+                continue
+            break
+
+    raise RuntimeError(
+        f"Svara Space did not respond successfully after {MAX_ATTEMPTS} attempts "
+        f"— it may be asleep/overloaded. Last error: {last_error}"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

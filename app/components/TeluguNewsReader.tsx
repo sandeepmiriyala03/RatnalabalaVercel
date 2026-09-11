@@ -31,27 +31,48 @@ import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 
-// ── Microsoft Edge TTS only — Google and Svara removed per request.
-// browser-native kept as a bonus offline fallback (doesn't call any
-// API at all, so it doesn't conflict with "Microsoft only").
-type VoiceOption = "mohan" | "shruti" | "browser-native";
+// ── Microsoft Edge TTS + Svara AI. browser-native kept as a bonus
+// offline fallback (doesn't call any API at all).
+type VoiceOption = "mohan" | "shruti" | "svara-male" | "svara-female" | "browser-native";
 
 const VOICE_LABELS: Record<VoiceOption, string> = {
   mohan: "🎙️ మగ స్వరం (Microsoft Edge — Mohan)",
   shruti: "👩 స్త్రీ స్వరం (Microsoft Edge — Shruti)",
+  "svara-male": "🤖 Svara AI — మగ స్వరం",
+  "svara-female": "🤖 Svara AI — స్త్రీ స్వరం",
   "browser-native": "📱 బ్రౌజర్ వాయిస్ (ఆఫ్‌లైన్)",
 };
 
-// Simplified resolver — every non-browser voice now maps to the same
-// "edge" source; only the gender differs.
-function resolveTtsParams(voice: VoiceOption): { source: "edge"; gender: "male" | "female" } {
+// Same contract as TeluguVoice.tsx/PoemRadio.tsx: source "edge" or
+// "svara", gender "male"/"female". Svara routes through the same
+// /api/tts -> route.ts -> /api/main?endpoint=svara chain, which now
+// has retry logic on the backend for the free Space's cold-starts.
+function resolveTtsParams(voice: VoiceOption): { source: "edge" | "svara"; gender: "male" | "female" } {
+  if (voice === "svara-male") return { source: "svara", gender: "male" };
+  if (voice === "svara-female") return { source: "svara", gender: "female" };
   return { source: "edge", gender: voice === "shruti" ? "female" : "male" };
 }
 
 // Matches MAX_TEXT_LENGTH in the /api/tts route — the server hard-rejects
 // anything longer, so this is enforced client-side too rather than
 // letting the user hit a generic 400 with no warning beforehand.
-const MAX_TEXT_LENGTH = 5000;
+//
+// ⚠️ IMPORTANT: raising this number here does NOTHING by itself unless
+// the SAME constant in app/api/tts/route.ts is also raised to match —
+// that route enforces its own 5000-char hard cap independently, and a
+// mismatch just moves the failure from "button disabled" to "confusing
+// 400 error after already picking a voice and hitting play."
+//
+// Also worth knowing: even with both caps raised, 1 lakh characters is
+// roughly 15,000-20,000 words of speech to synthesize in a single
+// request. The shared /api/tts route does NOT chunk text the way the
+// earlier Python backend used to — so very long articles risk running
+// past Vercel's serverless function time limit (10s on Hobby, up to
+// 60s+ on Pro) and failing with a timeout instead of a length error.
+// If long-article support needs to be reliable (not just "usually
+// works for shorter ones"), the real fix is adding chunking back on
+// the server side, not just raising this number.
+const MAX_TEXT_LENGTH = 100000;
 
 // Telugu Unicode block + ASCII digits + currency/percent/hyphen +
 // sentence punctuation + Telugu danda marks + whitespace.
@@ -328,6 +349,7 @@ export default function TeluguNewsReader() {
 
   const cleanText = sanitizeTelugu(rawText);
   const isBrowserVoice = voice === "browser-native";
+  const isSvaraVoice = voice === "svara-male" || voice === "svara-female";
   const isOverLimit = cleanText.length > MAX_TEXT_LENGTH;
   const busy = fetchingUrl || synthesizing || downloading;
 
@@ -841,6 +863,14 @@ export default function TeluguNewsReader() {
         {browserVoiceWarning && (
           <Typography variant="body2" sx={{ color: "warning.main", mb: 2 }}>
             {browserVoiceWarning}
+          </Typography>
+        )}
+
+        {isSvaraVoice && (
+          <Typography variant="body2" sx={{ color: "warning.main", mb: 2 }}>
+            Svara AI ఒక ఉచిత సర్వీస్ కావడం వల్ల కొన్నిసార్లు కొంచెం ఎక్కువ సమయం
+            పట్టవచ్చు (10-30 సెకన్లు) — ఇది సాధారణమే, తప్పు కాదు. ఆలస్యం
+            అనిపిస్తే వేచి ఉండండి, లేదా వేరే వాయిస్ ప్రయత్నించండి.
           </Typography>
         )}
 
