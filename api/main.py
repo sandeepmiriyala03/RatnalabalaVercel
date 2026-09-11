@@ -803,3 +803,4 @@ if __name__ == "__main__":
     print(f"POST http://localhost:{port}/api/main?endpoint=extract-news body: {{\"url\": \"https://...\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=poem-ai      body: {{\"collection\": \"Sumati\", \"filename\": \"001.md\", \"question\": \"...\"}}")
     HTTPServer(("localhost", port), handler).serve_forever()
+    
