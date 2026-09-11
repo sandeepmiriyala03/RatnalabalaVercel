@@ -113,6 +113,12 @@ const MUSIC_TRACKS: Record<MusicOption, { label: string; src: string | null }> =
 
 const BG_MUSIC_VOLUME_DEFAULT = 0.18;
 
+// Auto-filled into the question box the moment the AI panel opens, so
+// the person can just tap send immediately instead of having to think
+// of and type a question themselves first. They can still edit or
+// clear it before sending.
+const DEFAULT_AI_QUESTION = "ఈ పద్యం భావం ఏమిటి? సులభంగా వివరించండి.";
+
 // Builds the exact text sent to TTS — title, poem content, and, when an
 // author is known, a closing credit line naming them. Duplicated from
 // PoemCard.tsx (same as fetchTtsAudio below) since these are separate
@@ -255,6 +261,19 @@ export default function PoemCardNew({
   // one; the prop is just a convenience for single-collection lists.
   const collection = poem.collection ?? collectionProp;
   const canAskAI = Boolean(collection && poem.filename);
+
+  // The moment the AI panel is opened, drop the default question into
+  // the textbox automatically — no click into the field, no typing
+  // required, matches "open panel -> question is already there" rather
+  // than showing an empty box. Only fills when currently empty, so
+  // reopening the panel after the person already typed/edited their
+  // own question doesn't stomp on it.
+  useEffect(() => {
+    if (aiOpen && canAskAI && !question.trim()) {
+      setQuestion(DEFAULT_AI_QUESTION);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiOpen, canAskAI]);
 
   const authorText = Array.isArray(authors)
     ? authors.join(", ")

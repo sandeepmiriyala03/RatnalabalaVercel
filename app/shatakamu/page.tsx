@@ -12,24 +12,53 @@ import {
   Chip,
   Divider,
   Collapse,
+  Grid,
+  Paper,
 } from "@mui/material";
 import ArchitectureRoundedIcon from "@mui/icons-material/ArchitectureRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import PoemListByKey from "@/app/components/PoemListByKey";
+import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import MovieCreationRoundedIcon from "@mui/icons-material/MovieCreationRounded";
 
+import PoemListByKey from "@/app/components/PoemListByKey";
 import {
   POETRY_COLLECTIONS,
   DEFAULT_POETRY_KEY,
   PoetryKey,
 } from "@/types/poetry";
 
-// ── "ఎలా పనిచేస్తుంది" — the actual real pipeline, in plain language,
-// not marketing copy. Written to match what the code genuinely does:
-// Next.js frontend -> Python serverless backend -> markdown files on
-// disk -> (optionally) Groq for AI explanations, and separately, TTS
-// engines for narration. Kept in sync with api/main.py's real
-// endpoints rather than describing an idealized/aspirational flow.
+// ── ఫ్లాట్‌ఫామ్ ముఖ్యమైన ఫీచర్లు (Features Grid Data)
+const FEATURES = [
+  {
+    icon: <MenuBookRoundedIcon color="primary" fontSize="large" />,
+    title: "డిజిటల్ పఠనం",
+    description:
+      "సుమతి, వేమన వంటి అనేక శతకాలలోని పద్యాలను స్పష్టమైన తెలుగు లిపిలో, మొబైల్ మరియు కంప్యూటర్ స్క్రీన్లకు అనుకూలంగా చదువుకోవచ్చు.",
+  },
+  {
+    icon: <RecordVoiceOverRoundedIcon color="secondary" fontSize="large" />,
+    title: "వాయిస్ నేరేషన్ (TTS)",
+    description:
+      "పద్యాలను వినాలనుకునే వారి కోసం Microsoft Edge TTS / Google TTS సాంకేతికతల ద్వారా స్పష్టమైన గొంతుతో పద్యాల ఆలపనను వినవచ్చు.",
+  },
+  {
+    icon: <AutoAwesomeRoundedIcon color="warning" fontSize="large" />,
+    title: "AI అసిస్టెంట్ (Groq LLM)",
+    description:
+      "పద్యం యొక్క భావం, అంతరార్థం లేదా కవి వివరాలను తెలుసుకోవడానికి AI అసిస్టెంట్‌ను ప్రశ్నలు అడగవచ్చు. ఇది అసలు పద్యం ఆధారంగా మాత్రమే వివరణ ఇస్తుంది.",
+  },
+  {
+    icon: <MovieCreationRoundedIcon color="success" fontSize="large" />,
+    title: "వీడియో మేకర్ & షేరింగ్",
+    description:
+      "బ్రౌజర్‌లోనే నేరుగా పోస్టర్ ఇమేజ్, వాయిస్, బ్యాక్‌గ్రౌండ్ మ్యూజిక్‌లను కలిపి పద్యాల వీడియోలను తయారు చేసి, ఇతరులతో పంచుకోవచ్చు.",
+  },
+];
+
+// ── "ఎలా పనిచేస్తుంది" Pipeline steps
 const WORKFLOW_STEPS: string[] = [
   "మీరు ఒక శతకాన్ని డ్రాప్‌డౌన్ నుండి ఎంచుకుంటారు.",
   "ఫ్రంటెండ్ (Next.js) /api/main?endpoint=poems&collection=... కి రిక్వెస్ట్ పంపుతుంది.",
@@ -40,9 +69,7 @@ const WORKFLOW_STEPS: string[] = [
   "\"వీడియోగా డౌన్‌లోడ్\" పూర్తిగా మీ బ్రౌజర్‌లోనే జరుగుతుంది — పోస్టర్ ఇమేజ్ + వాయిస్ + నేపథ్య సంగీతం కలిపి ఒక వీడియోగా తయారవుతుంది. ఏ ఫైలూ సర్వర్‌కి అప్‌లోడ్ కాదు.",
 ];
 
-// ── Actual technologies in use, not a generic buzzword list — written
-// to match what's really in the codebase (api/main.py, PoemCardNew.tsx,
-// etc.), so this stays honest if someone checks the source.
+// ── Actual technologies in use
 const TECH_STACK: { label: string; detail: string }[] = [
   { label: "Next.js (React)", detail: "ఫ్రంటెండ్ — పేజీలు, కార్డ్‌లు, UI మొత్తం" },
   { label: "Material UI", detail: "బటన్లు, డ్రాప్‌డౌన్‌లు, లేఅవుట్ కాంపొనెంట్లు" },
@@ -55,19 +82,17 @@ const TECH_STACK: { label: string; detail: string }[] = [
 ];
 
 export default function PoemsPage() {
-  const [selectedKey, setSelectedKey] =
-    useState<PoetryKey>(DEFAULT_POETRY_KEY);
-
+  const [selectedKey, setSelectedKey] = useState<PoetryKey>(DEFAULT_POETRY_KEY);
   const [infoOpen, setInfoOpen] = useState(false);
 
   /* ✅ Safe selected collection */
-  const selected =
-    POETRY_COLLECTIONS.find((p) => p.key === selectedKey) ??
-    POETRY_COLLECTIONS[0];
+  const selected = useMemo(
+    () => POETRY_COLLECTIONS.find((p) => p.key === selectedKey) ?? POETRY_COLLECTIONS[0],
+    [selectedKey]
+  );
 
   /* 📊 Platform totals */
   const totalCollections = useMemo(() => POETRY_COLLECTIONS.length, []);
-
   const totalPoemsAll = useMemo(
     () => POETRY_COLLECTIONS.reduce((sum, p) => sum + (p.totalPoems ?? 0), 0),
     []
@@ -84,18 +109,19 @@ export default function PoemsPage() {
   return (
     <Box sx={{ py: { xs: 3, md: 5 }, px: 2, maxWidth: 1100, mx: "auto" }}>
       {/* 🌺 Title */}
-        <Typography
-                     variant="h3"
-              
-                     sx={{
-                       letterSpacing: "-0.5px",
-                       background: "linear-gradient(90deg, #0f172a, #2563eb)",
-                       WebkitBackgroundClip: "text",
-                       WebkitTextFillColor: "transparent",       fontWeight: 700,
-          fontSize: "calc(var(--telugu-font-size) * 1.8)",
-          textAlign: "center",  // ✅ Centers the text
-                     }}>
-      శతకాలమాల
+      <Typography
+        variant="h3"
+        sx={{
+          letterSpacing: "-0.5px",
+          background: "linear-gradient(90deg, #0f172a, #2563eb)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          fontWeight: 700,
+          fontSize: "calc(var(--telugu-font-size, 1rem) * 1.8)",
+          textAlign: "center",
+        }}
+      >
+        శతకాలమాల
       </Typography>
 
       {/* 🌼 Tagline */}
@@ -105,19 +131,77 @@ export default function PoemsPage() {
 
       {/* 🧠 Description */}
       <Typography
+        component="div"
         align="center"
         sx={{
-          maxWidth: 720,
+          maxWidth: 800,
           mx: "auto",
-          mb: 3,
-          fontSize: "0.95rem",
-          opacity: 0.75,
+          mb: 4,
+          fontSize: { xs: "0.95rem", sm: "1.05rem" },
+          color: "text.secondary",
+          lineHeight: 1.8,
         }}
       >
-        శతకాలమాల అనేది కృత్రిమ మేధ (AI) సహాయంతో రూపొందించిన తెలుగు శతకాల
-        డిజిటల్ వేదిక. సంప్రదాయ సాహిత్యాన్ని ఆధునిక సాంకేతికతతో
-        చదవడానికి, వినడానికి, పంచుకోవడానికి ఇది సహాయపడుతుంది.
+        <Typography paragraph sx={{ mb: 1.5 }}>
+          <strong>శతకాలమాల</strong> అనేది కృత్రిమ మేధ (AI) మరియు ఆధునిక సాంకేతికత సహాయంతో రూపొందించిన తెలుగు శతకాల డిజిటల్ వేదిక. శతాబ్దాల నాటి సంప్రదాయ సాహిత్యాన్ని నేటి డిజిటల్ యుగానికి తగినట్లుగా <strong>చదవడానికి, వినడానికి, పంచుకోవడానికి</strong> ఇది సహాయపడుతుంది.
+        </Typography>
       </Typography>
+
+      {/* 🌟 Features Grid */}
+      <Box sx={{ mb: 5 }}>
+        <Grid container spacing={2.5}>
+          {FEATURES.map((feature, index) => (
+            <Grid item xs={12} sm={6} key={index}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2.5,
+                  height: "100%",
+                  borderRadius: "14px",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "background.paper",
+                  transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
+                  "&:hover": {
+                    transform: "translateY(-3px)",
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
+                  },
+                }}
+              >
+                <Stack direction="row" spacing={2} alignItems="flex-start">
+                  <Box
+                    sx={{
+                      p: 1.25,
+                      borderRadius: "10px",
+                      bgcolor: "action.hover",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {feature.icon}
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="h6"
+                      sx={{ fontWeight: 700, mb: 0.5, fontSize: "1rem" }}
+                    >
+                      {feature.title}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ lineHeight: 1.6, fontSize: "0.875rem" }}
+                    >
+                      {feature.description}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
 
       {/* 📈 Platform Summary */}
       <Stack
@@ -136,22 +220,21 @@ export default function PoemsPage() {
         <Chip label="✨ సంప్రదాయం × సాంకేతికత" variant="outlined" />
       </Stack>
 
-      {/* ⚙️ Workflow + Technologies — how this actually works under
-          the hood, and what it's built with. Collapsed by default so
-          it doesn't compete with the main reading experience; anyone
-          curious can expand it. */}
-      <Box sx={{ mb: 3, textAlign: "center" }}>
+      {/* ⚙️ Workflow + Technologies */}
+      <Box sx={{ mb: 4, textAlign: "center" }}>
         <Button
           onClick={() => setInfoOpen((v) => !v)}
           variant="text"
           startIcon={<ArchitectureRoundedIcon fontSize="small" />}
           endIcon={infoOpen ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+          aria-expanded={infoOpen}
+          aria-controls="architecture-info-collapse"
           sx={{ textTransform: "none", fontWeight: 700 }}
         >
           ఇది ఎలా పనిచేస్తుంది? (సాంకేతిక వివరాలు)
         </Button>
 
-        <Collapse in={infoOpen} timeout={280} unmountOnExit>
+        <Collapse id="architecture-info-collapse" in={infoOpen} timeout={280} unmountOnExit>
           <Box
             sx={{
               mt: 2,
@@ -213,8 +296,6 @@ export default function PoemsPage() {
                 </Stack>
               ))}
             </Stack>
-
-            
           </Box>
         </Collapse>
       </Box>
@@ -234,9 +315,7 @@ export default function PoemsPage() {
 
           <Select
             value={selectedKey}
-            onChange={(e) =>
-              setSelectedKey(e.target.value as PoetryKey)
-            }
+            onChange={(e) => setSelectedKey(e.target.value as PoetryKey)}
             aria-label="శతకము ఎంచుకోండి"
           >
             {POETRY_COLLECTIONS.map((p) => (
