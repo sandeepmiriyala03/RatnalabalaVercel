@@ -3,15 +3,6 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 
-/**
- * API: /api/poems
- * Returns:
- * {
- *   "అసహనం": "poem content...",
- *   "దయ": "poem content...",
- *   ...
- * }
- */
 export async function GET() {
   try {
     const poemsDir = path.join(process.cwd(), "poems");

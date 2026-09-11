@@ -769,3 +769,1094 @@ if __name__ == "__main__":
     print(f"POST http://localhost:{port}/api/main?endpoint=tts          body: {{\"text\": \"...\", \"voice\": \"te-IN-ShrutiNeural\", \"speed\": 1.0}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=extract-news body: {{\"url\": \"https://...\"}}")
     HTTPServer(("localhost", port), handler).serve_forever()
+
+    """
+api/main.py
+
+Ratnalabala - Poetry API + Poem AI
+
+Vercel Python Serverless Function
+
+Endpoints
+---------
+
+GET
+/api/main?endpoint=poems&collection=Sumati
+
+GET
+/api/main?endpoint=poem&collection=Sumati&filename=001.md
+
+POST
+/api/main?endpoint=poem-ai
+
+Body:
+{
+    "collection": "Sumati",
+    "filename": "001.md",
+    "question": "ఈ పద్యం భావం ఏమిటి?"
+}
+
+Architecture
+
+Next.js
+   ↓
+Python main.py
+   ↓
+Markdown files
+   ↓
+Groq
+   ↓
+JSON
+"""
+
+
+# ================================================================
+# IMPORTS
+# ================================================================
+
+import asyncio
+import json
+import os
+from http.server import BaseHTTPRequestHandler
+from pathlib import Path
+from urllib.parse import parse_qs, urlparse
+
+import httpx
+
+
+# ================================================================
+# CONFIGURATION
+# ================================================================
+
+# ------------------------------------------------
+# Groq
+# ------------------------------------------------
+
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+
+GROQ_MODEL = "openai/gpt-oss-120b"
+
+GROQ_API_URL = (
+    "https://api.groq.com/openai/v1/chat/completions"
+)
+
+
+# ------------------------------------------------
+# Poetry directory
+# ------------------------------------------------
+#
+# Expected project structure:
+#
+# project/
+#
+# ├── api/
+# │   └── main.py
+# │
+# └── poems/
+#     ├── Sumati/
+#     │   ├── 001.md
+#     │   ├── 002.md
+#     │   └── ...
+#     │
+#     ├── Jandhyala/
+#     ├── KrishnaSatakam/
+#     └── ...
+#
+# ------------------------------------------------
+
+POEMS_ROOT = (
+    Path(__file__).resolve().parent.parent / "poems"
+)
+
+
+# ================================================================
+# LOGGING
+# ================================================================
+
+def log(message: str):
+    print(f"[Ratnalabala] {message}")
+
+
+# ================================================================
+# MARKDOWN FRONTMATTER PARSER
+# ================================================================
+
+def parse_poem_markdown(file_path: Path) -> dict:
+    """
+    Read one Markdown poem.
+
+    Expected Markdown:
+
+    ---
+    title: సుమతీ శతకం
+    author: బద్దెన
+    ---
+
+    poem text...
+    """
+
+    text = file_path.read_text(
+        encoding="utf-8"
+    )
+
+    title = ""
+    author = ""
+    content = text.strip()
+
+    # ------------------------------------------------
+    # Frontmatter
+    # ------------------------------------------------
+
+    if text.startswith("---"):
+
+        parts = text.split(
+            "---",
+            2
+        )
+
+        if len(parts) == 3:
+
+            frontmatter = parts[1]
+
+            content = parts[2].strip()
+
+            for line in frontmatter.splitlines():
+
+                line = line.strip()
+
+                if line.startswith("title:"):
+
+                    title = (
+                        line[len("title:"):]
+                        .strip()
+                        .strip('"')
+                        .strip("'")
+                    )
+
+                elif line.startswith("author:"):
+
+                    author = (
+                        line[len("author:"):]
+                        .strip()
+                        .strip('"')
+                        .strip("'")
+                    )
+
+    # ------------------------------------------------
+    # Fallback title
+    # ------------------------------------------------
+
+    if not title:
+
+        title = file_path.stem
+
+    return {
+        "title": title,
+        "author": author,
+        "text": content,
+        "filename": file_path.name,
+    }
+
+
+# ================================================================
+# PATH SECURITY
+# ================================================================
+
+def safe_collection_path(
+    collection: str
+) -> Path:
+
+    collection = (
+        collection or ""
+    ).strip()
+
+    if not collection:
+
+        raise ValueError(
+            "Collection is required."
+        )
+
+    root = POEMS_ROOT.resolve()
+
+    collection_path = (
+        root / collection
+    ).resolve()
+
+    # Prevent ../ traversal
+    if root not in collection_path.parents:
+
+        raise ValueError(
+            "Invalid collection path."
+        )
+
+    return collection_path
+
+
+def safe_poem_path(
+    collection: str,
+    filename: str
+) -> Path:
+
+    collection_path = safe_collection_path(
+        collection
+    )
+
+    filename = (
+        filename or ""
+    ).strip()
+
+    if not filename:
+
+        raise ValueError(
+            "Filename is required."
+        )
+
+    # Only Markdown files
+    if not filename.lower().endswith(".md"):
+
+        raise ValueError(
+            "Only .md poem files are supported."
+        )
+
+    poem_path = (
+        collection_path / filename
+    ).resolve()
+
+    root = POEMS_ROOT.resolve()
+
+    # Prevent ../ traversal
+    if root not in poem_path.parents:
+
+        raise ValueError(
+            "Invalid poem path."
+        )
+
+    return poem_path
+
+
+# ================================================================
+# POETRY FUNCTIONS
+# ================================================================
+
+def get_poems(
+    collection: str
+) -> list[dict]:
+
+    """
+    Get all poems from one collection.
+    """
+
+    collection_path = safe_collection_path(
+        collection
+    )
+
+    if not collection_path.exists():
+
+        raise FileNotFoundError(
+            f"Collection '{collection}' not found."
+        )
+
+    if not collection_path.is_dir():
+
+        raise FileNotFoundError(
+            f"Collection '{collection}' is not a directory."
+        )
+
+    poems = []
+
+    files = sorted(
+        collection_path.glob("*.md")
+    )
+
+    for file_path in files:
+
+        try:
+
+            poem = parse_poem_markdown(
+                file_path
+            )
+
+            if (
+                poem["title"]
+                and poem["text"]
+            ):
+
+                poems.append(poem)
+
+        except Exception as e:
+
+            log(
+                f"Failed to read "
+                f"{file_path.name}: {e}"
+            )
+
+    return poems
+
+
+def get_poem(
+    collection: str,
+    filename: str
+) -> dict:
+
+    """
+    Get one poem.
+
+    This is the function used by
+    the AI endpoint.
+
+    Important:
+    We send ONLY this poem to Groq.
+    """
+
+    poem_path = safe_poem_path(
+        collection,
+        filename
+    )
+
+    if not poem_path.exists():
+
+        raise FileNotFoundError(
+            f"Poem '{filename}' not found."
+        )
+
+    if not poem_path.is_file():
+
+        raise FileNotFoundError(
+            f"Poem '{filename}' is not a file."
+        )
+
+    return parse_poem_markdown(
+        poem_path
+    )
+
+
+# ================================================================
+# GROQ
+# ================================================================
+
+async def call_groq(
+    prompt: str
+) -> str:
+
+    """
+    Call Groq API.
+
+    API key remains on the server.
+
+    Browser NEVER receives GROQ_API_KEY.
+    """
+
+    if not GROQ_API_KEY:
+
+        raise RuntimeError(
+            "GROQ_API_KEY is not configured "
+            "on the server."
+        )
+
+    headers = {
+        "Authorization": (
+            f"Bearer {GROQ_API_KEY}"
+        ),
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+
+        "model": GROQ_MODEL,
+
+        "messages": [
+
+            {
+                "role": "system",
+
+                "content": (
+                    "నీవు Ratnalabala తెలుగు "
+                    "సాహిత్య సహాయకుడివి. "
+                    "ఇచ్చిన పద్యాన్ని ఆధారంగా చేసుకుని "
+                    "వినియోగదారు ప్రశ్నకు "
+                    "సులభమైన, స్పష్టమైన తెలుగులో "
+                    "సమాధానం ఇవ్వాలి. "
+                    "పద్యానికి సంబంధం లేని విషయాలను "
+                    "ఊహించి చెప్పకూడదు."
+                ),
+            },
+
+            {
+                "role": "user",
+                "content": prompt,
+            },
+
+        ],
+
+        "temperature": 0.2,
+    }
+
+    async with httpx.AsyncClient(
+        timeout=45
+    ) as client:
+
+        response = await client.post(
+            GROQ_API_URL,
+            headers=headers,
+            json=payload,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+    choices = data.get(
+        "choices",
+        []
+    )
+
+    if not choices:
+
+        raise RuntimeError(
+            "Groq returned no response."
+        )
+
+    message = choices[0].get(
+        "message",
+        {}
+    )
+
+    answer = message.get(
+        "content",
+        ""
+    )
+
+    if not answer:
+
+        raise RuntimeError(
+            "Groq returned an empty answer."
+        )
+
+    return answer.strip()
+
+
+# ================================================================
+# POEM AI
+# ================================================================
+
+async def explain_poem(
+    collection: str,
+    filename: str,
+    question: str,
+) -> dict:
+
+    """
+    Explain one poem using Groq.
+
+    Flow:
+
+    collection + filename
+            ↓
+        get_poem()
+            ↓
+        Markdown
+            ↓
+        Groq
+            ↓
+        Answer
+    """
+
+    poem = get_poem(
+        collection=collection,
+        filename=filename,
+    )
+
+    question = (
+        question or ""
+    ).strip()
+
+    if not question:
+
+        raise ValueError(
+            "Question is required."
+        )
+
+    prompt = f"""
+క్రింద ఇచ్చిన తెలుగు పద్యాన్ని మాత్రమే
+ఆధారంగా తీసుకుని వినియోగదారు ప్రశ్నకు
+సమాధానం ఇవ్వండి.
+
+========================
+పద్య వివరాలు
+========================
+
+శీర్షిక:
+{poem["title"]}
+
+కవి:
+{poem["author"]}
+
+పద్యం:
+{poem["text"]}
+
+========================
+వినియోగదారు ప్రశ్న
+========================
+
+{question}
+
+========================
+సమాధానం ఇవ్వాల్సిన విధానం
+========================
+
+1. సులభమైన తెలుగులో వివరించండి.
+
+2. పద్యం యొక్క భావాన్ని స్పష్టంగా చెప్పండి.
+
+3. అవసరమైతే పాదాల అర్థాన్ని వివరించండి.
+
+4. విద్యార్థికి అర్థమయ్యే భాష ఉపయోగించండి.
+
+5. అవసరమైతే నేటి జీవితానికి
+   ఎలా ఉపయోగపడుతుందో చెప్పండి.
+
+6. పద్యంలో లేని విషయాలను కల్పించవద్దు.
+
+7. ప్రశ్నకు నేరుగా సమాధానం ఇవ్వండి.
+
+8. అనవసరంగా ఎక్కువ technical terminology
+   ఉపయోగించవద్దు.
+"""
+
+    answer = await call_groq(
+        prompt
+    )
+
+    return {
+
+        "success": True,
+
+        "collection": collection,
+
+        "filename": filename,
+
+        "title": poem["title"],
+
+        "author": poem["author"],
+
+        "question": question,
+
+        "answer": answer,
+    }
+
+
+# ================================================================
+# JSON RESPONSE
+# ================================================================
+
+def send_json(
+    handler,
+    status: int,
+    payload: dict
+):
+
+    body = json.dumps(
+        payload,
+        ensure_ascii=False
+    ).encode("utf-8")
+
+    handler.send_response(status)
+
+    handler.send_header(
+        "Content-Type",
+        "application/json; charset=utf-8"
+    )
+
+    handler.send_header(
+        "Access-Control-Allow-Origin",
+        "*"
+    )
+
+    handler.send_header(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS"
+    )
+
+    handler.send_header(
+        "Access-Control-Allow-Headers",
+        "Content-Type"
+    )
+
+    handler.send_header(
+        "Content-Length",
+        str(len(body))
+    )
+
+    handler.end_headers()
+
+    handler.wfile.write(body)
+
+
+# ================================================================
+# HTTP HANDLER
+# ================================================================
+
+class handler(BaseHTTPRequestHandler):
+
+    # ------------------------------------------------------------
+    # OPTIONS
+    # ------------------------------------------------------------
+
+    def do_OPTIONS(self):
+
+        self.send_response(204)
+
+        self.send_header(
+            "Access-Control-Allow-Origin",
+            "*"
+        )
+
+        self.send_header(
+            "Access-Control-Allow-Methods",
+            "GET, POST, OPTIONS"
+        )
+
+        self.send_header(
+            "Access-Control-Allow-Headers",
+            "Content-Type"
+        )
+
+        self.end_headers()
+
+    # ------------------------------------------------------------
+    # GET
+    # ------------------------------------------------------------
+
+    def do_GET(self):
+
+        try:
+
+            parsed = urlparse(
+                self.path
+            )
+
+            query = parse_qs(
+                parsed.query
+            )
+
+            endpoint = query.get(
+                "endpoint",
+                [""]
+            )[0]
+
+            # ====================================================
+            # GET ALL POEMS
+            # ====================================================
+
+            if endpoint == "poems":
+
+                collection = query.get(
+                    "collection",
+                    [""]
+                )[0]
+
+                poems = get_poems(
+                    collection
+                )
+
+                send_json(
+                    self,
+                    200,
+                    {
+                        "success": True,
+                        "collection": collection,
+                        "count": len(poems),
+                        "poems": poems,
+                    }
+                )
+
+                return
+
+            # ====================================================
+            # GET ONE POEM
+            # ====================================================
+
+            if endpoint == "poem":
+
+                collection = query.get(
+                    "collection",
+                    [""]
+                )[0]
+
+                filename = query.get(
+                    "filename",
+                    [""]
+                )[0]
+
+                poem = get_poem(
+                    collection,
+                    filename
+                )
+
+                send_json(
+                    self,
+                    200,
+                    {
+                        "success": True,
+                        "poem": poem,
+                    }
+                )
+
+                return
+
+            # ====================================================
+            # UNKNOWN ENDPOINT
+            # ====================================================
+
+            send_json(
+                self,
+                400,
+                {
+                    "success": False,
+                    "error": (
+                        "Invalid endpoint. "
+                        "Use poems or poem."
+                    ),
+                }
+            )
+
+        except FileNotFoundError as e:
+
+            send_json(
+                self,
+                404,
+                {
+                    "success": False,
+                    "error": str(e),
+                }
+            )
+
+        except ValueError as e:
+
+            send_json(
+                self,
+                400,
+                {
+                    "success": False,
+                    "error": str(e),
+                }
+            )
+
+        except Exception as e:
+
+            log(
+                f"GET error: {e}"
+            )
+
+            send_json(
+                self,
+                500,
+                {
+                    "success": False,
+                    "error": (
+                        "Failed to process request."
+                    ),
+                }
+            )
+
+    # ------------------------------------------------------------
+    # READ JSON
+    # ------------------------------------------------------------
+
+    def read_json_body(self) -> dict:
+
+        content_length = int(
+            self.headers.get(
+                "Content-Length",
+                0
+            )
+        )
+
+        body = self.rfile.read(
+            content_length
+        )
+
+        if not body:
+
+            return {}
+
+        return json.loads(
+            body
+        )
+
+    # ------------------------------------------------------------
+    # POST
+    # ------------------------------------------------------------
+
+    def do_POST(self):
+
+        try:
+
+            parsed = urlparse(
+                self.path
+            )
+
+            query = parse_qs(
+                parsed.query
+            )
+
+            endpoint = query.get(
+                "endpoint",
+                [""]
+            )[0]
+
+            # ====================================================
+            # READ REQUEST
+            # ====================================================
+
+            try:
+
+                payload = (
+                    self.read_json_body()
+                )
+
+            except (
+                ValueError,
+                json.JSONDecodeError
+            ):
+
+                send_json(
+                    self,
+                    400,
+                    {
+                        "success": False,
+                        "error": (
+                            "Invalid JSON body."
+                        ),
+                    }
+                )
+
+                return
+
+            # ====================================================
+            # POEM AI
+            # ====================================================
+
+            if endpoint == "poem-ai":
+
+                collection = (
+                    payload.get(
+                        "collection"
+                    ) or ""
+                ).strip()
+
+                filename = (
+                    payload.get(
+                        "filename"
+                    ) or ""
+                ).strip()
+
+                question = (
+                    payload.get(
+                        "question"
+                    ) or ""
+                ).strip()
+
+                # --------------------------------------------
+                # Validation
+                # --------------------------------------------
+
+                if not collection:
+
+                    send_json(
+                        self,
+                        400,
+                        {
+                            "success": False,
+                            "error": (
+                                "Missing "
+                                "'collection'."
+                            ),
+                        }
+                    )
+
+                    return
+
+                if not filename:
+
+                    send_json(
+                        self,
+                        400,
+                        {
+                            "success": False,
+                            "error": (
+                                "Missing "
+                                "'filename'."
+                            ),
+                        }
+                    )
+
+                    return
+
+                if not question:
+
+                    send_json(
+                        self,
+                        400,
+                        {
+                            "success": False,
+                            "error": (
+                                "Missing "
+                                "'question'."
+                            ),
+                        }
+                    )
+
+                    return
+
+                # --------------------------------------------
+                # AI
+                # --------------------------------------------
+
+                result = asyncio.run(
+                    explain_poem(
+                        collection=collection,
+                        filename=filename,
+                        question=question,
+                    )
+                )
+
+                send_json(
+                    self,
+                    200,
+                    result
+                )
+
+                return
+
+            # ====================================================
+            # UNKNOWN POST ENDPOINT
+            # ====================================================
+
+            send_json(
+                self,
+                400,
+                {
+                    "success": False,
+                    "error": (
+                        "Invalid POST endpoint. "
+                        "Use poem-ai."
+                    ),
+                }
+            )
+
+        except FileNotFoundError as e:
+
+            send_json(
+                self,
+                404,
+                {
+                    "success": False,
+                    "error": str(e),
+                }
+            )
+
+        except ValueError as e:
+
+            send_json(
+                self,
+                400,
+                {
+                    "success": False,
+                    "error": str(e),
+                }
+            )
+
+        except httpx.HTTPStatusError as e:
+
+            log(
+                f"Groq HTTP error: "
+                f"{e.response.status_code}"
+            )
+
+            send_json(
+                self,
+                502,
+                {
+                    "success": False,
+                    "error": (
+                        "AI service request failed."
+                    ),
+                }
+            )
+
+        except Exception as e:
+
+            log(
+                f"POST error: {e}"
+            )
+
+            send_json(
+                self,
+                500,
+                {
+                    "success": False,
+                    "error": (
+                        "Failed to process AI request."
+                    ),
+                }
+            )
+
+
+# ================================================================
+# LOCAL TEST
+# ================================================================
+
+if __name__ == "__main__":
+
+    from http.server import HTTPServer
+
+    port = 8004
+
+    print(
+        f"Starting Ratnalabala Python API "
+        f"on http://localhost:{port}"
+    )
+
+    print()
+
+    print(
+        "GET:"
+    )
+
+    print(
+        f"http://localhost:{port}"
+        "/api/main"
+        "?endpoint=poems"
+        "&collection=Sumati"
+    )
+
+    print()
+
+    print(
+        "GET one poem:"
+    )
+
+    print(
+        f"http://localhost:{port}"
+        "/api/main"
+        "?endpoint=poem"
+        "&collection=Sumati"
+        "&filename=001.md"
+    )
+
+    print()
+
+    print(
+        "POST AI:"
+    )
+
+    print(
+        f"http://localhost:{port}"
+        "/api/main?endpoint=poem-ai"
+    )
+
+    HTTPServer(
+        ("localhost", port),
+        handler
+    ).serve_forever()
