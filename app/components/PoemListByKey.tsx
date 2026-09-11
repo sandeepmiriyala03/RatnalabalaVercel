@@ -43,13 +43,7 @@ interface Poem {
   // Python main.py fields
   filename?: string;
   author?: string;
-  // NEW — which collection this poem came from. Required by
-  // PoemCardNew's AI assistant panel (poem-ai needs collection +
-  // filename to find the right .md file server-side). Attached in
-  // fetchCollection() below for BOTH the single-collection and the
-  // merged "all collections" cases, since the latter mixes poems from
-  // different collections into one flat list and each one needs its
-  // own correct value — a single list-level prop wouldn't work there.
+
   collection?: string;
 }
 
