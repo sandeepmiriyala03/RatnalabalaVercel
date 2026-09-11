@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -44,6 +43,14 @@ interface Poem {
   // Python main.py fields
   filename?: string;
   author?: string;
+  // NEW — which collection this poem came from. Required by
+  // PoemCardNew's AI assistant panel (poem-ai needs collection +
+  // filename to find the right .md file server-side). Attached in
+  // fetchCollection() below for BOTH the single-collection and the
+  // merged "all collections" cases, since the latter mixes poems from
+  // different collections into one flat list and each one needs its
+  // own correct value — a single list-level prop wouldn't work there.
+  collection?: string;
 }
 
 interface PythonPoem {
@@ -157,6 +164,11 @@ const PoemListByKey: React.FC<Props> = ({
 
       author: poem.author,
 
+      // NEW — attach the collection this poem actually came from, so
+      // PoemCardNew's AI assistant (poem-ai) can look this exact poem
+      // up server-side by collection+filename later.
+      collection: collectionKey,
+
       slug: `${collectionKey}-${poem.filename}`,
     }));
   };
@@ -208,6 +220,13 @@ const PoemListByKey: React.FC<Props> = ({
 
                   title:
                     `${collection.label} – ${poem.title}`,
+
+                  // collection already set correctly per-poem inside
+                  // fetchCollection() above (collection.key for THIS
+                  // specific collection) — deliberately not
+                  // overwritten here, since that's exactly the value
+                  // PoemCardNew needs for each individual poem in this
+                  // merged, multi-collection list.
 
                   slug:
                     `${collection.key}-${poem.filename}`,
