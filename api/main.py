@@ -865,7 +865,7 @@ GROQ_API_URL = (
 # ------------------------------------------------
 
 POEMS_ROOT = (
-    Path(__file__).resolve().parent.parent / "poems"
+    Path(__file__).resolve().parent.parent / "content"
 )
 
 
