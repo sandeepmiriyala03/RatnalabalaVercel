@@ -151,7 +151,12 @@ export default function PoemsPage() {
       <Box sx={{ mb: 5 }}>
         <Grid container spacing={2.5}>
           {FEATURES.map((feature, index) => (
-            <Grid item xs={12} sm={6} key={index}>
+            // FIX: MUI v6/v7's default `Grid` export dropped the old
+            // `item` boolean prop and the separate xs={}/sm={} shorthand
+            // props entirely — that's exactly what TS2769 above is
+            // complaining about ("Property 'item' does not exist").
+            // The new API takes ONE `size` prop object instead.
+            <Grid key={index} size={{ xs: 12, sm: 6 }}>
               <Paper
                 elevation={0}
                 sx={{
