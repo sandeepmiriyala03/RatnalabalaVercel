@@ -543,6 +543,27 @@ def get_poem(collection: str, filename: str) -> dict:
     return parse_poem_markdown(poem_path)
 
 
+def strip_markdown(text: str) -> str:
+    """Safety net beneath the prompt-level instruction above — strips
+    common markdown syntax from an LLM answer that's going to be
+    displayed as plain text (no markdown renderer on the frontend).
+    Even with an explicit "don't use markdown" instruction, models
+    sometimes slip into **bold**/- bullets/# headers out of habit, so
+    this cleans it up server-side rather than trusting the prompt
+    alone. Deliberately conservative: strips the SYMBOLS, keeps the
+    actual words, so meaning is never lost even if a pattern doesn't
+    match exactly.
+    """
+    # Bold/italic markers: **text** / *text* -> text
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+    text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", text)
+    # Leading bullet markers at the start of a line: "- ", "* ", "• "
+    text = re.sub(r"(?m)^[ \t]*[-*•][ \t]+", "", text)
+    # Markdown headers: "### text" -> "text"
+    text = re.sub(r"(?m)^#{1,6}[ \t]+", "", text)
+    return text.strip()
+
+
 async def call_groq(prompt: str) -> str:
     if not GROQ_API_KEY:
         raise RuntimeError("GROQ_API_KEY is not configured on the server.")
@@ -556,7 +577,14 @@ async def call_groq(prompt: str) -> str:
                     "నీవు Ratnalabala తెలుగు సాహిత్య సహాయకుడివి. "
                     "ఇచ్చిన పద్యాన్ని ఆధారంగా చేసుకుని వినియోగదారు ప్రశ్నకు "
                     "సులభమైన, స్పష్టమైన తెలుగులో సమాధానం ఇవ్వాలి. "
-                    "పద్యానికి సంబంధం లేని విషయాలను ఊహించి చెప్పకూడదు."
+                    "పద్యానికి సంబంధం లేని విషయాలను ఊహించి చెప్పకూడదు. "
+                    "ముఖ్యం: మార్క్‌డౌన్ ఫార్మాటింగ్ (**, *, -, #, ఇలాంటివి) "
+                    "అస్సలు వాడవద్దు — ఈ సమాధానం ఒక సాదా టెక్స్ట్ యాప్‌లో "
+                    "కనిపిస్తుంది, అక్కడ ** గుర్తులు బోల్డ్‌గా కాకుండా "
+                    "అక్షరాలుగానే కనిపిస్తాయి. బోల్డ్ చేయాల్సిన చోట కేవలం "
+                    "వాక్యాన్ని నొక్కి చెప్పండి, గుర్తులు వాడకండి. జాబితా "
+                    "కావాలంటే '1)', '2)' వంటి సాదా సంఖ్యలు వాడండి, '-' "
+                    "గుర్తులు వాడకండి."
                 ),
             },
             {"role": "user", "content": prompt},
@@ -574,7 +602,7 @@ async def call_groq(prompt: str) -> str:
     answer = choices[0].get("message", {}).get("content", "")
     if not answer:
         raise RuntimeError("Groq returned an empty answer.")
-    return answer.strip()
+    return strip_markdown(answer.strip())
 
 
 async def explain_poem(collection: str, filename: str, question: str) -> dict:
@@ -609,6 +637,7 @@ async def explain_poem(collection: str, filename: str, question: str) -> dict:
 6. పద్యంలో లేని విషయాలను కల్పించవద్దు.
 7. ప్రశ్నకు నేరుగా సమాధానం ఇవ్వండి.
 8. అనవసరంగా ఎక్కువ technical terminology ఉపయోగించవద్దు.
+9. **, *, -, # వంటి మార్క్‌డౌన్ గుర్తులు అస్సలు వాడవద్దు — సాదా వచనంలో మాత్రమే రాయండి.
 """
     answer = await call_groq(prompt)
     return {
