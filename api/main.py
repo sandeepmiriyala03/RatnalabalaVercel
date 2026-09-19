@@ -1,35 +1,4 @@
-"""
-api/main.py
 
-MERGED FILE — this project ended up with two different api/main.py
-versions being worked on separately (fonts/TTS/news-reader vs. the
-newer Poetry+Groq-AI poem explainer), and only the newer one was
-actually deployed, silently dropping every fonts/svara/tts/extract-news
-endpoint the rest of the site depends on (RootClientLayout's font
-picker, TeluguNewsReader, TeluguVoice, PoemRadio). This file merges
-both feature sets back into one, since Vercel routing means there can
-only ever be ONE api/main.py.
-
-  GET  /api/main?endpoint=fonts                          → font catalog
-  GET  /api/main?endpoint=font_agent&content_type=...     → font decision agent
-  GET  /api/main?endpoint=poems&collection=Sumati         → all poems in a collection
-  GET  /api/main?endpoint=poem&collection=Sumati&filename=001.md → one poem
-  POST /api/main?endpoint=svara          body: {text, voice}         → Svara TTS (audio/wav)
-  POST /api/main?endpoint=tts            body: {text, voice, speed}  → Sarvam/Edge TTS
-  POST /api/main?endpoint=extract-news   body: {url}                 → {text}
-  POST /api/main?endpoint=poem-ai        body: {collection, filename, question} → Groq explanation
-
-Dependencies: httpx, edge-tts, beautifulsoup4 (see api/requirements.txt).
-
-Deploy notes:
-  - Set SARVAM_API_KEY (Sarvam voices), HF_TOKEN (optional, Svara rate
-    limits), GROQ_API_KEY (poem-ai explanations — same key used by
-    api/sametalu_agent.py).
-  - Expects a content/ folder at the PROJECT ROOT (sibling to api/),
-    with one subfolder per poetry collection, each containing .md
-    files with `title`/`author` frontmatter — confirmed present per
-    your Explorer screenshot (content/Sumati, content/geeta, etc).
-"""
 
 import asyncio
 import base64
@@ -632,7 +601,7 @@ async def call_groq(prompt: str) -> str:
                     "నీవు Ratnalabala తెలుగు సాహిత్య సహాయకుడివి. "
                     "ఇచ్చిన పద్యాన్ని ఆధారంగా చేసుకుని వినియోగదారు ప్రశ్నకు "
                     "సులభమైన, స్పష్టమైన తెలుగులో సమాధానం ఇవ్వాలి. "
-                    "పద్యానికి సంబంధం లేని విషయాలను ఊహించి చెప్పకూడదు. "
+                    "పద్యానికి సంబంధం లేని విషయాల6ను ఊహించి చెప్పకూడదు. "
                     "ముఖ్యం: మార్క్‌డౌన్ ఫార్మాటింగ్ (**, *, -, #, ఇలాంటివి) "
                     "అస్సలు వాడవద్దు — ఈ సమాధానం ఒక సాదా టెక్స్ట్ యాప్‌లో "
                     "కనిపిస్తుంది, అక్కడ ** గుర్తులు బోల్డ్‌గా కాకుండా "
