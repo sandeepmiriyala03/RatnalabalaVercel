@@ -1,5 +1,3 @@
-
-
 import asyncio
 import base64
 import io
@@ -511,6 +509,28 @@ def handle_extract_news(url: str) -> str:
 # POETRY - POSTGRESQL
 # ═══════════════════════════════════════════════════════════════
 
+def _normalize_poem_text(text: str) -> str:
+    """Trim every line and normalise newlines so the same poem compares
+    equal even if it went through JSON / a browser / \\r\\n on the way."""
+    return "\n".join(
+        line.strip() for line in (text or "").replace("\r\n", "\n").split("\n")
+    ).strip()
+
+
+def pick_poem_row(rows: list[dict], content: str = "") -> dict | None:
+    """Several poets can have a poem with the same title. The row whose
+    text matches `content` wins; otherwise fall back to the first row."""
+    if not rows:
+        return None
+    if len(rows) == 1:
+        return rows[0]
+    wanted = _normalize_poem_text(content)
+    for row in rows:
+        if _normalize_poem_text(row["content"]) == wanted:
+            return row
+    return rows[0]
+
+
 class Poems:
     """
     Generic PostgreSQL poem access.
@@ -518,6 +538,7 @@ class Poems:
     Usage:
         Poems.get(1)  -> poems for poet_id 1
         Poems.get(2)  -> poems for poet_id 2
+        Poems.find_by_title("గర్వం")  -> one poem (used by poem-ai)
     """
 
     @staticmethod
@@ -559,6 +580,44 @@ class Poems:
                 rows = cursor.fetchall()
 
         return [dict(row) for row in rows]
+
+    @staticmethod
+    def find_by_title(title: str, content: str = "") -> dict | None:
+        """Used by poem-ai for poems that live in the database (no .md
+        file). The answer is grounded in the DATABASE text, never in text
+        sent by the browser — `content` is only used to tell apart poems
+        that share a title across different poets."""
+
+        if not RATNALABALA_DATABASE_URL:
+            raise RuntimeError(
+                "NEON_DATABASE_URL is not configured."
+            )
+
+        query = """
+            SELECT
+                p.poem_id,
+                p.title,
+                p.content,
+                pt.poet_name
+            FROM poems p
+            INNER JOIN poets pt
+                ON p.poet_id = pt.poet_id
+            WHERE p.title = %s
+              AND p.is_active = TRUE
+              AND pt.is_active = TRUE
+            ORDER BY p.poem_id;
+        """
+
+        with psycopg.connect(
+            RATNALABALA_DATABASE_URL,
+            row_factory=dict_row
+        ) as conn:
+
+            with conn.cursor() as cursor:
+                cursor.execute(query, ((title or "").strip(),))
+                rows = [dict(row) for row in cursor.fetchall()]
+
+        return pick_poem_row(rows, content)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -673,7 +732,7 @@ async def call_groq(prompt: str) -> str:
                     "నీవు Ratnalabala తెలుగు సాహిత్య సహాయకుడివి. "
                     "ఇచ్చిన పద్యాన్ని ఆధారంగా చేసుకుని వినియోగదారు ప్రశ్నకు "
                     "సులభమైన, స్పష్టమైన తెలుగులో సమాధానం ఇవ్వాలి. "
-                    "పద్యానికి సంబంధం లేని విషయాల6ను ఊహించి చెప్పకూడదు. "
+                    "పద్యానికి సంబంధం లేని విషయాలను ఊహించి చెప్పకూడదు. "
                     "ముఖ్యం: మార్క్‌డౌన్ ఫార్మాటింగ్ (**, *, -, #, ఇలాంటివి) "
                     "అస్సలు వాడవద్దు — ఈ సమాధానం ఒక సాదా టెక్స్ట్ యాప్‌లో "
                     "కనిపిస్తుంది, అక్కడ ** గుర్తులు బోల్డ్‌గా కాకుండా "
@@ -701,11 +760,30 @@ async def call_groq(prompt: str) -> str:
     return strip_markdown(answer.strip())
 
 
-async def explain_poem(collection: str, filename: str, question: str) -> dict:
-    poem = get_poem(collection=collection, filename=filename)
+async def explain_poem(
+    collection: str,
+    filename: str,
+    question: str,
+    title: str = "",
+    content: str = "",
+) -> dict:
     question = (question or "").strip()
     if not question:
         raise ValueError("Question is required.")
+
+    if collection and filename:
+        # Poem stored as a .md file under content/<collection>/
+        poem = get_poem(collection=collection, filename=filename)
+    else:
+        # Poem stored in PostgreSQL (no file) — find it by title.
+        row = await asyncio.to_thread(Poems.find_by_title, title, content)
+        if row is None:
+            raise FileNotFoundError(f"Poem '{title}' not found.")
+        poem = {
+            "title": row["title"],
+            "author": row["poet_name"],
+            "text": row["content"],
+        }
 
     prompt = f"""
 క్రింద ఇచ్చిన తెలుగు పద్యాన్ని మాత్రమే ఆధారంగా తీసుకుని వినియోగదారు ప్రశ్నకు సమాధానం ఇవ్వండి.
@@ -909,20 +987,26 @@ class handler(BaseHTTPRequestHandler):
         elif endpoint == "poem-ai":
             collection = (payload.get("collection") or "").strip()
             filename = (payload.get("filename") or "").strip()
+            title = (payload.get("title") or "").strip()
+            content = payload.get("content") or ""
             question = (payload.get("question") or "").strip()
 
-            if not collection:
-                self._send_json(400, {"success": False, "error": "Missing 'collection'."})
-                return
-            if not filename:
-                self._send_json(400, {"success": False, "error": "Missing 'filename'."})
+            # .md poems are found by collection + filename;
+            # database poems (no file) are found by title.
+            if not (collection and filename) and not title:
+                self._send_json(400, {
+                    "success": False,
+                    "error": "Send 'collection' + 'filename', or 'title'.",
+                })
                 return
             if not question:
                 self._send_json(400, {"success": False, "error": "Missing 'question'."})
                 return
 
             try:
-                result = asyncio.run(explain_poem(collection, filename, question))
+                result = asyncio.run(
+                    explain_poem(collection, filename, question, title, content)
+                )
                 self._send_json(200, result)
             except FileNotFoundError as e:
                 self._send_json(404, {"success": False, "error": str(e)})
@@ -966,4 +1050,5 @@ if __name__ == "__main__":
     print(f"POST http://localhost:{port}/api/main?endpoint=tts          body: {{\"text\": \"...\", \"voice\": \"te-IN-ShrutiNeural\", \"speed\": 1.0}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=extract-news body: {{\"url\": \"https://...\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=poem-ai      body: {{\"collection\": \"Sumati\", \"filename\": \"001.md\", \"question\": \"...\"}}")
+    print(f"POST http://localhost:{port}/api/main?endpoint=poem-ai      body: {{\"title\": \"గర్వం\", \"content\": \"...\", \"question\": \"...\"}}   (database poem)")
     HTTPServer(("localhost", port), handler).serve_forever()

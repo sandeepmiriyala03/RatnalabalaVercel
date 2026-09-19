@@ -93,18 +93,24 @@ const BG_MUSIC_VOLUME_DEFAULT = 0.18;
 // the person can just tap send immediately. They can still edit or clear it.
 const DEFAULT_AI_QUESTION = "ఈ పద్యం భావం ఏమిటి? సులభంగా వివరించండి.";
 
-// Asks the Groq-backed poem-ai endpoint a question about THIS specific
-// poem. The backend reads the real .md file itself (by collection +
-// filename), so the answer is grounded in the actual poem text on disk.
+// Asks the Groq-backed poem-ai endpoint a question about THIS poem.
+// - .md poems: send collection + filename; the backend reads the real file.
+// - database poems (no file): those two are undefined, so the poem's
+//   title + content are sent and the backend answers from that text.
 async function askPoemAI(
-  collection: string,
-  filename: string,
-  question: string
+  question: string,
+  poem: { title: string; content: string; collection?: string; filename?: string }
 ): Promise<string> {
   const res = await fetch("/api/main?endpoint=poem-ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ collection, filename, question }),
+    body: JSON.stringify({
+      collection: poem.collection,
+      filename: poem.filename,
+      title: poem.title,
+      content: poem.content,
+      question,
+    }),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -183,10 +189,9 @@ interface Poem {
   title: string;
   content: string;
   slug?: string;
-  // Needed for the AI assistant — /api/main?endpoint=poem-ai reads the
-  // poem's actual .md file server-side by collection + filename, so both
-  // must be present. Optional: the AI button simply doesn't render if
-  // either is missing.
+  // Optional. Poems that live in .md files pass collection + filename so the
+  // AI endpoint can read the real file. Poems that come from the database
+  // (no file) omit them — the card then sends the poem text itself instead.
   filename?: string;
   collection?: string;
 }
@@ -234,10 +239,11 @@ export default function PoemCard({
   const [aiError,      setAiError]      = useState<string | null>(null);
   const [aiLoading,    setAiLoading]    = useState(false);
 
-  // poem.collection wins over the prop (see Props). The AI button and panel
-  // only render when this poem can actually be looked up by collection + filename.
+  // poem.collection wins over the prop (see Props). The AI button shows on
+  // every poem that has text — file-based poems are looked up by
+  // collection + filename, database poems are answered from their content.
   const collection = poem.collection ?? collectionProp;
-  const canAskAI = Boolean(collection && poem.filename);
+  const canAskAI = Boolean(poem.content?.trim());
 
   // The moment the AI panel opens, drop the default question into the box.
   // Only fills when empty, so reopening never stomps on the person's own text.
@@ -428,14 +434,19 @@ export default function PoemCard({
 
   const handleAskAI = async () => {
     const trimmed = aiQuestion.trim();
-    if (!trimmed || !collection || !poem.filename) return;
+    if (!trimmed) return;
 
     setAiLoading(true);
     setAiError(null);
     setAiAnswer(null);
 
     try {
-      const answer = await askPoemAI(collection, poem.filename, trimmed);
+      const answer = await askPoemAI(trimmed, {
+        title: poem.title,
+        content: poem.content,
+        collection,
+        filename: poem.filename,
+      });
       setAiAnswer(answer);
     } catch (err: any) {
       setAiError(err.message || "ఏదో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.");
