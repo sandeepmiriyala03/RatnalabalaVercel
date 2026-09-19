@@ -45,18 +45,12 @@ const TELUGU_FONTS = [
   { label: "Default Serif", value: "serif" },
 ];
 
-// The three engines this page can actually invoke. Tesseract and HTR
-// run 100% client-side — zero setup, work for every visitor instantly.
-// PaddleOCR does NOT run in a browser (it's a Python + PaddlePaddle
-// framework tool needing real server/GPU infrastructure), so selecting
-// it requires pointing at a self-hosted PaddleOCR HTTP server — see the
-// engine description accordion below for what that server needs to do.
-type EngineId = "tesseract" | "htr" | "paddleocr";
+// OCR engines used by this page. Both run fully client-side.
+type EngineId = "tesseract" | "htr";
 
 const ENGINES: { id: EngineId; label: string; ready: boolean }[] = [
   { id: "tesseract", label: "Tesseract.js (బ్రౌజర్‌లోనే, సెటప్ అవసరం లేదు)", ready: true },
   { id: "htr", label: "HTR — Transformers.js/TrOCR (బ్రౌజర్‌లోనే, ~280MB మొదటిసారి)", ready: true },
-  { id: "paddleocr", label: "PaddleOCR (సొంత సర్వర్ అవసరం — క్రింద URL ఇవ్వండి)", ready: false },
 ];
 
 /* ================================================================
@@ -114,7 +108,6 @@ export default function TeluguOcrPage() {
   const [progress, setProgress] = useState("");
 
   const [engine, setEngine] = useState<EngineId>("tesseract");
-  const [paddleUrl, setPaddleUrl] = useState("/api/paddleocr");
 
   const [fontFamily, setFontFamily] = useState(TELUGU_FONTS[0].value);
   const [fontSize, setFontSize] = useState(20);
@@ -191,43 +184,6 @@ export default function TeluguOcrPage() {
     return "";
   };
 
-  /* ================================================================
-     ENGINE 3 — PaddleOCR (Apache 2.0), via a self-hosted HTTP server.
-     PaddleOCR is a Python + PaddlePaddle framework tool — it cannot
-     run inside a browser tab. This function POSTs the image to
-     whatever server URL the person configured; THAT server is
-     expected to run PaddleOCR itself and return { "text": "..." }.
-     A minimal reference server (FastAPI + paddleocr) would look like:
-
-       from fastapi import FastAPI, File, UploadFile
-       from paddleocr import PaddleOCR
-       app = FastAPI()
-       ocr = PaddleOCR(lang="te")  # or "en", check PaddleOCR's language list
-       @app.post("/ocr")
-       async def run_ocr(file: UploadFile = File(...)):
-           result = ocr.ocr(await file.read())
-           text = "\n".join([line[1][0] for block in result for line in block])
-           return {"text": text}
-
-     Deploy that anywhere with a GPU (a VPS, a container host, etc.),
-     paste its URL below, and this button will actually call it.
-  ================================================================ */
-  const runPaddleOCR = async (target: File | Blob, serverUrl: string): Promise<string> => {
-    if (!serverUrl.trim()) {
-      throw new Error("PaddleOCR సర్వర్ URL ఇవ్వలేదు — క్రింద ఫీల్డ్‌లో మీ సొంత PaddleOCR సర్వర్ URL నమోదు చేయండి.");
-    }
-    setProgress("PaddleOCR సర్వర్‌కు పంపుతోంది...");
-    const form = new FormData();
-    form.append("file", target instanceof File ? target : new File([target], "image.png"));
-
-    const res = await fetch(serverUrl, { method: "POST", body: form });
-    if (!res.ok) {
-      throw new Error(`PaddleOCR సర్వర్ లోపం (${res.status}) — సర్వర్ నడుస్తోందా, URL సరైనదా అని తనిఖీ చేయండి.`);
-    }
-    const data = await res.json();
-    return (data.text || "").trim();
-  };
-
   /* ========== OCR RUN ========== */
   const onAnalyze = async () => {
     if (!file) return;
@@ -242,9 +198,11 @@ export default function TeluguOcrPage() {
       const processed = (await resizeImageFile(file, MIN_IMAGE_WIDTH, 1200)) as Blob;
 
       let text = "";
-      if (engine === "tesseract") text = await runTesseract(processed);
-      else if (engine === "htr") text = await runHTR(processed);
-      else text = await runPaddleOCR(processed, paddleUrl);
+      if (engine === "tesseract") {
+        text = await runTesseract(processed);
+      } else {
+        text = await runHTR(processed);
+      }
 
       if (!cancelFlag.current) {
         text ? setOcrText(text) : setImageError("పాఠ్యం గుర్తించబడలేదు.");
@@ -453,17 +411,6 @@ export default function TeluguOcrPage() {
               ))}
             </Select>
 
-            {engine === "paddleocr" && (
-              <TextField
-                fullWidth
-                size="small"
-                sx={{ mt: 1 }}
-                label="PaddleOCR సర్వర్ URL (మీ సొంత సర్వర్)"
-                placeholder="https://your-paddleocr-server.example.com/ocr"
-                value={paddleUrl}
-                onChange={(e) => setPaddleUrl(e.target.value)}
-              />
-            )}
           </Box>
 
           {engine === "tesseract" && (
@@ -477,14 +424,7 @@ export default function TeluguOcrPage() {
               డౌన్‌లోడ్ అవుతుంది, తర్వాత బ్రౌజర్‌లో కాషె అవుతుంది.
             </Alert>
           )}
-          {engine === "paddleocr" && (
-            <Alert severity="warning">
-              ⚠️ PaddleOCR బ్రౌజర్‌లో నేరుగా నడవదు — పైన ఉన్న డిఫాల్ట్ URL (<code>/api/paddleocr</code>)
-              ఈ ప్రాజెక్ట్‌లోనే ఉన్న Python సర్వర్‌లెస్ ఫంక్షన్‌ను సూచిస్తుంది (Vercel ఇప్పుడు Python
-              ఫంక్షన్లకు మద్దతు ఇస్తుంది). GPU లేకపోవడం వల్ల ఇది Tesseract/HTR కంటే నెమ్మదిగా ఉంటుంది.
-              మీకు వేరే సర్వర్ ఉంటే ఆ URL ఇక్కడ మార్చవచ్చు.
-            </Alert>
-          )}
+
 
           <FileUploadComponent file={file} onFileChange={onFileChange} loading={loading} />
 
@@ -567,28 +507,6 @@ export default function TeluguOcrPage() {
               <AccordionDetails><Typography variant="body2">Hugging Face మోడల్స్‌ను ONNX రూపంలో బ్రౌజర్‌లోనే నడిపే లైబ్రరీ. చేతిరాత, అసాధారణ ఫాంట్లకు Tesseract కంటే మెరుగ్గా పనిచేస్తుంది. మొదటిసారి పెద్ద మోడల్ (~280MB) డౌన్‌లోడ్ అవుతుంది, తర్వాత కాషె నుండి వేగంగా పనిచేస్తుంది.</Typography></AccordionDetails>
             </Accordion>
 
-            <Typography variant="subtitle2" color="warning.main" sx={{ mt: 2 }}>
-              ⚙️ సొంత సర్వర్ అవసరం (ఈ పేజీలో ఐచ్ఛికం)
-            </Typography>
-
-            <Accordion disableGutters>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}><Typography fontWeight={600}>PaddleOCR / PaddleOCR-VL (Apache 2.0)</Typography></AccordionSummary>
-              <AccordionDetails>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Baidu తయారు చేసిన శక్తివంతమైన OCR టూల్‌కిట్ — 100+ భాషలు, టేబుల్స్/ఫార్ములాలతో సహా
-                  సంక్లిష్ట డాక్యుమెంట్లను బాగా అర్థం చేసుకుంటుంది. కానీ ఇది Python + PaddlePaddle
-                  framework మీద ఆధారపడి ఉంటుంది కాబట్టి బ్రౌజర్‌లో నేరుగా నడవదు — GPU సర్వర్ మీద హోస్ట్
-                  చేయాలి.
-                </Typography>
-                <Typography variant="body2" sx={{ fontFamily: "monospace", fontSize: 12, bgcolor: "#f5f5f5", p: 1, borderRadius: 1 }}>
-                  {`from paddleocr import PaddleOCR
-ocr = PaddleOCR(lang="te")
-# FastAPI/Flask ద్వారా HTTP endpoint గా exposed చేసి,
-# ఆ URL ను ఈ పేజీలో "PaddleOCR సర్వర్ URL" ఫీల్డ్‌లో పెట్టండి.`}
-                </Typography>
-              </AccordionDetails>
-            </Accordion>
-
             <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }}>
               📚 ఇతర ఓపెన్ సోర్స్ ఇంజన్లు (సూచన కోసం మాత్రమే — ఇక్కడ వైర్ చేయలేదు)
             </Typography>
@@ -625,9 +543,8 @@ ocr = PaddleOCR(lang="te")
 
             <Divider sx={{ my: 2 }} />
             <Typography variant="caption" color="text.secondary">
-              గమనిక: ✅ గుర్తు ఉన్న రెండు ఇంజన్లు మాత్రమే ఎలాంటి సెటప్ లేకుండా ప్రతి వినియోగదారుకూ వెంటనే
-              పనిచేస్తాయి. PaddleOCR మీరు సొంతంగా సర్వర్ సెటప్ చేస్తేనే పనిచేస్తుంది. మిగతావి ప్రస్తుతానికి
-              సూచన కోసం మాత్రమే.
+              గమనిక: ✅ గుర్తు ఉన్న రెండు ఇంజన్లు ఎలాంటి అదనపు సర్వర్ సెటప్ లేకుండా బ్రౌజర్‌లోనే పనిచేస్తాయి.
+              మిగతావి ప్రస్తుతానికి సూచన కోసం మాత్రమే.
             </Typography>
           </Box>
         </Stack>

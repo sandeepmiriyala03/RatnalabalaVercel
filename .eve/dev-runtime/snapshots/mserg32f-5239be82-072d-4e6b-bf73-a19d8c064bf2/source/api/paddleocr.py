@@ -1,26 +1,6 @@
 # api/paddleocr.py
 #
-# A Vercel Python serverless function (auto-detected at /api/paddleocr
-# because it lives under /api). Runs PaddleOCR CPU inference and
-# returns { "text": "..." } as JSON — matches what runPaddleOCR() in
-# page.tsx already expects.
-#
-# HONEST CONSTRAINTS, read before deploying:
-#   1. No GPU here — Vercel Functions are CPU-only. PaddleOCR will work,
-#      but each request is slower than a real GPU deployment (roughly
-#      1-4 seconds for a small image on typical Vercel CPU, more for
-#      larger images — test with your actual documents).
-#   2. Python bundle limit is 500MB uncompressed on the standard plan
-#      (5GB on Fluid Compute if enabled). PaddleOCR + paddlepaddle +
-#      opencv-python + their transitive deps is a LOT — this is why
-#      requirements.txt below uses the lightweight "mobile" detection/
-#      recognition models and paddlepaddle's CPU-only wheel, not the
-#      full server models. If deployment still fails with a bundle-size
-#      error, that's Vercel telling you it doesn't fit — the real fix at
-#      that point is hosting this on a small VPS/container instead.
-#   3. Cold starts: the first request after a period of inactivity has
-#      to load the model from disk, which adds a few extra seconds.
-#      Subsequent requests to a "warm" function instance are faster.
+
 
 import base64
 import json
