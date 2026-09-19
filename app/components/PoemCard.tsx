@@ -2,28 +2,30 @@
 
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-  Box, Typography, Card, CardContent, Divider,
+  Box, Typography, Card, CardContent,
   Button, Stack, Collapse, TextField,
   Select, MenuItem, FormControl, InputLabel,
-  Slider, LinearProgress, CircularProgress,
+  Slider, CircularProgress,
   alpha, useTheme,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
 import VolumeUpRoundedIcon        from "@mui/icons-material/VolumeUpRounded";
 import VolumeDownRoundedIcon      from "@mui/icons-material/VolumeDownRounded";
-import MovieRoundedIcon           from "@mui/icons-material/MovieRounded";
 import AutoAwesomeRoundedIcon     from "@mui/icons-material/AutoAwesomeRounded";
 import ExpandMoreRoundedIcon      from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon      from "@mui/icons-material/ExpandLessRounded";
 import TuneRoundedIcon            from "@mui/icons-material/TuneRounded";
 import QuestionAnswerRoundedIcon  from "@mui/icons-material/QuestionAnswerRounded";
 import SendRoundedIcon            from "@mui/icons-material/SendRounded";
+import ContentCopyRoundedIcon     from "@mui/icons-material/ContentCopyRounded";
+import CheckRoundedIcon           from "@mui/icons-material/CheckRounded";
+import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
 
 /* ------------------------------------------------------------------ */
-/* Poster (exported image / video) — colours must stay light & fixed   */
+/* Poster (shared as an image) — colours must stay light & fixed      */
 /* ------------------------------------------------------------------ */
 
 const POSTER_COLOR = {
@@ -124,8 +126,8 @@ async function askPoemAI(
 
 /* ------------------------------------------------------------------ */
 /* Shared helpers (duplicated in PoemCardNew.tsx on purpose — the two  */
-/* card components are separate self-contained files, so "వినండి",     */
-/* the video export and the AI tools panel narrate the same text)      */
+/* card components are separate self-contained files, so "వినండి"      */
+/* narrates the same text in both)                                     */
 /* ------------------------------------------------------------------ */
 
 // Title, poem content and, when an author is known, a closing credit line.
@@ -181,6 +183,80 @@ function SpeakingBars() {
   );
 }
 
+type SpeakTarget = "poem" | "answer";
+
+// Voice + music pickers. Rendered both in the collapsed "స్వరం, సంగీతం" settings
+// and under the AI answer. Both copies are wired to the SAME state, so changing
+// one instantly updates the other.
+function VoiceMusicFields({
+  idPrefix,
+  voiceChoice,
+  musicChoice,
+  musicVolume,
+  onVoiceChange,
+  onMusicChange,
+  onVolumeChange,
+}: {
+  idPrefix: string;
+  voiceChoice: VoiceOption;
+  musicChoice: MusicOption;
+  musicVolume: number;
+  onVoiceChange: (e: SelectChangeEvent<VoiceOption>) => void;
+  onMusicChange: (e: SelectChangeEvent<MusicOption>) => void;
+  onVolumeChange: (volume: number) => void;
+}) {
+  return (
+    <>
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+        <FormControl size="small" fullWidth>
+          <InputLabel id={`${idPrefix}-voice-label`}>స్వరం</InputLabel>
+          <Select
+            labelId={`${idPrefix}-voice-label`}
+            label="స్వరం"
+            value={voiceChoice}
+            onChange={onVoiceChange}
+          >
+            {(Object.keys(VOICE_LABELS) as VoiceOption[]).map((v) => (
+              <MenuItem key={v} value={v}>{VOICE_LABELS[v]}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" fullWidth>
+          <InputLabel id={`${idPrefix}-music-label`}>నేపథ్య సంగీతం</InputLabel>
+          <Select
+            labelId={`${idPrefix}-music-label`}
+            label="నేపథ్య సంగీతం"
+            value={musicChoice}
+            onChange={onMusicChange}
+          >
+            {(Object.keys(MUSIC_TRACKS) as MusicOption[]).map((m) => (
+              <MenuItem key={m} value={m}>{MUSIC_TRACKS[m].label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
+
+      {musicChoice !== "none" && (
+        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1.5, px: 0.5 }}>
+          <VolumeDownRoundedIcon sx={{ fontSize: 20, color: "text.secondary" }} />
+          <Slider
+            size="small"
+            aria-label="సంగీతం వాల్యూమ్"
+            value={musicVolume}
+            min={0}
+            max={0.5}
+            step={0.02}
+            onChange={(_, v) => onVolumeChange(v as number)}
+            sx={{ color: "#2d6a4f" }}
+          />
+          <VolumeUpRoundedIcon sx={{ fontSize: 20, color: "text.secondary" }} />
+        </Stack>
+      )}
+    </>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
@@ -222,8 +298,6 @@ export default function PoemCard({
   const poemRef          = useRef<HTMLDivElement>(null);
   const audioElRef       = useRef<HTMLAudioElement | null>(null);
   const bgMusicElRef     = useRef<HTMLAudioElement | null>(null);
-  const videoRecorderRef = useRef<MediaRecorder | null>(null);
-  const videoAudioCtxRef = useRef<AudioContext | null>(null);
 
   // Bumped on every play / stop so a slow TTS response can't start playing
   // after the reader already pressed "ఆపండి".
@@ -238,6 +312,8 @@ export default function PoemCard({
   const [aiAnswer,     setAiAnswer]     = useState<string | null>(null);
   const [aiError,      setAiError]      = useState<string | null>(null);
   const [aiLoading,    setAiLoading]    = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // poem.collection wins over the prop (see Props). The AI button shows on
   // every poem that has text — file-based poems are looked up by
@@ -261,17 +337,15 @@ export default function PoemCard({
     setAiAnswer(null);
     setAiError(null);
     setAiLoading(false);
+    setCopied(false);
   }, [poem.slug, poem.filename, collection]);
 
   const [isSpeaking,   setIsSpeaking]   = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [speakingTarget, setSpeakingTarget] = useState<SpeakTarget | null>(null);
   const [voiceChoice,  setVoiceChoice]  = useState<VoiceOption>("mohan");
   const [musicChoice,  setMusicChoice]  = useState<MusicOption>("guitar");
   const [musicVolume,  setMusicVolume]  = useState(BG_MUSIC_VOLUME_DEFAULT);
-
-  const [isRenderingVideo, setIsRenderingVideo] = useState(false);
-  const [videoStatus, setVideoStatus] = useState<string | null>(null);
-  const [videoError,  setVideoError]  = useState<string | null>(null);
 
   const authorText = Array.isArray(authors) ? authors.join(", ") : authors;
 
@@ -332,13 +406,20 @@ export default function PoemCard({
     });
   };
 
-  const handleSpeak = async () => {
+  const handleSpeak = async (target: SpeakTarget = "poem") => {
+    const text = target === "answer" ? (aiAnswer ?? "") : voiceText;
+    if (!text.trim()) return;
+
+    // Starting one narration stops the other (poem <-> answer).
+    handleStop();
+
     const session = ++speakSessionRef.current;
+    setSpeakingTarget(target);
     setIsSpeaking(true);
     setIsGenerating(true);
 
     try {
-      const blob = await fetchTtsAudio(voiceText, voiceChoice);
+      const blob = await fetchTtsAudio(text, voiceChoice);
       if (session !== speakSessionRef.current) return; // stopped while loading
 
       const audioUrl = URL.createObjectURL(blob);
@@ -348,6 +429,7 @@ export default function PoemCard({
 
       audio.onended = () => {
         setIsSpeaking(false);
+        setSpeakingTarget(null);
         URL.revokeObjectURL(audioUrl);
         audioElRef.current = null;
         stopBgMusic();
@@ -358,7 +440,7 @@ export default function PoemCard({
         audioElRef.current = null;
         stopBgMusic();
         browserSpeechActiveRef.current = true;
-        speak(voiceText);
+        speak(text);
       };
 
       startBgMusicIfEnabled();
@@ -368,10 +450,11 @@ export default function PoemCard({
       setIsGenerating(false);
       startBgMusicIfEnabled();
       browserSpeechActiveRef.current = true;
-      speak(voiceText);
+      speak(text);
       clearFallbackTimer();
       fallbackTimerRef.current = setTimeout(() => {
         setIsSpeaking(false);
+        setSpeakingTarget(null);
         stopBgMusic();
         browserSpeechActiveRef.current = false;
       }, 60_000);
@@ -382,6 +465,7 @@ export default function PoemCard({
     speakSessionRef.current += 1;
     clearFallbackTimer();
     setIsSpeaking(false);
+    setSpeakingTarget(null);
     setIsGenerating(false);
 
     if (audioElRef.current) {
@@ -400,6 +484,7 @@ export default function PoemCard({
     return () => {
       speakSessionRef.current += 1;
       if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
       audioElRef.current?.pause();
       bgMusicElRef.current?.pause();
       if (browserSpeechActiveRef.current) stopSpeech();
@@ -430,15 +515,24 @@ export default function PoemCard({
     }
   };
 
+  const handleVolumeChange = (vol: number) => {
+    setMusicVolume(vol);
+    if (bgMusicElRef.current) bgMusicElRef.current.volume = vol;
+  };
+
   /* ---------------------------- ask AI ---------------------------- */
 
   const handleAskAI = async () => {
     const trimmed = aiQuestion.trim();
     if (!trimmed) return;
 
+    // A new question replaces the answer, so stop its narration.
+    if (speakingTarget === "answer") handleStop();
+
     setAiLoading(true);
     setAiError(null);
     setAiAnswer(null);
+    setCopied(false);
 
     try {
       const answer = await askPoemAI(trimmed, {
@@ -455,127 +549,52 @@ export default function PoemCard({
     }
   };
 
+  /* ---------------------- copy / share the AI answer ---------------------- */
+
+  // Copy the answer text exactly as shown.
+  const handleCopyAnswer = async () => {
+    if (!aiAnswer) return;
+
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(aiAnswer);
+      ok = true;
+    } catch {
+      // Fallback for older browsers / non-secure contexts.
+      const ta = document.createElement("textarea");
+      ta.value = aiAnswer;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { ok = document.execCommand("copy"); } catch { ok = false; }
+      document.body.removeChild(ta);
+    }
+
+    if (!ok) return;
+    setCopied(true);
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Share on WhatsApp: poem title + answer + site link, in the person's own
+  // WhatsApp (app on phones, WhatsApp Web on desktop).
+  const handleShareWhatsApp = () => {
+    if (!aiAnswer) return;
+    const text = `${poem.title}\n\n${aiAnswer}\n\n${SITE_URL}`;
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(text)}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
   const handleQuestionKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // Enter submits, Shift+Enter still allows a newline in the question.
     // (Enter that only confirms a Telugu keyboard composition is ignored.)
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       if (!aiLoading) handleAskAI();
-    }
-  };
-
-  /* ---------------------------- video ---------------------------- */
-
-  const handleDownloadVideo = async () => {
-    if (isRenderingVideo || !poemRef.current) return;
-
-    setIsRenderingVideo(true);
-    setVideoError(null);
-    setVideoStatus("పోస్టర్ తయారు చేస్తోంది…");
-
-    let audioCtx: AudioContext | null = null;
-    let narrationUrl: string | null = null;
-
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-
-      const captureCanvas = await html2canvas(poemRef.current, {
-        backgroundColor: POSTER_COLOR.bg,
-        useCORS: true,
-        scale: 2,
-        windowWidth: 900,
-      });
-
-      setVideoStatus("వాయిస్ తయారు చేస్తోంది…");
-
-      const narrationBlob = await fetchTtsAudio(voiceText, voiceChoice);
-      narrationUrl = URL.createObjectURL(narrationBlob);
-
-      const narrationEl = new Audio(narrationUrl);
-      narrationEl.crossOrigin = "anonymous";
-
-      const musicTrack = MUSIC_TRACKS[musicChoice];
-      const musicEl = musicTrack.src ? new Audio(musicTrack.src) : null;
-      if (musicEl) {
-        musicEl.loop = true;
-        musicEl.crossOrigin = "anonymous";
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        narrationEl.addEventListener("loadedmetadata", () => resolve(), { once: true });
-        narrationEl.addEventListener("error", () => reject(new Error("narration load failed")), { once: true });
-      });
-
-      audioCtx = new AudioContext();
-      videoAudioCtxRef.current = audioCtx;
-      const dest = audioCtx.createMediaStreamDestination();
-
-      const narrationSource = audioCtx.createMediaElementSource(narrationEl);
-      narrationSource.connect(dest);
-      narrationSource.connect(audioCtx.destination);
-
-      if (musicEl) {
-        const musicSource = audioCtx.createMediaElementSource(musicEl);
-        const musicGain = audioCtx.createGain();
-        musicGain.gain.value = musicVolume;
-        musicSource.connect(musicGain);
-        musicGain.connect(dest);
-        musicGain.connect(audioCtx.destination);
-      }
-
-      const videoStream = captureCanvas.captureStream(2);
-      const combinedStream = new MediaStream([
-        ...videoStream.getVideoTracks(),
-        ...dest.stream.getAudioTracks(),
-      ]);
-
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus"
-        : "video/webm";
-
-      const recorder = new MediaRecorder(combinedStream, { mimeType });
-      videoRecorderRef.current = recorder;
-      const chunks: Blob[] = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-
-      setVideoStatus("వీడియో రికార్డ్ అవుతోంది…");
-
-      await new Promise<void>((resolve, reject) => {
-        recorder.onstop = () => resolve();
-        recorder.onerror = () => reject(new Error("recording failed"));
-
-        recorder.start();
-        narrationEl.play().catch(reject);
-        musicEl?.play().catch(() => {});
-
-        narrationEl.onended = () => {
-          musicEl?.pause();
-          recorder.stop();
-        };
-      });
-
-      const videoBlob = new Blob(chunks, { type: "video/webm" });
-      const downloadUrl = URL.createObjectURL(videoBlob);
-      const cleanTitle = poem.title.trim().replace(/[\\/:*?"<>|]+/g, "").slice(0, 60) || "poem";
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = `${cleanTitle}.webm`;
-      link.click();
-      URL.revokeObjectURL(downloadUrl);
-
-      setVideoStatus(null);
-    } catch (err) {
-      console.error("Video export failed:", err);
-      setVideoError("వీడియో తయారు చేయడంలో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.");
-      setVideoStatus(null);
-    } finally {
-      if (narrationUrl) URL.revokeObjectURL(narrationUrl);
-      audioCtx?.close().catch(() => {});
-      videoAudioCtxRef.current = null;
-      videoRecorderRef.current = null;
-      setIsRenderingVideo(false);
     }
   };
 
@@ -588,11 +607,17 @@ export default function PoemCard({
     },
   };
 
-  const listenLabel = isGenerating ? "తయారవుతోంది…" : isSpeaking ? "ఆపండి" : "వినండి";
+  const anyBusy = isSpeaking || isGenerating;
+  const poemBusy = anyBusy && speakingTarget === "poem";
+  const poemGenerating = isGenerating && speakingTarget === "poem";
+  const answerBusy = anyBusy && speakingTarget === "answer";
+  const answerGenerating = isGenerating && speakingTarget === "answer";
 
-  const listenIcon = isGenerating
+  const listenLabel = poemGenerating ? "తయారవుతోంది…" : poemBusy ? "ఆపండి" : "వినండి";
+
+  const listenIcon = poemGenerating
     ? <CircularProgress size={18} color="inherit" thickness={5} />
-    : isSpeaking
+    : poemBusy
     ? <SpeakingBars />
     : <VolumeUpRoundedIcon />;
 
@@ -612,6 +637,30 @@ export default function PoemCard({
     transition: "background 0.15s, border-color 0.15s, transform 0.15s",
     ...focusRing,
   };
+
+  // Shared look for the two side-by-side action buttons (same size, same colour,
+  // stronger tint + ring while its panel is open).
+  const actionButtonSx = (open: boolean) => ({
+    ...quietButtonSx,
+    flex: 1,
+    minWidth: 0,
+    minHeight: 50,
+    px: { xs: 1, sm: 1.5 },
+    fontSize: { xs: "0.85rem", sm: "0.92rem" },
+    fontWeight: 700,
+    lineHeight: 1.3,
+    color: "secondary.main",
+    borderColor: alpha(theme.palette.secondary.main, open ? 0.8 : 0.45),
+    background: alpha(theme.palette.secondary.main, open ? 0.1 : 0.04),
+    boxShadow: open ? `0 0 0 3px ${alpha(theme.palette.secondary.main, 0.12)}` : "none",
+    "&:hover": {
+      borderColor: "secondary.main",
+      background: alpha(theme.palette.secondary.main, 0.09),
+    },
+    "& .MuiButton-startIcon": { marginLeft: 0, marginRight: { xs: 0.5, sm: 1 } },
+    // chevrons are hidden on phones to leave room for the Telugu label
+    "& .MuiButton-endIcon": { marginLeft: 0.5, display: { xs: "none", sm: "inherit" } },
+  });
 
   /* ----------------------------- render ----------------------------- */
 
@@ -633,7 +682,7 @@ export default function PoemCard({
         "&:last-child": { pb: { xs: "16px", sm: "20px" } },
       }}>
 
-        {/* ============ POSTER — captured for share image + video ============ */}
+        {/* ============ POSTER — captured by ShareButtons as an image ============ */}
         <Box ref={poemRef} data-poster-root lang="te" sx={{
           textAlign: "center",
           bgcolor: POSTER_COLOR.bg,
@@ -778,12 +827,12 @@ export default function PoemCard({
           {/* 1 — Primary: listen + share */}
           <Stack direction="row" spacing={1} alignItems="stretch">
             <Button
-              onClick={isSpeaking || isGenerating ? handleStop : handleSpeak}
+              onClick={poemBusy ? handleStop : () => handleSpeak("poem")}
               disabled={!ready}
               variant="contained"
               disableElevation
               startIcon={listenIcon}
-              aria-label={isSpeaking || isGenerating ? "ఆపండి" : "పద్యం వినండి"}
+              aria-label={poemBusy ? "ఆపండి" : "పద్యం వినండి"}
               sx={{
                 flex: 1,
                 borderRadius: "12px",
@@ -791,17 +840,17 @@ export default function PoemCard({
                 textTransform: "none",
                 fontWeight: 700,
                 fontSize: "1rem",
-                background: isSpeaking || isGenerating
+                background: poemBusy
                   ? alpha(theme.palette.error.main, 0.1)
                   : !ready
                   ? undefined
                   : `linear-gradient(135deg, ${FOREST_MID}, ${FOREST_GREEN})`,
-                color: isSpeaking || isGenerating ? "error.main" : "white",
-                border: isSpeaking || isGenerating
+                color: poemBusy ? "error.main" : "white",
+                border: poemBusy
                   ? `1.5px solid ${alpha(theme.palette.error.main, 0.3)}`
                   : "1.5px solid transparent",
                 "&:hover": {
-                  background: isSpeaking || isGenerating
+                  background: poemBusy
                     ? alpha(theme.palette.error.main, 0.16)
                     : `linear-gradient(135deg, ${FOREST_MID}, ${FOREST_GREEN})`,
                 },
@@ -860,120 +909,70 @@ export default function PoemCard({
                 border: `1px solid ${alpha(theme.palette.divider, 0.18)}`,
               }}
             >
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
-                <FormControl size="small" fullWidth>
-                  <InputLabel id={`${uid}-voice-label`}>స్వరం</InputLabel>
-                  <Select
-                    labelId={`${uid}-voice-label`}
-                    label="స్వరం"
-                    value={voiceChoice}
-                    onChange={handleVoiceChange}
-                  >
-                    {(Object.keys(VOICE_LABELS) as VoiceOption[]).map((v) => (
-                      <MenuItem key={v} value={v}>{VOICE_LABELS[v]}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl size="small" fullWidth>
-                  <InputLabel id={`${uid}-music-label`}>నేపథ్య సంగీతం</InputLabel>
-                  <Select
-                    labelId={`${uid}-music-label`}
-                    label="నేపథ్య సంగీతం"
-                    value={musicChoice}
-                    onChange={handleMusicChange}
-                  >
-                    {(Object.keys(MUSIC_TRACKS) as MusicOption[]).map((m) => (
-                      <MenuItem key={m} value={m}>{MUSIC_TRACKS[m].label}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Stack>
-
-              {musicChoice !== "none" && (
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mt: 1.5, px: 0.5 }}>
-                  <VolumeDownRoundedIcon sx={{ fontSize: 20, color: "text.secondary" }} />
-                  <Slider
-                    size="small"
-                    aria-label="సంగీతం వాల్యూమ్"
-                    value={musicVolume}
-                    min={0}
-                    max={0.5}
-                    step={0.02}
-                    onChange={(_, v) => {
-                      const vol = v as number;
-                      setMusicVolume(vol);
-                      if (bgMusicElRef.current) bgMusicElRef.current.volume = vol;
-                    }}
-                    sx={{ color: FOREST_MID }}
-                  />
-                  <VolumeUpRoundedIcon sx={{ fontSize: 20, color: "text.secondary" }} />
-                </Stack>
-              )}
+              <VoiceMusicFields
+                idPrefix={`${uid}-set`}
+                voiceChoice={voiceChoice}
+                musicChoice={musicChoice}
+                musicVolume={musicVolume}
+                onVoiceChange={handleVoiceChange}
+                onMusicChange={handleMusicChange}
+                onVolumeChange={handleVolumeChange}
+              />
             </Box>
           </Collapse>
 
-          {/* 3 — Secondary actions */}
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          {/* 3 — two actions side by side: ధ్వనికళాదర్శి మాల (left) · భావాలమాల (right).
+              Opening one closes the other so only one panel is ever open. */}
+          <Stack direction="row" spacing={1}>
             <Button
-              onClick={handleDownloadVideo}
-              disabled={isRenderingVideo}
+              onClick={() => { setToolsOpen((v) => !v); setAiOpen(false); }}
+              aria-expanded={toolsOpen}
+              aria-controls={`${uid}-tools`}
               variant="outlined"
-              fullWidth
-              startIcon={
-                isRenderingVideo
-                  ? <CircularProgress size={16} color="inherit" thickness={5} />
-                  : <MovieRoundedIcon fontSize="small" />
-              }
-              sx={quietButtonSx}
+              color="secondary"
+              startIcon={<AutoAwesomeRoundedIcon fontSize="small" />}
+              endIcon={toolsOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
+              sx={actionButtonSx(toolsOpen)}
             >
-              {isRenderingVideo ? (videoStatus ?? "వీడియో తయారవుతోంది…") : "వీడియోగా డౌన్‌లోడ్ చేయండి"}
+              ధ్వనికళాదర్శి మాల
             </Button>
 
             {canAskAI && (
               <Button
-                onClick={() => setAiOpen((v) => !v)}
+                onClick={() => { setAiOpen((v) => !v); setToolsOpen(false); }}
                 aria-expanded={aiOpen}
                 aria-controls={`${uid}-ai`}
                 variant="outlined"
-                fullWidth
                 color="secondary"
                 startIcon={<QuestionAnswerRoundedIcon fontSize="small" />}
                 endIcon={aiOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
-                sx={{
-                  ...quietButtonSx,
-                  color: "secondary.main",
-                  borderColor: alpha(theme.palette.secondary.main, 0.5),
-                  "&:hover": {
-                    borderColor: "secondary.main",
-                    background: alpha(theme.palette.secondary.main, 0.06),
-                  },
-                }}
+                sx={actionButtonSx(aiOpen)}
               >
-                పద్యం గురించి అడగండి (AI)
+                భావాలమాల
               </Button>
             )}
           </Stack>
 
-          {isRenderingVideo && (
-            <LinearProgress
-              aria-label="వీడియో తయారీ"
+          {/* ధ్వనికళాదర్శి మాల panel */}
+          <Collapse in={toolsOpen} timeout={320} unmountOnExit>
+            <Box
+              id={`${uid}-tools`}
               sx={{
-                borderRadius: 4,
-                height: 4,
-                bgcolor: alpha(FOREST_GREEN, 0.1),
-                "& .MuiLinearProgress-bar": { bgcolor: FOREST_MID },
+                p: { xs: 1.5, sm: 2 },
+                borderRadius: "12px",
+                background: alpha(theme.palette.background.default, 0.6),
+                border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
               }}
-            />
-          )}
-
-          <Box role="status" aria-live="polite">
-            {videoError && (
-              <Typography variant="caption" color="error" sx={{ px: 0.5, display: "block" }}>
-                {videoError}
-              </Typography>
-            )}
-          </Box>
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+                <AutoAwesomeRoundedIcon sx={{ fontSize: 15, color: "secondary.main" }} />
+                <Typography sx={{ fontSize: 13, fontWeight: 700, color: "secondary.main" }}>
+                  ధ్వనికళాదర్శి మాల
+                </Typography>
+              </Box>
+              <TeluguVoice initialText={voiceText} />
+            </Box>
+          </Collapse>
 
           {/* AI Panel — Q&A assistant about this poem */}
           {canAskAI && (
@@ -989,8 +988,8 @@ export default function PoemCard({
               >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
                   <QuestionAnswerRoundedIcon sx={{ fontSize: 15, color: "secondary.main" }} />
-                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: "secondary.main" }}>
-                    పద్యం గురించి అడగండి
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: "secondary.main" }}>
+                    భావాలమాల
                   </Typography>
                 </Box>
 
@@ -1040,51 +1039,84 @@ export default function PoemCard({
                     <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
                       {aiAnswer}
                     </Typography>
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={answerBusy ? handleStop : () => handleSpeak("answer")}
+                        aria-label={answerBusy ? "సమాధానం చదవడం ఆపండి" : "సమాధానం వినండి"}
+                        startIcon={
+                          answerGenerating
+                            ? <CircularProgress size={14} color="inherit" thickness={5} />
+                            : answerBusy
+                            ? <SpeakingBars />
+                            : <VolumeUpRoundedIcon fontSize="small" />
+                        }
+                        sx={{
+                          textTransform: "none",
+                          fontWeight: 600,
+                          borderRadius: "8px",
+                          minHeight: 36,
+                          color: answerBusy ? "error.main" : FOREST_GREEN,
+                          borderColor: answerBusy ? alpha(theme.palette.error.main, 0.5) : alpha(FOREST_GREEN, 0.4),
+                          background: answerBusy ? alpha(theme.palette.error.main, 0.06) : "transparent",
+                          "&:hover": {
+                            borderColor: answerBusy ? "error.main" : FOREST_GREEN,
+                            background: answerBusy ? alpha(theme.palette.error.main, 0.1) : alpha(FOREST_GREEN, 0.06),
+                          },
+                        }}
+                      >
+                        {answerGenerating ? "తయారవుతోంది…" : answerBusy ? "ఆపండి" : "వినండి"}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="secondary"
+                        onClick={handleCopyAnswer}
+                        aria-live="polite"
+                        startIcon={copied ? <CheckRoundedIcon fontSize="small" /> : <ContentCopyRoundedIcon fontSize="small" />}
+                        sx={{ textTransform: "none", fontWeight: 600, borderRadius: "8px", minHeight: 36 }}
+                      >
+                        {copied ? "కాపీ అయింది" : "కాపీ"}
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={handleShareWhatsApp}
+                        startIcon={<WhatsAppIcon fontSize="small" />}
+                        sx={{
+                          textTransform: "none",
+                          fontWeight: 600,
+                          borderRadius: "8px",
+                          minHeight: 36,
+                          color: "#128C7E",
+                          borderColor: alpha("#25D366", 0.6),
+                          "&:hover": { borderColor: "#25D366", background: alpha("#25D366", 0.08) },
+                        }}
+                      >
+                        వాట్సాప్
+                      </Button>
+                    </Stack>
+
+                    <Box sx={{ mt: 1.5, pt: 1.5, borderTop: `1px dashed ${alpha(theme.palette.divider, 0.6)}` }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+                        స్వరం, సంగీతం
+                      </Typography>
+                      <VoiceMusicFields
+                        idPrefix={`${uid}-ans`}
+                        voiceChoice={voiceChoice}
+                        musicChoice={musicChoice}
+                        musicVolume={musicVolume}
+                        onVoiceChange={handleVoiceChange}
+                        onMusicChange={handleMusicChange}
+                        onVolumeChange={handleVolumeChange}
+                      />
+                    </Box>
                   </Box>
                 )}
               </Box>
             </Collapse>
           )}
-
-          {/* 4 — Extra tool, kept quiet */}
-          <Divider sx={{ borderStyle: "dashed", borderColor: alpha(theme.palette.divider, 0.5) }} />
-
-          <Button
-            onClick={() => setToolsOpen((v) => !v)}
-            aria-expanded={toolsOpen}
-            aria-controls={`${uid}-tools`}
-            variant="text"
-            color="secondary"
-            fullWidth
-            startIcon={<AutoAwesomeRoundedIcon fontSize="small" />}
-            endIcon={toolsOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
-            sx={{
-              justifyContent: "space-between",
-              borderRadius: "10px",
-              px: 1.5,
-              minHeight: 44,
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: "0.9rem",
-              ...focusRing,
-            }}
-          >
-            <span>ధ్వనికళాదర్శి మాల</span>
-          </Button>
-
-          <Collapse in={toolsOpen} timeout={240} unmountOnExit>
-            <Box
-              id={`${uid}-tools`}
-              sx={{
-                p: { xs: 1.5, sm: 2 },
-                borderRadius: "12px",
-                background: alpha(theme.palette.background.default, 0.6),
-                border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
-              }}
-            >
-              <TeluguVoice initialText={voiceText} />
-            </Box>
-          </Collapse>
 
         </Stack>
       </CardContent>
