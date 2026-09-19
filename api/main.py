@@ -7,10 +7,14 @@ import json
 import os
 import re
 import time
+
+import psycopg
+
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+from psycopg.rows import dict_row
 
 import httpx
 
@@ -18,9 +22,23 @@ import httpx
 # CONFIG
 # ═══════════════════════════════════════════════════════════════
 
+# PostgreSQL connection string is read from an environment variable.
+# Keep the real database password OUT of source code.
+#
+# Local / Vercel environment variable:
+#   NEON_DATABASE_URL=postgresql://...
+#
+# This is the Python equivalent of reading a connection string
+# from IConfiguration / appsettings in ASP.NET Core.
+RATNALABALA_DATABASE_URL = os.environ.get(
+    "NEON_DATABASE_URL",
+    ""
+)
+
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_MODEL = "openai/gpt-oss-120b"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+
 
 SARVAM_API_URL = "https://api.sarvam.ai/text-to-speech"
 SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
@@ -490,6 +508,94 @@ def handle_extract_news(url: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════
+# POETRY - POSTGRESQL
+# ═══════════════════════════════════════════════════════════════
+
+# This method reads poems from the PostgreSQL database.
+#
+# It is intentionally separate from the API endpoint so that the
+# database logic is easy to understand and can later be moved to
+# common_db.py / repository.py when we refactor the project.
+def get_poems_from_db() -> list[dict]:
+
+    # -----------------------------------------------------------
+    # 1. Make sure the database connection string is available.
+    # -----------------------------------------------------------
+    if not RATNALABALA_DATABASE_URL:
+        raise RuntimeError(
+            "NEON_DATABASE_URL is not configured."
+        )
+
+    # -----------------------------------------------------------
+    # 2. SQL query.
+    #
+    # p  = poems table
+    # pt = poets table
+    #
+    # We join poems with poets using poet_id.
+    # Only active poems and active poets are returned.
+    # -----------------------------------------------------------
+    query = """
+        SELECT
+            p.poem_id,
+            p.title,
+            p.content,
+            p.poet_id,
+            pt.poet_name,
+            p.created_by,
+            p.created_date,
+            p.modified_by,
+            p.modified_date,
+            p.is_active
+
+        FROM poems p
+
+        INNER JOIN poets pt
+            ON p.poet_id = pt.poet_id
+
+        WHERE p.is_active = TRUE
+          AND pt.is_active = TRUE
+
+        ORDER BY p.poem_id;
+    """
+
+    # -----------------------------------------------------------
+    # 3. Open PostgreSQL connection.
+    #
+    # psycopg is the Python PostgreSQL driver.
+    # dict_row makes each database row behave like a dictionary.
+    # -----------------------------------------------------------
+    with psycopg.connect(
+        RATNALABALA_DATABASE_URL,
+        row_factory=dict_row
+    ) as conn:
+
+        # -------------------------------------------------------
+        # 4. Create a cursor.
+        # A cursor executes SQL against PostgreSQL.
+        # -------------------------------------------------------
+        with conn.cursor() as cursor:
+
+            # ---------------------------------------------------
+            # 5. Execute the SQL query.
+            # ---------------------------------------------------
+            cursor.execute(query)
+
+            # ---------------------------------------------------
+            # 6. Read all rows returned by PostgreSQL.
+            # ---------------------------------------------------
+            rows = cursor.fetchall()
+
+    # -----------------------------------------------------------
+    # 7. Convert PostgreSQL rows into normal Python dictionaries.
+    # -----------------------------------------------------------
+    return [
+        dict(row)
+        for row in rows
+    ]
+
+
+# ═══════════════════════════════════════════════════════════════
 # POETRY (markdown files under content/)
 # ═══════════════════════════════════════════════════════════════
 
@@ -716,6 +822,38 @@ class handler(BaseHTTPRequestHandler):
                 self._send_json(status, payload)
                 return
 
+            # ====================================================
+            # MIRA POEMS - POSTGRESQL
+            # ====================================================
+            #
+            # Next.js calls: /api/mirapoems
+            #
+            # The database method returns detailed records.
+            # Here we convert them into the SAME JSON shape that
+            # the existing Next.js PoemList expects:
+            #
+            # {
+            #     "poem title": "poem content"
+            # }
+            #
+            if endpoint == "mirapoems":
+                poems = get_poems_from_db()
+
+                response = {
+                    poem["title"]: poem["content"]
+                    for poem in poems
+                }
+
+                self._send_json(200, response)
+                return
+
+
+            # ====================================================
+            # EXISTING MARKDOWN POEMS
+            # ====================================================
+            # Keep this endpoint for the existing parts of the
+            # application until we completely migrate from Markdown.
+            #
             if endpoint == "poems":
                 collection = query.get("collection", [""])[0]
                 poems = get_poems(collection)
@@ -733,7 +871,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             self._send_json(400, {
-                "error": "Missing or invalid ?endpoint= param. Use 'fonts', 'font_agent', 'poems', or 'poem'."
+                "error": "Missing or invalid ?endpoint= param. Use 'fonts', 'font_agent', 'mirapoems', 'poems', or 'poem'."
             })
 
         except FileNotFoundError as e:
@@ -849,6 +987,10 @@ if __name__ == "__main__":
     print(f"Starting local test server at http://localhost:{port}")
     print(f"Try: http://localhost:{port}/api/main?endpoint=fonts")
     print(f"Try: http://localhost:{port}/api/main?endpoint=font_agent&content_type=sloka&width=390")
+    # New PostgreSQL-backed Mira poems endpoint
+    print(f"Try: http://localhost:{port}/api/main?endpoint=mirapoems")
+
+    # Existing Markdown-based poems endpoint
     print(f"Try: http://localhost:{port}/api/main?endpoint=poems&collection=Sumati")
     print(f"Try: http://localhost:{port}/api/main?endpoint=poem&collection=Sumati&filename=001.md")
     print(f"POST http://localhost:{port}/api/main?endpoint=svara        body: {{\"text\": \"...\", \"voice\": \"male\"}}")
@@ -856,3 +998,55 @@ if __name__ == "__main__":
     print(f"POST http://localhost:{port}/api/main?endpoint=extract-news body: {{\"url\": \"https://...\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=poem-ai      body: {{\"collection\": \"Sumati\", \"filename\": \"001.md\", \"question\": \"...\"}}")
     HTTPServer(("localhost", port), handler).serve_forever()
+
+
+def get_poems_from_db() -> list[dict]:
+
+    # Make sure database connection string exists
+    if not RATNALABALA_DATABASE_URL:
+        raise RuntimeError(
+            "NEON_DATABASE_URL is not configured."
+        )
+
+    # SQL query
+    query = """
+        SELECT
+            p.poem_id,
+            p.title,
+            p.content,
+            p.poet_id,
+            pt.poet_name,
+            p.created_by,
+            p.created_date,
+            p.modified_by,
+            p.modified_date,
+            p.is_active
+
+        FROM poems p
+
+        INNER JOIN poets pt
+            ON p.poet_id = pt.poet_id
+
+        WHERE p.is_active = TRUE
+          AND pt.is_active = TRUE
+
+        ORDER BY p.poem_id;
+    """
+    
+    # Open PostgreSQL connection
+    with psycopg.connect(
+        RATNALABALA_DATABASE_URL,
+        row_factory=dict_row
+    ) as conn:
+
+        # Create cursor
+        with conn.cursor() as cursor:
+
+            # Execute SQL
+            cursor.execute(query)
+
+            # Read all rows
+            rows = cursor.fetchall()
+
+    # Convert rows to normal Python dictionaries
+    return [dict(row) for row in rows]

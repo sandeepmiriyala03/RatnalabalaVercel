@@ -1,56 +1,81 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
 
 /**
  * API: /api/poems
- * Returns:
+ *
+ * This Next.js API route now gets poems from
+ * the Python backend instead of reading Markdown files.
+ *
+ * Response:
+ *
  * {
  *   "అసహనం": "poem content...",
  *   "దయ": "poem content...",
  *   ...
  * }
  */
+
 export async function GET() {
   try {
-    const poemsDir = path.join(process.cwd(), "mirapoems");
+    // --------------------------------------------------------
+    // Call Python main.py
+    //
+    // Python endpoint:
+    //
+    // /api/main?endpoint=mirapoems
+    //
+    // Python will get the poems from PostgreSQL.
+    // --------------------------------------------------------
 
-    // Safety check
-    if (!fs.existsSync(poemsDir)) {
+    const apiUrl =
+      `${process.env.NEXT_PUBLIC_API_BASE_URL || ""}` +
+      `/api/main?endpoint=mirapoems`;
+
+    const response = await fetch(apiUrl, {
+      cache: "no-store",
+    });
+
+    // --------------------------------------------------------
+    // Check whether Python API returned an error
+    // --------------------------------------------------------
+
+    if (!response.ok) {
       return NextResponse.json(
-        { error: "Poems directory not found" },
-        { status: 404 }
+        {
+          error: "Failed to load poems from Python API",
+        },
+        {
+          status: response.status,
+        }
       );
     }
 
-    const files = fs.readdirSync(poemsDir);
+    // --------------------------------------------------------
+    // Read JSON returned by Python
+    // --------------------------------------------------------
 
-    const poemsMap: Record<string, string> = {};
+    const poems = await response.json();
 
-    files.forEach((file) => {
-      if (!file.endsWith(".md")) return;
+    // --------------------------------------------------------
+    // Return poems to your React component
+    // --------------------------------------------------------
 
-      const filePath = path.join(poemsDir, file);
-      const fileContent = fs.readFileSync(filePath, "utf-8");
+    return NextResponse.json(poems);
 
-      const { data, content } = matter(fileContent);
-
-      const title = (data.title || "").trim();
-      const poemText = content.trim();
-
-      // Only valid entries
-      if (title && poemText) {
-        poemsMap[title] = poemText;
-      }
-    });
-
-    return NextResponse.json(poemsMap);
   } catch (error) {
-    console.error("Error loading poems:", error);
+
+    console.error(
+      "Error loading poems:",
+      error
+    );
+
     return NextResponse.json(
-      { error: "Failed to load poems" },
-      { status: 500 }
+      {
+        error: "Failed to load poems",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
