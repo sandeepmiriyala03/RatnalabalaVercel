@@ -1,38 +1,5 @@
 # api/requirements.txt
-#
-# Shared across ALL flat Python functions directly in this folder
-# (any api/*.py file — there are no more per-folder isolated functions
-# as of this file; api/main.py was flattened from api/main/index.py so
-# its filename could literally be "main.py", which only works as a
-# flat file — Vercel's folder-based routing (api/main/ -> /api/main)
-# specifically requires the entry file to be named index.py, so a
-# folder containing main.py would have routed to /api/main/main
-# instead):
-#
-#   requests     — used by build_index.py, sametalu_agent.py,
-#                  aksharamala.py, aksharamala_similar.py
-#   vercel_blob  — used by build_index.py (embeddings storage)
-#   langgraph, langchain-core — used by sametalu_agent.py only
-#   Pillow       — used by trace_check.py (renders + compares
-#                  handwriting trace against actual letter shape,
-#                  no LLM involved)
-#   httpx, edge-tts, beautifulsoup4 — used by main.py only (fonts,
-#                  font_agent, svara TTS, news TTS, article extraction)
-#
-# aksharamala.py, aksharamala_similar.py — requests only, rest stdlib
-# pronunciation_check.py — stdlib only (difflib), no extra dependency
-#
-# ⚠️ Size history: this file previously accumulated gradio_client (an
-# old main.py dependency, removed after that function switched to a
-# plain httpx call) and an entire separate FastAPI/edge-tts/bs4/pypdf
-# stack (from a since-merged, now-deleted tts-news function) by
-# mistake — that combination alone was enough to push flat functions
-# here past Vercel's 225MB per-function limit. httpx + edge-tts +
-# beautifulsoup4 alone are far lighter (roughly 10-20MB combined) and
-# should not reproduce that problem, but if bundle size ever becomes
-# an issue again, main.py is the first place to check, and moving it
-# back to its own folder (api/main/index.py, with its own
-# requirements.txt) is the fix — see git history for that version.
+
 
 requests==2.32.3
 vercel_blob==0.2.3
@@ -42,3 +9,4 @@ Pillow==10.4.0
 httpx
 edge-tts
 beautifulsoup4
+psycopg[binary]
