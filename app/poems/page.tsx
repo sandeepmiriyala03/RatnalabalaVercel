@@ -47,29 +47,27 @@ export default function PoemList() {
 useEffect(() => {
   const load = async () => {
     try {
-      const [mdResponse, dbResponse] = await Promise.all([
-        fetch("/api/poems"),
-        fetch("/api/getpoems?poet_id=1"),
-      ]);
+      // const [mdResponse, dbResponse] = await Promise.all([
+      //   fetch("/api/poems"),
+      //   fetch("/api/getpoems?poet_id=1"),
+      // ]);
 
-      if (!mdResponse.ok) {
-        throw new Error("Failed to load MD poems");
-      }
+      const dbResponse = await fetch("/api/getpoems?poet_id=1");
 
       if (!dbResponse.ok) {
         throw new Error("Failed to load database poems");
       }
 
-      const mdData: Record<string, string> = await mdResponse.json();
+      // const mdData: Record<string, string> = await mdResponse.json();
       const dbData: Record<string, string> = await dbResponse.json();
 
-      const mdPoems: Poem[] = Object.entries(mdData).map(
-        ([title, content]) => ({
-          title,
-          content,
-          slug: `md-${title}`,
-        })
-      );
+      // const mdPoems: Poem[] = Object.entries(mdData).map(
+      //   ([title, content]) => ({
+      //     title,
+      //     content,
+      //     slug: `md-${title}`,
+      //   })
+      // );
 
       const dbPoems: Poem[] = Object.entries(dbData).map(
         ([title, content]) => ({
@@ -79,9 +77,9 @@ useEffect(() => {
         })
       );
 
-      const allPoems = [...mdPoems, ...dbPoems];
+      // const allPoems = [...mdPoems, ...dbPoems];
 
-      setPoems(allPoems);
+      setPoems(dbPoems);
     } catch (error) {
       console.error("Error loading poems:", error);
       setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
