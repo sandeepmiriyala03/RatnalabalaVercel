@@ -3,7 +3,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Box, Typography, Card, CardContent, Divider,
-  Button, Stack, Collapse,
+  Button, Stack, Collapse, TextField,
   Select, MenuItem, FormControl, InputLabel,
   Slider, LinearProgress, CircularProgress,
   alpha, useTheme,
@@ -17,6 +17,7 @@ import ExpandMoreRoundedIcon      from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon      from "@mui/icons-material/ExpandLessRounded";
 import TuneRoundedIcon            from "@mui/icons-material/TuneRounded";
 import QuestionAnswerRoundedIcon  from "@mui/icons-material/QuestionAnswerRounded";
+import SendRoundedIcon            from "@mui/icons-material/SendRounded";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
@@ -85,6 +86,37 @@ const MUSIC_TRACKS: Record<MusicOption, { label: string; short: string; src: str
 const BG_MUSIC_VOLUME_DEFAULT = 0.18;
 
 /* ------------------------------------------------------------------ */
+/* Ask-AI — same feature as PoemCardNew.tsx                            */
+/* ------------------------------------------------------------------ */
+
+// Auto-filled into the question box the moment the AI panel opens, so
+// the person can just tap send immediately. They can still edit or clear it.
+const DEFAULT_AI_QUESTION = "ఈ పద్యం భావం ఏమిటి? సులభంగా వివరించండి.";
+
+// Asks the Groq-backed poem-ai endpoint a question about THIS specific
+// poem. The backend reads the real .md file itself (by collection +
+// filename), so the answer is grounded in the actual poem text on disk.
+async function askPoemAI(
+  collection: string,
+  filename: string,
+  question: string
+): Promise<string> {
+  const res = await fetch("/api/main?endpoint=poem-ai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ collection, filename, question }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "సమాధానం రాలేదు — మళ్ళీ ప్రయత్నించండి.");
+  }
+
+  return data.answer as string;
+}
+
+/* ------------------------------------------------------------------ */
 /* Shared helpers (duplicated in PoemCardNew.tsx on purpose — the two  */
 /* card components are separate self-contained files, so "వినండి",     */
 /* the video export and the AI tools panel narrate the same text)      */
@@ -147,7 +179,17 @@ function SpeakingBars() {
 /* Component                                                           */
 /* ------------------------------------------------------------------ */
 
-interface Poem { title: string; content: string; slug?: string; }
+interface Poem {
+  title: string;
+  content: string;
+  slug?: string;
+  // Needed for the AI assistant — /api/main?endpoint=poem-ai reads the
+  // poem's actual .md file server-side by collection + filename, so both
+  // must be present. Optional: the AI button simply doesn't render if
+  // either is missing.
+  filename?: string;
+  collection?: string;
+}
 
 type Props = {
   poem:        Poem;
@@ -156,19 +198,18 @@ type Props = {
   stopSpeech:  () => void;
   authors?:    string | string[];
   poetryName?: string;
-  /**
-   * Optional "ask AI about this poem" panel. When provided, a
-   * "పద్యం గురించి అడగండి" button appears and toggles this node open.
-   * When omitted, the button is not rendered at all.
-   */
-  aiPanel?:    React.ReactNode;
+  /** Optional — if every poem in this list is from the SAME collection, pass
+   * it once here instead of on every poem. poem.collection wins if both
+   * are present (correct for merged "all collections" views). */
+  collection?: string;
 };
 
 const FOREST_GREEN = "#1a3d2b";
 const FOREST_MID   = "#2d6a4f";
 
 export default function PoemCard({
-  poem, ready, speak, stopSpeech, authors, poetryName, aiPanel,
+  poem, ready, speak, stopSpeech, authors, poetryName,
+  collection: collectionProp,
 }: Props) {
   const theme = useTheme();
   const uid   = useId();
@@ -188,6 +229,33 @@ export default function PoemCard({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen,    setToolsOpen]    = useState(false);
   const [aiOpen,       setAiOpen]       = useState(false);
+  const [aiQuestion,   setAiQuestion]   = useState("");
+  const [aiAnswer,     setAiAnswer]     = useState<string | null>(null);
+  const [aiError,      setAiError]      = useState<string | null>(null);
+  const [aiLoading,    setAiLoading]    = useState(false);
+
+  // poem.collection wins over the prop (see Props). The AI button and panel
+  // only render when this poem can actually be looked up by collection + filename.
+  const collection = poem.collection ?? collectionProp;
+  const canAskAI = Boolean(collection && poem.filename);
+
+  // The moment the AI panel opens, drop the default question into the box.
+  // Only fills when empty, so reopening never stomps on the person's own text.
+  useEffect(() => {
+    if (aiOpen && canAskAI && !aiQuestion.trim()) {
+      setAiQuestion(DEFAULT_AI_QUESTION);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiOpen, canAskAI]);
+
+  // Reset the Q&A state when the poem changes, so a stale answer from a
+  // previous poem can never show under a new one.
+  useEffect(() => {
+    setAiQuestion("");
+    setAiAnswer(null);
+    setAiError(null);
+    setAiLoading(false);
+  }, [poem.slug, poem.filename, collection]);
 
   const [isSpeaking,   setIsSpeaking]   = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -353,6 +421,35 @@ export default function PoemCard({
         bgMusicElRef.current = bg;
         bg.play().catch(() => { bgMusicElRef.current = null; });
       }
+    }
+  };
+
+  /* ---------------------------- ask AI ---------------------------- */
+
+  const handleAskAI = async () => {
+    const trimmed = aiQuestion.trim();
+    if (!trimmed || !collection || !poem.filename) return;
+
+    setAiLoading(true);
+    setAiError(null);
+    setAiAnswer(null);
+
+    try {
+      const answer = await askPoemAI(collection, poem.filename, trimmed);
+      setAiAnswer(answer);
+    } catch (err: any) {
+      setAiError(err.message || "ఏదో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleQuestionKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Enter submits, Shift+Enter still allows a newline in the question.
+    // (Enter that only confirms a Telugu keyboard composition is ignored.)
+    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      if (!aiLoading) handleAskAI();
     }
   };
 
@@ -822,18 +919,27 @@ export default function PoemCard({
               {isRenderingVideo ? (videoStatus ?? "వీడియో తయారవుతోంది…") : "వీడియోగా డౌన్‌లోడ్ చేయండి"}
             </Button>
 
-            {aiPanel && (
+            {canAskAI && (
               <Button
                 onClick={() => setAiOpen((v) => !v)}
                 aria-expanded={aiOpen}
                 aria-controls={`${uid}-ai`}
                 variant="outlined"
                 fullWidth
+                color="secondary"
                 startIcon={<QuestionAnswerRoundedIcon fontSize="small" />}
                 endIcon={aiOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
-                sx={quietButtonSx}
+                sx={{
+                  ...quietButtonSx,
+                  color: "secondary.main",
+                  borderColor: alpha(theme.palette.secondary.main, 0.5),
+                  "&:hover": {
+                    borderColor: "secondary.main",
+                    background: alpha(theme.palette.secondary.main, 0.06),
+                  },
+                }}
               >
-                పద్యం గురించి అడగండి
+                పద్యం గురించి అడగండి (AI)
               </Button>
             )}
           </Stack>
@@ -858,9 +964,74 @@ export default function PoemCard({
             )}
           </Box>
 
-          {aiPanel && (
-            <Collapse in={aiOpen} timeout={240} unmountOnExit>
-              <Box id={`${uid}-ai`}>{aiPanel}</Box>
+          {/* AI Panel — Q&A assistant about this poem */}
+          {canAskAI && (
+            <Collapse in={aiOpen} timeout={320} unmountOnExit>
+              <Box
+                id={`${uid}-ai`}
+                sx={{
+                  p: { xs: 1.5, sm: 2 },
+                  borderRadius: "12px",
+                  background: alpha(theme.palette.background.default, 0.6),
+                  border: `1px solid ${alpha(theme.palette.secondary.main, 0.2)}`,
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+                  <QuestionAnswerRoundedIcon sx={{ fontSize: 15, color: "secondary.main" }} />
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: "secondary.main" }}>
+                    పద్యం గురించి అడగండి
+                  </Typography>
+                </Box>
+
+                <Stack direction="row" spacing={1} alignItems="flex-start">
+                  <TextField
+                    fullWidth
+                    size="small"
+                    multiline
+                    maxRows={4}
+                    placeholder="ఈ పద్యం భావం ఏమిటి? ఏదైనా ప్రశ్న అడగండి…"
+                    value={aiQuestion}
+                    onChange={(e) => setAiQuestion(e.target.value)}
+                    onKeyDown={handleQuestionKeyDown}
+                    disabled={aiLoading}
+                  />
+                  <Button
+                    onClick={handleAskAI}
+                    disabled={aiLoading || !aiQuestion.trim()}
+                    variant="contained"
+                    color="secondary"
+                    sx={{ minWidth: 44, height: 40, px: 1.5 }}
+                    aria-label="ప్రశ్న పంపండి"
+                  >
+                    {aiLoading ? (
+                      <CircularProgress size={18} sx={{ color: "#fff" }} />
+                    ) : (
+                      <SendRoundedIcon fontSize="small" />
+                    )}
+                  </Button>
+                </Stack>
+
+                {aiError && (
+                  <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
+                    {aiError}
+                  </Typography>
+                )}
+
+                {aiAnswer && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      p: 1.5,
+                      borderRadius: "10px",
+                      background: alpha(theme.palette.secondary.main, 0.08),
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
+                      {aiAnswer}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
             </Collapse>
           )}
 
