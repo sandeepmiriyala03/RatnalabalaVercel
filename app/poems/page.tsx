@@ -42,45 +42,56 @@ export default function PoemList() {
   const [page,setPage] = useState(1);
   const [viewAll,setViewAll] = useState(false);
 
-  /* LOAD POEMS */
+  /* LOAD POEMS - MD + PostgreSQL */
 
-  useEffect(()=>{
+useEffect(() => {
+  const load = async () => {
+    try {
+      const [mdResponse, dbResponse] = await Promise.all([
+        fetch("/api/poems"),
+        fetch("/api/getpoems?poet_id=1"),
+      ]);
 
-    const load = async()=>{
-
-      try{
-
-        const res = await fetch("/api/poems");
-
-        if(!res.ok) throw new Error();
-
-        const data:Record<string,string> = await res.json();
-
-        const arr:Poem[] = Object.entries(data).map(
-          ([title,content])=>({
-            title,
-            content,
-            slug:title
-          })
-        );
-
-        setPoems(arr);
-
-      }catch{
-
-        setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
-
-      }finally{
-
-        setLoading(false);
-
+      if (!mdResponse.ok) {
+        throw new Error("Failed to load MD poems");
       }
 
-    };
+      if (!dbResponse.ok) {
+        throw new Error("Failed to load database poems");
+      }
 
-    load();
+      const mdData: Record<string, string> = await mdResponse.json();
+      const dbData: Record<string, string> = await dbResponse.json();
 
-  },[]);
+      const mdPoems: Poem[] = Object.entries(mdData).map(
+        ([title, content]) => ({
+          title,
+          content,
+          slug: `md-${title}`,
+        })
+      );
+
+      const dbPoems: Poem[] = Object.entries(dbData).map(
+        ([title, content]) => ({
+          title,
+          content,
+          slug: `db-${title}`,
+        })
+      );
+
+      const allPoems = [...mdPoems, ...dbPoems];
+
+      setPoems(allPoems);
+    } catch (error) {
+      console.error("Error loading poems:", error);
+      setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  load();
+}, []);
 
   /* SPEECH */
 
@@ -252,11 +263,6 @@ export default function PoemList() {
         poetryName={POETRY_NAME}/>
       
             )}
-
-      {/* Download every currently-filtered poem's VOICE audio as one
-          ZIP — same idea as the poster ZIP above, but each file is a
-          real live /api/tts call, not a free instant browser capture,
-          so this one is genuinely slower for large collections. */}
       {!loading && !error && filtered.length > 0 && (
 
         <DownloadAllVoices poems={filtered} />

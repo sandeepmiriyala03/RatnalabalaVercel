@@ -36,49 +36,35 @@ const PoemList: React.FC = () => {
   const [viewAll, setViewAll] = useState(false);
 
   /* 📥 Load poems + voices */
-  useEffect(() => {
-    const fetchPoems = async () => {
-      try {
-        const res = await fetch("/api/mirapoems");
-        if (!res.ok) throw new Error();
+useEffect(() => {
+  const fetchPoems = async () => {
+    try {
+      const res = await fetch("/api/getpoems?poet_id=2");
 
-        const data: Record<string, string> = await res.json();
+      if (!res.ok) throw new Error();
 
-        const poemArray: Poem[] = Object.entries(data).map(
-          ([title, content]) => ({
-            title,
-            content,
-            slug: title,
-          })
-        );
+      const data: Record<string, string> = await res.json();
 
-        setPoems(poemArray);
-      } catch {
-        setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
-      } finally {
-        setLoading(false);
-      }
-    };
+      const poemArray: Poem[] = Object.entries(data).map(
+        ([title, content]) => ({
+          title,
+          content,
+          slug: title,
+        })
+      );
 
-    fetchPoems();
-
-    if ("speechSynthesis" in window) {
-      const loadVoices = () => {
-        const v = window.speechSynthesis.getVoices();
-        if (v.length) {
-          setVoices(v);
-          setReady(true);
-        }
-      };
-      loadVoices();
-      window.speechSynthesis.onvoiceschanged = loadVoices;
+      setPoems(poemArray);
+    } catch {
+      setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    return () => {
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.onvoiceschanged = null;
-    };
-  }, []);
+  fetchPoems();
+
+  // rest of your existing code...
+}, []);
 
   /* 🔊 Speech helpers */
   const stopSpeech = () => window.speechSynthesis.cancel();
