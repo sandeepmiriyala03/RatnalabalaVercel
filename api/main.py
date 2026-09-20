@@ -5,14 +5,14 @@ import json
 import os
 import re
 import time
-
 import psycopg
-
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from psycopg.rows import dict_row
+from langchain_groq import ChatGroq
+from langchain_core.messages import SystemMessage, HumanMessage
 
 import httpx
 
@@ -35,8 +35,6 @@ RATNALABALA_DATABASE_URL = os.environ.get(
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 GROQ_MODEL = "openai/gpt-oss-120b"
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-
 
 SARVAM_API_URL = "https://api.sarvam.ai/text-to-speech"
 SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
@@ -51,6 +49,13 @@ MAX_CHUNK_CHARS = 500
 
 # api/main.py -> parent (api/) -> parent (project root) -> content/
 POEMS_ROOT = Path(__file__).resolve().parent.parent / "content"
+
+# Reusable system prompt for the LangChain Chat Model.
+GROQ_SYSTEM_PROMPT = (
+    "ఇచ్చిన పద్యానికి సరళమైన భావం మాత్రమే చెప్పాలి. "
+    "చిన్నగా, స్పష్టంగా, సహజమైన తెలుగులో చెప్పాలి. "
+    "పద్యానికి బయట విషయాలు కల్పించకూడదు."
+)
 
 
 def log(message: str):
@@ -236,23 +241,7 @@ def _call_svara_once(text: str, gender: str) -> tuple[bytes, str]:
 
 
 def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
-    """Generate Telugu speech via the Svara Space, retrying on
-    transient failures.
-
-    FIX: this previously made exactly ONE attempt with no retry at
-    all — unlike extract-news, which already retries because we
-    directly observed external services (there, a news site; here, a
-    free Hugging Face Zero-GPU Space) failing inconsistently rather
-    than permanently. Free Spaces sleep after inactivity and can take
-    20-60+ seconds to wake; if the Space happened to be asleep, this
-    call failed outright with zero chance to recover — matching
-    exactly the "works sometimes, not others" symptom. Now retries up
-    to 3 times with backoff, but only for transient failure types
-    (httpx timeouts/connection errors, or our own "no complete event"
-    signal) — a genuine Space-reported error (ValueError above) is NOT
-    retried, since repeating the identical request won't fix a real
-    error.
-    """
+   
     normalized = (voice_choice or "").strip().lower()
     gender = "Female" if normalized in ("female", "f", "woman") else "Male"
     log(f"[Svara TTS] received voice_choice={voice_choice!r} -> gender={gender}")
@@ -718,46 +707,42 @@ def strip_markdown(text: str) -> str:
     text = re.sub(r"(?m)^#{1,6}[ \t]+", "", text)
     return text.strip()
 
+# ═══════════════════════════════════════════════════════════════
+# LANGCHAIN CONCEPT #1 — MODELS / CHAT MODELS
+# ═══════════════════════════════════════════════════════════════
+#
+# Chat Model = LangChain's interface to an existing AI model.
+# We are not creating or training an AI model here.
+#
+# GROQ_API_KEY : authentication / access
+# GROQ_MODEL   : selects the AI model
+# ChatGroq     : LangChain integration for Groq
+# ainvoke()    : sends messages and returns the model response
+#
+# The system prompt is stored separately as GROQ_SYSTEM_PROMPT.
+# This keeps reusable model instructions separate from each user's prompt.
+
+chat_model = ChatGroq(
+    model=GROQ_MODEL,
+    temperature=0.2,
+)
+
 
 async def call_groq(prompt: str) -> str:
+    """Call the LangChain Chat Model with system + user messages."""
+
     if not GROQ_API_KEY:
         raise RuntimeError("GROQ_API_KEY is not configured on the server.")
-    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": GROQ_MODEL,
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "నీవు Ratnalabala తెలుగు సాహిత్య సహాయకుడివి. "
-                    "ఇచ్చిన పద్యాన్ని ఆధారంగా చేసుకుని వినియోగదారు ప్రశ్నకు "
-                    "సులభమైన, స్పష్టమైన తెలుగులో సమాధానం ఇవ్వాలి. "
-                    "పద్యానికి సంబంధం లేని విషయాలను ఊహించి చెప్పకూడదు. "
-                    "ముఖ్యం: మార్క్‌డౌన్ ఫార్మాటింగ్ (**, *, -, #, ఇలాంటివి) "
-                    "అస్సలు వాడవద్దు — ఈ సమాధానం ఒక సాదా టెక్స్ట్ యాప్‌లో "
-                    "కనిపిస్తుంది, అక్కడ ** గుర్తులు బోల్డ్‌గా కాకుండా "
-                    "అక్షరాలుగానే కనిపిస్తాయి. బోల్డ్ చేయాల్సిన చోట కేవలం "
-                    "వాక్యాన్ని నొక్కి చెప్పండి, గుర్తులు వాడకండి. జాబితా "
-                    "కావాలంటే '1)', '2)' వంటి సాదా సంఖ్యలు వాడండి, '-' "
-                    "గుర్తులు వాడకండి."
-                ),
-            },
-            {"role": "user", "content": prompt},
-        ],
-        "temperature": 0.2,
-    }
-    async with httpx.AsyncClient(timeout=45) as client:
-        response = await client.post(GROQ_API_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        data = response.json()
 
-    choices = data.get("choices", [])
-    if not choices:
-        raise RuntimeError("Groq returned no response.")
-    answer = choices[0].get("message", {}).get("content", "")
-    if not answer:
-        raise RuntimeError("Groq returned an empty answer.")
-    return strip_markdown(answer.strip())
+    messages = [
+        SystemMessage(content=GROQ_SYSTEM_PROMPT),
+        HumanMessage(content=prompt),
+    ]
+
+    # LangChain handles provider-specific HTTP and response parsing.
+    response = await chat_model.ainvoke(messages)
+
+    return strip_markdown(response.content.strip())
 
 
 async def explain_poem(
@@ -1052,3 +1037,4 @@ if __name__ == "__main__":
     print(f"POST http://localhost:{port}/api/main?endpoint=poem-ai      body: {{\"collection\": \"Sumati\", \"filename\": \"001.md\", \"question\": \"...\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=poem-ai      body: {{\"title\": \"గర్వం\", \"content\": \"...\", \"question\": \"...\"}}   (database poem)")
     HTTPServer(("localhost", port), handler).serve_forever()
+

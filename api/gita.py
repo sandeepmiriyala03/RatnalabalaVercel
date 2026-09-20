@@ -1,48 +1,5 @@
 """
 api/gita.py
-
-Single-file Vercel Python serverless function (native Vercel runtime —
-BaseHTTPRequestHandler, matching aksharamala.py / trace_check.py /
-sametalu_agent.py conventions in this project — no Flask/FastAPI).
-
-Fetches the Bhagavad Gita (Telugu) dataset live from Hugging Face's
-Datasets Server API and returns it grouped by chapter — no local
-storage, just a live pass-through with in-memory caching.
-
-Dataset: ajaysadhu02/bhagavath-gita-telugu
-Columns (confirmed): sloka, verse, chapter, audio, w2w_meaning,
-                      te_translation, commentry
-
-Confirmed live behavior (verified against production output):
-  - `audio` is a real playable MP3 URL (e.g. holy-bhagavad-gita.org),
-    not a filename/placeholder — safe to use directly in <audio src=...>
-  - `meaning` still includes the raw "BG 1.1:\r\n" style prefix —
-    intentionally left unstripped here; stripped client-side by
-    stripVerseReference() in GeetaListByChapter.tsx
-  - `commentary` sometimes contains stray tab characters from the
-    source dataset — cleaned up below (the one change from the
-    previously confirmed-working version)
-
-FIX (verse ordering bug): `verses.sort(key=lambda v: v["verse"])` had
-no type coercion. If the Hugging Face API ever returns `verse` as a
-string (JSON APIs commonly don't preserve numeric types strictly), a
-plain string sort orders "1", "10", "11", "2", "3"... instead of
-1, 2, 3...10, 11 — verse 10 would render immediately after verse 1.
-Reading through a chapter in that order looks exactly like "the next
-verse's content showing up in the current verse's slot." Fixed by
-forcing `int()` at sort time regardless of the API's actual type.
-NOTE: this is a verified, reproducible code-level fix — but if the
-dataset ITSELF has a row where sloka/translation/commentary are
-already misaligned with each other (a known risk with scraped
-datasets), that would be an upstream data issue this fix can't catch;
-see chat notes for how to isolate which case you're actually hitting.
-
-DEPLOYED ENDPOINTS (https://ratnalabala.vercel.app):
-    GET /api/gita?chapter=1        → single chapter, verses sorted
-    GET /api/gita?chapter=all      → every chapter, as a list
-    GET /api/gita                  → same as ?chapter=all
-
-Dependencies: requests only (already in api/requirements.txt).
 """
 
 import json
