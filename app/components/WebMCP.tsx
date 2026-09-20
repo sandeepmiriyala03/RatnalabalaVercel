@@ -71,46 +71,46 @@ export default function WebMCP() {
     const registerTool = async () => {
       try {
         await modelContext.registerTool(
-          {
-            name: "get_poem_list",
+  {
+    name: "get_poem_list",
 
-            title: "Get Ratnalabala Poem List",
+    title: "Get Ratnalabala Poem List",
 
-            description:
-              "Returns the list of Telugu poems currently available in Ratnalabala.",
+    description:
+      "Returns the list of Telugu poems currently available in Ratnalabala.",
 
-            inputSchema: {
-              type: "object",
-              properties: {},
-              additionalProperties: false,
-            },
+    inputSchema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
 
-            annotations: {
-              readOnlyHint: true,
-            },
+    annotations: {
+      readOnlyHint: true,
+    },
 
-            execute: async () => {
-              const response = await fetch(
-                "/api/getpoems?poet_id=1"
-              );
+    execute: async () => {
+      const response = await fetch(
+        "/api/getpoems?poet_id=1"
+      );
 
-              if (!response.ok) {
-                throw new Error("Failed to load poems.");
-              }
+      if (!response.ok) {
+        throw new Error("Failed to load poems.");
+      }
 
-              const poems = await response.json();
+      const poems = await response.json();
 
-              return {
-                success: true,
-                count: Object.keys(poems).length,
-                poems: Object.keys(poems),
-              };
-            },
-          },
-          {
-            signal: controller.signal,
-          }
-        );
+      return {
+        success: true,
+        count: Object.keys(poems).length,
+        poems: Object.keys(poems),
+      };
+    },
+  },
+  {
+    signal: controller.signal,
+  }
+);
 
         setReady(true);
 
