@@ -6,7 +6,6 @@ import {
   Typography,
   TextField,
   Button,
-  Pagination,
   Stack,
   InputAdornment,
   IconButton,
@@ -15,17 +14,23 @@ import {
   Collapse,
   Skeleton,
   Alert,
+  CircularProgress,
   alpha,
   useTheme,
-  useMediaQuery,
 } from "@mui/material";
 
-import SearchRoundedIcon     from "@mui/icons-material/SearchRounded";
-import ClearRoundedIcon      from "@mui/icons-material/ClearRounded";
-import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
-import DownloadRoundedIcon   from "@mui/icons-material/DownloadRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import SearchRoundedIcon         from "@mui/icons-material/SearchRounded";
+import ClearRoundedIcon          from "@mui/icons-material/ClearRounded";
+import HeadphonesRoundedIcon     from "@mui/icons-material/HeadphonesRounded";
+import DownloadRoundedIcon       from "@mui/icons-material/DownloadRounded";
+import ExpandMoreRoundedIcon     from "@mui/icons-material/ExpandMoreRounded";
+import ExpandLessRoundedIcon     from "@mui/icons-material/ExpandLessRounded";
+import ArrowBackRoundedIcon      from "@mui/icons-material/ArrowBackRounded";
+import ArrowForwardRoundedIcon   from "@mui/icons-material/ArrowForwardRounded";
+import HelpOutlineRoundedIcon    from "@mui/icons-material/HelpOutlineRounded";
+import VolumeUpRoundedIcon       from "@mui/icons-material/VolumeUpRounded";
+import QuestionAnswerRoundedIcon from "@mui/icons-material/QuestionAnswerRounded";
+import WhatsAppIcon              from "@mui/icons-material/WhatsApp";
 
 import PoemCard from "@/app/components/PoemCard";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";
@@ -46,9 +51,141 @@ const ITEMS_PER_PAGE = 3;
 const POETRY_NAME = "రత్నాలబాల — పద్యాలవాల — భావాలమాల";
 const AUTHORS: string | string[] = "మిరియాల వెంకటరత్నం";
 
+/* ------------------------------------------------------------------ */
+/* POEMS CACHE — the API is hit ONCE, then the poems are kept          */
+/* ------------------------------------------------------------------ */
+//
+// 1. First visit          → one request to /api/getpoems, saved in the browser.
+// 2. Next page / reload    → poems come from the saved copy. NO server call.
+// 3. After CACHE_TTL_MS    → the next visit fetches fresh poems once, again.
+// 4. Server / internet down → an older saved copy is shown instead of an error.
+//
+// Change CACHE_TTL_MS to keep poems longer or shorter (poems rarely change).
+// Bump CACHE_VERSION if the shape of the API response ever changes.
+
+const POET_ID = 1;
+const CACHE_VERSION = "v1";
+const CACHE_KEY = `ratnalabala:poems:${CACHE_VERSION}:poet-${POET_ID}`;
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+type PoemMap = Record<string, string>;
+type CacheEntry = { savedAt: number; data: PoemMap };
+
+// Survives page-to-page navigation inside the same tab (no storage read needed).
+let memoryCache: CacheEntry | null = null;
+// If two components ask at the same moment (or React dev mode mounts twice),
+// they share ONE request instead of sending two.
+let inflight: Promise<PoemMap> | null = null;
+
+function readStored(): CacheEntry | null {
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      typeof parsed?.savedAt === "number" &&
+      parsed.data &&
+      typeof parsed.data === "object"
+    ) {
+      return parsed as CacheEntry;
+    }
+  } catch {
+    // corrupted value or storage blocked — behave as "nothing saved"
+  }
+  return null;
+}
+
+function writeStored(entry: CacheEntry) {
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    // storage full / blocked (private mode) — memory cache still works
+  }
+}
+
+function isFresh(entry: CacheEntry | null): entry is CacheEntry {
+  return !!entry && Date.now() - entry.savedAt < CACHE_TTL_MS;
+}
+
+async function getPoems(forceRefresh = false): Promise<PoemMap> {
+  if (!forceRefresh) {
+    if (isFresh(memoryCache)) return memoryCache.data;
+
+    const stored = readStored();
+    if (isFresh(stored)) {
+      memoryCache = stored;
+      return stored.data;
+    }
+  }
+
+  if (inflight) return inflight;
+
+  inflight = (async () => {
+    try {
+      const response = await fetch(`/api/getpoems?poet_id=${POET_ID}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to load database poems");
+      }
+
+      const data: PoemMap = await response.json();
+
+      // Never cache an empty answer — it would hide poems added a minute later.
+      if (data && Object.keys(data).length > 0) {
+        const entry = { savedAt: Date.now(), data };
+        memoryCache = entry;
+        writeStored(entry);
+      }
+
+      return data;
+    } catch (err) {
+      // Server or internet problem: an old saved copy beats an error message.
+      const stale = memoryCache ?? readStored();
+      if (stale) return stale.data;
+      throw err;
+    } finally {
+      inflight = null;
+    }
+  })();
+
+  return inflight;
+}
+
+/* ------------------------------------------------------------------ */
+/* HOW TO USE — short, simple Telugu                                   */
+/* ------------------------------------------------------------------ */
+
+const HELP_SEEN_KEY = "ratnalabala:help-seen";
+
+const HELP_STEPS: { icon: React.ReactNode; text: string }[] = [
+  {
+    icon: <SearchRoundedIcon />,
+    text: "పద్యం వెతకాలంటే, పైన ఉన్న గడిలో పద్యం పేరు రాయండి.",
+  },
+  {
+    icon: <VolumeUpRoundedIcon />,
+    text: "పద్యం వినాలంటే “వినండి” బటన్ నొక్కండి. ఆపాలంటే “ఆపండి” నొక్కండి.",
+  },
+  {
+    icon: <QuestionAnswerRoundedIcon />,
+    text: "పద్యం అర్థం తెలుసుకోవాలంటే “భావాలమాల” బటన్ నొక్కండి. తరువాత ➤ గుర్తు నొక్కండి. అర్థం కింద కనిపిస్తుంది. దాన్ని కూడా వినవచ్చు.",
+  },
+  {
+    icon: <WhatsAppIcon />,
+    text: "ఆ అర్థాన్ని మిత్రులకు పంపాలంటే “వాట్సాప్” బటన్ నొక్కండి.",
+  },
+  {
+    icon: <ArrowForwardRoundedIcon />,
+    text: "ఇంకా పద్యాలు చూడాలంటే కింద “ముందుకు” నొక్కండి. వెనక్కి వెళ్ళాలంటే “వెనుకకు” నొక్కండి.",
+  },
+  {
+    icon: <HeadphonesRoundedIcon />,
+    text: "పద్యాలన్నీ వరుసగా వినాలంటే “రేడియో” బటన్ నొక్కండి.",
+  },
+];
+
 export default function PoemList() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [poems, setPoems] = useState<Poem[]>([]);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -66,20 +203,28 @@ export default function PoemList() {
   // a time, and both start closed so the page opens on search + poems.
   const [openTool, setOpenTool] = useState<Tool | null>(null);
 
-  /* LOAD POEMS — PostgreSQL (poet_id = 1). The old .md source is disabled. */
+  // "ఈ పేజీ ఎలా వాడాలి?" — opens by itself on the very first visit only.
+  const [helpOpen, setHelpOpen] = useState(false);
 
-  const loadPoems = useCallback(async () => {
+  useEffect(() => {
+    try {
+      if (!window.localStorage.getItem(HELP_SEEN_KEY)) {
+        setHelpOpen(true);
+        window.localStorage.setItem(HELP_SEEN_KEY, "1");
+      }
+    } catch {
+      // storage blocked — help simply stays closed until the person opens it
+    }
+  }, []);
+
+  /* LOAD POEMS — PostgreSQL (poet_id = 1) through the cache above */
+
+  const loadPoems = useCallback(async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch("/api/getpoems?poet_id=1");
-
-      if (!response.ok) {
-        throw new Error("Failed to load database poems");
-      }
-
-      const data: Record<string, string> = await response.json();
+      const data = await getPoems(forceRefresh);
 
       setPoems(
         Object.entries(data).map(([title, content]) => ({
@@ -160,9 +305,6 @@ export default function PoemList() {
     page * itemsPerPage
   );
 
-  const rangeStart = filtered.length ? (page - 1) * itemsPerPage + 1 : 0;
-  const rangeEnd = Math.min(page * itemsPerPage, filtered.length);
-
   useEffect(() => {
     setPage(1);
     stopSpeech();
@@ -172,6 +314,16 @@ export default function PoemList() {
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
+
+  const goToPage = (next: number) => {
+    setPage(Math.min(Math.max(next, 1), totalPages));
+    stopSpeech();
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
 
   const hasPoems = !loading && !error && filtered.length > 0;
   const isEmpty = !loading && !error && filtered.length === 0;
@@ -202,6 +354,20 @@ export default function PoemList() {
     },
   });
 
+  const pagerButtonSx = {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 56,
+    borderRadius: "14px",
+    textTransform: "none" as const,
+    fontWeight: 700,
+    fontSize: { xs: "1.02rem", sm: "1.1rem" },
+    "&:focus-visible": {
+      outline: `3px solid ${theme.palette.primary.main}`,
+      outlineOffset: 2,
+    },
+  };
+
   const toggleTool = (tool: Tool) =>
     setOpenTool((current) => (current === tool ? null : tool));
 
@@ -215,7 +381,7 @@ export default function PoemList() {
     >
       {/* TITLE */}
 
-      <Box sx={{ textAlign: "center", mb: { xs: 2.5, sm: 3 } }}>
+      <Box sx={{ textAlign: "center", mb: { xs: 2, sm: 2.5 } }}>
         <Typography
           variant="h3"
           fontWeight={800}
@@ -238,6 +404,89 @@ export default function PoemList() {
           )}
         </Typography>
       </Box>
+
+      {/* HOW TO USE */}
+
+      <Button
+        fullWidth
+        onClick={() => setHelpOpen((v) => !v)}
+        aria-expanded={helpOpen}
+        aria-controls="poem-help"
+        startIcon={<HelpOutlineRoundedIcon />}
+        endIcon={helpOpen ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+        sx={{
+          justifyContent: "space-between",
+          minHeight: 52,
+          mb: 1.5,
+          borderRadius: "12px",
+          textTransform: "none",
+          fontWeight: 700,
+          fontSize: "1.02rem",
+          color: "primary.main",
+          background: alpha(theme.palette.primary.main, 0.06),
+          "&:hover": { background: alpha(theme.palette.primary.main, 0.1) },
+        }}
+      >
+        <Box component="span" sx={{ flex: 1, textAlign: "left", ml: 1 }}>
+          ఈ పేజీ ఎలా వాడాలి?
+        </Box>
+      </Button>
+
+      <Collapse in={helpOpen} timeout={300}>
+        <Box
+          id="poem-help"
+          sx={{
+            mb: 2,
+            p: { xs: 1.75, sm: 2.5 },
+            borderRadius: "14px",
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+            background: alpha(theme.palette.primary.main, 0.04),
+          }}
+        >
+          <Stack spacing={2}>
+            {HELP_STEPS.map((step, i) => (
+              <Stack key={i} direction="row" spacing={1.5} alignItems="flex-start">
+                <Box
+                  aria-hidden
+                  sx={{
+                    flex: "0 0 auto",
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "primary.main",
+                    background: alpha(theme.palette.primary.main, 0.12),
+                  }}
+                >
+                  {step.icon}
+                </Box>
+                <Typography sx={{ fontSize: "1.02rem", lineHeight: 1.8, pt: 0.25 }}>
+                  {step.text}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+
+          <Button
+            fullWidth
+            variant="contained"
+            disableElevation
+            onClick={() => setHelpOpen(false)}
+            sx={{
+              mt: 2.5,
+              minHeight: 52,
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: 700,
+              fontSize: "1.05rem",
+            }}
+          >
+            అర్థమైంది
+          </Button>
+        </Box>
+      </Collapse>
 
       {/* SEARCH + VIEW MODE */}
 
@@ -382,7 +631,22 @@ export default function PoemList() {
       <Box sx={{ mt: 3 }}>
         {loading && (
           <Stack spacing={2}>
-            {[0, 1, 2].map((i) => (
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="center"
+              spacing={1.5}
+              role="status"
+              aria-live="polite"
+              sx={{ py: 1 }}
+            >
+              <CircularProgress size={24} />
+              <Typography sx={{ fontWeight: 600 }}>
+                పద్యాలు లోడ్ అవుతున్నాయి… కొంచెం ఆగండి
+              </Typography>
+            </Stack>
+
+            {[0, 1].map((i) => (
               <Skeleton
                 key={i}
                 variant="rounded"
@@ -397,7 +661,11 @@ export default function PoemList() {
           <Alert
             severity="error"
             action={
-              <Button color="inherit" size="small" onClick={loadPoems}>
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => loadPoems(true)}
+              >
                 మళ్ళీ ప్రయత్నించండి
               </Button>
             }
@@ -440,27 +708,52 @@ export default function PoemList() {
           ))}
       </Box>
 
-      {/* PAGINATION */}
+      {/* PAGES — two big buttons and "పేజీ 2 / 12" in the middle */}
 
-      {hasPoems && !viewAll && filtered.length > ITEMS_PER_PAGE && (
-        <Stack alignItems="center" spacing={1} sx={{ mt: 3 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            siblingCount={isMobile ? 0 : 1}
-            onChange={(_, val) => {
-              setPage(val);
+      {hasPoems && !viewAll && totalPages > 1 && (
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1.5}
+          component="nav"
+          aria-label="పేజీలు"
+          sx={{ mt: 3 }}
+        >
+          <Button
+            variant="outlined"
+            onClick={() => goToPage(page - 1)}
+            disabled={page <= 1}
+            startIcon={<ArrowBackRoundedIcon />}
+            sx={pagerButtonSx}
+          >
+            వెనుకకు
+          </Button>
 
-              window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-              });
+          <Typography
+            role="status"
+            aria-live="polite"
+            sx={{
+              flex: "0 0 auto",
+              minWidth: 92,
+              textAlign: "center",
+              fontWeight: 700,
+              fontSize: { xs: "1rem", sm: "1.1rem" },
+              lineHeight: 1.4,
             }}
-          />
-
-          <Typography variant="caption" color="text.secondary">
-            పద్యాలు {rangeStart}–{rangeEnd} / {filtered.length}
+          >
+            పేజీ {page} / {totalPages}
           </Typography>
+
+          <Button
+            variant="contained"
+            disableElevation
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= totalPages}
+            endIcon={<ArrowForwardRoundedIcon />}
+            sx={pagerButtonSx}
+          >
+            ముందుకు
+          </Button>
         </Stack>
       )}
     </Box>
