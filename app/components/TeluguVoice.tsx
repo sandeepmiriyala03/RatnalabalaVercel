@@ -20,25 +20,17 @@ const MAX = 1000;
 // Krishnadevaraya's centuries-old, widely-quoted line celebrating Telugu.
 const CLOSING_LINE = "దేశ భాషలందు తెలుగు లెస్స";
 
-const PROFILES = {
-  mobile:    { W: 540,  H: 960,  fps: 30, label: "Mobile" },
-  whatsapp:  { W: 720,  H: 1280, fps: 30, label: "WhatsApp" },
-  instagram: { W: 720,  H: 1280, fps: 30, label: "Instagram" },
-  youtube:   { W: 1080, H: 1920, fps: 30, label: "YouTube" },
-  twitter:   { W: 720,  H: 1280, fps: 30, label: "X / Twitter" },
-} as const;
-type PK = keyof typeof PROFILES;
+// ONE fixed video size — vertical 720 × 1280 (9:16). It fills a phone screen and
+// is accepted by WhatsApp, Instagram and X, so the person has nothing to choose.
+const VIDEO = { W: 720, H: 1280, fps: 30 } as const;
 
-// Voice choice — same /api/tts contract as PoemCard.tsx and
-// PoemRadio.tsx (source: "edge" | "google" | "svara", voice: "male" |
-// "female"), extended here with the two Svara options.
-type VoiceOption = "mohan" | "shruti" | "google" | "svara-male" | "svara-female";
+// Voice choice — same three options and same /api/tts contract as
+// PoemCard.tsx and PoemRadio.tsx, so behavior is consistent app-wide.
+type VoiceOption = "mohan" | "shruti" | "google";
 const VOICE_LABELS: Record<VoiceOption, string> = {
   mohan: "🎙️ మగ స్వరం",
   shruti: "👩 స్త్రీ స్వరం",
   google: "🔊 Google TTS",
-  "svara-male": "🤖 Svara మగ",
-  "svara-female": "🤖 Svara స్త్రీ",
 };
 
 // Background music — same genre set used across the app.
@@ -134,38 +126,20 @@ const Ic = {
   ),
 };
 
-/* platform icons ──────────────────────────────────────────────── */
-const PlatformIcon = ({ k }: { k: PK }) => {
-  const icons: Record<PK, React.ReactNode> = {
-    mobile: <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="2" width="10" height="20" rx="2"/></svg>,
-    whatsapp: <svg width="13" height="13" viewBox="0 0 24 24" fill="#25D366"><path d="M17.5 2h-11A3.5 3.5 0 003 5.5v13A3.5 3.5 0 006.5 22h11a3.5 3.5 0 003.5-3.5v-13A3.5 3.5 0 0017.5 2z"/><path d="M12 7c-2.76 0-5 2.24-5 5 0 .89.24 1.73.65 2.45L7 17l2.64-.64A5 5 0 0012 17c2.76 0 5-2.24 5-5s-2.24-5-5-5zm2.5 7.27c-.1.28-.58.52-.8.54-.2.02-.21.15-1.33-.29a5.1 5.1 0 01-2.04-1.82c-.23-.32-.47-.85-.47-1.28 0-.43.19-.64.26-.73.07-.09.15-.11.2-.11h.14c.06 0 .13.01.2.15l.27.68c.03.09.01.19-.04.27l-.12.17c-.05.07-.1.15-.04.28.19.4.5.75.87 1.02.35.26.75.44 1.17.53.12.03.21-.01.29-.09l.2-.25c.08-.1.18-.12.27-.08l.84.4c.1.05.17.1.17.23 0 .13-.05.38-.14.57z" fill="white"/></svg>,
-    instagram: <svg width="13" height="13" viewBox="0 0 24 24"><defs><linearGradient id="ig2" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stopColor="#f09433"/><stop offset="50%" stopColor="#e6683c"/><stop offset="100%" stopColor="#dc2743"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" fill="url(#ig2)"/><circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="1.5"/><circle cx="17.5" cy="6.5" r="1" fill="white"/></svg>,
-    youtube: <svg width="13" height="13" viewBox="0 0 24 24"><path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.8-2-.9C16.8 5 12 5 12 5s-4.8 0-7 .1c-.4.1-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.8 2.3.9C6.8 19 12 19 12 19s4.8 0 7-.2c.4-.1 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM10 15V9l6 3-6 3z" fill="#FF0000"/></svg>,
-    twitter: <svg width="13" height="13" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="currentColor"/></svg>,
-  };
-  return <>{icons[k]}</>;
-};
-
 /* ── audio helpers ───────────────────────────────────────────── */
 
 // POST body (not GET query params) — matches the shared /api/tts contract
 // used by PoemCard.tsx and PoemRadio.tsx. Telugu text explodes in size
 // once URL-encoded, which breaks GET-based calls on longer poems.
-// Resolves a VoiceOption into the { source, voice } shape the shared
-// /api/tts contract expects (same contract as PoemCard.tsx/PoemRadio.tsx).
-function resolveTtsParams(voice: VoiceOption): { source: "edge" | "google" | "svara"; gender: "male" | "female" } {
-  if (voice === "google") return { source: "google", gender: "male" };
-  if (voice === "svara-male") return { source: "svara", gender: "male" };
-  if (voice === "svara-female") return { source: "svara", gender: "female" };
-  return { source: "edge", gender: voice === "shruti" ? "female" : "male" };
-}
-
 async function fetchTtsFloat(text: string, voice: VoiceOption) {
-  const { source, gender } = resolveTtsParams(voice);
   const res = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, source, voice: gender }),
+    body: JSON.stringify({
+      text,
+      source: voice === "google" ? "google" : "edge",
+      voice: voice === "shruti" ? "female" : "male",
+    }),
   });
   if (!res.ok) throw new Error(`TTS ${res.status}`);
   const buf = await res.arrayBuffer();
@@ -507,10 +481,10 @@ function drawSlide(ctx: CanvasRenderingContext2D, W: number, H: number, text: st
 
 /* ── video ───────────────────────────────────────────────────── */
 async function makeVideo(
-  text: string, af: Float32Array, sr: number, pk: PK,
+  text: string, af: Float32Array, sr: number,
   canvas: HTMLCanvasElement, hasAudio: boolean, charImg: HTMLImageElement | null
 ): Promise<Blob> {
-  const {W,H,fps}=PROFILES[pk];
+  const {W,H,fps}=VIDEO;
   canvas.width=W; canvas.height=H;
   const c2=canvas.getContext("2d",{alpha:false})!;
   const dur=hasAudio?af.length/sr:5;
@@ -635,7 +609,6 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
   const [loading, setLoading] = useState(false);
   const [pct, setPct] = useState(0);
   const [statusMsg, setStatusMsg] = useState("");
-  const [profile, setProfile] = useState<PK>("mobile");
   const [voiceChoice, setVoiceChoice] = useState<VoiceOption>("mohan");
   const [musicChoice, setMusicChoice] = useState<MusicOption>("guitar");
   const [mounted, setMounted] = useState(false);
@@ -680,7 +653,7 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
 
   const dlSlide = () => {
     if (!canvasRef.current) return;
-    const {W,H} = PROFILES[profile];
+    const {W,H} = VIDEO;
     const c = canvasRef.current; c.width=W; c.height=H;
     drawSlide(c.getContext("2d",{alpha:false})!, W, H, text, charImgRef.current);
     dlFile(c.toDataURL("image/png"), `telugu_slide_${Date.now()}.png`);
@@ -726,7 +699,7 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
       else { setAf(audioF); setSr(audioSr); }
 
       if (canvasRef.current) {
-        const {W,H}=PROFILES[profile];
+        const {W,H}=VIDEO;
         canvasRef.current.width=W; canvasRef.current.height=H;
         drawSlide(canvasRef.current.getContext("2d",{alpha:false})!, W, H, AT, charImgRef.current);
         setSlideReady(true);
@@ -737,7 +710,7 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
           // The video draws the ORIGINAL poem text (AT) throughout, then
           // automatically swaps to the closing tagline card for the last
           // stretch — see makeVideo's isEnding logic.
-          const vb = await makeVideo(AT, videoAudioF, audioSr, profile, canvasRef.current, hasAudio, charImgRef.current);
+          const vb = await makeVideo(AT, videoAudioF, audioSr, canvasRef.current, hasAudio, charImgRef.current);
           setVidUrl(URL.createObjectURL(vb));
           setStatusMsg(hasAudio ? "సిద్ధం! డౌన్‌లోడ్ చేయండి 🎉" : "వీడియో సిద్ధం ✅");
           setPct(100);
@@ -828,35 +801,6 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
                 <option key={m} value={m}>{MUSIC_TRACKS[m].label}</option>
               ))}
             </select>
-          </div>
-        </div>
-
-        {/* ── Format chips ── */}
-        <div>
-          <span style={s.label}>వీడియో ఫార్మాట్</span>
-          <div style={{display:"flex",gap:7,overflowX:"auto",paddingBottom:4,WebkitOverflowScrolling:"touch" as any,scrollbarWidth:"none" as any}}>
-            {(Object.entries(PROFILES) as [PK,any][]).map(([k,v]) => {
-              const active = profile === k;
-              return (
-                <button key={k} onClick={() => !loading && setProfile(k)} disabled={loading}
-                  style={{
-                    display:"inline-flex",alignItems:"center",gap:6,
-                    padding:"0 14px",height:38,borderRadius:100,
-                    fontSize:13,fontWeight:600,cursor:"pointer",
-                    flexShrink:0,border:"none",
-                    background:active?C.forest:C.white,
-                    color:active?C.white:C.textMuted,
-                    outline:`1.5px solid ${active?C.forest:C.border}`,
-                    boxShadow:active?"0 3px 10px rgba(26,61,43,0.25)":"none",
-                    transition:"all 0.15s",
-                    WebkitTapHighlightColor:"transparent",
-                    fontFamily:"inherit",
-                  }}>
-                  <PlatformIcon k={k} />
-                  {v.label}
-                </button>
-              );
-            })}
           </div>
         </div>
 
@@ -971,8 +915,8 @@ export default function TeluguVoice({ initialText }: TeluguVoiceProps) {
                     style={{width:60,borderRadius:6,border:`1px solid ${C.border}`,flexShrink:0,display:"block"}}
                   />
                   <div>
-                    <p style={{fontSize:13,fontWeight:600,color:C.textPrimary,margin:"0 0 3px"}}>{PROFILES[profile].W} × {PROFILES[profile].H}</p>
-                    <p style={{fontSize:12,color:C.textMuted,margin:0}}>{PROFILES[profile].label} format · PNG</p>
+                    <p style={{fontSize:13,fontWeight:600,color:C.textPrimary,margin:"0 0 3px"}}>{VIDEO.W} × {VIDEO.H}</p>
+                    <p style={{fontSize:12,color:C.textMuted,margin:0}}>PNG చిత్రం</p>
                   </div>
                 </div>
                 <button style={s.btnGhost} onClick={dlSlide}>
