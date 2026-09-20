@@ -444,3 +444,28 @@ SET created_by = 'సందీప్ మిరియాల';
 
 UPDATE poets
 SET created_by = 'సందీప్ మిరియాల';
+
+ -- ============================================================
+-- 11. CREATE API USAGE LOG TABLE
+-- ============================================================
+
+CREATE TABLE api_usage_log (
+    usage_id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    api_name          VARCHAR(200) NOT NULL,
+    endpoint          VARCHAR(500) NOT NULL,
+    http_method       VARCHAR(10) NOT NULL,
+
+    event_type        VARCHAR(30) NOT NULL,
+    -- API_CALL / BUTTON_CLICK
+
+    request_date      DATE NOT NULL DEFAULT CURRENT_DATE,
+    request_time      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    status_code       INTEGER,
+    success           BOOLEAN NOT NULL DEFAULT TRUE,
+
+    response_time_ms  INTEGER,
+
+    metadata          JSONB
+);

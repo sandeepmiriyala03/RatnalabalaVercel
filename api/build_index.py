@@ -1,11 +1,3 @@
-# api/build_index.py
-#
-# RUNS ON VERCEL, NOT LOCALLY. Visit this endpoint's URL once to
-# trigger the full indexing pipeline server-side.
-#
-# Static data below (అక్షరమాల, సంధిమాల, సమాసములు) is fixed content —
-# poems are NOT hardcoded here, they're always fetched live via
-# fetch_poems_flat() / fetch_shatakamu_all() below, same as before.
 
 import os
 import json

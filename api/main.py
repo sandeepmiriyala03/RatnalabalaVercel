@@ -1069,6 +1069,27 @@ class handler(BaseHTTPRequestHandler):
                 self._send_json(400, {"detail": f"URL fetch failed: {e}"})
 
         elif endpoint == "poem-ai":
+            # ============================================================
+            # POEM AI API USAGE LIMIT
+            # ============================================================
+            # Every POST /api/main?endpoint=poem-ai request is counted.
+            # The limit is application-wide: no user_id is required.
+            # Maximum allowed calls per day = 100.
+            #
+            # The usage record is inserted BEFORE calling Groq/LangChain.
+            # This means failed requests also count toward the daily limit.
+            # ============================================================
+            api_name = "poem-ai"
+            api_endpoint = "/api/main?endpoint=poem-ai"
+            usage_id = reserve_api_call(api_name, api_endpoint, "POST", 100)
+
+            if usage_id is None:
+                self._send_json(429, {
+                    "success": False,
+                    "error": "Daily AI API limit of 100 calls has been reached. Please try again tomorrow."
+                })
+                return
+
             collection = (payload.get("collection") or "").strip()
             filename = (payload.get("filename") or "").strip()
             title = (payload.get("title") or "").strip()
@@ -1078,34 +1099,73 @@ class handler(BaseHTTPRequestHandler):
             # .md poems are found by collection + filename;
             # database poems (no file) are found by title.
             if not (collection and filename) and not title:
+                update_api_log(usage_id, 400)
                 self._send_json(400, {
                     "success": False,
                     "error": "Send 'collection' + 'filename', or 'title'.",
                 })
                 return
+
             if not question:
-                self._send_json(400, {"success": False, "error": "Missing 'question'."})
+                update_api_log(usage_id, 400)
+                self._send_json(400, {
+                    "success": False,
+                    "error": "Missing 'question'."
+                })
                 return
 
             try:
                 result = asyncio.run(
                     explain_poem(collection, filename, question, title, content)
                 )
+
+                # Record successful API completion in Neon.
+                update_api_log(usage_id, 200)
+
                 self._send_json(200, result)
+
             except FileNotFoundError as e:
-                self._send_json(404, {"success": False, "error": str(e)})
+                update_api_log(usage_id, 404)
+                self._send_json(404, {
+                    "success": False,
+                    "error": str(e)
+                })
+
             except ValueError as e:
-                self._send_json(400, {"success": False, "error": str(e)})
+                update_api_log(usage_id, 400)
+                self._send_json(400, {
+                    "success": False,
+                    "error": str(e)
+                })
+
             except AIServiceError as e:
-                # Already translated: friendly message for the person, real cause in the log.
+                # Friendly message goes to the frontend.
+                # Technical error is written to the server log.
                 log(f"poem-ai AI error ({e.status}): {e}")
-                self._send_json(e.status, {"success": False, "error": e.message})
+                update_api_log(usage_id, e.status)
+                self._send_json(e.status, {
+                    "success": False,
+                    "error": e.message
+                })
+
             except httpx.HTTPStatusError as e:
                 log(f"Groq HTTP error: {e.response.status_code}")
-                self._send_json(502, {"success": False, "error": AI_UNAVAILABLE_MSG})
+                update_api_log(usage_id, 502)
+                self._send_json(502, {
+                    "success": False,
+                    "error": AI_UNAVAILABLE_MSG
+                })
+
             except Exception as e:
-                log(f"poem-ai error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
-                self._send_json(500, {"success": False, "error": "Failed to process AI request."})
+                log(
+                    f"poem-ai error: {type(e).__name__}: {e}\n"
+                    f"{traceback.format_exc()}"
+                )
+                update_api_log(usage_id, 500)
+                self._send_json(500, {
+                    "success": False,
+                    "error": "Failed to process AI request."
+                })
 
         else:
             self._send_json(400, {
@@ -1118,6 +1178,126 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
+
+
+# ═══════════════════════════════════════════════════════════════
+# API USAGE LOGGING / DAILY LIMIT
+# ═══════════════════════════════════════════════════════════════
+
+def reserve_api_call(
+    api_name: str,
+    endpoint: str,
+    http_method: str,
+    daily_limit: int = 100
+) -> int | None:
+    """
+    Reserve one API call in Neon.
+
+    Returns:
+        usage_id -> call is allowed and has been logged.
+        None     -> daily limit has already been reached.
+
+    An advisory transaction lock is used so two simultaneous requests
+    cannot both pass the 100-call check at the same time.
+    """
+
+    with psycopg.connect(RATNALABALA_DATABASE_URL) as conn:
+        with conn.cursor() as cursor:
+
+            # --------------------------------------------------------
+            # Prevent concurrent requests from bypassing the daily limit.
+            # The lock exists only for this database transaction.
+            # --------------------------------------------------------
+            cursor.execute(
+                "SELECT pg_advisory_xact_lock(hashtext(%s));",
+                (api_name,)
+            )
+
+            # --------------------------------------------------------
+            # Count today's API calls.
+            # Every reserved request counts, including failed requests.
+            # --------------------------------------------------------
+            cursor.execute(
+                """
+                SELECT COUNT(*) AS usage_count
+                FROM api_usage_log
+                WHERE api_name = %s
+                  AND request_date = CURRENT_DATE;
+                """,
+                (api_name,)
+            )
+
+            row = cursor.fetchone()
+            usage_count = row[0]
+
+            # --------------------------------------------------------
+            # Stop the API after 100 calls for today.
+            # --------------------------------------------------------
+            if usage_count >= daily_limit:
+                return None
+
+            # --------------------------------------------------------
+            # Insert the API call BEFORE the actual AI/Groq request.
+            # status_code is NULL until the request finishes.
+            # --------------------------------------------------------
+            cursor.execute(
+                """
+                INSERT INTO api_usage_log (
+                    api_name,
+                    endpoint,
+                    http_method,
+                    event_type,
+                    status_code,
+                    success
+                )
+                VALUES (
+                    %s,
+                    %s,
+                    %s,
+                    'API_CALL',
+                    NULL,
+                    FALSE
+                )
+                RETURNING usage_id;
+                """,
+                (
+                    api_name,
+                    endpoint,
+                    http_method
+                )
+            )
+
+            usage_id = cursor.fetchone()[0]
+
+            return usage_id
+
+
+def update_api_log(
+    usage_id: int,
+    status_code: int
+):
+    """
+    Update the reserved API log after the request finishes.
+    """
+
+    success = 200 <= status_code < 400
+
+    with psycopg.connect(RATNALABALA_DATABASE_URL) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE api_usage_log
+                SET
+                    status_code = %s,
+                    success = %s
+                WHERE usage_id = %s;
+                """,
+                (
+                    status_code,
+                    success,
+                    usage_id
+                )
+            )
 
 
 # ── Local-only test runner ──
