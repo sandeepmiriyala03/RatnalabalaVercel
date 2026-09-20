@@ -104,6 +104,57 @@ const ACCENT  = "var(--accent-light)";  // gold — same active-route highlight 
 const ON_ACCENT = "#241f1a";
 
 /* ═══════════════════════════════════════════
+   SKIP LINK — "ప్రధాన కంటెంట్‌కు వెళ్ళండి"
+   Invisible until a keyboard user tabs to it (first Tab on any page),
+   then it appears top-left; Enter jumps past the menu to the page's
+   main content.
+
+   The target is the element with id="main-content" — put that id on the
+   <main> tag in layout.tsx. If it is missing, the first <main> on the
+   page is used instead, so the link still works.
+═══════════════════════════════════════════ */
+const MAIN_CONTENT_ID = "main-content";
+
+// Height of the sticky top bar — keeps the content's first line from
+// hiding underneath it after the jump.
+const NAV_OFFSET_PX = 72;
+
+function skipToMainContent(e: React.MouseEvent<HTMLAnchorElement>) {
+  // Handle the jump ourselves: a plain "#hash" link silently does nothing
+  // when the target id does not exist, and gives no focus to the content.
+  e.preventDefault();
+
+  const target =
+    document.getElementById(MAIN_CONTENT_ID) ??
+    document.querySelector<HTMLElement>("main");
+
+  if (!target) {
+    console.warn(
+      `Skip link: no element with id="${MAIN_CONTENT_ID}" (and no <main>) found. ` +
+        `Add id="${MAIN_CONTENT_ID}" to the <main> tag in layout.tsx.`
+    );
+    return;
+  }
+
+  // <main> cannot receive focus by default. tabindex="-1" lets us move
+  // focus there (so the next Tab continues inside the content) without
+  // adding it to the normal Tab order.
+  if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
+  target.style.outline = "none";
+  target.style.scrollMarginTop = `${NAV_OFFSET_PX}px`;
+
+  target.focus({ preventScroll: true });
+
+  const reduceMotion =
+    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+
+  target.scrollIntoView({
+    behavior: reduceMotion ? "auto" : "smooth",
+    block: "start",
+  });
+}
+
+/* ═══════════════════════════════════════════
    THEME TOGGLE
    Reads whatever [data-theme] is already on <html> (set by the
    blocking script in layout.tsx before paint, or left unset to follow
@@ -319,16 +370,41 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Skip to content */}
-      <a
-        href="#main-content"
-        style={{ position: "absolute", left: "-999px", top: "auto", width: "1px", height: "1px", overflow: "hidden" }}
-        onFocus={e => {
-          e.currentTarget.style.cssText = `left:16px;top:16px;width:auto;height:auto;padding:8px 12px;background:${ACCENT};color:${ON_ACCENT};z-index:2000;position:fixed;`;
+      {/* Skip to main content — visible only while it has keyboard focus */}
+      <Box
+        component="a"
+        href={`#${MAIN_CONTENT_ID}`}
+        onClick={skipToMainContent}
+        sx={{
+          position: "absolute",
+          left: "-9999px",
+          top: "auto",
+          width: "1px",
+          height: "1px",
+          overflow: "hidden",
+          "&:focus": {
+            position: "fixed",
+            left: 16,
+            top: 16,
+            width: "auto",
+            height: "auto",
+            overflow: "visible",
+            zIndex: 2000,
+            px: 1.75,
+            py: 1,
+            borderRadius: "8px",
+            bgcolor: ACCENT,
+            color: ON_ACCENT,
+            fontFamily: "'Noto Serif Telugu', serif",
+            fontSize: "0.95rem",
+            fontWeight: 700,
+            textDecoration: "none",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+          },
         }}
       >
-        Skip to content
-      </a>
+        ప్రధాన కంటెంట్‌కు వెళ్ళండి
+      </Box>
 
       <AppBar position="sticky" elevation={2} sx={{ bgcolor: BG }}>
         <Toolbar sx={{ px: { xs: 2, md: 3 }, display: "flex", justifyContent: "space-between", minHeight: { xs: 56, md: 60 } }}>
