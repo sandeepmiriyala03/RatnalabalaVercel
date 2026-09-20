@@ -30,6 +30,10 @@ import ArrowForwardRoundedIcon   from "@mui/icons-material/ArrowForwardRounded";
 import HelpOutlineRoundedIcon    from "@mui/icons-material/HelpOutlineRounded";
 import VolumeUpRoundedIcon       from "@mui/icons-material/VolumeUpRounded";
 import QuestionAnswerRoundedIcon from "@mui/icons-material/QuestionAnswerRounded";
+import HubRoundedIcon from "@mui/icons-material/HubRounded";
+import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
+import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
+import ApiRoundedIcon from "@mui/icons-material/ApiRounded";
 import WhatsAppIcon              from "@mui/icons-material/WhatsApp";
 
 import PoemCard from "@/app/components/PoemCard";
@@ -44,7 +48,7 @@ interface Poem {
   slug?: string;
 }
 
-type Tool = "radio" | "downloads";
+type Tool = "radio" | "downloads" | "webmcp";
 
 const ITEMS_PER_PAGE = 3;
 
@@ -203,8 +207,88 @@ export default function PoemList() {
   // a time, and both start closed so the page opens on search + poems.
   const [openTool, setOpenTool] = useState<Tool | null>(null);
 
+  // WebMCP panel — shows the end-user flow when the WebMCP button is clicked.
+  const [webMcpOpen, setWebMcpOpen] = useState(false);
+
   // "ఈ పేజీ ఎలా వాడాలి?" — opens by itself on the very first visit only.
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // ================================================================
+  // WEBMCP — PHASE 1: get_poem_list
+  // ================================================================
+  // This is our first real WebMCP tool.
+  //
+  // Purpose:
+  //   Allows a compatible AI agent to ask the Ratnalabala webpage:
+  //   "What poems are available?"
+  //
+  // Phase 1 deliberately uses the poems already loaded in this
+  // Next.js component. No new API or database call is introduced.
+  // ================================================================
+  useEffect(() => {
+    if (!("modelContext" in document)) {
+      console.log("[WebMCP] WebMCP is not available in this browser.");
+      return;
+    }
+
+    const modelContext = (document as Document & {
+      modelContext?: {
+        registerTool: (tool: {
+          name: string;
+          title: string;
+          description: string;
+          inputSchema: Record<string, unknown>;
+          execute: () => Promise<unknown>;
+        }) => Promise<void>;
+      };
+    }).modelContext;
+
+    if (!modelContext) {
+      console.log("[WebMCP] modelContext is not available.");
+      return;
+    }
+
+    let cancelled = false;
+
+    const register = async () => {
+      try {
+        await modelContext.registerTool({
+          name: "get_poem_list",
+          title: "Get Ratnalabala Poem List",
+          description:
+            "Returns the list of Telugu poems currently available in Ratnalabala.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+            additionalProperties: false,
+          },
+
+          // The tool is read-only: it only returns poem names.
+          execute: async () => {
+            if (cancelled) {
+              return { poems: [] };
+            }
+
+            return {
+              success: true,
+              count: poems.length,
+              poems: poems.map((poem) => poem.title),
+            };
+          },
+        });
+
+        console.log("[WebMCP] get_poem_list registered.");
+      } catch (error) {
+        console.error("[WebMCP] Failed to register get_poem_list:", error);
+      }
+    };
+
+    register();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [poems]);
 
   useEffect(() => {
     try {
@@ -368,8 +452,14 @@ export default function PoemList() {
     },
   };
 
-  const toggleTool = (tool: Tool) =>
+  const toggleTool = (tool: Tool) => {
     setOpenTool((current) => (current === tool ? null : tool));
+    if (tool !== "webmcp") {
+      setWebMcpOpen(false);
+    } else {
+      setWebMcpOpen((current) => !current);
+    }
+  };
 
   return (
     <Box
@@ -595,7 +685,155 @@ export default function PoemList() {
             >
               అన్నీ డౌన్‌లోడ్
             </Button>
+
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => toggleTool("webmcp")}
+              aria-expanded={webMcpOpen}
+              aria-controls="poem-tool-webmcp"
+              startIcon={<HubRoundedIcon fontSize="small" />}
+              endIcon={
+                webMcpOpen ? (
+                  <ExpandLessRoundedIcon fontSize="small" />
+                ) : (
+                  <ExpandMoreRoundedIcon fontSize="small" />
+                )
+              }
+              sx={toolButtonSx(webMcpOpen)}
+            >
+              WebMCP
+            </Button>
           </Stack>
+
+          {/* ============================================================
+              WEBMCP — END USER FLOW
+              Visible only when the user clicks the WebMCP button.
+              This explains what happens behind the scenes in simple steps.
+             ============================================================ */}
+          <Collapse in={webMcpOpen} timeout={300}>
+            <Box
+              id="poem-tool-webmcp"
+              sx={{
+                mt: 1.5,
+                p: { xs: 2, sm: 2.5 },
+                borderRadius: "14px",
+                border: `1px solid ${alpha(theme.palette.secondary.main, 0.25)}`,
+                background: alpha(theme.palette.secondary.main, 0.04),
+              }}
+            >
+              <Stack spacing={1.75}>
+                <Stack direction="row" spacing={1.25} alignItems="center">
+                  <HubRoundedIcon color="secondary" />
+                  <Box>
+                    <Typography sx={{ fontWeight: 800, fontSize: "1.05rem" }}>
+                      WebMCP — AI సహాయకుడి ప్రవాహం
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      మీరు ప్రశ్న అడిగితే, AI ఈ వెబ్‌సైట్‌లోని సమాచారాన్ని WebMCP ద్వారా ఉపయోగించగలదు.
+                    </Typography>
+                  </Box>
+                </Stack>
+
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "1fr", sm: "repeat(4, 1fr)" },
+                    gap: 1,
+                    alignItems: "stretch",
+                  }}
+                >
+                  {[
+                    {
+                      icon: <SmartToyRoundedIcon />,
+                      title: "1. AI",
+                      text: "మీ ప్రశ్నను అర్థం చేసుకుంటుంది",
+                    },
+                    {
+                      icon: <HubRoundedIcon />,
+                      title: "2. WebMCP",
+                      text: "సరైన tool ను ఎంచుకుంటుంది",
+                    },
+                    {
+                      icon: <ApiRoundedIcon />,
+                      title: "3. API",
+                      text: "Ratnalabala API ని పిలుస్తుంది",
+                    },
+                    {
+                      icon: <StorageRoundedIcon />,
+                      title: "4. Data",
+                      text: "PostgreSQL నుండి సమాచారం వస్తుంది",
+                    },
+                  ].map((step) => (
+                    <Box
+                      key={step.title}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: "12px",
+                        background: theme.palette.background.paper,
+                        border: `1px solid ${alpha(theme.palette.secondary.main, 0.16)}`,
+                        textAlign: "center",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 38,
+                          height: 38,
+                          mx: "auto",
+                          mb: 0.75,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "secondary.main",
+                          background: alpha(theme.palette.secondary.main, 0.1),
+                        }}
+                      >
+                        {step.icon}
+                      </Box>
+                      <Typography sx={{ fontWeight: 800, fontSize: "0.92rem" }}>
+                        {step.title}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.35, lineHeight: 1.55 }}
+                      >
+                        {step.text}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: "12px",
+                    background: alpha(theme.palette.primary.main, 0.05),
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.14)}`,
+                  }}
+                >
+                  <Typography sx={{ fontWeight: 800, mb: 0.75 }}>
+                    ఉదాహరణ
+                  </Typography>
+                  <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                    మీరు: <strong>“ఏ పద్యాలు అందుబాటులో ఉన్నాయి?”</strong>
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, lineHeight: 1.7 }}>
+                    AI → <strong>get_poem_list</strong> → Ratnalabala → పద్యాల జాబితా → AI సమాధానం
+                  </Typography>
+                </Box>
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ textAlign: "center" }}
+                >
+                  WebMCP tool: <strong>get_poem_list</strong> • Read-only • ప్రస్తుత పేజీలో లోడ్ అయిన పద్యాలను ఉపయోగిస్తుంది
+                </Typography>
+              </Stack>
+            </Box>
+          </Collapse>
 
           {/* Radio plays through whatever is currently filtered. Kept mounted
               (just collapsed) so it keeps playing if the panel is closed. */}
