@@ -34,7 +34,7 @@ RATNALABALA_DATABASE_URL = os.environ.get(
 )
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GROQ_MODEL = "openai/gpt-oss-120b"
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 SARVAM_API_URL = "https://api.sarvam.ai/text-to-speech"
 SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
@@ -721,13 +721,11 @@ def strip_markdown(text: str) -> str:
 # This keeps reusable model instructions separate from each user's prompt.
 
 chat_model = ChatGroq(
+    api_key=GROQ_API_KEY,
     model=GROQ_MODEL,
     temperature=0.2,
-    reasoning_effort="low",
-    max_tokens=60,
+    max_tokens=500,
 )
-
-
 async def call_groq(prompt: str) -> str:
     """Call the LangChain Chat Model with system + user messages."""
 
