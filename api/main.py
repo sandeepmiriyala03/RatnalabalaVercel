@@ -53,10 +53,11 @@ POEMS_ROOT = Path(__file__).resolve().parent.parent / "content"
 # Reusable system prompt for the LangChain Chat Model.
 GROQ_SYSTEM_PROMPT = (
     "ఇచ్చిన పద్యానికి సరళమైన భావం మాత్రమే చెప్పాలి. "
-    "చిన్నగా, స్పష్టంగా, సహజమైన తెలుగులో చెప్పాలి. "
-    "పద్యానికి బయట విషయాలు కల్పించకూడదు."
+    "2 లేదా 3 చిన్న వాక్యాల్లో సమాధానం ఇవ్వాలి. "
+    "పద్యంలోని భావాన్ని మాత్రమే వివరించాలి. "
+    "పద్యానికి బయట విషయాలు కల్పించకూడదు. "
+    "సులభమైన, సహజమైన తెలుగులో చెప్పాలి."
 )
-
 
 def log(message: str):
     print(f"[Ratnalabala] {message}")
@@ -725,6 +726,8 @@ def strip_markdown(text: str) -> str:
 chat_model = ChatGroq(
     model=GROQ_MODEL,
     temperature=0.2,
+    reasoning_effort="low",
+    max_tokens=200,
 )
 
 
