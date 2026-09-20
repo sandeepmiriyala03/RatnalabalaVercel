@@ -1,7 +1,7 @@
 // AGENTS.md → see "FontControlsTelugu Component Rules"
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Box,
@@ -36,6 +36,53 @@ type Props = {
 };
 
 type FontOption = { label: string; value: TeluguFont };
+
+// ── DEFAULTS + SAVED CHOICE ──
+// DEFAULT_FONT / DEFAULT_SIZE are what "డిఫాల్ట్" restores. They must be the
+// same values the parent uses as its initial fontFamily / fontSize state,
+// otherwise the page opens on one "default" and the button restores another.
+const DEFAULT_FONT: TeluguFont = "Dhurjati";
+const DEFAULT_SIZE = 1.0;
+
+// The person's own choice (font picked, size changed, or "డిఫాల్ట్" pressed) is
+// remembered here so it survives reloads and route changes. A saved choice
+// ALWAYS wins over the font agent — that is what stops the agent from
+// re-picking a font on every page load and forcing a "డిఫాల్ట్" click.
+const STORAGE_KEY = "ratnalabala:font-prefs";
+
+// true  → first-time visitors (nothing saved) get the agent's pick.
+// false → skip the agent completely: pages open on the saved choice, or on
+//         DEFAULT_FONT / DEFAULT_SIZE when nothing is saved.
+const USE_FONT_AGENT = true;
+
+type SavedPrefs = { fontFamily: TeluguFont; fontSize: number };
+
+function readSavedPrefs(): SavedPrefs | null {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      typeof parsed?.fontFamily === "string" &&
+      parsed.fontFamily &&
+      typeof parsed?.fontSize === "number" &&
+      Number.isFinite(parsed.fontSize)
+    ) {
+      return { fontFamily: parsed.fontFamily as TeluguFont, fontSize: parsed.fontSize };
+    }
+  } catch {
+    // corrupted value or storage blocked — behave as "nothing saved"
+  }
+  return null;
+}
+
+function savePrefs(prefs: SavedPrefs) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  } catch {
+    // storage full / blocked (private mode) — the choice just won't persist
+  }
+}
 
 // ── AUTO-DETECTION TABLE ──
 // Built directly from NAV_GROUPS (Navbar.tsx) — one place to maintain
@@ -89,6 +136,15 @@ export default function FontControlsTelugu({
   const [agentReason, setAgentReason] = useState<string | null>(null);
   const { min, max } = useDeviceFontBounds();
 
+  // Always holds the latest device bounds, so the agent's answer (which
+  // arrives asynchronously) is clamped with current values, not stale ones.
+  const boundsRef = useRef({ min, max });
+  boundsRef.current = { min, max };
+
+  // True once the person has chosen something themselves (font, size or
+  // "డిఫాల్ట్"). A late agent answer must never overwrite that.
+  const manualRef = useRef(false);
+
   // Font list comes from the Python backend instead of being hardcoded.
   const [teluguFonts, setTeluguFonts] = useState<FontOption[]>([]);
 
@@ -112,27 +168,61 @@ export default function FontControlsTelugu({
     [teluguFonts]
   );
 
-  // ── THE AGENTIC PART ──
-  // On mount, before the user touches anything: perceive the screen
-  // width, ask the Python agent to decide a font + size, and act on
-  // its answer automatically. No click required.
+  // ── WHAT THE PAGE OPENS WITH ──
+  // 1. A saved choice (font / size / "డిఫాల్ట్" pressed before) → apply it.
+  //    The agent is NOT asked at all.
+  // 2. Nothing saved + agent enabled → perceive the screen width, ask the
+  //    Python agent for a font + size and apply its answer automatically.
+  // 3. Nothing saved + agent disabled → open on the app default.
   useEffect(() => {
+    let cancelled = false;
+
+    const saved = readSavedPrefs();
+    if (saved) {
+      manualRef.current = true;
+      setAgentApplied(false);
+      setAgentReason(null);
+      setFontFamily(saved.fontFamily);
+      setFontSize(saved.fontSize);
+      return;
+    }
+
+    manualRef.current = false;
+
+    if (!USE_FONT_AGENT) {
+      setFontFamily(DEFAULT_FONT);
+      setFontSize(DEFAULT_SIZE);
+      return;
+    }
+
     const width = typeof window !== "undefined" ? window.innerWidth : 1024;
 
     fetch(`/api/main?endpoint=font_agent&content_type=${contentType}&width=${width}`)
       .then((res) => res.json())
       .then((decision: { fontFamily: string; fontSizeMultiplier: number; reason: string }) => {
+        // Ignore the answer if the person already chose something while it
+        // was loading, or if they navigated away before it arrived.
+        if (cancelled || manualRef.current) return;
+
+        const { min: lo, max: hi } = boundsRef.current;
+        const size = Math.min(hi, Math.max(lo, +(1.0 * decision.fontSizeMultiplier).toFixed(2)));
+
         setFontFamily(decision.fontFamily as TeluguFont);
-        setFontSize(+(1.0 * decision.fontSizeMultiplier).toFixed(2));
+        setFontSize(size);
         setAgentApplied(true);
         setAgentReason(decision.reason);
       })
       .catch(() => {
         // Agent unreachable — keep whatever default the parent passed in.
       });
+
+    return () => {
+      cancelled = true;
+    };
     // Re-runs whenever the route changes, since auto-detected
     // contentType depends on pathname — navigating from /geeta to
-    // /poems (client-side, no full reload) should re-ask the agent.
+    // /poems (client-side, no full reload) should re-ask the agent
+    // (unless the person has a saved choice, which always wins).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
@@ -147,11 +237,14 @@ export default function FontControlsTelugu({
     document.documentElement.style.setProperty("--telugu-font-family", fontFamily);
   }, [fontFamily]);
 
+  // Keep the size inside the device bounds no matter who set it
+  // (saved value, agent, slider). Depends on fontSize too, so a value that
+  // arrives after the bounds were computed is still corrected.
   useEffect(() => {
     if (fontSize < min) setFontSize(min);
-    if (fontSize > max) setFontSize(max);
+    else if (fontSize > max) setFontSize(max);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [min, max]);
+  }, [min, max, fontSize]);
 
   /* ⚡ Load time — scoped to this component only */
   const [loadTime, setLoadTime] = useState<number | null>(null);
@@ -185,29 +278,40 @@ export default function FontControlsTelugu({
 
   const STEP = 0.1;
 
-  const increase = () => {
-    setAgentApplied(false); // manual override
+  // Every manual change: stop the agent from overriding it, and remember it.
+  const markManual = () => {
+    manualRef.current = true;
+    setAgentApplied(false);
     setAgentReason(null);
-    setFontSize((v) => Math.min(max, +(v + STEP).toFixed(2)));
+  };
+
+  const increase = () => {
+    markManual();
+    const next = Math.min(max, +(fontSize + STEP).toFixed(2));
+    setFontSize(next);
+    savePrefs({ fontFamily, fontSize: next });
   };
 
   const decrease = () => {
-    setAgentApplied(false);
-    setAgentReason(null);
-    setFontSize((v) => Math.max(min, +(v - STEP).toFixed(2)));
+    markManual();
+    const next = Math.max(min, +(fontSize - STEP).toFixed(2));
+    setFontSize(next);
+    savePrefs({ fontFamily, fontSize: next });
   };
 
   const restoreDefaults = () => {
-    setAgentApplied(false);
-    setAgentReason(null);
-    setFontFamily("Dhurjati");
-    setFontSize(1.0);
+    markManual();
+    setFontFamily(DEFAULT_FONT);
+    setFontSize(DEFAULT_SIZE);
+    // Remembered too — so the next page load opens on the default and the
+    // agent does not pick something else again.
+    savePrefs({ fontFamily: DEFAULT_FONT, fontSize: DEFAULT_SIZE });
     setSnackbarOpen(true);
   };
 
   const isAtMin = fontSize <= min;
   const isAtMax = fontSize >= max;
-  const isDefault = fontFamily === "Dhurjati" && fontSize === 1.0;
+  const isDefault = fontFamily === DEFAULT_FONT && fontSize === DEFAULT_SIZE;
 
   const sizePercent = Math.round(fontSize * 100);
 
@@ -274,9 +378,9 @@ export default function FontControlsTelugu({
               isOptionEqualToValue={(option, value) => option.value === value.value}
               onChange={(_, newValue) => {
                 if (!newValue) return;
-                setAgentApplied(false);
-                setAgentReason(null);
+                markManual();
                 setFontFamily(newValue.value);
+                savePrefs({ fontFamily: newValue.value, fontSize });
               }}
               disableClearable
               sx={{
@@ -361,10 +465,11 @@ export default function FontControlsTelugu({
                 max={max}
                 step={STEP}
                 onChange={(_, v) => {
-                  setAgentApplied(false);
-                  setAgentReason(null);
+                  markManual();
                   setFontSize(v as number);
                 }}
+                // Saved once when the person lets go, not on every drag tick.
+                onChangeCommitted={(_, v) => savePrefs({ fontFamily, fontSize: v as number })}
                 aria-label="Font size"
                 sx={{ color: "var(--primary, #8b3a1f)", mx: 0.5 }}
               />
