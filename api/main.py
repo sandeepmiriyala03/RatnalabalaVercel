@@ -5,14 +5,15 @@ import json
 import os
 import re
 import time
+import traceback
+
 import psycopg
+
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 from psycopg.rows import dict_row
-from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage, HumanMessage
 
 import httpx
 
@@ -34,7 +35,12 @@ RATNALABALA_DATABASE_URL = os.environ.get(
 )
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-GROQ_MODEL = "llama-3.1-8b-instant"
+# Groq shut down llama-3.1-8b-instant on 16 Aug 2026 — requests to it now fail,
+# which is what made poem-ai return HTTP 500. Groq recommends openai/gpt-oss-20b
+# (cheaper) or openai/gpt-oss-120b (better Telugu). To switch models later, set
+# GROQ_MODEL in the Vercel dashboard (Environment Variables) — no code change.
+GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+
 
 SARVAM_API_URL = "https://api.sarvam.ai/text-to-speech"
 SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
@@ -47,15 +53,17 @@ _HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
 MAX_CHUNK_CHARS = 500
 
-# api/main.py -> parent (api/) -> parent (project root) -> content/
-POEMS_ROOT = Path(__file__).resolve().parent.parent / "content"
-
 # Reusable system prompt for the LangChain Chat Model.
 GROQ_SYSTEM_PROMPT = (
     "పద్యానికి సరళమైన భావం మాత్రమే చెప్పు. "
     "2 చిన్న వాక్యాల్లో, సులభమైన తెలుగులో సమాధానం ఇవ్వు. "
     "పద్యానికి బయట విషయాలు కల్పించవద్దు."
 )
+
+# api/main.py -> parent (api/) -> parent (project root) -> content/
+POEMS_ROOT = Path(__file__).resolve().parent.parent / "content"
+
+
 def log(message: str):
     print(f"[Ratnalabala] {message}")
 
@@ -705,42 +713,131 @@ def strip_markdown(text: str) -> str:
     text = re.sub(r"(?m)^#{1,6}[ \t]+", "", text)
     return text.strip()
 
+
 # ═══════════════════════════════════════════════════════════════
-# LANGCHAIN CONCEPT #1 — MODELS / CHAT MODELS
+# LANGCHAIN — CHAT MODEL (Groq)
 # ═══════════════════════════════════════════════════════════════
 #
-# Chat Model = LangChain's interface to an existing AI model.
-# We are not creating or training an AI model here.
+# Chat Model = LangChain's interface to an existing AI model. We are not
+# creating or training a model here.
 #
 # GROQ_API_KEY : authentication / access
 # GROQ_MODEL   : selects the AI model
 # ChatGroq     : LangChain integration for Groq
 # ainvoke()    : sends messages and returns the model response
 #
-# The system prompt is stored separately as GROQ_SYSTEM_PROMPT.
-# This keeps reusable model instructions separate from each user's prompt.
+# The model is created INSIDE the request (not at import time) on purpose:
+#   * a missing GROQ_API_KEY or missing langchain package now only affects the
+#     poem-ai endpoint — fonts, tts, poems, extract-news keep working;
+#   * every request gets its own client, so nothing is shared between the
+#     separate event loops that asyncio.run() creates per request.
 
-chat_model = ChatGroq(
-    api_key=GROQ_API_KEY,
-    model=GROQ_MODEL,
-    temperature=0.2,
-    max_tokens=500,
-)
+AI_UNAVAILABLE_MSG = "AI సేవ ఇప్పుడు అందుబాటులో లేదు. కొద్దిసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి."
+AI_BUSY_MSG = "ఇప్పుడు చాలా మంది వాడుతున్నారు. కొద్దిసేపు ఆగి మళ్ళీ ప్రయత్నించండి."
+AI_SLOW_MSG = "సమాధానం రావడానికి ఎక్కువ సమయం పట్టింది. మళ్ళీ ప్రయత్నించండి."
+
+
+class AIServiceError(Exception):
+    """A Groq / LangChain problem, already translated into an HTTP status and a
+    message that is safe to show to the person. The technical cause goes to the
+    server log only."""
+
+    def __init__(self, status: int, message: str, detail: str = ""):
+        super().__init__(detail or message)
+        self.status = status
+        self.message = message
+
+
+def _make_chat_model():
+    from langchain_groq import ChatGroq
+
+    options = dict(
+        api_key=GROQ_API_KEY,
+        model=GROQ_MODEL,
+        temperature=0.2,
+        # gpt-oss models "think" first and those hidden tokens count against this
+        # limit, so it is generous — 500 could leave the visible answer empty.
+        max_tokens=1500,
+        timeout=20,
+        max_retries=1,
+    )
+    if GROQ_MODEL.startswith("openai/gpt-oss"):
+        # Short answers don't need long hidden reasoning: faster and cheaper.
+        options["reasoning_effort"] = "low"
+
+    return ChatGroq(**options)
+
+
+def _message_text(message) -> str:
+    """The reply text as a plain string, whether the library returns a str or a
+    list of content blocks."""
+    content = getattr(message, "content", "")
+    if isinstance(content, str):
+        return content
+    parts = []
+    for block in content or []:
+        if isinstance(block, str):
+            parts.append(block)
+        elif isinstance(block, dict) and isinstance(block.get("text"), str):
+            parts.append(block["text"])
+    return "".join(parts)
+
+
+def _translate_groq_error(exc: Exception) -> AIServiceError:
+    """Map any error raised by the Groq SDK / LangChain to a status + message."""
+    status = getattr(exc, "status_code", None)
+    name = type(exc).__name__
+    detail = f"{name} (HTTP {status}): {exc}"
+
+    if status == 429:
+        return AIServiceError(429, AI_BUSY_MSG, detail)
+    if name in ("APITimeoutError", "APIConnectionError", "ReadTimeout", "ConnectTimeout"):
+        return AIServiceError(504, AI_SLOW_MSG, detail)
+    if status in (400, 401, 403, 404):
+        # Our configuration is wrong: bad/expired GROQ_API_KEY, or the model
+        # named in GROQ_MODEL no longer exists. Fix it in the Vercel settings.
+        return AIServiceError(
+            502, AI_UNAVAILABLE_MSG,
+            f"{detail} — check GROQ_API_KEY and GROQ_MODEL ({GROQ_MODEL!r})",
+        )
+    return AIServiceError(502, AI_UNAVAILABLE_MSG, detail)
+
+
 async def call_groq(prompt: str) -> str:
     """Call the LangChain Chat Model with system + user messages."""
 
     if not GROQ_API_KEY:
-        raise RuntimeError("GROQ_API_KEY is not configured on the server.")
+        raise AIServiceError(
+            503, AI_UNAVAILABLE_MSG,
+            "GROQ_API_KEY is not configured on the server.",
+        )
+
+    try:
+        from langchain_core.messages import HumanMessage, SystemMessage
+
+        chat_model = _make_chat_model()
+    except ImportError as e:
+        raise AIServiceError(
+            503, AI_UNAVAILABLE_MSG,
+            f"LangChain packages are missing ({e}). Add langchain-groq to requirements.txt.",
+        ) from e
 
     messages = [
         SystemMessage(content=GROQ_SYSTEM_PROMPT),
         HumanMessage(content=prompt),
     ]
 
-    # LangChain handles provider-specific HTTP and response parsing.
-    response = await chat_model.ainvoke(messages)
+    try:
+        # LangChain handles provider-specific HTTP and response parsing.
+        response = await chat_model.ainvoke(messages)
+    except Exception as e:
+        raise _translate_groq_error(e) from e
 
-    return strip_markdown(response.content.strip())
+    answer = _message_text(response).strip()
+    if not answer:
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, "Groq returned an empty answer.")
+
+    return strip_markdown(answer)
 
 
 async def explain_poem(
@@ -995,11 +1092,15 @@ class handler(BaseHTTPRequestHandler):
                 self._send_json(404, {"success": False, "error": str(e)})
             except ValueError as e:
                 self._send_json(400, {"success": False, "error": str(e)})
+            except AIServiceError as e:
+                # Already translated: friendly message for the person, real cause in the log.
+                log(f"poem-ai AI error ({e.status}): {e}")
+                self._send_json(e.status, {"success": False, "error": e.message})
             except httpx.HTTPStatusError as e:
                 log(f"Groq HTTP error: {e.response.status_code}")
-                self._send_json(502, {"success": False, "error": "AI service request failed."})
+                self._send_json(502, {"success": False, "error": AI_UNAVAILABLE_MSG})
             except Exception as e:
-                log(f"poem-ai error: {e}")
+                log(f"poem-ai error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
                 self._send_json(500, {"success": False, "error": "Failed to process AI request."})
 
         else:
@@ -1035,4 +1136,3 @@ if __name__ == "__main__":
     print(f"POST http://localhost:{port}/api/main?endpoint=poem-ai      body: {{\"collection\": \"Sumati\", \"filename\": \"001.md\", \"question\": \"...\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=poem-ai      body: {{\"title\": \"గర్వం\", \"content\": \"...\", \"question\": \"...\"}}   (database poem)")
     HTTPServer(("localhost", port), handler).serve_forever()
-
