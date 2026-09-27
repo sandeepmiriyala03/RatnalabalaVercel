@@ -48,3 +48,9 @@ public/workbox-*.js
 .vercel
 .env*
 .neon
+
+public/sw.js
+public/sw.js.map
+
+public/sw.js
+public/sw.js.map

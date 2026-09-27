@@ -1,4 +1,10 @@
-import { Serwist } from "serwist";
+/// <reference lib="webworker" />
+
+import { Serwist, CacheFirst, NetworkFirst, NetworkOnly } from "serwist";
+
+declare const self: ServiceWorkerGlobalScope & {
+  __SW_MANIFEST: (string | { url: string; revision: string | null })[] | undefined;
+};
 
 const CACHE_VERSION = "v6";
 const PAGE_CACHE = `pages-cache-${CACHE_VERSION}`;
@@ -32,64 +38,59 @@ const NAVBAR_ROUTES = [
 ];
 
 const serwist = new Serwist({
-  // self.__SW_MANIFEST is automatically injected by Serwist during build
   precacheEntries: self.__SW_MANIFEST || [],
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
 
   runtimeCaching: [
-    // Ignore Vercel Analytics and Speed Insights calls
     {
       matcher: ({ url }) => url.pathname.startsWith("/_vercel/"),
-      handler: "NetworkOnly",
+      handler: new NetworkOnly(),
     },
-
-    // Static Assets
     {
       matcher: ({ request, url }) =>
         ["style", "script", "image", "font"].includes(request.destination) &&
         !url.pathname.startsWith("/_vercel/"),
-      handler: "CacheFirst",
-      options: {
+      handler: new CacheFirst({
         cacheName: ASSET_CACHE,
-        cacheableResponse: { statuses: [200] },
-        expiration: {
-          maxEntries: 300,
-          maxAgeSeconds: 30 * 24 * 60 * 60,
-        },
-      },
+        plugins: [
+          {
+            cacheWillUpdate: async ({ response }) =>
+              response && response.status === 200 ? response : null,
+          },
+        ],
+      }),
     },
-
-    // Markdown files
     {
       matcher: ({ url }) => url.pathname.endsWith(".md"),
-      handler: "CacheFirst",
-      options: {
+      handler: new CacheFirst({
         cacheName: MARKDOWN_CACHE,
-        cacheableResponse: { statuses: [200] },
-        expiration: {
-          maxEntries: 1000,
-          maxAgeSeconds: 365 * 24 * 60 * 60,
-        },
-      },
+        plugins: [
+          {
+            cacheWillUpdate: async ({ response }) =>
+              response && response.status === 200 ? response : null,
+          },
+        ],
+      }),
     },
-
-    // Navigation (HTML Pages)
     {
       matcher: ({ request, url }) =>
         request.mode === "navigate" && !url.pathname.startsWith("/_vercel/"),
-      handler: "NetworkFirst",
-      options: {
+      handler: new NetworkFirst({
         cacheName: PAGE_CACHE,
         networkTimeoutSeconds: 3,
-        cacheableResponse: { statuses: [200] },
-      },
+        plugins: [
+          {
+            cacheWillUpdate: async ({ response }) =>
+              response && response.status === 200 ? response : null,
+          },
+        ],
+      }),
     },
   ],
 });
 
-// Fallback to offline.html if page request fails offline
 serwist.setCatchHandler(async ({ request }) => {
   if (request.mode === "navigate") {
     return (await caches.match(OFFLINE_URL)) || Response.error();
@@ -99,8 +100,7 @@ serwist.setCatchHandler(async ({ request }) => {
 
 serwist.addEventListeners();
 
-// Safe pre-caching during installation
-self.addEventListener("install", (event) => {
+self.addEventListener("install", (event: ExtendableEvent) => {
   event.waitUntil(
     caches.open(PAGE_CACHE).then(async (cache) => {
       try {
@@ -123,8 +123,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Clear old cache versions on activation
-self.addEventListener("activate", (event) => {
+self.addEventListener("activate", (event: ExtendableEvent) => {
   event.waitUntil(
     caches.keys().then((cacheNames) =>
       Promise.all(
