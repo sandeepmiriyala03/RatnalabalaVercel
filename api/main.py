@@ -35,11 +35,6 @@ RATNALABALA_DATABASE_URL = os.environ.get(
 )
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-# Groq shut down llama-3.1-8b-instant on 16 Aug 2026 — requests to it now fail,
-# which is what made poem-ai return HTTP 500. Groq recommends openai/gpt-oss-20b
-# (cheaper) or openai/gpt-oss-120b (better Telugu). To switch models later, set
-# GROQ_MODEL in the Vercel dashboard (Environment Variables) — no code change.
-GROQ_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 SARVAM_API_URL = "https://api.sarvam.ai/text-to-speech"
@@ -53,17 +48,6 @@ _HF_TOKEN = os.environ.get("HF_TOKEN", "")
 
 MAX_CHUNK_CHARS = 500
 
-# Reusable system prompt for the LangChain Chat Model.
-GROQ_SYSTEM_PROMPT = (
-    "నీవు తెలుగు పద్యాలను పిల్లలకు, సామాన్యులకు సులభంగా వివరించే ఉపాధ్యాయుడివి. "
-    "సమాధానం సరళమైన తెలుగులో, 3 లేదా 4 చిన్న వాక్యాల్లో ఇవ్వు. "
-    "సమాధానం ఇచ్చే ముందు పద్యంలో ఎవరు ఎవరిని ఏమి చేస్తున్నారో సరిగా గుర్తించు; పాత్రలను తారుమారు చేయకు. "
-    "పద్యంలో ఉన్న ఉదాహరణలను, పోలికలను (జంతువులు, వస్తువులు వంటివి) తప్పకుండా చెప్పు. "
-    "చివరి వాక్యంలో ఈ పద్యం చెప్పే నీతిని ఒకే వాక్యంలో చెప్పు. "
-    "ప్రతి పద్యం చివర మళ్ళీ మళ్ళీ వచ్చే మకుటం పాదానికి అర్థం చెప్పనవసరం లేదు. "
-    "పద్యంలో లేని విషయాలను కల్పించవద్దు. "
-    "సమాధానంలో **, *, -, # వంటి గుర్తులు వాడవద్దు; సాదా వచనంలో మాత్రమే రాయి."
-)
 # api/main.py -> parent (api/) -> parent (project root) -> content/
 POEMS_ROOT = Path(__file__).resolve().parent.parent / "content"
 
@@ -719,22 +703,11 @@ def strip_markdown(text: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════
-# LANGCHAIN — CHAT MODEL (Groq)
+# BAML — SHARED LLM CLIENT
 # ═══════════════════════════════════════════════════════════════
 #
-# Chat Model = LangChain's interface to an existing AI model. We are not
-# creating or training a model here.
-#
-# GROQ_API_KEY : authentication / access
-# GROQ_MODEL   : selects the AI model
-# ChatGroq     : LangChain integration for Groq
-# ainvoke()    : sends messages and returns the model response
-#
-# The model is created INSIDE the request (not at import time) on purpose:
-#   * a missing GROQ_API_KEY or missing langchain package now only affects the
-#     poem-ai endpoint — fonts, tts, poems, extract-news keep working;
-#   * every request gets its own client, so nothing is shared between the
-#     separate event loops that asyncio.run() creates per request.
+# The generated client is imported inside the request so missing BAML
+# dependencies affect only poem-ai, not the other API endpoints.
 
 AI_UNAVAILABLE_MSG = "AI సేవ ఇప్పుడు అందుబాటులో లేదు. కొద్దిసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి."
 AI_BUSY_MSG = "ఇప్పుడు చాలా మంది వాడుతున్నారు. కొద్దిసేపు ఆగి మళ్ళీ ప్రయత్నించండి."
@@ -742,7 +715,7 @@ AI_SLOW_MSG = "సమాధానం రావడానికి ఎక్కు
 
 
 class AIServiceError(Exception):
-    """A Groq / LangChain problem, already translated into an HTTP status and a
+    """An AI provider problem, already translated into an HTTP status and a
     message that is safe to show to the person. The technical cause goes to the
     server log only."""
 
@@ -752,64 +725,8 @@ class AIServiceError(Exception):
         self.message = message
 
 
-def _make_chat_model():
-    from langchain_groq import ChatGroq
-
-    options = dict(
-        api_key=GROQ_API_KEY,
-        model=GROQ_MODEL,
-        temperature=0.2,
-        # gpt-oss models "think" first and those hidden tokens count against this
-        # limit, so it is generous — 500 could leave the visible answer empty.
-        max_tokens=1500,
-        timeout=20,
-        max_retries=1,
-    )
-    if GROQ_MODEL.startswith("openai/gpt-oss"):
-        # Short answers don't need long hidden reasoning: faster and cheaper.
-        options["reasoning_effort"] = "low"
-
-    return ChatGroq(**options)
-
-
-def _message_text(message) -> str:
-    """The reply text as a plain string, whether the library returns a str or a
-    list of content blocks."""
-    content = getattr(message, "content", "")
-    if isinstance(content, str):
-        return content
-    parts = []
-    for block in content or []:
-        if isinstance(block, str):
-            parts.append(block)
-        elif isinstance(block, dict) and isinstance(block.get("text"), str):
-            parts.append(block["text"])
-    return "".join(parts)
-
-
-def _translate_groq_error(exc: Exception) -> AIServiceError:
-    """Map any error raised by the Groq SDK / LangChain to a status + message."""
-    status = getattr(exc, "status_code", None)
-    name = type(exc).__name__
-    detail = f"{name} (HTTP {status}): {exc}"
-
-    if status == 429:
-        return AIServiceError(429, AI_BUSY_MSG, detail)
-    if name in ("APITimeoutError", "APIConnectionError", "ReadTimeout", "ConnectTimeout"):
-        return AIServiceError(504, AI_SLOW_MSG, detail)
-    if status in (400, 401, 403, 404):
-        # Our configuration is wrong: bad/expired GROQ_API_KEY, or the model
-        # named in GROQ_MODEL no longer exists. Fix it in the Vercel settings.
-        return AIServiceError(
-            502, AI_UNAVAILABLE_MSG,
-            f"{detail} — check GROQ_API_KEY and GROQ_MODEL ({GROQ_MODEL!r})",
-        )
-    return AIServiceError(502, AI_UNAVAILABLE_MSG, detail)
-
-
-async def call_groq(prompt: str) -> str:
-    """Call the LangChain Chat Model with system + user messages."""
-
+async def call_baml(poem: dict, question: str) -> str:
+    """Explain a server-loaded poem through the shared generated BAML client."""
     if not GROQ_API_KEY:
         raise AIServiceError(
             503, AI_UNAVAILABLE_MSG,
@@ -817,29 +734,33 @@ async def call_groq(prompt: str) -> str:
         )
 
     try:
-        from langchain_core.messages import HumanMessage, SystemMessage
-
-        chat_model = _make_chat_model()
+        from baml_client import b
     except ImportError as e:
         raise AIServiceError(
             503, AI_UNAVAILABLE_MSG,
-            f"LangChain packages are missing ({e}). Add langchain-groq to requirements.txt.",
+            f"BAML Python runtime is missing ({e}). Add baml-py to api/requirements.txt.",
         ) from e
 
-    messages = [
-        SystemMessage(content=GROQ_SYSTEM_PROMPT),
-        HumanMessage(content=prompt),
-    ]
-
     try:
-        # LangChain handles provider-specific HTTP and response parsing.
-        response = await chat_model.ainvoke(messages)
+        answer = await asyncio.to_thread(
+            b.ExplainPoem,
+            poem_title=poem["title"],
+            author=poem["author"],
+            poem_text=poem["text"],
+            question=question,
+        )
     except Exception as e:
-        raise _translate_groq_error(e) from e
+        status = getattr(e, "status_code", None)
+        detail = f"{type(e).__name__} (HTTP {status}): {e}"
+        if status == 429:
+            raise AIServiceError(429, AI_BUSY_MSG, detail) from e
+        if "timeout" in type(e).__name__.lower():
+            raise AIServiceError(504, AI_SLOW_MSG, detail) from e
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, detail) from e
 
-    answer = _message_text(response).strip()
+    answer = answer.strip()
     if not answer:
-        raise AIServiceError(502, AI_UNAVAILABLE_MSG, "Groq returned an empty answer.")
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, "BAML returned an empty answer.")
 
     return strip_markdown(answer)
 
@@ -869,35 +790,7 @@ async def explain_poem(
             "text": row["content"],
         }
 
-    prompt = f"""
-క్రింద ఇచ్చిన తెలుగు పద్యాన్ని మాత్రమే ఆధారంగా తీసుకుని వినియోగదారు ప్రశ్నకు సమాధానం ఇవ్వండి.
-
-========================
-పద్య వివరాలు
-========================
-శీర్షిక: {poem["title"]}
-కవి: {poem["author"]}
-పద్యం: {poem["text"]}
-
-========================
-వినియోగదారు ప్రశ్న
-========================
-{question}
-
-========================
-సమాధానం ఇవ్వాల్సిన విధానం
-========================
-1. సులభమైన తెలుగులో వివరించండి.
-2. పద్యం యొక్క భావాన్ని స్పష్టంగా చెప్పండి.
-3. అవసరమైతే పాదాల అర్థాన్ని వివరించండి.
-4. విద్యార్థికి అర్థమయ్యే భాష ఉపయోగించండి.
-5. అవసరమైతే నేటి జీవితానికి ఎలా ఉపయోగపడుతుందో చెప్పండి.
-6. పద్యంలో లేని విషయాలను కల్పించవద్దు.
-7. ప్రశ్నకు నేరుగా సమాధానం ఇవ్వండి.
-8. అనవసరంగా ఎక్కువ technical terminology ఉపయోగించవద్దు.
-9. **, *, -, # వంటి మార్క్‌డౌన్ గుర్తులు అస్సలు వాడవద్దు — సాదా వచనంలో మాత్రమే రాయండి.
-"""
-    answer = await call_groq(prompt)
+    answer = await call_baml(poem, question)
     return {
         "success": True, "collection": collection, "filename": filename,
         "title": poem["title"], "author": poem["author"],
@@ -1076,7 +969,7 @@ class handler(BaseHTTPRequestHandler):
             # The limit is application-wide: no user_id is required.
             # Maximum allowed calls per day = 100.
             #
-            # The usage record is inserted BEFORE calling Groq/LangChain.
+            # The usage record is inserted BEFORE calling the BAML client.
             # This means failed requests also count toward the daily limit.
             # ============================================================
             api_name = "poem-ai"
@@ -1149,7 +1042,7 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             except httpx.HTTPStatusError as e:
-                log(f"Groq HTTP error: {e.response.status_code}")
+                log(f"poem-ai provider HTTP error: {e.response.status_code}")
                 update_api_log(usage_id, 502)
                 self._send_json(502, {
                     "success": False,
@@ -1237,7 +1130,7 @@ def reserve_api_call(
                 return None
 
             # --------------------------------------------------------
-            # Insert the API call BEFORE the actual AI/Groq request.
+            # Insert the API call BEFORE the actual AI request.
             # status_code is NULL until the request finishes.
             # --------------------------------------------------------
             cursor.execute(

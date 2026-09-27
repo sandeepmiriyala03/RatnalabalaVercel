@@ -5,7 +5,7 @@ import {
   Box, Typography, Card, CardContent,
   Button, Stack, Collapse, TextField,
   Select, MenuItem, FormControl, InputLabel,
-  Slider, CircularProgress,
+  Slider, CircularProgress, Tooltip, IconButton,
   alpha, useTheme,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
@@ -19,6 +19,7 @@ import QuestionAnswerRoundedIcon  from "@mui/icons-material/QuestionAnswerRounde
 import SendRoundedIcon            from "@mui/icons-material/SendRounded";
 import ContentCopyRoundedIcon     from "@mui/icons-material/ContentCopyRounded";
 import CheckRoundedIcon           from "@mui/icons-material/CheckRounded";
+import InfoOutlinedIcon           from "@mui/icons-material/InfoOutlined";
 import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
 
 import ShareButtons from "@/app/components/ShareBar";
@@ -991,6 +992,27 @@ export default function PoemCard({
                   <Typography sx={{ fontSize: 13, fontWeight: 700, color: "secondary.main" }}>
                     భావాలమాల
                   </Typography>
+                  <Tooltip
+                    arrow
+                    placement="top"
+                    enterTouchDelay={0}
+                    title={
+                      <Typography
+                        component="span"
+                        sx={{ display: "block", whiteSpace: "pre-line", lineHeight: 1.6 }}
+                      >
+                        {"సర్వర్‌లో జరిగే దశలు:\n1. ప్రశ్నను స్వీకరించి రోజువారీ పరిమితిని తనిఖీ చేస్తుంది.\n2. అసలు పద్యాన్ని ఫైల్ లేదా డేటాబేస్ నుంచి తీసుకుంటుంది.\n3. BAML ద్వారా పద్యాన్ని Groqకి పంపి సమాధానం తయారు చేస్తుంది.\n4. సమాధానాన్ని ఈ కార్డులో చూపిస్తుంది.\nAPI key సర్వర్‌లోనే ఉంటుంది."}
+                      </Typography>
+                    }
+                  >
+                    <IconButton
+                      size="small"
+                      aria-label="సర్వర్‌లో AI సమాధానం ఎలా తయారవుతుందో చూడండి"
+                      sx={{ p: 0.25, color: "text.secondary" }}
+                    >
+                      <InfoOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
 
                 <Stack direction="row" spacing={1} alignItems="flex-start">

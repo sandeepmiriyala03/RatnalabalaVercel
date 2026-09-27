@@ -27,6 +27,15 @@ client<llm> CustomGPT5Chat {
   }
 }
 
+client<llm> GroqPoemAssistant {
+  provider openai-generic
+  options {
+    base_url "https://api.groq.com/openai/v1"
+    model "openai/gpt-oss-120b"
+    api_key env.GROQ_API_KEY
+  }
+}
+
 // Latest Anthropic Claude 4 models
 client<llm> CustomOpus4 {
   provider anthropic
