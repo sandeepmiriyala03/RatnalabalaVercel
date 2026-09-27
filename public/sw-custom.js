@@ -1,10 +1,11 @@
 import { Serwist } from "serwist";
 
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const PAGE_CACHE = `pages-cache-${CACHE_VERSION}`;
 const ASSET_CACHE = `asset-cache-${CACHE_VERSION}`;
 const MARKDOWN_CACHE = `markdown-cache-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
+const ACTIVE_CACHE_NAMES = new Set([PAGE_CACHE, ASSET_CACHE, MARKDOWN_CACHE]);
 
 // 1. Extracted internal paths from navbar.ts
 const NAVBAR_ROUTES = [
@@ -86,6 +87,22 @@ serwist.setCatchHandler(async ({ request }) => {
 });
 
 serwist.addEventListeners();
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) =>
+      Promise.all(
+        cacheNames
+          .filter(
+            (cacheName) =>
+              /^(pages-cache|asset-cache|markdown-cache)-/.test(cacheName) &&
+              !ACTIVE_CACHE_NAMES.has(cacheName)
+          )
+          .map((cacheName) => caches.delete(cacheName))
+      )
+    )
+  );
+});
 
 // 2. Precache Offline Page AND all Navbar routes during Service Worker installation
 self.addEventListener("install", (event) => {

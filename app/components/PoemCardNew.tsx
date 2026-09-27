@@ -71,7 +71,7 @@ const POSTER_COLOR = {
 
 const DEFAULT_KAVI_IMAGE_SRC = "/CartoonStyle.png";
 const KAVI_IMAGE_MAP: Record<string, string> = {
-  "డాక్టర్ మిరియాల రామకృష్ణ": "/MiriyalaRamakrishna.png",
+  "డాక్టర్ మిరియాల రామకృష్ణ": "/MiriaPen.jpg",
   "శ్రీ ప్రసాదరావు మిరియాల గారు": "/Prasad.jpeg",
 };
 
