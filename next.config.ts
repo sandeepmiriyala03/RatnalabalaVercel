@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
+import { withEve } from "eve/next";
 
 const withSerwist = withSerwistInit({
   // Disable Service Worker in development to prevent HMR / Turbopack conflicts
@@ -75,4 +76,4 @@ const nextConfig: NextConfig = {
   turbopack: {},
 };
 
-export default withSerwist(nextConfig);
+export default withEve(withSerwist(nextConfig));
