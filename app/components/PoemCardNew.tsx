@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Box, Typography, Card, CardContent,
   Button, Stack, Collapse, TextField,
@@ -23,6 +24,7 @@ import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
+import ReadingEntryButton from "@/app/components/ReadingEntryButton";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -303,6 +305,7 @@ export default function PoemCardNew({
 }: Props) {
   const theme = useTheme();
   const uid   = useId();
+  const pathname = usePathname() || "/poems";
 
   const poemRef      = useRef<HTMLDivElement | null>(null);
   const audioElRef   = useRef<HTMLAudioElement | null>(null);
@@ -338,6 +341,13 @@ export default function PoemCardNew({
   // one; the prop is just a convenience for single-collection lists.
   const collection = poem.collection ?? collectionProp;
   const canAskAI = Boolean(collection && poem.filename);
+  const readingEntry = {
+    id: `poem:${collection ?? "poems"}:${poem.filename ?? poem.slug ?? poem.title}`,
+    kind: "poem" as const,
+    title: poem.title,
+    module: poetryName ?? collection ?? "పద్యాలు",
+    href: pathname,
+  };
 
   // The moment the AI panel is opened, drop the default question into
   // the textbox automatically. Only fills when currently empty, so
@@ -742,6 +752,7 @@ export default function PoemCardNew({
   return (
     <Card
       component="article"
+      data-reading-entry={readingEntry.id}
       elevation={0}
       sx={{
         mb: { xs: 2, sm: 3 },
@@ -943,6 +954,7 @@ export default function PoemCardNew({
             }}>
               <ShareButtons targetRef={poemRef} />
             </Box>
+            <ReadingEntryButton entry={readingEntry} />
           </Stack>
 
           {/* 2 — Voice & music, collapsed, with a one-line summary of the current choice */}

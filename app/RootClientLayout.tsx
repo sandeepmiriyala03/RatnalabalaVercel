@@ -5,6 +5,7 @@ import ClientWrapper from "@/app/components/ClientWrapper";
 import Navbar from "@/app/components/Navbar";
 
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
+import ReadingActivityTracker from "@/app/components/ReadingActivityTracker";
 import FloatingAIButton from "@/app/components/FloatingAIButton";
 import FontControlsTelugu from "@/app/components/FontSelection";
 import CookieConsentBanner, { getCookieConsent } from "@/app/components/CookieConsentBanner";
@@ -351,6 +352,7 @@ useEffect(() => {
         </Box>
       </Container>
       <PwaInstallPrompt />
+      <ReadingActivityTracker />
       <MusicPlayer />
       <FloatingAIButton />
       <CookieConsentBanner />

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Box, Typography, Card, CardContent,
   Button, Stack, Collapse, TextField,
@@ -25,6 +26,7 @@ import ScheduleRoundedIcon        from "@mui/icons-material/ScheduleRounded";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
+import ReadingEntryButton from "@/app/components/ReadingEntryButton";
 
 /* ------------------------------------------------------------------ */
 /* Poster (shared as an image) — colours must stay light & fixed      */
@@ -296,6 +298,7 @@ export default function PoemCard({
 }: Props) {
   const theme = useTheme();
   const uid   = useId();
+  const pathname = usePathname() || "/poems";
 
   const poemRef          = useRef<HTMLDivElement>(null);
   const audioElRef       = useRef<HTMLAudioElement | null>(null);
@@ -343,6 +346,13 @@ export default function PoemCard({
   // collection + filename, database poems are answered from their content.
   const collection = poem.collection ?? collectionProp;
   const canAskAI = Boolean(poem.content?.trim());
+  const readingEntry = {
+    id: `poem:${collection ?? "poems"}:${poem.filename ?? poem.slug ?? poem.title}`,
+    kind: "poem" as const,
+    title: poem.title,
+    module: poetryName ?? collection ?? "పద్యాలు",
+    href: pathname,
+  };
 
   // The moment the AI panel opens, drop the default question into the box.
   // Only fills when empty, so reopening never stomps on the person's own text.
@@ -739,6 +749,7 @@ export default function PoemCard({
   return (
     <Card
       component="article"
+      data-reading-entry={readingEntry.id}
       elevation={0}
       sx={{
         mb: { xs: 2, sm: 3 },
@@ -937,6 +948,7 @@ export default function PoemCard({
             <Box sx={{ flex: "0 0 auto", display: "flex", alignItems: "stretch" }}>
               <ShareButtons targetRef={poemRef} />
             </Box>
+            <ReadingEntryButton entry={readingEntry} />
           </Stack>
 
           <Button

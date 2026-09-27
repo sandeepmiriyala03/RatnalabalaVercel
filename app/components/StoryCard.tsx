@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Box,
   Typography,
@@ -23,6 +24,7 @@ import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice from "@/app/components/TeluguVoice";
 import type { KathamalaStory } from "@/app/types/kathamala";
+import ReadingEntryButton from "@/app/components/ReadingEntryButton";
 
 type Props = {
   story: KathamalaStory;
@@ -37,7 +39,15 @@ const StoryCard: React.FC<Props> = ({
 }) => {
   const storyRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
+  const pathname = usePathname() || "/kathamala";
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const readingEntry = {
+    id: `story:${story.story_id}`,
+    kind: "story" as const,
+    title: story.title,
+    module: seriesName,
+    href: pathname,
+  };
 
   const voiceText = `${story.title}. ${story.story_text.join(" ")}. సందేశం: ${story.moral}`;
 
@@ -61,6 +71,7 @@ const StoryCard: React.FC<Props> = ({
 
   return (
     <Card
+      data-reading-entry={readingEntry.id}
       sx={{
         mb: 3,
         borderRadius: 3,
@@ -166,6 +177,7 @@ const StoryCard: React.FC<Props> = ({
           )}
 
           <ShareButtons targetRef={storyRef} />
+          <ReadingEntryButton entry={readingEntry} />
         </Box>
 
         {/* AI Tools */}

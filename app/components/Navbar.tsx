@@ -13,6 +13,7 @@ import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import ModuleFavoriteButton from "@/app/components/ModuleFavoriteButton";
 
 /* ═══════════════════════════════════════════
    NAV GROUPS
@@ -28,6 +29,7 @@ const NAV_GROUPS = [
       { label: "స్మృతిమాల",     path: "/smruthimala" },
       { label: "కథామాల",        path: "/kathamala" },
       { label: "పరాభవమాల",     path: "/parabhava" },
+      { label: "నా చదువు",       path: "/my-reading" },
     ],
   },
   {
@@ -459,10 +461,14 @@ export default function Navbar() {
               </Typography>
             </a>
 
+            <ModuleFavoriteButton />
             <ThemeToggleButton variant="bar" />
           </Box>
 
           {/* Mobile menu button */}
+          <Box sx={{ display: { xs: "flex", md: "none" }, alignItems: "center" }}>
+            <ModuleFavoriteButton />
+          </Box>
           <IconButton
             sx={{ display: { xs: "flex", md: "none" }, color: TEXT }}
             aria-label="Open menu"

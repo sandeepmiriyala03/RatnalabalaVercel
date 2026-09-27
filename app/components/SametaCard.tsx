@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
+import { usePathname } from "next/navigation";
 import {
   Box,
   Typography,
@@ -14,6 +15,7 @@ import StopCircleIcon from "@mui/icons-material/StopCircle";
 
 import ShareButtons from "@/app/components/ShareBar";
 import type { Sameta } from "@/app/types/sametalu";
+import ReadingEntryButton from "@/app/components/ReadingEntryButton";
 
 type Props = {
   sameta: Sameta;
@@ -25,6 +27,14 @@ const SametaPosterCard: React.FC<Props> = ({
   enableRead = true,
 }) => {
   const posterRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname() || "/sametalu";
+  const readingEntry = {
+    id: `proverb:${sameta.id}`,
+    kind: "proverb" as const,
+    title: sameta.text,
+    module: "సామెతలమాల",
+    href: pathname,
+  };
 
   /* 🔊 Telugu TTS */
   const speak = () => {
@@ -49,6 +59,7 @@ const SametaPosterCard: React.FC<Props> = ({
 
   return (
     <Card
+      data-reading-entry={readingEntry.id}
       sx={{
         borderRadius: 3,
         boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
@@ -128,6 +139,7 @@ const SametaPosterCard: React.FC<Props> = ({
 
           {/* 📤 Share */}
           <ShareButtons targetRef={posterRef} />
+          <ReadingEntryButton entry={readingEntry} />
         </Box>
       </CardContent>
     </Card>

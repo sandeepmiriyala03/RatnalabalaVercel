@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useState, useMemo, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   Box,
   Typography,
@@ -27,6 +28,7 @@ import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice from "@/app/components/TeluguVoice";
+import ReadingEntryButton from "@/app/components/ReadingEntryButton";
 
 interface GeetaCardProps {
   verse: number;
@@ -166,6 +168,14 @@ export default function GeetaCard({
   commentary,
 }: GeetaCardProps) {
   const theme = useTheme();
+  const pathname = usePathname() || "/geeta";
+  const readingEntry = {
+    id: `verse:geeta:${chapterLabel ?? "chapter"}:${verse}`,
+    kind: "verse" as const,
+    title: `శ్లోకం ${verse}`,
+    module: chapterLabel ?? "భగవద్గీత",
+    href: pathname,
+  };
 
   const posterRef = useRef<HTMLDivElement | null>(null);
   const audioElRef = useRef<HTMLAudioElement | null>(null);
@@ -391,6 +401,7 @@ export default function GeetaCard({
 
   return (
     <Card
+      data-reading-entry={readingEntry.id}
       elevation={0}
       sx={{
         mb: { xs: 2, sm: 3 },
@@ -817,6 +828,7 @@ export default function GeetaCard({
             <Box sx={{ display: "flex", alignItems: "stretch" }}>
               <ShareButtons targetRef={posterRef} title={shareTitle} text={voiceText} />
             </Box>
+            <ReadingEntryButton entry={readingEntry} />
           </Stack>
 
           <Button
