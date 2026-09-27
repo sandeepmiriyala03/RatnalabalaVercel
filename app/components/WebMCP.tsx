@@ -89,7 +89,10 @@ export default function WebMCP() {
               readOnlyHint: true,
             },
 
-        
+            // FIX 1: handle both array and object API response shapes,
+            // so we never fall back to returning array indices as "titles".
+            // FIX 2: return a JSON string, matching every official WebMCP
+            // example (execute() should return a string, not a raw object).
             execute: async () => {
               const response = await fetch(
                 "/api/getpoems?poet_id=1"
@@ -101,7 +104,10 @@ export default function WebMCP() {
 
               const data = await response.json();
 
-        
+              // Supports either:
+              //   [{ title: "..." }, { title: "..." }]        (array of objects)
+              //   ["Poem A", "Poem B"]                          (array of strings)
+              //   { "Poem A": {...}, "Poem B": {...} }          (object keyed by title)
               let titles: string[];
 
               if (Array.isArray(data)) {
@@ -198,8 +204,25 @@ export default function WebMCP() {
         );
       }
 
-      const response =
-        await modelContext.executeTool(tool, {});
+      // Chrome builds before version 155 expect the input arguments as a
+      // JSON STRING (executeTool(tool, '{}')). Chrome 155+ expects a plain
+      // object instead, and the string form is deprecated there. "Failed to
+      // parse input arguments" is the symptom of sending the wrong shape to
+      // a given browser's build, so try the current (object) form first and
+      // fall back to the older (string) form if that throws.
+      let response: unknown;
+      try {
+        response = await modelContext.executeTool(tool, {});
+      } catch (execError) {
+        console.warn(
+          "[WebMCP] Object-form executeTool failed, retrying with JSON string:",
+          execError
+        );
+        response = await modelContext.executeTool(
+          tool,
+          JSON.stringify({}) as unknown as Record<string, unknown>
+        );
+      }
 
       console.log(
         "[WebMCP] Execution result:",
