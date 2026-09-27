@@ -13,12 +13,15 @@ const withSerwist = withSerwistInit({
 });
 
 const nextConfig: NextConfig = {
+  // 1. Reduce Serverless Function Storage on Vercel
+  output: "standalone",
+
   reactStrictMode: true,
   
-  // 1. Transpile your custom packages
+  // 2. Transpile custom packages
   transpilePackages: ["yuktai", "yuktai-js"], 
 
-  // 2. WASM & Cross-Origin Isolation Headers
+  // 3. WASM & Cross-Origin Isolation Headers
   async headers() {
     return [
       {
