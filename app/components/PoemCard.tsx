@@ -4,7 +4,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Box, Typography, Card, CardContent,
   Button, Stack, Collapse, TextField,
-  Select, MenuItem, FormControl, InputLabel,
+  Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel,
   Slider, CircularProgress, Tooltip, IconButton,
   alpha, useTheme,
 } from "@mui/material";
@@ -21,6 +21,7 @@ import ContentCopyRoundedIcon     from "@mui/icons-material/ContentCopyRounded";
 import CheckRoundedIcon           from "@mui/icons-material/CheckRounded";
 import InfoOutlinedIcon           from "@mui/icons-material/InfoOutlined";
 import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
+import ScheduleRoundedIcon        from "@mui/icons-material/ScheduleRounded";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
@@ -314,7 +315,28 @@ export default function PoemCard({
   const [aiError,      setAiError]      = useState<string | null>(null);
   const [aiLoading,    setAiLoading]    = useState(false);
   const [copied, setCopied] = useState(false);
+  const [dailySendOpen, setDailySendOpen] = useState(false);
+  const [sendPhone, setSendPhone] = useState("");
+  const [sendTime, setSendTime] = useState("08:00");
+  const [sendFrequency, setSendFrequency] = useState<"daily" | "six-hours">("daily");
+  const [sendEnabled, setSendEnabled] = useState(false);
+  const [sendStatus, setSendStatus] = useState("");
+  const [sendBusy, setSendBusy] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("ratnalabala:poem-delivery-settings");
+    if (!saved) return;
+    try {
+      const settings = JSON.parse(saved);
+      setSendPhone(settings.phone ?? "");
+      setSendTime(settings.time ?? "08:00");
+      setSendFrequency(settings.frequency === "six-hours" ? "six-hours" : "daily");
+      setSendEnabled(settings.enabled === true);
+    } catch {
+      window.localStorage.removeItem("ratnalabala:poem-delivery-settings");
+    }
+  }, []);
 
   // poem.collection wins over the prop (see Props). The AI button shows on
   // every poem that has text — file-based poems are looked up by
@@ -588,6 +610,55 @@ export default function PoemCard({
       "_blank",
       "noopener,noreferrer"
     );
+  };
+
+  const handleDailySend = async (enabled: boolean) => {
+    setSendBusy(true);
+    setSendStatus("");
+    try {
+      const tokenKey = "ratnalabala:poem-delivery-token";
+      let token = window.localStorage.getItem(tokenKey);
+      if (!token) {
+        token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map((value) => value.toString(16).padStart(2, "0")).join("");
+        window.localStorage.setItem(tokenKey, token);
+      }
+
+      const response = await fetch("/api/poem-subscriptions", {
+        method: enabled ? "POST" : "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        ...(enabled ? {
+          body: JSON.stringify({
+            phone: sendPhone,
+            time: sendTime,
+            frequency: sendFrequency,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            consent: true,
+          }),
+        } : {}),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "సేవ్ చేయడం సాధ్యపడలేదు.");
+      setSendEnabled(enabled);
+      if (enabled) {
+        window.localStorage.setItem("ratnalabala:poem-delivery-settings", JSON.stringify({
+          phone: sendPhone,
+          time: sendTime,
+          frequency: sendFrequency,
+          enabled: true,
+        }));
+      } else {
+        window.localStorage.removeItem("ratnalabala:poem-delivery-settings");
+      }
+      setSendStatus(enabled ? "షెడ్యూల్ సేవ్ అయింది." : "రోజువారీ పద్యం పంపడం ఆపివేశాం.");
+    } catch (error) {
+      setSendStatus(error instanceof Error ? error.message : "సేవ్ చేయడం సాధ్యపడలేదు.");
+    } finally {
+      setSendBusy(false);
+    }
   };
 
   const handleQuestionKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -867,6 +938,81 @@ export default function PoemCard({
               <ShareButtons targetRef={poemRef} />
             </Box>
           </Stack>
+
+          <Button
+            onClick={() => setDailySendOpen((open) => !open)}
+            aria-expanded={dailySendOpen}
+            startIcon={<ScheduleRoundedIcon />}
+            variant="outlined"
+            fullWidth
+            sx={{ ...quietButtonSx, justifyContent: "flex-start" }}
+          >
+            {sendEnabled ? "పద్య పంపే సమయాన్ని మార్చండి" : "వాట్సాప్‌లో పద్యం షెడ్యూల్ చేయండి"}
+          </Button>
+
+          <Collapse in={dailySendOpen} unmountOnExit>
+            <Box sx={{ p: 1.5, border: `1px solid ${alpha(theme.palette.divider, 0.2)}`, borderRadius: "10px" }}>
+              <Stack spacing={1.5}>
+                <Typography variant="body2" color="text.secondary">
+                  మీ సమ్మతితో, ఎంచుకున్న సమయంలో కొత్త పద్యం WhatsAppకు వస్తుంది. WhatsApp సందేశ ఛార్జీలు వర్తించవచ్చు.
+                </Typography>
+                <TextField
+                  label="వాట్సాప్ నంబర్ (దేశ కోడ్‌తో)"
+                  placeholder="+919876543210"
+                  value={sendPhone}
+                  onChange={(event) => setSendPhone(event.target.value)}
+                  size="small"
+                  fullWidth
+                  inputProps={{ inputMode: "tel", autoComplete: "tel" }}
+                />
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25}>
+                  <TextField
+                    label="మీ సమయం"
+                    type="time"
+                    value={sendTime}
+                    onChange={(event) => setSendTime(event.target.value)}
+                    size="small"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  <FormControl size="small" fullWidth>
+                    <InputLabel id={`${uid}-send-frequency-label`}>ఎంత తరచుగా</InputLabel>
+                    <Select
+                      labelId={`${uid}-send-frequency-label`}
+                      label="ఎంత తరచుగా"
+                      value={sendFrequency}
+                      onChange={(event) => setSendFrequency(event.target.value as "daily" | "six-hours")}
+                    >
+                      <MenuItem value="daily">రోజుకు ఒకసారి</MenuItem>
+                      <MenuItem value="six-hours">ప్రతి 6 గంటలకు</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Stack>
+                <FormControlLabel
+                  control={<Switch checked={sendEnabled} onChange={(event) => {
+                    if (event.target.checked) void handleDailySend(true);
+                    else void handleDailySend(false);
+                  }} disabled={sendBusy || (!sendEnabled && !sendPhone.trim())} />}
+                  label={sendEnabled ? "ఆటోమేటిక్ పంపకం ప్రారంభమైంది" : "పంపడానికి నా సమ్మతి ఉంది"}
+                />
+                {sendEnabled && (
+                  <Button
+                    onClick={() => void handleDailySend(true)}
+                    disabled={sendBusy || !sendPhone.trim()}
+                    variant="outlined"
+                    size="small"
+                    sx={{ alignSelf: "flex-start", textTransform: "none" }}
+                  >
+                    సమయాన్ని సేవ్ చేయండి
+                  </Button>
+                )}
+                {sendStatus && <Typography role="status" variant="caption" color="text.secondary">{sendStatus}</Typography>}
+                <Typography variant="caption" color="text.secondary">
+                  ఆపడానికి ఈ స్విచ్‌ను ఆఫ్ చేయండి. పంపకం పనిచేయాలంటే సైట్ నిర్వాహకుడు Meta WhatsApp Cloud APIని అమర్చాలి.
+                </Typography>
+              </Stack>
+            </Box>
+          </Collapse>
 
           {/* 2 — Voice & music, collapsed, with a one-line summary of the current choice */}
           <Button
