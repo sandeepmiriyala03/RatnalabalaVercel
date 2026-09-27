@@ -141,7 +141,7 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
     try {
       const imageData = canvas.toDataURL("image/png");
 
-      const res = await fetch("/api/trace_check", {
+      const res = await fetch("/api/aksharamala?endpoint=trace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

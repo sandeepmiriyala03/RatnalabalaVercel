@@ -64,7 +64,7 @@ const AKSHARAMALA_FUNCTIONAL_CHECKS: FunctionalCheck[] = [
   {
     name: "సంబంధిత అక్షరాలు (similar) పనిచేస్తుందా",
     run: async () => {
-      const res = await fetch("/api/aksharamala_similar?letter=అ&word=అరటి");
+      const res = await fetch("/api/aksharamala?endpoint=similar&letter=అ&word=అరటి");
       if (!res.ok) throw new Error(`స్థితి: ${res.status}`);
       const data = await res.json();
       if (!Array.isArray(data.same_type)) {
@@ -75,7 +75,7 @@ const AKSHARAMALA_FUNCTIONAL_CHECKS: FunctionalCheck[] = [
   {
     name: "ఉచ్చారణ తనిఖీ (సరైనది) పనిచేస్తుందా",
     run: async () => {
-      const res = await fetch("/api/pronunciation_check", {
+      const res = await fetch("/api/aksharamala?endpoint=pronunciation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_word: "టెస్ట్", spoken_text: "టెస్ట్" }),
@@ -88,7 +88,7 @@ const AKSHARAMALA_FUNCTIONAL_CHECKS: FunctionalCheck[] = [
   {
     name: "ఉచ్చారణ తనిఖీ (తప్పు) సరిగ్గా తిరస్కరిస్తుందా",
     run: async () => {
-      const res = await fetch("/api/pronunciation_check", {
+      const res = await fetch("/api/aksharamala?endpoint=pronunciation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ target_word: "అమ్మ", spoken_text: "పూర్తిగా వేరే పదం" }),

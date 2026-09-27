@@ -37,8 +37,8 @@ def get_index() -> list[dict]:
     if _index_items is None:
         if not EMBEDDINGS_BLOB_URL:
             raise Exception(
-                "EMBEDDINGS_BLOB_URL సెట్ చేయలేదు — /api/build_index ఒకసారి విజిట్ చేసి, "
-                "అది ఇచ్చిన url ను Environment Variables లో పెట్టండి."
+                "EMBEDDINGS_BLOB_URL సెట్ చేయలేదు — prebuilt embeddings JSON URL ను "
+                "Vercel Environment Variables లో పెట్టండి."
             )
         res = requests.get(EMBEDDINGS_BLOB_URL, timeout=20)
         if res.status_code != 200:
@@ -48,7 +48,7 @@ def get_index() -> list[dict]:
 
 
 def embed_query(text: str) -> list[float]:
-    """Uses Cohere's embed API — same model as build_index.py used to
+    """Uses Cohere's embed API — same model as the document indexer used to
     index everything, so query and document vectors are comparable.
     input_type='search_query' vs 'search_document' is Cohere's own
     distinction for the two use cases; using the wrong one for either

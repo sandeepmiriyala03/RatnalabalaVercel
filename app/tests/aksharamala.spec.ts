@@ -117,7 +117,7 @@ test.describe("Aksharamala module", () => {
     page,
   }) => {
     const responsePromise = page.waitForResponse((res) =>
-      res.url().includes("/api/aksharamala_similar")
+      res.url().includes("/api/aksharamala?endpoint=similar")
     );
 
     // Click the card's title area, not any button inside it
@@ -166,7 +166,7 @@ test.describe("Aksharamala module", () => {
     }
 
     const responsePromise = page.waitForResponse((res) =>
-      res.url().includes("/api/trace_check")
+      res.url().includes("/api/aksharamala?endpoint=trace")
     );
 
     await page.getByText("తనిఖీ చేయండి").click();

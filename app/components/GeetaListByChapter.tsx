@@ -45,7 +45,7 @@ interface GeetaVerseItem {
   audio?: string;
 }
 
-// Shape returned by /api/gita?chapter=N and /api/gita?chapter=all
+// Shape returned by the Python Gita query endpoint.
 // (each item in the "all" array has this same shape).
 interface GeetaVerseRaw {
   verse: number;
@@ -71,10 +71,16 @@ interface Props {
 
 const ITEMS_PER_PAGE = 5;
 
-// Live API base — override via env var if you ever move this off the
-// same domain (e.g. testing against localhost:8000 during dev).
+// Optional external service override for testing or a separate deployment.
 const GITA_API_BASE =
   process.env.NEXT_PUBLIC_GITA_API_BASE ?? "";
+const getGitaUrl = (chapter: number | "all") => {
+  const chapterParam = encodeURIComponent(String(chapter));
+  if (GITA_API_BASE) {
+    return `${GITA_API_BASE.replace(/\/$/, "")}/api/gita?chapter=${chapterParam}`;
+  }
+  return `/api/gita?chapter=${chapterParam}`;
+};
 
 const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) => {
   const [verses, setVerses] = useState<GeetaVerseItem[]>([]);
@@ -96,8 +102,7 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
       .replace(/^\s*BG\s*\d+[.:]\d+\s*[-:.]?\s*/i, "")
       .trim();
 
-  /* 📥 Load verses — now from the live /api/gita endpoint (Hugging Face
-     under the hood), instead of static /geeta/chapterN.json files. */
+  /* 📥 Load verses from the live Python endpoint backed by Hugging Face. */
   useEffect(() => {
     const fetchVerses = async () => {
       setLoading(true);
@@ -105,7 +110,7 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
 
       try {
         if (chapter === "all") {
-          const res = await fetch(`${GITA_API_BASE}/api/gita?chapter=all`);
+          const res = await fetch(getGitaUrl("all"));
           if (!res.ok) throw new Error();
 
           const allChapters: GeetaChapterJson[] = await res.json();
@@ -129,7 +134,7 @@ const GeetaListByChapter: React.FC<Props> = ({ chapter, poetryName, authors }) =
           return;
         }
 
-        const res = await fetch(`${GITA_API_BASE}/api/gita?chapter=${chapter}`);
+        const res = await fetch(getGitaUrl(chapter));
         if (!res.ok) throw new Error();
 
         const data: GeetaChapterJson = await res.json();

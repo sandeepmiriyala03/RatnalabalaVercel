@@ -161,7 +161,7 @@ const AksharaPosterCard: React.FC<Props> = ({
 
       try {
         const targetWord = akshara.word || akshara.letter;
-        const res = await fetch("/api/pronunciation_check", {
+        const res = await fetch("/api/aksharamala?endpoint=pronunciation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ target_word: targetWord, spoken_text: spokenText }),

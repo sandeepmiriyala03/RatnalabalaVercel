@@ -1,13 +1,11 @@
-"""
-api/gita.py
-"""
+"""Vercel entry point for the live Bhagavad Gita verses API."""
 
 import json
 import re
 import time
 from collections import defaultdict
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import requests
 
@@ -21,7 +19,7 @@ TOTAL_ROWS = 701         # confirmed from the dataset's viewer page
 CACHE_TTL_SECONDS = 60 * 60  # 1 hour
 
 # ── In-memory cache (per serverless instance —
-#    cold starts will re-fetch, same as build_index.py's pattern) ──
+#    cold starts will re-fetch, same as the build-index helper) ──
 _cache: dict[int, dict] = {}
 _cached_at: float = 0.0
 
@@ -103,6 +101,27 @@ def _get_all_chapters() -> dict[int, dict]:
     return _cache
 
 
+def get_chapter_response(chapter_param: str) -> tuple[int, dict | list]:
+    try:
+        chapters = _get_all_chapters()
+    except requests.RequestException as e:
+        return 502, {"error": f"Hugging Face API error: {e}"}
+
+    if chapter_param == "all":
+        return 200, sorted(chapters.values(), key=lambda chapter: chapter["chapter"])
+
+    try:
+        chapter_num = int(chapter_param)
+    except ValueError:
+        return 400, {"error": "chapter must be an integer or 'all'"}
+
+    chapter = chapters.get(chapter_num)
+    if not chapter:
+        return 404, {"error": "Chapter not found"}
+
+    return 200, chapter
+
+
 class handler(BaseHTTPRequestHandler):
     def _send_json(self, status: int, payload):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -114,53 +133,13 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        parsed = urlparse(self.path)
-        query = parse_qs(parsed.query)
-        chapter_param = query.get("chapter", ["all"])[0]
-
-        try:
-            chapters = _get_all_chapters()
-        except requests.RequestException as e:
-            self._send_json(502, {"error": f"Hugging Face API error: {e}"})
-            return
-
-        if chapter_param == "all":
-            result = sorted(chapters.values(), key=lambda c: c["chapter"])
-            self._send_json(200, result)
-            return
-
-        try:
-            chapter_num = int(chapter_param)
-        except ValueError:
-            self._send_json(400, {"error": "chapter must be an integer or 'all'"})
-            return
-
-        chapter = chapters.get(chapter_num)
-        if not chapter:
-            self._send_json(404, {"error": "Chapter not found"})
-            return
-
-        self._send_json(200, chapter)
+        query = parse_qs(urlparse(self.path).query)
+        status, payload = get_chapter_response(query.get("chapter", ["all"])[0])
+        self._send_json(status, payload)
 
     def do_OPTIONS(self):
-        # CORS preflight support, in case the frontend is on a different origin.
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
-
-
-# ── Local-only test runner ──
-# Vercel ignores this block entirely and calls the `handler` class
-# directly through its own server. This is purely so you can run
-# `python api/gita.py` on your machine without needing the Vercel CLI.
-if __name__ == "__main__":
-    from http.server import HTTPServer
-
-    port = 8000
-    print(f"Starting local test server at http://localhost:{port}")
-    print(f"Try: http://localhost:{port}/api/gita?chapter=1")
-    print(f"Try: http://localhost:{port}/api/gita?chapter=all")
-    server = HTTPServer(("localhost", port), handler)
-    server.serve_forever()

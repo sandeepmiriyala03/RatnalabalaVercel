@@ -5,11 +5,18 @@
 # (avoids the exact problem we already hit once with aksharamala_data.py).
 #
 # GET /api/aksharamala?search=&type=all&page=1&page_size=4
+# GET /api/aksharamala?endpoint=similar&letter=అ&word=అరటి
+# POST /api/aksharamala?endpoint=pronunciation or endpoint=trace
 
+import base64
+import difflib
+import io
 import json
 import requests
-from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler
+from urllib.parse import parse_qs, urlparse
+
+from PIL import Image, ImageDraw, ImageFont
 
 AKSHARALU = [
     {"id": "s1", "type": "swaralu", "letter": "అ", "word": "అరటి", "image": "/akshara/1.jpg"},
@@ -108,6 +115,136 @@ def search_sametalu(term: str) -> list[str]:
     return [s for s in sametalu if term in s][:10]
 
 
+SAM_JSON_FOLDER = "sam"
+_related_cache: dict = {}
+
+
+def load_related_json(letter: str) -> list[dict]:
+    if letter in _related_cache:
+        return _related_cache[letter]
+
+    try:
+        response = requests.get(f"{BASE_URL}/{SAM_JSON_FOLDER}/{letter}.json", timeout=10)
+        response.raise_for_status()
+        related = response.json().get("related", [])
+    except Exception:
+        related = []
+
+    _related_cache[letter] = related
+    return related
+
+
+def find_similar(letter: str, word: str) -> dict:
+    clicked = next((item for item in AKSHARALU if item["letter"] == letter), None)
+    same_type = []
+    if clicked:
+        same_type = [
+            item for item in AKSHARALU
+            if item["type"] == clicked["type"] and item["letter"] != letter
+        ][:5]
+
+    return {
+        "clicked": {"letter": letter, "word": word},
+        "same_type": same_type,
+        "related_from_json": load_related_json(letter),
+        "source": "local_data",
+    }
+
+
+SIMILARITY_THRESHOLD = 0.75
+
+
+def check_pronunciation(target_word: str, spoken_text: str) -> dict:
+    target = target_word.strip()
+    spoken = spoken_text.strip()
+
+    if not target or not spoken:
+        return {
+            "correct": False,
+            "similarity": 0.0,
+            "message": "ఏమీ వినిపించలేదు, మళ్ళీ ప్రయత్నించండి.",
+        }
+
+    if target == spoken:
+        return {"correct": True, "similarity": 1.0, "message": "సరైనది! 🎉"}
+
+    similarity = difflib.SequenceMatcher(None, target, spoken).ratio()
+    return {
+        "correct": similarity >= SIMILARITY_THRESHOLD,
+        "similarity": round(similarity, 2),
+        "message": "సరైనది! 🎉" if similarity >= SIMILARITY_THRESHOLD else "కాదు, మళ్ళీ ప్రయత్నించండి.",
+    }
+
+
+FONT_PATH = "public/fonts/NTR-Regular.ttf"
+OVERLAP_THRESHOLD = 0.35
+_font_cache: dict = {}
+
+
+def get_font(size: int) -> ImageFont.FreeTypeFont:
+    if size not in _font_cache:
+        _font_cache[size] = ImageFont.truetype(FONT_PATH, size)
+    return _font_cache[size]
+
+
+def render_guide_mask(letter: str, canvas_size: int) -> Image.Image:
+    image = Image.new("L", (canvas_size, canvas_size), color=255)
+    draw = ImageDraw.Draw(image)
+    font = get_font(int(canvas_size * 0.55))
+    bbox = draw.textbbox((0, 0), letter, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    x = (canvas_size - text_width) / 2 - bbox[0]
+    y = (canvas_size - text_height) / 2 - bbox[1]
+    draw.text((x, y), letter, font=font, fill=0)
+    return image
+
+
+def decode_drawn_image(image_data: str, canvas_size: int) -> Image.Image:
+    _, encoded = image_data.split(",", 1)
+    image = Image.open(io.BytesIO(base64.b64decode(encoded))).convert("L")
+    if image.size != (canvas_size, canvas_size):
+        image = image.resize((canvas_size, canvas_size))
+    return image
+
+
+def compute_overlap(guide: Image.Image, drawn: Image.Image, canvas_size: int) -> float:
+    guide_pixels = guide.load()
+    drawn_pixels = drawn.load()
+    guide_ink = 0
+    covered = 0
+
+    for x in range(0, canvas_size, 2):
+        for y in range(0, canvas_size, 2):
+            if guide_pixels[x, y] < 200:
+                guide_ink += 1
+                if drawn_pixels[x, y] < 200:
+                    covered += 1
+
+    return covered / guide_ink if guide_ink else 0.0
+
+
+def check_trace(letter: str, image_data: str, canvas_size: int) -> dict:
+    try:
+        guide = render_guide_mask(letter, canvas_size)
+        drawn = decode_drawn_image(image_data, canvas_size)
+        score = compute_overlap(guide, drawn, canvas_size)
+    except Exception as error:
+        return {
+            "correct": False,
+            "score": 0.0,
+            "message": "తనిఖీ చేయడంలో సమస్య వచ్చింది.",
+            "error": str(error),
+        }
+
+    correct = score >= OVERLAP_THRESHOLD
+    return {
+        "correct": correct,
+        "score": round(score, 2),
+        "message": "బాగా రాశారు! 🎉" if correct else "మరింత సాధన చేయండి, మళ్ళీ ప్రయత్నించండి.",
+    }
+
+
 def filter_and_paginate(search: str, type_filter: str, page: int, page_size: int) -> dict:
     search = search.strip()
 
@@ -145,21 +282,64 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             query = parse_qs(urlparse(self.path).query)
+            endpoint = query.get("endpoint", [""])[0]
+            if endpoint in ("similar", "aksharamala_similar"):
+                letter = query.get("letter", [""])[0]
+                if not letter:
+                    self._send_json(400, {"error": "'letter' ఖాళీగా ఉంది"})
+                    return
+                self._send_json(200, find_similar(letter, query.get("word", [""])[0]))
+                return
 
-            search = query.get("search", [""])[0]
-            type_filter = query.get("type", ["all"])[0]
-            page = int(query.get("page", ["1"])[0])
-            page_size = int(query.get("page_size", ["4"])[0])
-
-            result = filter_and_paginate(search, type_filter, page, page_size)
+            result = filter_and_paginate(
+                query.get("search", [""])[0],
+                query.get("type", ["all"])[0],
+                int(query.get("page", ["1"])[0]),
+                int(query.get("page_size", ["4"])[0]),
+            )
             self._send_json(200, result)
-
+        except ValueError as e:
+            self._send_json(400, {"error": str(e)})
         except Exception as e:
             self._send_json(500, {"error": str(e)})
 
+    def do_POST(self):
+        query = parse_qs(urlparse(self.path).query)
+        endpoint = query.get("endpoint", [""])[0]
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            payload = json.loads(self.rfile.read(content_length)) if content_length else {}
+        except (ValueError, json.JSONDecodeError):
+            self._send_json(400, {"error": "Invalid JSON body."})
+            return
+
+        if endpoint in ("pronunciation", "pronunciation_check"):
+            target_word = payload.get("target_word", "")
+            if not target_word:
+                self._send_json(400, {"error": "'target_word' ఖాళీగా ఉంది"})
+                return
+            self._send_json(200, check_pronunciation(target_word, payload.get("spoken_text", "")))
+            return
+
+        if endpoint in ("trace", "trace_check"):
+            letter = payload.get("letter", "")
+            image_data = payload.get("image_data", "")
+            if not letter or not image_data:
+                self._send_json(400, {"error": "'letter' లేదా 'image_data' ఖాళీగా ఉంది"})
+                return
+            try:
+                canvas_size = int(payload.get("canvas_size", 260))
+            except (TypeError, ValueError):
+                self._send_json(400, {"error": "canvas_size must be an integer"})
+                return
+            self._send_json(200, check_trace(letter, image_data, canvas_size))
+            return
+
+        self._send_json(400, {"error": "Use endpoint=pronunciation or endpoint=trace."})
+
     def _cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
     def _send_json(self, status, payload):
@@ -168,3 +348,5 @@ class handler(BaseHTTPRequestHandler):
         self._cors_headers()
         self.end_headers()
         self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+
+

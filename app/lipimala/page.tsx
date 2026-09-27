@@ -1,6 +1,12 @@
 "use client";
 
-import TeluguOcrPage from "@/app/components/TeluguocrPage";
+import dynamic from "next/dynamic";
+
+const TeluguOcrPage = dynamic(
+  () => import("@/app/components/TeluguocrPage"),
+  { ssr: false }
+);
+
 export default function UploadPage() {
   return (
     <>

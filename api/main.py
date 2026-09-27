@@ -895,7 +895,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             self._send_json(400, {
-                "error": "Missing or invalid ?endpoint= param. Use 'fonts', 'font_agent', 'poems', or 'poem'."
+                "error": "Missing or invalid ?endpoint= param."
             })
 
         except FileNotFoundError as e:
@@ -1062,7 +1062,7 @@ class handler(BaseHTTPRequestHandler):
 
         else:
             self._send_json(400, {
-                "error": "POST requires ?endpoint=svara | tts | extract-news | poem-ai"
+                "error": "Missing or invalid ?endpoint= param."
             })
 
     def do_OPTIONS(self):
