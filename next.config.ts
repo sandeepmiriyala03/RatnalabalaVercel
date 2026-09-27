@@ -2,28 +2,33 @@ import type { NextConfig } from "next";
 import withSerwistInit from "@serwist/next";
 
 const withSerwist = withSerwistInit({
-  // Disable Service Worker in development to avoid Turbopack HMR conflicts
+  // Disable Service Worker in development to prevent HMR / Turbopack conflicts
   disable: process.env.NODE_ENV === "development",
-  swSrc: "public/sw-custom.js",
+  
+  // Point swSrc to root directory (NOT inside /public)
+  swSrc: "sw.ts",
   swDest: "public/sw.js",
+
+  // Serwist auto-injects Revision hash for precache files
   additionalPrecacheEntries: [
-    { url: "/" },
-    { url: "/offline.html" },
+    { url: "/", revision: "1" },
+    { url: "/offline.html", revision: "1" },
   ],
 });
 
 const nextConfig: NextConfig = {
-  // 1. Reduce Serverless Function Storage on Vercel
+  // 1. Optimize bundle size for serverless deployment
   output: "standalone",
 
   reactStrictMode: true,
-  
-  // 2. Transpile custom packages
-  transpilePackages: ["yuktai", "yuktai-js"], 
 
-  // 3. WASM & Cross-Origin Isolation Headers
+  // 2. Transpile local/custom packages
+  transpilePackages: ["yuktai", "yuktai-js"],
+
+  // 3. Selective Headers Configuration
   async headers() {
     return [
+      // WASM Headers
       {
         source: "/wasm/:path*",
         headers: [
@@ -31,14 +36,23 @@ const nextConfig: NextConfig = {
             key: "Content-Type",
             value: "application/wasm",
           },
-        ],
-      },
-      {
-        source: "/(.*)",
-        headers: [
           {
             key: "Cross-Origin-Embedder-Policy",
             value: "require-corp",
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin",
+          },
+        ],
+      },
+      // Global COOP/COEP Headers - using credentialless to allow analytics/fonts
+      {
+        source: "/((?!wasm/).*)",
+        headers: [
+          {
+            key: "Cross-Origin-Embedder-Policy",
+            value: "credentialless",
           },
           {
             key: "Cross-Origin-Opener-Policy",
@@ -51,9 +65,13 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
-      { source: "/api/extract-news", destination: "/api/main?endpoint=extract-news" },
+      {
+        source: "/api/extract-news",
+        destination: "/api/main?endpoint=extract-news",
+      },
     ];
   },
+
   turbopack: {},
 };
 
