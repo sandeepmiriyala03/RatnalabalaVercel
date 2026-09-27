@@ -71,46 +71,60 @@ export default function WebMCP() {
     const registerTool = async () => {
       try {
         await modelContext.registerTool(
-  {
-    name: "get_poem_list",
+          {
+            name: "get_poem_list",
 
-    title: "Get Ratnalabala Poem List",
+            title: "Get Ratnalabala Poem List",
 
-    description:
-      "Returns the list of Telugu poems currently available in Ratnalabala.",
+            description:
+              "Returns the list of Telugu poems currently available in Ratnalabala.",
 
-    inputSchema: {
-      type: "object",
-      properties: {},
-      additionalProperties: false,
-    },
+            inputSchema: {
+              type: "object",
+              properties: {},
+              additionalProperties: false,
+            },
 
-    annotations: {
-      readOnlyHint: true,
-    },
+            annotations: {
+              readOnlyHint: true,
+            },
 
-    execute: async () => {
-      const response = await fetch(
-        "/api/getpoems?poet_id=1"
-      );
+        
+            execute: async () => {
+              const response = await fetch(
+                "/api/getpoems?poet_id=1"
+              );
 
-      if (!response.ok) {
-        throw new Error("Failed to load poems.");
-      }
+              if (!response.ok) {
+                throw new Error("Failed to load poems.");
+              }
 
-      const poems = await response.json();
+              const data = await response.json();
 
-      return {
-        success: true,
-        count: Object.keys(poems).length,
-        poems: Object.keys(poems),
-      };
-    },
-  },
-  {
-    signal: controller.signal,
-  }
-);
+        
+              let titles: string[];
+
+              if (Array.isArray(data)) {
+                titles = data.map((item) =>
+                  typeof item === "string"
+                    ? item
+                    : item?.title ?? String(item)
+                );
+              } else {
+                titles = Object.keys(data);
+              }
+
+              return JSON.stringify({
+                success: true,
+                count: titles.length,
+                poems: titles,
+              });
+            },
+          },
+          {
+            signal: controller.signal,
+          }
+        );
 
         setReady(true);
 
@@ -192,8 +206,15 @@ export default function WebMCP() {
         response
       );
 
+      // execute() now returns a JSON string, so parse it back
+      // into an object before pretty-printing it for display.
+      const parsed =
+        typeof response === "string"
+          ? JSON.parse(response)
+          : response;
+
       setResult(
-        JSON.stringify(response, null, 2)
+        JSON.stringify(parsed, null, 2)
       );
 
       setShowResult(true);
@@ -823,7 +844,7 @@ export default function WebMCP() {
               color="text.secondary"
               sx={{ lineHeight: 1.7 }}
             >
-              “ఏ పద్యాలు అందుబాటులో ఉన్నాయి?”
+              "ఏ పద్యాలు అందుబాటులో ఉన్నాయి?"
             </Typography>
 
             <Typography
