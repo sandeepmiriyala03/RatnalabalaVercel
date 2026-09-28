@@ -21,6 +21,7 @@ import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
 import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
 import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 
 import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
 import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
@@ -50,13 +51,28 @@ type AnalyzerStats = {
   ms: number;
 };
 
+type AiWord = {
+  word: string;
+  meaning_en?: string;
+  emoji?: string;
+  /** Rust split of the word; null if the WASM check wasn't available */
+  aksharas: string[] | null;
+};
+
+type AiWordsState =
+  | { status: "idle" }
+  | { status: "loading"; letter: string }
+  | { status: "ready"; letter: string; words: AiWord[]; rejected: number }
+  | { status: "error"; letter: string };
+
 /* ================= CONSTANTS ================= */
 
 // Was 100 (all 44 cards mounted at once, each with TTS/canvas/audio refs),
 // which caused an Out of Memory crash. Keep this small.
-const PAGE_SIZE = 3;
+const PAGE_SIZE = 7;
 const DEBOUNCE_MS = 400;
 const API_BASE = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/api";
+const VIRAMA = "\u0c4d";
 
 /* ================= HELPERS ================= */
 
@@ -75,6 +91,17 @@ function formatDuration(ms: number): string {
   if (ms < 1) return `${Math.round(ms * 1000)} µs`;
   if (ms < 1000) return `${ms.toFixed(1)} ms`;
   return `${(ms / 1000).toFixed(2)} s`;
+}
+
+/**
+ * Rust check for AI words: the FIRST akshara must be this letter, or this
+ * letter with a vowel sign (క → కా, కి are fine). A virama right after the
+ * letter means a different conjunct (క → క్ష), so that word is rejected.
+ */
+function firstAksharaMatches(aksharas: string[], letter: string): boolean {
+  const first = aksharas[0];
+  if (!first || !first.startsWith(letter)) return false;
+  return first.charAt(letter.length) !== VIRAMA;
 }
 
 /* ================= HOW-IT-WORKS PANEL ================= */
@@ -122,7 +149,7 @@ function HowItWorks({
     "🛡️ భద్రత — బఫర్ పరిమితులు దాటకుండా Rust చూసుకుంటుంది",
     "📦 చిన్న ఫైల్ — ఒక్కసారి డౌన్‌లోడ్ అయితే బ్రౌజర్ కాష్‌లో ఉంటుంది",
     "📴 సర్వర్ అవసరం లేదు — విశ్లేషణ మొత్తం మీ బ్రౌజర్‌లోనే జరుగుతుంది",
-    "🔁 ఒకే కోడ్ — అదే Rust కోడ్‌ను Android యాప్ లేదా సర్వర్‌లో కూడా వాడవచ్చు",
+    "🤖 AI తనిఖీ — AI సూచించిన పదాలను చూపించే ముందు Rust సరిచూస్తుంది",
   ];
 
   return (
@@ -192,6 +219,104 @@ function HowItWorks({
   );
 }
 
+/* ================= AI WORDS PANEL ================= */
+
+function AiWordsPanel({
+  state,
+  onSpeak,
+}: {
+  state: Exclude<AiWordsState, { status: "idle" }>;
+  onSpeak: (word: string) => void;
+}) {
+  return (
+    <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
+      <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
+        <AutoAwesomeRoundedIcon color="secondary" fontSize="small" />
+        <Typography fontWeight={700}>
+          &quot;{state.letter}&quot; తో మొదలయ్యే మరిన్ని పదాలు
+        </Typography>
+        <Chip size="small" label="AI · Groq" variant="outlined" />
+        <Chip size="small" icon={<CodeRoundedIcon />} label="Rust తనిఖీ" variant="outlined" color="secondary" />
+      </Stack>
+
+      {state.status === "loading" && (
+        <Stack direction="row" spacing={1} alignItems="center">
+          <CircularProgress size={18} />
+          <Typography variant="body2" sx={{ opacity: 0.7 }}>
+            AI పదాలు వెతుకుతోంది...
+          </Typography>
+        </Stack>
+      )}
+
+      {state.status === "error" && (
+        <Typography variant="body2" color="text.secondary">
+          AI పదాలు ఇప్పుడు అందుబాటులో లేవు. కొద్దిసేపటి తర్వాత మళ్ళీ కార్డ్‌పై నొక్కండి.
+        </Typography>
+      )}
+
+      {state.status === "ready" && state.words.length === 0 && (
+        <Typography variant="body2" color="text.secondary">
+          ఈ అక్షరానికి సరైన పదాలు దొరకలేదు.
+        </Typography>
+      )}
+
+      {state.status === "ready" && state.words.length > 0 && (
+        <>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+              gap: 1.5,
+            }}
+          >
+            {state.words.map((w) => (
+              <Box
+                key={w.word}
+                component="button"
+                type="button"
+                onClick={() => onSpeak(w.word)}
+                aria-label={`${w.word} వినండి`}
+                sx={{
+                  p: 1.5,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 2,
+                  bgcolor: "background.paper",
+                  font: "inherit",
+                  color: "inherit",
+                  textAlign: "center",
+                  cursor: "pointer",
+                  "&:hover": { borderColor: "secondary.main" },
+                  "&:focus-visible": { outline: "2px solid", outlineColor: "secondary.main", outlineOffset: 2 },
+                }}
+              >
+                {w.emoji && <Typography sx={{ fontSize: 28, lineHeight: 1.2 }}>{w.emoji}</Typography>}
+                <Typography sx={{ fontWeight: 800, fontSize: "1.3rem" }}>{w.word}</Typography>
+                {w.aksharas && w.aksharas.length > 1 && (
+                  <Typography variant="caption" sx={{ display: "block", opacity: 0.75 }}>
+                    {w.aksharas.join(" · ")}
+                  </Typography>
+                )}
+                {w.meaning_en && (
+                  <Typography variant="caption" sx={{ display: "block", opacity: 0.55 }}>
+                    {w.meaning_en}
+                  </Typography>
+                )}
+              </Box>
+            ))}
+          </Box>
+
+          <Typography variant="caption" sx={{ display: "block", mt: 1, opacity: 0.6 }}>
+            🔊 పదంపై నొక్కితే వినిపిస్తుంది
+            {state.rejected > 0 &&
+              ` • 🦀 Rust తనిఖీలో ${state.rejected} సరిపోని పదం(లు) తొలగించబడ్డాయి`}
+          </Typography>
+        </>
+      )}
+    </Box>
+  );
+}
+
 /* ================= MAIN COMPONENT ================= */
 
 export default function AksharamalaParent() {
@@ -220,8 +345,13 @@ export default function AksharamalaParent() {
 
   const [sametaluMatches, setSametaluMatches] = useState<string[]>([]);
 
+  // Card click → similar letters + AI word ideas
   const [similar, setSimilar] = useState<SimilarResult | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
+  const [aiWords, setAiWords] = useState<AiWordsState>({ status: "idle" });
+  const clickIdRef = useRef(0); // ignores late answers from an older click
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   /* 1. Preload WASM once, so the search timer measures only the analysis */
   useEffect(() => {
@@ -232,6 +362,14 @@ export default function AksharamalaParent() {
       .catch(() => {
         /* a real failure will show up on the first search */
       });
+  }, []);
+
+  // Stop any AI-word audio when leaving the page
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
   }, []);
 
   /* 2. Split the search text with Rust, and time it */
@@ -332,21 +470,99 @@ export default function AksharamalaParent() {
     return () => controller.abort();
   }, [debouncedSearch, typeFilter, page]);
 
-  const handleCardClick = async (a: Akshara) => {
+  /* 4. Card click: similar letters (fast) and AI words (slower), in parallel */
+
+  const loadSimilar = async (a: Akshara, clickId: number) => {
     setSimilarLoading(true);
     setSimilar(null);
     try {
-      const params = new URLSearchParams({ letter: a.letter, word: a.word || "" });
-      const res = await fetch(`${API_BASE}/aksharamala_similar?${params}`);
+      // Same route as the list fetch above, so it always reaches api/aksharamala.py
+      const params = new URLSearchParams({ endpoint: "similar", letter: a.letter, word: a.word || "" });
+      const res = await fetch(`${API_BASE}/aksharamala?${params}`);
       if (!res.ok) {
         console.error(`[Aksharamala Similar] ${res.status} ${res.statusText}`);
         return;
       }
-      setSimilar(await res.json());
+      const data = await res.json();
+      if (clickId === clickIdRef.current) setSimilar(data);
     } catch (err) {
       console.error("[Aksharamala Similar] fetch failed:", err);
     } finally {
-      setSimilarLoading(false);
+      if (clickId === clickIdRef.current) setSimilarLoading(false);
+    }
+  };
+
+  const loadAiWords = async (a: Akshara, clickId: number) => {
+    setAiWords({ status: "loading", letter: a.letter });
+    try {
+      const params = new URLSearchParams({ endpoint: "ai_words", letter: a.letter, word: a.word || "" });
+      const res = await fetch(`${API_BASE}/aksharamala?${params}`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || data.error || `AI words ${res.status}`);
+
+      // Rust check: split each word and keep only the ones that really
+      // start with this letter. If WASM isn't available, keep the word
+      // (the server already did a simpler check).
+      const checked: AiWord[] = await Promise.all(
+        (data.words || []).map(async (w: Omit<AiWord, "aksharas">) => ({
+          ...w,
+          aksharas: await splitTeluguAksharas(w.word).catch(() => null),
+        }))
+      );
+      const valid = checked.filter((w) => w.aksharas === null || firstAksharaMatches(w.aksharas, a.letter));
+
+      if (clickId !== clickIdRef.current) return;
+      setAiWords({
+        status: "ready",
+        letter: a.letter,
+        words: valid,
+        rejected: checked.length - valid.length,
+      });
+    } catch (err) {
+      console.error("[Aksharamala AI words] failed:", err);
+      if (clickId === clickIdRef.current) setAiWords({ status: "error", letter: a.letter });
+    }
+  };
+
+  const handleCardClick = (a: Akshara) => {
+    const clickId = ++clickIdRef.current;
+    loadSimilar(a, clickId);
+    loadAiWords(a, clickId);
+  };
+
+  // Bring the results into view when a card is clicked
+  useEffect(() => {
+    if (aiWords.status === "loading") {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [aiWords.status]);
+
+  /** Speaks an AI word: same TTS as the cards, browser voice as fallback. */
+  const speakWord = async (text: string) => {
+    audioRef.current?.pause();
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, source: "edge", voice: voiceGender }),
+      });
+      if (!res.ok) throw new Error(`TTS API ${res.status}`);
+
+      const url = URL.createObjectURL(await res.blob());
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => URL.revokeObjectURL(url);
+      audio.onerror = () => URL.revokeObjectURL(url);
+      await audio.play();
+    } catch (err) {
+      console.warn("[Aksharamala] TTS failed, using browser voice:", err);
+      if (!("speechSynthesis" in window)) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "te-IN";
+      utterance.rate = 0.8;
+      window.speechSynthesis.speak(utterance);
     }
   };
 
@@ -526,24 +742,31 @@ export default function AksharamalaParent() {
           </Box>
         )}
 
-        {similarLoading && (
-          <Box textAlign="center" sx={{ py: 2 }}>
-            <CircularProgress size={24} />
-          </Box>
-        )}
+        {/* Card click results */}
+        <Box ref={resultsRef} sx={{ scrollMarginTop: 16 }}>
+          <Stack spacing={2}>
+            {similarLoading && (
+              <Box textAlign="center" sx={{ py: 2 }}>
+                <CircularProgress size={24} />
+              </Box>
+            )}
 
-        {similar && !similarLoading && (
-          <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
-            <Typography fontWeight={700} sx={{ mb: 1 }}>
-              &quot;{similar.clicked.letter}&quot; కి సంబంధించినవి
-            </Typography>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              {similar.same_type.map((s) => (
-                <Chip key={s.id} label={`${s.letter} — ${s.word || ""}`} />
-              ))}
-            </Stack>
-          </Box>
-        )}
+            {similar && !similarLoading && (
+              <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
+                <Typography fontWeight={700} sx={{ mb: 1 }}>
+                  &quot;{similar.clicked.letter}&quot; కి సంబంధించినవి
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  {similar.same_type.map((s) => (
+                    <Chip key={s.id} label={`${s.letter} — ${s.word || ""}`} />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+
+            {aiWords.status !== "idle" && <AiWordsPanel state={aiWords} onSpeak={speakWord} />}
+          </Stack>
+        </Box>
 
         {pageCount > 1 && (
           <Box display="flex" justifyContent="center">

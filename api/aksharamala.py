@@ -6,17 +6,26 @@
 #
 # GET /api/aksharamala?search=&type=all&page=1&page_size=4
 # GET /api/aksharamala?endpoint=similar&letter=అ&word=అరటి
+# GET /api/aksharamala?endpoint=ai_words&letter=అ&word=అరటి   (Groq AI word ideas)
 # POST /api/aksharamala?endpoint=pronunciation or endpoint=trace
+#
+# The trace check here is the FALLBACK for the in-browser Rust check.
+# It uses the same method and numbers as rust/telugu-akshara/src/lib.rs
+# (64×64 grid, tolerance 2, coverage + precision), so both give the
+# same kind of result.
 
 import base64
 import difflib
 import io
 import json
-import requests
+import os
+import re
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 
-from PIL import Image, ImageDraw, ImageFont
+import requests
+from PIL import Image, ImageDraw, ImageFilter, ImageFont, features
 
 AKSHARALU = [
     {"id": "s1", "type": "swaralu", "letter": "అ", "word": "అరటి", "image": "/akshara/1.jpg"},
@@ -75,6 +84,8 @@ AKSHARALU = [
 
 BASE_URL = "https://ratnalabala.vercel.app"
 
+# ================= SAMETALU =================
+
 SAMETALU_FILES = [
     "a", "aa", "am", "ba", "bha", "ca", "cha", "da", "da2", "dha", "dha2",
     "e", "ee", "ga", "ha", "i", "ja", "ka", "ksha", "la", "ma", "na2",
@@ -84,27 +95,32 @@ SAMETALU_FILES = [
 _sametalu_cache: list[str] | None = None
 
 
+def _fetch_sametalu_file(filename: str) -> list[str]:
+    try:
+        res = requests.get(f"{BASE_URL}/ssmetalamala/{filename}.json", timeout=15)
+        res.raise_for_status()
+        data = res.json()
+        return [s.get("text", "") for s in data.get("sametalu", []) if s.get("text")]
+    except Exception:
+        return []
+
+
 def load_all_sametalu() -> list[str]:
-    """Same loading pattern as sametalu_agent.py — plain function
-    call within THIS file, not a cross-file import."""
+    """Loads all sametalu files IN PARALLEL (was one by one: 33 requests
+    in a row on every cold start). Order of files is kept."""
     global _sametalu_cache
     if _sametalu_cache is not None:
         return _sametalu_cache
 
-    all_texts = []
-    for filename in SAMETALU_FILES:
-        try:
-            res = requests.get(f"{BASE_URL}/ssmetalamala/{filename}.json", timeout=15)
-            res.raise_for_status()
-            data = res.json()
-            for s in data.get("sametalu", []):
-                text = s.get("text", "")
-                if text:
-                    all_texts.append(text)
-        except Exception:
-            continue
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(_fetch_sametalu_file, SAMETALU_FILES))
 
-    _sametalu_cache = all_texts
+    all_texts = [text for file_texts in results for text in file_texts]
+
+    # Don't cache a total failure — otherwise sametalu stay empty until
+    # the next cold start. Try again on the next request instead.
+    if all_texts:
+        _sametalu_cache = all_texts
     return all_texts
 
 
@@ -114,6 +130,8 @@ def search_sametalu(term: str) -> list[str]:
     sametalu = load_all_sametalu()
     return [s for s in sametalu if term in s][:10]
 
+
+# ================= SIMILAR =================
 
 SAM_JSON_FOLDER = "sam"
 _related_cache: dict = {}
@@ -151,6 +169,91 @@ def find_similar(letter: str, word: str) -> dict:
     }
 
 
+# ================= AI WORD IDEAS (Groq) =================
+# Same Groq setup as sametalu_agent.py. The AI suggests more words for a
+# letter; the server checks them here, and the browser checks them again
+# with the Rust akshara splitter before showing them.
+
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+GROQ_MODEL = "openai/gpt-oss-120b"  # keep in sync with sametalu_agent.py
+AI_WORDS_REQUESTED = 8              # ask for a few extra; some get filtered out
+AI_WORDS_RETURNED = 6
+TELUGU_TEXT = re.compile(r"^[\u0c00-\u0c7f\u200c\u200d]+$")
+_ai_words_cache: dict[str, list[dict]] = {}
+
+
+def call_groq(prompt: str) -> str:
+    if not GROQ_API_KEY:
+        raise Exception("GROQ_API_KEY సెట్ చేయలేదు.")
+    res = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+        json={
+            "model": GROQ_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.3,
+        },
+        timeout=25,
+    )
+    res.raise_for_status()
+    return res.json()["choices"][0]["message"]["content"]
+
+
+def parse_json_object(text: str) -> dict:
+    """Takes the first {...} block, so ```json fences or extra words don't break it."""
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end <= start:
+        raise ValueError("AI did not return JSON")
+    return json.loads(text[start:end + 1])
+
+
+def build_word_prompt(letter: str, exclude_word: str) -> str:
+    exclude_rule = f'- Do not include "{exclude_word}".\n' if exclude_word else ""
+    return (
+        "You help Telugu-speaking children aged 4-8 learn the alphabet.\n"
+        f'List {AI_WORDS_REQUESTED} simple, everyday Telugu words that START with the Telugu letter "{letter}".\n'
+        "Rules:\n"
+        f'- Each word must begin with exactly "{letter}".\n'
+        "- Use common words a small child knows: animals, food, family, objects, nature.\n"
+        "- Write each word in Telugu script only.\n"
+        f"{exclude_rule}"
+        "Reply with ONLY this JSON and nothing else:\n"
+        '{"words": [{"word": "<Telugu word>", "meaning_en": "<1-3 word English meaning>", "emoji": "<one emoji>"}]}'
+    )
+
+
+def clean_ai_words(data: dict, letter: str) -> list[dict]:
+    """Server-side check: Telugu only, starts with the letter, no duplicates."""
+    words, seen = [], set()
+    for item in data.get("words", []):
+        if not isinstance(item, dict):
+            continue
+        word = str(item.get("word", "")).strip()
+        if not word or word in seen or len(word) > 20:
+            continue
+        if not TELUGU_TEXT.match(word) or not word.startswith(letter):
+            continue
+        seen.add(word)
+        words.append({
+            "word": word,
+            "meaning_en": str(item.get("meaning_en", "")).strip()[:40],
+            "emoji": str(item.get("emoji", "")).strip()[:4],
+        })
+    return words
+
+
+def suggest_ai_words(letter: str, exclude_word: str = "") -> list[dict]:
+    if letter not in _ai_words_cache:
+        data = parse_json_object(call_groq(build_word_prompt(letter, exclude_word)))
+        words = clean_ai_words(data, letter)
+        if not words:
+            return []
+        _ai_words_cache[letter] = words  # cache only good results
+    return [w for w in _ai_words_cache[letter] if w["word"] != exclude_word][:AI_WORDS_RETURNED]
+
+
+# ================= PRONUNCIATION =================
+
 SIMILARITY_THRESHOLD = 0.75
 
 
@@ -176,77 +279,151 @@ def check_pronunciation(target_word: str, spoken_text: str) -> dict:
     }
 
 
+# ================= TRACE (fallback for the Rust check) =================
+# Same numbers as the browser / Rust version, so both behave alike.
+
 FONT_PATH = "public/fonts/NTR-Regular.ttf"
-OVERLAP_THRESHOLD = 0.35
+TRACE_GRID = 64          # = MASK_SIDE in lib.rs
+TRACE_TOLERANCE = 2      # = TOLERANCE in lib.rs
+INK_THRESHOLD = 32       # = INK_THRESHOLD in lib.rs
+GUIDE_SCALE = 0.35       # = GUIDE_SCALE in AksharaTraceBoard.tsx
+GUIDE_MAX_FILL = 0.8     # = GUIDE_MAX_FILL in AksharaTraceBoard.tsx
+PASS_PERCENT = 60
+GREAT_PERCENT = 80
+
+# Telugu conjuncts (క్ష, ష్మి) and vowel signs only render correctly with
+# the Raqm layout engine. Without it, Pillow draws the pieces side by side.
+_LAYOUT = ImageFont.Layout.RAQM if features.check("raqm") else ImageFont.Layout.BASIC
 _font_cache: dict = {}
 
 
 def get_font(size: int) -> ImageFont.FreeTypeFont:
     if size not in _font_cache:
-        _font_cache[size] = ImageFont.truetype(FONT_PATH, size)
+        _font_cache[size] = ImageFont.truetype(FONT_PATH, size, layout_engine=_LAYOUT)
     return _font_cache[size]
 
 
-def render_guide_mask(letter: str, canvas_size: int) -> Image.Image:
-    image = Image.new("L", (canvas_size, canvas_size), color=255)
+def render_guide_mask(letter: str, size: int) -> Image.Image:
+    """Letter shape as an ink mask (255 = ink, 0 = empty), centred by its
+    real glyph bounds and shrunk to fit — same layout as the browser guide."""
+    image = Image.new("L", (size, size), 0)
     draw = ImageDraw.Draw(image)
-    font = get_font(int(canvas_size * 0.55))
+
+    font_size = max(8, int(size * GUIDE_SCALE))
+    font = get_font(font_size)
     bbox = draw.textbbox((0, 0), letter, font=font)
-    text_width = bbox[2] - bbox[0]
-    text_height = bbox[3] - bbox[1]
-    x = (canvas_size - text_width) / 2 - bbox[0]
-    y = (canvas_size - text_height) / 2 - bbox[1]
-    draw.text((x, y), letter, font=font, fill=0)
+    width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    shrink = min(1.0, size * GUIDE_MAX_FILL / max(width, 1), size * GUIDE_MAX_FILL / max(height, 1))
+    if shrink < 1.0:
+        font = get_font(max(8, int(font_size * shrink)))
+        bbox = draw.textbbox((0, 0), letter, font=font)
+        width, height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    x = (size - width) / 2 - bbox[0]
+    y = (size - height) / 2 - bbox[1]
+    draw.text((x, y), letter, font=font, fill=255)
     return image
 
 
-def decode_drawn_image(image_data: str, canvas_size: int) -> Image.Image:
+def decode_drawn_mask(image_data: str, size: int) -> Image.Image:
+    """The drawing canvas is TRANSPARENT with coloured strokes, so the
+    alpha channel is exactly 'where the child drew'. (The old version
+    converted to greyscale, which turns transparent pixels BLACK — every
+    empty pixel counted as ink, so almost any drawing passed.)"""
     _, encoded = image_data.split(",", 1)
-    image = Image.open(io.BytesIO(base64.b64decode(encoded))).convert("L")
-    if image.size != (canvas_size, canvas_size):
-        image = image.resize((canvas_size, canvas_size))
-    return image
+    image = Image.open(io.BytesIO(base64.b64decode(encoded))).convert("RGBA")
+    alpha = image.getchannel("A")
+    return alpha.resize((size, size), Image.BILINEAR)
 
 
-def compute_overlap(guide: Image.Image, drawn: Image.Image, canvas_size: int) -> float:
-    guide_pixels = guide.load()
-    drawn_pixels = drawn.load()
-    guide_ink = 0
-    covered = 0
+def _ink(mask: Image.Image) -> list[bool]:
+    # tobytes() on an "L" image = one byte per pixel (getdata() is deprecated in new Pillow)
+    return [value >= INK_THRESHOLD for value in mask.tobytes()]
 
-    for x in range(0, canvas_size, 2):
-        for y in range(0, canvas_size, 2):
-            if guide_pixels[x, y] < 200:
-                guide_ink += 1
-                if drawn_pixels[x, y] < 200:
-                    covered += 1
 
-    return covered / guide_ink if guide_ink else 0.0
+def score_masks(drawn: Image.Image, target: Image.Image) -> tuple[int, int] | None:
+    """Returns (coverage %, precision %), or None if the letter is empty.
+    MaxFilter spreads ink by TRACE_TOLERANCE cells — same as dilate() in Rust."""
+    kernel = ImageFilter.MaxFilter(2 * TRACE_TOLERANCE + 1)
+
+    drawn_ink = _ink(drawn)
+    target_ink = _ink(target)
+
+    target_total = sum(target_ink)
+    if target_total == 0:
+        return None
+    drawn_total = sum(drawn_ink)
+    if drawn_total == 0:
+        return 0, 0
+
+    drawn_near = _ink(drawn.filter(kernel))
+    target_near = _ink(target.filter(kernel))
+
+    covered = sum(1 for t, d in zip(target_ink, drawn_near) if t and d)
+    precise = sum(1 for d, t in zip(drawn_ink, target_near) if d and t)
+
+    return covered * 100 // target_total, precise * 100 // drawn_total
+
+
+def describe_trace(coverage: int, precision: int) -> tuple[bool, str]:
+    correct = coverage >= PASS_PERCENT and precision >= PASS_PERCENT
+    if coverage >= GREAT_PERCENT and precision >= GREAT_PERCENT:
+        message = "అద్భుతం! చాలా బాగా రాశారు 🎉"
+    elif correct:
+        message = "బాగుంది! 👍"
+    elif coverage < PASS_PERCENT and precision >= PASS_PERCENT:
+        message = "కొంత భాగం మిగిలిపోయింది — అక్షరం పూర్తిగా రాయండి"
+    elif precision < PASS_PERCENT and coverage >= PASS_PERCENT:
+        message = "గీతలు అక్షరం బయటకు వెళ్లాయి — జాగ్రత్తగా రాయండి"
+    else:
+        message = "మళ్ళీ ప్రయత్నించండి — బూడిద రంగు అక్షరం మీద రాయండి"
+    return correct, message
 
 
 def check_trace(letter: str, image_data: str, canvas_size: int) -> dict:
+    # canvas_size is kept for compatibility; everything is compared on
+    # the TRACE_GRID, so the drawing's pixel size doesn't matter.
     try:
-        guide = render_guide_mask(letter, canvas_size)
-        drawn = decode_drawn_image(image_data, canvas_size)
-        score = compute_overlap(guide, drawn, canvas_size)
+        target = render_guide_mask(letter, TRACE_GRID)
+        drawn = decode_drawn_mask(image_data, TRACE_GRID)
+        result = score_masks(drawn, target)
     except Exception as error:
         return {
             "correct": False,
-            "score": 0.0,
+            "score": 0,
             "message": "తనిఖీ చేయడంలో సమస్య వచ్చింది.",
             "error": str(error),
         }
 
-    correct = score >= OVERLAP_THRESHOLD
+    if result is None:
+        return {
+            "correct": False,
+            "score": 0,
+            "message": "ఈ అక్షరాన్ని తనిఖీ చేయలేకపోయాను.",
+            "error": "empty letter shape",
+        }
+
+    coverage, precision = result
+    correct, message = describe_trace(coverage, precision)
     return {
         "correct": correct,
-        "score": round(score, 2),
-        "message": "బాగా రాశారు! 🎉" if correct else "మరింత సాధన చేయండి, మళ్ళీ ప్రయత్నించండి.",
+        "score": round((coverage + precision) / 2),
+        "coverage": coverage,
+        "precision": precision,
+        "message": message,
     }
+
+
+# ================= LIST + SEARCH =================
+
+MAX_PAGE_SIZE = 50
 
 
 def filter_and_paginate(search: str, type_filter: str, page: int, page_size: int) -> dict:
     search = search.strip()
+    # page_size=0 used to crash with ZeroDivisionError (500)
+    page_size = max(1, min(page_size, MAX_PAGE_SIZE))
 
     filtered = [
         a for a in AKSHARALU
@@ -261,7 +438,7 @@ def filter_and_paginate(search: str, type_filter: str, page: int, page_size: int
     start = (page - 1) * page_size
     items = filtered[start:start + page_size]
 
-    # NEW — same search term also checked against sametalu data
+    # Same search term also checked against sametalu data
     sametalu_matches = search_sametalu(search)
 
     return {
@@ -272,6 +449,8 @@ def filter_and_paginate(search: str, type_filter: str, page: int, page_size: int
         "sametalu_matches": sametalu_matches,
     }
 
+
+# ================= HANDLER =================
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -289,6 +468,19 @@ class handler(BaseHTTPRequestHandler):
                     self._send_json(400, {"error": "'letter' ఖాళీగా ఉంది"})
                     return
                 self._send_json(200, find_similar(letter, query.get("word", [""])[0]))
+                return
+
+            if endpoint == "ai_words":
+                letter = query.get("letter", [""])[0].strip()
+                if not letter or len(letter) > 6 or not TELUGU_TEXT.match(letter):
+                    self._send_json(400, {"error": "'letter' సరైన తెలుగు అక్షరం కాదు"})
+                    return
+                try:
+                    words = suggest_ai_words(letter, query.get("word", [""])[0].strip())
+                except Exception as e:
+                    self._send_json(502, {"error": "AI పదాలు తీసుకురాలేకపోయాను.", "detail": str(e)})
+                    return
+                self._send_json(200, {"letter": letter, "words": words, "source": "groq"})
                 return
 
             result = filter_and_paginate(
@@ -348,5 +540,3 @@ class handler(BaseHTTPRequestHandler):
         self._cors_headers()
         self.end_headers()
         self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
-
-
