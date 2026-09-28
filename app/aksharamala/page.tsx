@@ -126,7 +126,7 @@ export default function AksharamalaPage() {
   return (
     <Box
       sx={{
-        maxWidth: 900,
+        maxWidth: 1240,
         mx: "auto",
         p: 2,
       }}

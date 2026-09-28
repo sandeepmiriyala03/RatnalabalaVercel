@@ -16,12 +16,18 @@ import {
   Button,
   Collapse,
   Divider,
+  Drawer,
+  IconButton,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
 import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
 import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
 import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
@@ -68,9 +74,11 @@ type AiWordsState =
 /* ================= CONSTANTS ================= */
 
 // Was 100 (all 44 cards mounted at once, each with TTS/canvas/audio refs),
-// which caused an Out of Memory crash. Keep this small.
-const PAGE_SIZE = 7;
+// which caused an Out of Memory crash. 4 fills a 2×2 grid next to the panel.
+const PAGE_SIZE = 4;
 const DEBOUNCE_MS = 400;
+const AI_TIMEOUT_MS = 20000;
+const PANEL_WIDTH = 380;
 const API_BASE = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/api";
 const VIRAMA = "\u0c4d";
 
@@ -229,12 +237,14 @@ function AiWordsPanel({
   onSpeak: (word: string) => void;
 }) {
   return (
-    <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
+    <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
       <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
         <AutoAwesomeRoundedIcon color="secondary" fontSize="small" />
         <Typography fontWeight={700}>
-          &quot;{state.letter}&quot; తో మొదలయ్యే మరిన్ని పదాలు
+          &quot;{state.letter}&quot; తో మొదలయ్యే పదాలు
         </Typography>
+      </Stack>
+      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
         <Chip size="small" label="AI · Groq" variant="outlined" />
         <Chip size="small" icon={<CodeRoundedIcon />} label="Rust తనిఖీ" variant="outlined" color="secondary" />
       </Stack>
@@ -266,7 +276,7 @@ function AiWordsPanel({
             sx={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-              gap: 1.5,
+              gap: 1.25,
             }}
           >
             {state.words.map((w) => (
@@ -277,7 +287,7 @@ function AiWordsPanel({
                 onClick={() => onSpeak(w.word)}
                 aria-label={`${w.word} వినండి`}
                 sx={{
-                  p: 1.5,
+                  p: 1.25,
                   border: "1px solid",
                   borderColor: "divider",
                   borderRadius: 2,
@@ -290,8 +300,8 @@ function AiWordsPanel({
                   "&:focus-visible": { outline: "2px solid", outlineColor: "secondary.main", outlineOffset: 2 },
                 }}
               >
-                {w.emoji && <Typography sx={{ fontSize: 28, lineHeight: 1.2 }}>{w.emoji}</Typography>}
-                <Typography sx={{ fontWeight: 800, fontSize: "1.3rem" }}>{w.word}</Typography>
+                {w.emoji && <Typography sx={{ fontSize: 26, lineHeight: 1.2 }}>{w.emoji}</Typography>}
+                <Typography sx={{ fontWeight: 800, fontSize: "1.2rem" }}>{w.word}</Typography>
                 {w.aksharas && w.aksharas.length > 1 && (
                   <Typography variant="caption" sx={{ display: "block", opacity: 0.75 }}>
                     {w.aksharas.join(" · ")}
@@ -317,9 +327,113 @@ function AiWordsPanel({
   );
 }
 
+/* ================= CARD RESULTS (side panel / bottom sheet) ================= */
+
+function CardResults({
+  selected,
+  similar,
+  similarLoading,
+  aiWords,
+  onSpeak,
+  onPickLetter,
+}: {
+  selected: Akshara | null;
+  similar: SimilarResult | null;
+  similarLoading: boolean;
+  aiWords: AiWordsState;
+  onSpeak: (word: string) => void;
+  onPickLetter: (letter: string) => void;
+}) {
+  if (!selected) {
+    return (
+      <Box
+        sx={{
+          p: 3,
+          border: "1px dashed",
+          borderColor: "divider",
+          borderRadius: "12px",
+          textAlign: "center",
+        }}
+      >
+        <TouchAppRoundedIcon color="secondary" sx={{ fontSize: 36, mb: 1 }} />
+        <Typography fontWeight={700}>ఏదైనా అక్షరం కార్డ్‌పై నొక్కండి</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          సంబంధిత అక్షరాలు, AI సూచించిన కొత్త పదాలు ఇక్కడ కనిపిస్తాయి.
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Stack spacing={2}>
+      {/* Selected letter */}
+      <Stack direction="row" spacing={2} alignItems="center">
+        <Box
+          sx={{
+            minWidth: 64,
+            height: 64,
+            px: 1,
+            borderRadius: "12px",
+            bgcolor: "secondary.main",
+            color: "secondary.contrastText",
+            display: "grid",
+            placeItems: "center",
+            fontSize: 34,
+            fontWeight: 900,
+          }}
+        >
+          {selected.letter}
+        </Box>
+        <Box>
+          <Typography variant="caption" color="text.secondary">
+            ఎంచుకున్న అక్షరం
+          </Typography>
+          {selected.word && (
+            <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.2 }}>
+              {selected.word}
+            </Typography>
+          )}
+        </Box>
+      </Stack>
+
+      {/* Related letters */}
+      <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+        <Typography fontWeight={700} sx={{ mb: 1 }}>
+          సంబంధిత అక్షరాలు
+        </Typography>
+        {similarLoading && <CircularProgress size={20} />}
+        {!similarLoading && similar && similar.same_type.length > 0 && (
+          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            {similar.same_type.map((s) => (
+              <Chip
+                key={s.id}
+                label={`${s.letter} — ${s.word || ""}`}
+                clickable
+                onClick={() => onPickLetter(s.letter)}
+                aria-label={`${s.letter} అక్షరం చూడండి`}
+              />
+            ))}
+          </Stack>
+        )}
+        {!similarLoading && (!similar || similar.same_type.length === 0) && (
+          <Typography variant="body2" color="text.secondary">
+            సంబంధిత అక్షరాలు దొరకలేదు.
+          </Typography>
+        )}
+      </Box>
+
+      {/* AI words */}
+      {aiWords.status !== "idle" && <AiWordsPanel state={aiWords} onSpeak={onSpeak} />}
+    </Stack>
+  );
+}
+
 /* ================= MAIN COMPONENT ================= */
 
 export default function AksharamalaParent() {
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS);
 
@@ -345,12 +459,13 @@ export default function AksharamalaParent() {
 
   const [sametaluMatches, setSametaluMatches] = useState<string[]>([]);
 
-  // Card click → similar letters + AI word ideas
+  // Card click → side panel (desktop) / bottom sheet (mobile)
+  const [selected, setSelected] = useState<Akshara | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [similar, setSimilar] = useState<SimilarResult | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
   const [aiWords, setAiWords] = useState<AiWordsState>({ status: "idle" });
   const clickIdRef = useRef(0); // ignores late answers from an older click
-  const resultsRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   /* 1. Preload WASM once, so the search timer measures only the analysis */
@@ -371,6 +486,11 @@ export default function AksharamalaParent() {
       if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     };
   }, []);
+
+  // Close the mobile sheet if the screen becomes wide (rotation, resize)
+  useEffect(() => {
+    if (isDesktop) setSheetOpen(false);
+  }, [isDesktop]);
 
   /* 2. Split the search text with Rust, and time it */
   useEffect(() => {
@@ -476,7 +596,6 @@ export default function AksharamalaParent() {
     setSimilarLoading(true);
     setSimilar(null);
     try {
-      // Same route as the list fetch above, so it always reaches api/aksharamala.py
       const params = new URLSearchParams({ endpoint: "similar", letter: a.letter, word: a.word || "" });
       const res = await fetch(`${API_BASE}/aksharamala?${params}`);
       if (!res.ok) {
@@ -494,15 +613,19 @@ export default function AksharamalaParent() {
 
   const loadAiWords = async (a: Akshara, clickId: number) => {
     setAiWords({ status: "loading", letter: a.letter });
+
+    // Don't spin forever if Groq is slow: give up after AI_TIMEOUT_MS
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+
     try {
       const params = new URLSearchParams({ endpoint: "ai_words", letter: a.letter, word: a.word || "" });
-      const res = await fetch(`${API_BASE}/aksharamala?${params}`);
+      const res = await fetch(`${API_BASE}/aksharamala?${params}`, { signal: controller.signal });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || data.error || `AI words ${res.status}`);
 
-      // Rust check: split each word and keep only the ones that really
-      // start with this letter. If WASM isn't available, keep the word
-      // (the server already did a simpler check).
+      // Rust check: keep only words whose first akshara really is this letter.
+      // If WASM isn't available, keep the word (the server already checked it).
       const checked: AiWord[] = await Promise.all(
         (data.words || []).map(async (w: Omit<AiWord, "aksharas">) => ({
           ...w,
@@ -521,21 +644,27 @@ export default function AksharamalaParent() {
     } catch (err) {
       console.error("[Aksharamala AI words] failed:", err);
       if (clickId === clickIdRef.current) setAiWords({ status: "error", letter: a.letter });
+    } finally {
+      clearTimeout(timer);
     }
   };
 
   const handleCardClick = (a: Akshara) => {
     const clickId = ++clickIdRef.current;
+    setSelected(a);
+    if (!isDesktop) setSheetOpen(true);
     loadSimilar(a, clickId);
     loadAiWords(a, clickId);
   };
 
-  // Bring the results into view when a card is clicked
-  useEffect(() => {
-    if (aiWords.status === "loading") {
-      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  }, [aiWords.status]);
+  /** A related-letter chip was tapped: show that letter's card. */
+  const handlePickLetter = (letter: string) => {
+    setSheetOpen(false);
+    setTypeFilter("all");
+    setSearch(letter);
+    setPage(1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   /** Speaks an AI word: same TTS as the cards, browser voice as fallback. */
   const speakWord = async (text: string) => {
@@ -571,11 +700,22 @@ export default function AksharamalaParent() {
     setPage(1);
   };
 
+  const resultsPanel = (
+    <CardResults
+      selected={selected}
+      similar={similar}
+      similarLoading={similarLoading}
+      aiWords={aiWords}
+      onSpeak={speakWord}
+      onPickLetter={handlePickLetter}
+    />
+  );
+
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="lg">
       <Stack spacing={4} sx={{ py: 6 }}>
-        {/* HEADER */}
-        <Box textAlign="center">
+        {/* HEADER (kept narrow so the search box doesn't stretch too wide) */}
+        <Box textAlign="center" sx={{ maxWidth: 760, mx: "auto", width: "100%" }}>
           <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" sx={{ mb: 2 }}>
             <Chip label="అన్నీ" clickable color={typeFilter === "all" ? "primary" : "default"} onClick={() => handleFilter("all")} />
             <Chip label="అచ్చులు" clickable color={typeFilter === "swaralu" ? "primary" : "default"} onClick={() => handleFilter("swaralu")} />
@@ -709,81 +849,122 @@ export default function AksharamalaParent() {
           </Alert>
         )}
 
-        {loading ? (
-          <Box textAlign="center" sx={{ py: 10 }}>
-            <CircularProgress />
-          </Box>
-        ) : errorMsg ? null : items.length === 0 ? (
-          <Box textAlign="center" sx={{ py: 10 }}>
-            <Typography variant="h6" sx={{ opacity: 0.5 }}>క్షమించండి! ఏమీ దొరకలేదు.</Typography>
-          </Box>
-        ) : (
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center" }}>
-            {items.map((a) => (
-              <Box
-                key={a.id}
-                onClick={() => handleCardClick(a)}
-                sx={{ cursor: "pointer", flex: { xs: "1 1 100%", sm: "1 1 calc(50% - 16px)" }, maxWidth: { xs: "100%", sm: "440px" } }}
-              >
-                <AksharaPosterCard akshara={a} enableRead={true} voiceGender={voiceGender} />
+        {/* MAIN: cards on the left, results panel on the right (desktop) */}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "minmax(0, 1fr)", md: `minmax(0, 1fr) ${PANEL_WIDTH}px` },
+            gap: 3,
+            alignItems: "start",
+          }}
+        >
+          {/* Left column */}
+          <Stack spacing={3}>
+            {loading ? (
+              <Box textAlign="center" sx={{ py: 10 }}>
+                <CircularProgress />
               </Box>
-            ))}
-          </Box>
-        )}
-
-        {sametaluMatches.length > 0 && !loading && (
-          <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
-            <Typography fontWeight={700} sx={{ mb: 1 }}>సంబంధిత సామెతలు:</Typography>
-            <Stack spacing={0.5}>
-              {sametaluMatches.map((s, i) => (
-                <Typography key={i} sx={{ opacity: 0.85 }}>• {s}</Typography>
-              ))}
-            </Stack>
-          </Box>
-        )}
-
-        {/* Card click results */}
-        <Box ref={resultsRef} sx={{ scrollMarginTop: 16 }}>
-          <Stack spacing={2}>
-            {similarLoading && (
-              <Box textAlign="center" sx={{ py: 2 }}>
-                <CircularProgress size={24} />
+            ) : errorMsg ? null : items.length === 0 ? (
+              <Box textAlign="center" sx={{ py: 10 }}>
+                <Typography variant="h6" sx={{ opacity: 0.5 }}>క్షమించండి! ఏమీ దొరకలేదు.</Typography>
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                  gap: 3,
+                }}
+              >
+                {items.map((a) => {
+                  const isSelected = selected?.id === a.id;
+                  return (
+                    <Box
+                      key={a.id}
+                      onClick={() => handleCardClick(a)}
+                      sx={{
+                        cursor: "pointer",
+                        borderRadius: 4,
+                        outline: isSelected ? "3px solid" : "3px solid transparent",
+                        outlineColor: isSelected ? "secondary.main" : "transparent",
+                        outlineOffset: 3,
+                        transition: "outline-color 0.2s ease",
+                      }}
+                    >
+                      <AksharaPosterCard akshara={a} enableRead={true} voiceGender={voiceGender} />
+                    </Box>
+                  );
+                })}
               </Box>
             )}
 
-            {similar && !similarLoading && (
+            {sametaluMatches.length > 0 && !loading && (
               <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider" }}>
-                <Typography fontWeight={700} sx={{ mb: 1 }}>
-                  &quot;{similar.clicked.letter}&quot; కి సంబంధించినవి
-                </Typography>
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                  {similar.same_type.map((s) => (
-                    <Chip key={s.id} label={`${s.letter} — ${s.word || ""}`} />
+                <Typography fontWeight={700} sx={{ mb: 1 }}>సంబంధిత సామెతలు:</Typography>
+                <Stack spacing={0.5}>
+                  {sametaluMatches.map((s, i) => (
+                    <Typography key={i} sx={{ opacity: 0.85 }}>• {s}</Typography>
                   ))}
                 </Stack>
               </Box>
             )}
 
-            {aiWords.status !== "idle" && <AiWordsPanel state={aiWords} onSpeak={speakWord} />}
+            {pageCount > 1 && (
+              <Box display="flex" justifyContent="center">
+                <Pagination
+                  count={pageCount}
+                  page={page}
+                  onChange={(_, v) => {
+                    setPage(v);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  color="primary"
+                  size="large"
+                  shape="rounded"
+                />
+              </Box>
+            )}
           </Stack>
-        </Box>
 
-        {pageCount > 1 && (
-          <Box display="flex" justifyContent="center">
-            <Pagination
-              count={pageCount}
-              page={page}
-              onChange={(_, v) => {
-                setPage(v);
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
-              color="primary"
-              size="large"
-              shape="rounded"
-            />
+          {/* Right column: stays in view while scrolling (desktop only) */}
+          <Box
+            sx={{
+              display: { xs: "none", md: "block" },
+              position: "sticky",
+              top: 16,
+              maxHeight: "calc(100vh - 32px)",
+              overflowY: "auto",
+            }}
+          >
+            {resultsPanel}
           </Box>
-        )}
+        </Box>
       </Stack>
+
+      {/* Mobile: results open as a bottom sheet over the page */}
+      <Drawer
+        anchor="bottom"
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        PaperProps={{
+          sx: {
+            borderTopLeftRadius: 16,
+            borderTopRightRadius: 16,
+            maxHeight: "80vh",
+            px: 2,
+            pt: 1,
+            pb: "calc(16px + env(safe-area-inset-bottom, 0px))",
+          },
+        }}
+      >
+        <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: "divider", mx: "auto", mb: 1 }} />
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <IconButton onClick={() => setSheetOpen(false)} aria-label="మూసివేయండి" size="small">
+            <CloseRoundedIcon />
+          </IconButton>
+        </Box>
+        {resultsPanel}
+      </Drawer>
     </Container>
   );
 }
