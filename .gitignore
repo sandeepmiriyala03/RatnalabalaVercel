@@ -65,3 +65,4 @@ rag-env/
 playwright-report/
 test-results/
 android.keystore
+tsconfig.tsbuildinfo
