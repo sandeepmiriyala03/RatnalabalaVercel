@@ -968,3 +968,4 @@ export default function AksharamalaParent() {
     </Container>
   );
 }
+
