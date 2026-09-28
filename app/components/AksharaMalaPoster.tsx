@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
-  Box, Typography, Card, CardContent, Divider, IconButton, Button, Stack, Tooltip, CircularProgress
+  Box, Typography, Card, CardContent, Divider, IconButton, Button, Stack, Tooltip, CircularProgress, Chip,
 } from "@mui/material";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import StopCircleIcon from "@mui/icons-material/StopCircle";
@@ -14,6 +14,7 @@ import CancelIcon from "@mui/icons-material/Cancel";
 
 import ShareButtons from "@/app/components/ShareBar";
 import AksharaTraceBoard from "./AksharaTraceBoard";
+import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
 
 type Akshara = {
   id: string;
@@ -33,12 +34,52 @@ const CARD_VOICE_SOURCE = "edge";
 
 type PracticeResult = { correct: boolean; message: string } | null;
 
+/** matched: undefined = not practised yet, true = said correctly, false = missed */
+type AksharaMatch = { akshara: string; matched?: boolean };
+
+/**
+ * Marks which target aksharas appear, in order, in what was spoken.
+ * Uses the longest common subsequence, so one extra or missing akshara
+ * doesn't shift and break every match after it.
+ */
+function matchAksharas(target: string[], spoken: string[]): AksharaMatch[] {
+  const m = target.length;
+  const n = spoken.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
+
+  for (let i = m - 1; i >= 0; i--) {
+    for (let j = n - 1; j >= 0; j--) {
+      dp[i][j] =
+        target[i] === spoken[j]
+          ? dp[i + 1][j + 1] + 1
+          : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+
+  const result: AksharaMatch[] = target.map((akshara) => ({ akshara, matched: false }));
+  let i = 0;
+  let j = 0;
+  while (i < m && j < n) {
+    if (target[i] === spoken[j]) {
+      result[i].matched = true;
+      i++;
+      j++;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      i++;
+    } else {
+      j++;
+    }
+  }
+  return result;
+}
+
 const AksharaPosterCard: React.FC<Props> = ({
   akshara,
   enableRead = true,
   voiceGender = "male",
 }) => {
   const [isTracing, setIsTracing] = useState(false);
+  const [traceLetter, setTraceLetter] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isLoadingVoice, setIsLoadingVoice] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
@@ -47,7 +88,25 @@ const AksharaPosterCard: React.FC<Props> = ({
   const [isListening, setIsListening] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [practiceResult, setPracticeResult] = useState<PracticeResult>(null);
+  const [heardText, setHeardText] = useState<string | null>(null);
+  const [aksharaMatches, setAksharaMatches] = useState<AksharaMatch[] | null>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Rust · WASM: split the word into aksharas once per card
+  const [wordAksharas, setWordAksharas] = useState<string[]>([]);
+
+  useEffect(() => {
+    const word = akshara.word?.trim();
+    if (!word) {
+      setWordAksharas([]);
+      return;
+    }
+    let active = true;
+    splitTeluguAksharas(word)
+      .then((segments) => { if (active) setWordAksharas(segments); })
+      .catch(() => { if (active) setWordAksharas([]); });
+    return () => { active = false; };
+  }, [akshara.word]);
 
   useEffect(() => {
     return () => {
@@ -145,6 +204,8 @@ const AksharaPosterCard: React.FC<Props> = ({
     }
 
     setPracticeResult(null);
+    setHeardText(null);
+    setAksharaMatches(null);
 
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = "te-IN";
@@ -155,12 +216,27 @@ const AksharaPosterCard: React.FC<Props> = ({
     recognition.onstart = () => setIsListening(true);
 
     recognition.onresult = async (event: any) => {
-      const spokenText = event.results[0][0].transcript;
+      const spokenText: string = event.results[0][0].transcript;
+      const targetWord = akshara.word || akshara.letter;
       setIsListening(false);
       setIsChecking(true);
+      setHeardText(spokenText);
 
+      // 1. Local check with Rust: compare akshara by akshara (instant, works offline)
+      let matches: AksharaMatch[] | null = null;
       try {
-        const targetWord = akshara.word || akshara.letter;
+        const [targetParts, spokenParts] = await Promise.all([
+          splitTeluguAksharas(targetWord),
+          splitTeluguAksharas(spokenText),
+        ]);
+        matches = matchAksharas(targetParts, spokenParts);
+        setAksharaMatches(matches);
+      } catch (err) {
+        console.warn("[AksharaPosterCard] WASM split failed:", err);
+      }
+
+      // 2. Server check (main verdict); fall back to the local result if it fails
+      try {
         const res = await fetch("/api/aksharamala?endpoint=pronunciation", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -173,10 +249,22 @@ const AksharaPosterCard: React.FC<Props> = ({
         setPracticeResult({ correct: result.correct, message: result.message });
       } catch (err) {
         console.error("[AksharaPosterCard] pronunciation check failed:", err);
-        setPracticeResult({
-          correct: false,
-          message: "తనిఖీ చేయడంలో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.",
-        });
+
+        if (matches && matches.length > 0) {
+          const ok = matches.filter((m) => m.matched).length;
+          const allOk = ok === matches.length;
+          setPracticeResult({
+            correct: allOk,
+            message: allOk
+              ? "సరిగ్గా చెప్పారు! 🎉"
+              : `${matches.length} లో ${ok} అక్షరాలు సరిపోయాయి`,
+          });
+        } else {
+          setPracticeResult({
+            correct: false,
+            message: "తనిఖీ చేయడంలో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.",
+          });
+        }
       } finally {
         setIsChecking(false);
       }
@@ -194,6 +282,12 @@ const AksharaPosterCard: React.FC<Props> = ({
 
     recognition.start();
   }, [akshara.letter, akshara.word]);
+
+  // Chips to show: practice results if available, otherwise the plain word split
+  const displayAksharas: AksharaMatch[] =
+    aksharaMatches ?? wordAksharas.map((a) => ({ akshara: a }));
+  const showAksharaChips =
+    displayAksharas.length > 0 && (aksharaMatches !== null || displayAksharas.length > 1);
 
   return (
     <Card
@@ -229,7 +323,10 @@ const AksharaPosterCard: React.FC<Props> = ({
           <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {isTracing ? (
               <Box sx={{ width: "100%", height: "100%", borderRadius: 2, overflow: "hidden" }}>
-                <AksharaTraceBoard letter={akshara.letter} />
+                <AksharaTraceBoard
+                  key={traceLetter ?? akshara.letter}
+                  letter={traceLetter ?? akshara.letter}
+                />
               </Box>
             ) : (
               <Stack spacing={2} alignItems="center" sx={{ width: "100%" }}>
@@ -272,29 +369,64 @@ const AksharaPosterCard: React.FC<Props> = ({
                       {akshara.word}
                     </Typography>
                   )}
+
+                  {/* Rust · WASM: word split into aksharas (tap one to trace it) */}
+                  {showAksharaChips && (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Stack direction="row" spacing={0.75} justifyContent="center" useFlexGap flexWrap="wrap">
+                        {displayAksharas.map((m, i) => (
+                          <Tooltip key={`${i}-${m.akshara}`} title={`"${m.akshara}" రాయండి`}>
+                            <Chip
+                              label={m.akshara}
+                              clickable
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTraceLetter(m.akshara);
+                                setIsTracing(true);
+                              }}
+                              color={m.matched === undefined ? "default" : m.matched ? "success" : "error"}
+                              variant={m.matched === undefined ? "outlined" : "filled"}
+                              sx={{ fontSize: "1.1rem", fontWeight: 700, height: 34 }}
+                            />
+                          </Tooltip>
+                        ))}
+                      </Stack>
+                      <Typography variant="caption" sx={{ display: "block", mt: 0.5, opacity: 0.6 }}>
+                        {aksharaMatches
+                          ? "🟢 సరిగ్గా చెప్పారు • 🔴 మళ్ళీ ప్రయత్నించండి"
+                          : "అక్షరంపై నొక్కి రాయడం ప్రాక్టీస్ చేయండి"}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
 
                 {practiceResult && (
-                  <Stack
-                    direction="row"
-                    spacing={0.5}
-                    alignItems="center"
-                    sx={{
-                      mt: 1,
-                      px: 1.5,
-                      py: 0.5,
-                      borderRadius: "999px",
-                      bgcolor: practiceResult.correct ? "success.light" : "error.light",
-                    }}
-                  >
-                    {practiceResult.correct ? (
-                      <CheckCircleIcon fontSize="small" sx={{ color: "success.dark" }} />
-                    ) : (
-                      <CancelIcon fontSize="small" sx={{ color: "error.dark" }} />
+                  <Stack alignItems="center" spacing={0.5}>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      alignItems="center"
+                      sx={{
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: "999px",
+                        bgcolor: practiceResult.correct ? "success.light" : "error.light",
+                      }}
+                    >
+                      {practiceResult.correct ? (
+                        <CheckCircleIcon fontSize="small" sx={{ color: "success.dark" }} />
+                      ) : (
+                        <CancelIcon fontSize="small" sx={{ color: "error.dark" }} />
+                      )}
+                      <Typography variant="body2" fontWeight={700}>
+                        {practiceResult.message}
+                      </Typography>
+                    </Stack>
+                    {heardText && (
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                        మీరు చెప్పింది: &quot;{heardText}&quot;
+                      </Typography>
                     )}
-                    <Typography variant="body2" fontWeight={700}>
-                      {practiceResult.message}
-                    </Typography>
                   </Stack>
                 )}
               </Stack>
@@ -334,16 +466,18 @@ const AksharaPosterCard: React.FC<Props> = ({
               </span>
             </Tooltip>
             <Tooltip title="ఆపండి">
-              <IconButton
-                onClick={(e) => {
-                  e.stopPropagation();
-                  stopSpeaking();
-                }}
-                disabled={!isSpeaking}
-                color="error"
-              >
-                <StopCircleIcon />
-              </IconButton>
+              <span>
+                <IconButton
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    stopSpeaking();
+                  }}
+                  disabled={!isSpeaking}
+                  color="error"
+                >
+                  <StopCircleIcon />
+                </IconButton>
+              </span>
             </Tooltip>
 
             <Tooltip title="మీరు చెప్పండి">
@@ -377,6 +511,7 @@ const AksharaPosterCard: React.FC<Props> = ({
               startIcon={isTracing ? <CloseIcon /> : <EditIcon />}
               onClick={(e) => {
                 e.stopPropagation();
+                if (isTracing) setTraceLetter(null);
                 setIsTracing(!isTracing);
               }}
               sx={{ borderRadius: 8, px: 3, fontWeight: 700, textTransform: "none" }}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Stack,
   Typography,
@@ -13,13 +13,19 @@ import {
   Alert,
   ToggleButtonGroup,
   ToggleButton,
+  Button,
+  Collapse,
+  Divider,
 } from "@mui/material";
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
+import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
+import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
+import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 
 import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
 import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
 
-/* ================= TYPE ================= */
+/* ================= TYPES ================= */
 type Akshara = {
   id: string;
   type: "swaralu" | "vyanjanalu" | "gunintalu";
@@ -37,13 +43,22 @@ type SimilarResult = {
 
 type VoiceGender = "male" | "female";
 
-// FIXED — was 100 (all 44 cards, each with TTS/canvas/audio refs,
-// mounted simultaneously on load), suspected cause of the Out of
-// Memory crash. 12 keeps the "mostly see everything" feel while
-// mounting a fraction of the heavy components at once.
-const PAGE_SIZE = 3;
+type AnalyzerStats = {
+  text: string;
+  bytes: number;
+  count: number;
+  ms: number;
+};
 
+/* ================= CONSTANTS ================= */
+
+// Was 100 (all 44 cards mounted at once, each with TTS/canvas/audio refs),
+// which caused an Out of Memory crash. Keep this small.
+const PAGE_SIZE = 3;
+const DEBOUNCE_MS = 400;
 const API_BASE = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/api";
+
+/* ================= HELPERS ================= */
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -54,12 +69,144 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
+/** Browsers round performance.now() (often to 0.1 ms), so very fast runs can read as 0. */
+function formatDuration(ms: number): string {
+  if (ms <= 0) return "< 0.1 ms";
+  if (ms < 1) return `${Math.round(ms * 1000)} µs`;
+  if (ms < 1000) return `${ms.toFixed(1)} ms`;
+  return `${(ms / 1000).toFixed(2)} s`;
+}
+
+/* ================= HOW-IT-WORKS PANEL ================= */
+
+function HowItWorks({
+  stats,
+  wasmLoadMs,
+}: {
+  stats: AnalyzerStats | null;
+  wasmLoadMs: number | null;
+}) {
+  const steps = [
+    {
+      title: "మీరు టైప్ చేస్తారు",
+      detail: stats ? `"${stats.text}"` : "సెర్చ్ బాక్స్‌లో ఒక తెలుగు పదం టైప్ చేయండి",
+    },
+    {
+      title: `${DEBOUNCE_MS} ms ఆగడం (debounce)`,
+      detail: "ప్రతి కీ నొక్కినప్పుడు కాకుండా, టైపింగ్ ఆపిన తర్వాతే పని మొదలవుతుంది",
+    },
+    {
+      title: "UTF-8 బైట్లుగా మార్చడం",
+      detail: stats
+        ? `${stats.bytes} బైట్లు (ప్రతి తెలుగు గుర్తుకు 3 బైట్లు)`
+        : "TextEncoder తో పదాన్ని బైట్లుగా మారుస్తాం",
+    },
+    {
+      title: "WebAssembly మెమరీలో రాయడం",
+      detail: "input_ptr() చూపించే చోట బైట్లను నేరుగా రాస్తాం",
+    },
+    {
+      title: "Rust analyze() పని చేస్తుంది",
+      detail: stats
+        ? `${stats.count} అక్షరాలుగా విడదీసింది — ${formatDuration(stats.ms)}`
+        : "క్ + ష వంటి సంయుక్తాక్షరాలను ఒకే అక్షరంగా ఉంచుతుంది",
+    },
+    {
+      title: "ఫలితం చదివి చూపించడం",
+      detail: "output_ptr() నుండి చదివి, U+001F గుర్తు దగ్గర విడదీసి చిప్స్‌గా చూపిస్తాం",
+    },
+  ];
+
+  const whyRust = [
+    "⚡ వేగం — Rust నేరుగా WebAssembly గా కంపైల్ అవుతుంది; మెమరీ శుభ్రపరిచే విరామాలు (GC) ఉండవు",
+    "🛡️ భద్రత — బఫర్ పరిమితులు దాటకుండా Rust చూసుకుంటుంది",
+    "📦 చిన్న ఫైల్ — ఒక్కసారి డౌన్‌లోడ్ అయితే బ్రౌజర్ కాష్‌లో ఉంటుంది",
+    "📴 సర్వర్ అవసరం లేదు — విశ్లేషణ మొత్తం మీ బ్రౌజర్‌లోనే జరుగుతుంది",
+    "🔁 ఒకే కోడ్ — అదే Rust కోడ్‌ను Android యాప్ లేదా సర్వర్‌లో కూడా వాడవచ్చు",
+  ];
+
+  return (
+    <Box
+      sx={{
+        mt: 1.5,
+        p: 2,
+        border: "1px dashed",
+        borderColor: "secondary.main",
+        borderRadius: 2,
+        textAlign: "left",
+      }}
+    >
+      <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
+        అక్షరాల విశ్లేషణ ఎలా జరుగుతుంది?
+      </Typography>
+
+      <Stack spacing={1.25}>
+        {steps.map((step, i) => (
+          <Stack key={step.title} direction="row" spacing={1.25} alignItems="flex-start">
+            <Box
+              sx={{
+                minWidth: 24,
+                height: 24,
+                borderRadius: "50%",
+                bgcolor: "secondary.main",
+                color: "secondary.contrastText",
+                display: "grid",
+                placeItems: "center",
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              {i + 1}
+            </Box>
+            <Box>
+              <Typography variant="body2" fontWeight={700}>
+                {step.title}
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                {step.detail}
+              </Typography>
+            </Box>
+          </Stack>
+        ))}
+      </Stack>
+
+      {wasmLoadMs !== null && (
+        <Typography variant="caption" sx={{ display: "block", mt: 1.5, opacity: 0.75 }}>
+          📥 WASM లోడ్ సమయం: {formatDuration(wasmLoadMs)} (పేజీ తెరిచినప్పుడు ఒక్కసారి మాత్రమే)
+        </Typography>
+      )}
+
+      <Divider sx={{ my: 1.5 }} />
+
+      <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1 }}>
+        Rust ఎందుకు?
+      </Typography>
+      <Stack spacing={0.5}>
+        {whyRust.map((line) => (
+          <Typography key={line} variant="caption" sx={{ opacity: 0.85 }}>
+            {line}
+          </Typography>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+/* ================= MAIN COMPONENT ================= */
+
 export default function AksharamalaParent() {
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search, 400);
+  const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS);
+
+  // Rust / WASM analyzer
   const [aksharas, setAksharas] = useState<string[]>([]);
   const [analyzerState, setAnalyzerState] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [stats, setStats] = useState<AnalyzerStats | null>(null);
+  const [wasmLoadMs, setWasmLoadMs] = useState<number | null>(null);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const wasmReadyRef = useRef<Promise<void> | null>(null);
 
+  // List / filters
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<"all" | "swaralu" | "vyanjanalu">("all");
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("male");
@@ -69,40 +216,75 @@ export default function AksharamalaParent() {
   const [pageCount, setPageCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [apiMs, setApiMs] = useState<number | null>(null);
 
   const [sametaluMatches, setSametaluMatches] = useState<string[]>([]);
 
   const [similar, setSimilar] = useState<SimilarResult | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
 
+  /* 1. Preload WASM once, so the search timer measures only the analysis */
+  useEffect(() => {
+    if (wasmReadyRef.current) return;
+    const t0 = performance.now();
+    wasmReadyRef.current = splitTeluguAksharas("అ")
+      .then(() => setWasmLoadMs(performance.now() - t0))
+      .catch(() => {
+        /* a real failure will show up on the first search */
+      });
+  }, []);
+
+  /* 2. Split the search text with Rust, and time it */
   useEffect(() => {
     const text = debouncedSearch.trim();
     if (!/[\u0c00-\u0c7f]/u.test(text)) {
       setAksharas([]);
+      setStats(null);
       setAnalyzerState("idle");
       return;
     }
 
     let active = true;
     setAnalyzerState("loading");
-    splitTeluguAksharas(text)
-      .then((segments) => {
-        if (active) {
-          setAksharas(segments);
-          setAnalyzerState("ready");
-        }
-      })
-      .catch(() => {
+
+    (async () => {
+      try {
+        await wasmReadyRef.current;
+        const t0 = performance.now();
+        const segments = await splitTeluguAksharas(text);
+        const ms = performance.now() - t0;
+        if (!active) return;
+
+        setAksharas(segments);
+        setStats({
+          text,
+          bytes: new TextEncoder().encode(text).length,
+          count: segments.length,
+          ms,
+        });
+        setAnalyzerState("ready");
+      } catch {
         if (active) setAnalyzerState("error");
-      });
+      }
+    })();
 
     return () => {
       active = false;
     };
   }, [debouncedSearch]);
 
-  /* Fetch list — now triggered by DEBOUNCED search, not raw keystrokes */
+  /* 3. Fetch the list from the server, and time it */
   useEffect(() => {
+    const controller = new AbortController();
+
+    const resetResults = () => {
+      setItems([]);
+      setTotalCount(0);
+      setPageCount(1);
+      setSametaluMatches([]);
+      setApiMs(null);
+    };
+
     const fetchData = async () => {
       setLoading(true);
       setErrorMsg(null);
@@ -114,38 +296,40 @@ export default function AksharamalaParent() {
         page_size: String(PAGE_SIZE),
       })}`;
 
+      const t0 = performance.now();
+
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
 
         if (!res.ok) {
           const bodyText = await res.text();
+          if (controller.signal.aborted) return;
           console.error(`[Aksharamala] ${res.status} ${res.statusText}\n${bodyText}`);
           setErrorMsg(`API ఎర్రర్ (${res.status}): ${bodyText.slice(0, 200) || res.statusText}`);
-          setItems([]);
-          setTotalCount(0);
-          setPageCount(1);
-          setSametaluMatches([]);
+          resetResults();
           return;
         }
 
         const data = await res.json();
+        if (controller.signal.aborted) return;
+
+        setApiMs(performance.now() - t0);
         setItems(data.items || []);
         setTotalCount(data.total_count || 0);
         setPageCount(data.page_count || 1);
         setSametaluMatches(data.sametalu_matches || []);
       } catch (err) {
+        if (controller.signal.aborted) return; // a newer search replaced this one
         console.error("[Aksharamala] fetch failed:", err);
         setErrorMsg(err instanceof Error ? err.message : "తెలియని ఎర్రర్ వచ్చింది.");
-        setItems([]);
-        setTotalCount(0);
-        setPageCount(1);
-        setSametaluMatches([]);
+        resetResults();
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchData();
+    return () => controller.abort();
   }, [debouncedSearch, typeFilter, page]);
 
   const handleCardClick = async (a: Akshara) => {
@@ -158,8 +342,7 @@ export default function AksharamalaParent() {
         console.error(`[Aksharamala Similar] ${res.status} ${res.statusText}`);
         return;
       }
-      const data = await res.json();
-      setSimilar(data);
+      setSimilar(await res.json());
     } catch (err) {
       console.error("[Aksharamala Similar] fetch failed:", err);
     } finally {
@@ -196,9 +379,17 @@ export default function AksharamalaParent() {
             </ToggleButtonGroup>
           </Stack>
 
-          <Stack direction="row" spacing={1.5} justifyContent="center" sx={{ mb: 3 }}>
+          <Stack direction="row" spacing={1.5} justifyContent="center" useFlexGap flexWrap="wrap" sx={{ mb: 3 }}>
             <Chip label={`మొత్తం: ${totalCount}`} color="secondary" sx={{ fontWeight: 800 }} />
             <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
+            {apiMs !== null && !loading && !errorMsg && (
+              <Chip
+                icon={<CloudOutlinedIcon />}
+                label={`సర్వర్: ${formatDuration(apiMs)}`}
+                variant="outlined"
+                sx={{ fontWeight: 700 }}
+              />
+            )}
           </Stack>
 
           <TextField
@@ -227,6 +418,8 @@ export default function AksharamalaParent() {
                 direction={{ xs: "column", sm: "row" }}
                 spacing={1}
                 alignItems={{ xs: "flex-start", sm: "center" }}
+                useFlexGap
+                flexWrap="wrap"
               >
                 <Typography variant="caption" fontWeight={700}>
                   విభజించిన అక్షరాలు
@@ -238,6 +431,15 @@ export default function AksharamalaParent() {
                   variant="outlined"
                   color="secondary"
                 />
+                {analyzerState === "ready" && stats && (
+                  <Chip
+                    size="small"
+                    icon={<TimerOutlinedIcon />}
+                    label={formatDuration(stats.ms)}
+                    variant="outlined"
+                    color="success"
+                  />
+                )}
                 {analyzerState === "loading" && <CircularProgress size={18} />}
                 {analyzerState === "error" && (
                   <Typography variant="caption" color="text.secondary">
@@ -264,6 +466,21 @@ export default function AksharamalaParent() {
               </Stack>
             </Box>
           )}
+
+          <Button
+            size="small"
+            color="secondary"
+            startIcon={<HelpOutlineRoundedIcon />}
+            onClick={() => setShowHowItWorks((v) => !v)}
+            sx={{ mt: 1, textTransform: "none" }}
+            aria-expanded={showHowItWorks}
+          >
+            {showHowItWorks ? "వివరణ దాచండి" : "ఎలా పనిచేస్తుంది?"}
+          </Button>
+
+          <Collapse in={showHowItWorks} unmountOnExit>
+            <HowItWorks stats={stats} wasmLoadMs={wasmLoadMs} />
+          </Collapse>
         </Box>
 
         {errorMsg && !loading && (
@@ -320,7 +537,7 @@ export default function AksharamalaParent() {
             <Typography fontWeight={700} sx={{ mb: 1 }}>
               &quot;{similar.clicked.letter}&quot; కి సంబంధించినవి
             </Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
               {similar.same_type.map((s) => (
                 <Chip key={s.id} label={`${s.letter} — ${s.word || ""}`} />
               ))}

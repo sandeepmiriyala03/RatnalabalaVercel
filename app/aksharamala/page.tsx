@@ -15,8 +15,110 @@ import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import EditIcon from "@mui/icons-material/Edit";
 import TouchAppIcon from "@mui/icons-material/TouchApp";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
+import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
+import MicIcon from "@mui/icons-material/Mic";
 
 import AksharamalaParent from "@/app/components/Aksharamal";
+
+/* ================= HELP ITEMS ================= */
+
+type HelpItem = {
+  icon: React.ReactNode;
+  title: string;
+  body: React.ReactNode;
+  highlight?: boolean;
+};
+
+const helpItems: HelpItem[] = [
+  {
+    icon: <SearchIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />,
+    title: "వెతకడం",
+    body: (
+      <>
+        పైన ఉన్న సెర్చ్ బాక్స్‌లో ఏదైనా అక్షరం లేదా పదం టైప్ చేయండి — ఉదాహరణకు
+        &quot;ఎలుక&quot; అని టైప్ చేస్తే, ఆ పదానికి సంబంధించిన అక్షరం చూపిస్తుంది.
+        దానితో పాటు, ఆ పదం ఉన్న సామెతలు కూడా కింద కనిపిస్తాయి.
+      </>
+    ),
+  },
+  {
+    icon: <CodeRoundedIcon color="secondary" fontSize="small" sx={{ mt: 0.3 }} />,
+    title: "అక్షరాల విశ్లేషణ (Rust · WebAssembly)",
+    highlight: true,
+    body: (
+      <>
+        తెలుగు పదం (ఉదాహరణకు &quot;లక్ష్మి&quot; లేదా &quot;స్త్రీ&quot;) టైప్
+        చేసినప్పుడు, ఆ పదంలోని అక్షరాలు మీ బ్రౌజర్‌లోనే విడదీసి చూపించబడతాయి.
+        పక్కనే ఉన్న ⏱ గుర్తు ఆ పనికి పట్టిన సమయం చూపిస్తుంది.
+        <br />
+        • విడిపోయిన అక్షరంపై నొక్కితే ఆ అక్షరంతో వెతకవచ్చు.
+        <br />
+        • ఇది ఎలా జరుగుతుందో తెలుసుకోవాలంటే సెర్చ్ బాక్స్ కింద ఉన్న
+        &quot;ఎలా పనిచేస్తుంది?&quot; నొక్కండి.
+      </>
+    ),
+  },
+  {
+    icon: <TouchAppIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />,
+    title: "వర్గం ఎంచుకోవడం",
+    body: (
+      <>
+        &quot;అచ్చులు&quot; లేదా &quot;హల్లులు&quot; బటన్ నొక్కి, ఆ వర్గానికి
+        చెందిన అక్షరాలు మాత్రమే చూడొచ్చు. &quot;అన్నీ&quot; నొక్కితే మళ్ళీ అన్ని
+        అక్షరాలు కనిపిస్తాయి.
+      </>
+    ),
+  },
+  {
+    icon: <VolumeUpIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />,
+    title: "వినడం",
+    body: (
+      <>
+        ప్రతి అక్షరం కార్డ్‌లో ఉన్న 🔊 బటన్ నొక్కితే, ఆ అక్షరం మరియు దాని పదం
+        బిగ్గరగా చదివి వినిపిస్తుంది. ఆపాలంటే పక్కనే ఉన్న ఎరుపు బటన్ నొక్కండి.
+      </>
+    ),
+  },
+  {
+    icon: <MicIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />,
+    title: "పలకడం ప్రాక్టీస్",
+    body: (
+      <>
+        🎤 బటన్ నొక్కి ఆ పదాన్ని చెప్పండి. పదం కింద ఉన్న అక్షరాలు 🟢 (సరిగ్గా
+        చెప్పారు) లేదా 🔴 (మళ్ళీ ప్రయత్నించండి) రంగులోకి మారుతాయి — ఏ అక్షరం
+        సరిచేయాలో సులభంగా తెలుస్తుంది. మీరు చెప్పింది ఏమని వినిపించిందో కూడా
+        కింద కనిపిస్తుంది. (Chrome బ్రౌజర్‌లో పనిచేస్తుంది.)
+      </>
+    ),
+  },
+  {
+    icon: <EditIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />,
+    title: "రాయడం నేర్చుకోవడం",
+    body: (
+      <>
+        &quot;రాయండి&quot; బటన్ నొక్కి, బూడిద రంగు అక్షరం మీద వేలితో లేదా
+        మౌస్‌తో రాయండి. పదం కింద ఉన్న ఏదైనా అక్షరంపై నొక్కితే, ఆ అక్షరాన్నే
+        రాసి ప్రాక్టీస్ చేయొచ్చు.
+        <br />
+        • &quot;తనిఖీ చేయండి&quot; నొక్కితే, మీరు ఎంత బాగా రాశారో వెంటనే
+        చూపిస్తుంది — అక్షరం ఎంత పూర్తి అయింది, గీతలు ఎంత ఖచ్చితంగా ఉన్నాయి.
+        <br />
+        • &quot;ముగించు&quot; నొక్కితే మామూలు వ్యూకి తిరిగి వెళ్తుంది.
+      </>
+    ),
+  },
+  {
+    icon: <TouchAppIcon color="secondary" fontSize="small" sx={{ mt: 0.3 }} />,
+    title: "సంబంధిత అక్షరాలు చూడడం",
+    body: (
+      <>
+        ఏదైనా అక్షరం కార్డ్ మీద (బటన్‌లు కాకుండా) నొక్కితే, ఆ అక్షరం వర్గానికి
+        చెందిన ఇతర సంబంధిత అక్షరాలు కింద చూపిస్తుంది — కొత్త అక్షరాలు
+        తెలుసుకోవడానికి ఇది ఉపయోగపడుతుంది.
+      </>
+    ),
+  },
+];
 
 /* ================= PAGE ================= */
 
@@ -29,7 +131,7 @@ export default function AksharamalaPage() {
         p: 2,
       }}
     >
-      {/* 🌼 TITLE */}
+      {/* TITLE */}
       <Typography
         variant="h3"
         fontWeight={800}
@@ -38,7 +140,6 @@ export default function AksharamalaPage() {
           background: "linear-gradient(90deg, #0f172a, #2563eb)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
-          fontWeight: 700,
           fontSize: "calc(var(--telugu-font-size) * 1.8)",
           textAlign: "center",
         }}
@@ -47,17 +148,26 @@ export default function AksharamalaPage() {
       </Typography>
 
       <Typography align="center" sx={{ opacity: 0.85, mb: 2 }}>
-        వినండి • చదవండి • నేర్చుకోండి
+        వినండి • పలకండి • రాయండి • నేర్చుకోండి
       </Typography>
 
-      {/* 🧠 SIMPLE INFO */}
-      <Stack direction="row" spacing={1} justifyContent="center" mb={2}>
+      {/* FEATURE CHIPS */}
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        justifyContent="center"
+        flexWrap="wrap"
+        sx={{ mb: 2 }}
+      >
         <Chip label="👶 పిల్లల కోసం" />
         <Chip label="🔊 వినే అవకాశం" />
-        <Chip label="📱 సులభం" />
+        <Chip label="🎤 పలికే ప్రాక్టీస్" />
+        <Chip label="✍️ రాసే ప్రాక్టీస్" />
+        <Chip label="⚡ బ్రౌజర్‌లోనే విశ్లేషణ (Rust · WASM)" color="secondary" variant="outlined" />
       </Stack>
 
-      {/* 📖 ఈ పేజీ గురించి + ఎలా వాడాలి — end user కోసం, simple language */}
+      {/* ABOUT + HOW TO USE */}
       <Accordion
         elevation={0}
         sx={{
@@ -71,9 +181,7 @@ export default function AksharamalaPage() {
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Stack direction="row" spacing={1} alignItems="center">
             <MenuBookIcon color="primary" fontSize="small" />
-            <Typography fontWeight={700}>
-              ఈ పేజీ గురించి • ఎలా వాడాలి
-            </Typography>
+            <Typography fontWeight={700}>ఈ పేజీ గురించి • ఎలా వాడాలి</Typography>
           </Stack>
         </AccordionSummary>
 
@@ -81,80 +189,34 @@ export default function AksharamalaPage() {
           <Typography sx={{ mb: 2, opacity: 0.85 }}>
             ఇది తెలుగు అక్షరమాల నేర్చుకోవడానికి ఒక సులభమైన పేజీ — అచ్చులు,
             హల్లులు, ప్రతి అక్షరానికి ఒక పదం, మరియు ఆ పదానికి సంబంధించిన
-            చిత్రం చూడొచ్చు. కింద ఎలా వాడాలో దశలవారీగా చూడండి.
+            చిత్రం చూడొచ్చు. వినవచ్చు, పలికి చూడవచ్చు, రాసి ప్రాక్టీస్
+            చేయవచ్చు. కింద ఎలా వాడాలో దశలవారీగా చూడండి.
           </Typography>
 
           <Stack spacing={2}>
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <SearchIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>వెతకడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  పైన ఉన్న సెర్చ్ బాక్స్‌లో ఏదైనా అక్షరం లేదా పదం టైప్
-                  చేయండి — ఉదాహరణకు &quot;ఎలుక&quot; అని టైప్ చేస్తే, ఆ
-                  పదానికి సంబంధించిన అక్షరం చూపిస్తుంది. దానితో పాటు, ఆ
-                  పదం ఉన్న సామెతలు కూడా కింద కనిపిస్తాయి.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <TouchAppIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>వర్గం ఎంచుకోవడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  &quot;అచ్చులు&quot; లేదా &quot;హల్లులు&quot; బటన్ నొక్కి,
-                  ఆ వర్గానికి చెందిన అక్షరాలు మాత్రమే చూడొచ్చు.
-                  &quot;అన్నీ&quot; నొక్కితే మళ్ళీ అన్ని అక్షరాలు
-                  కనిపిస్తాయి.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <VolumeUpIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>వినడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  ప్రతి అక్షరం కార్డ్‌లో ఉన్న 🔊 బటన్ నొక్కితే, ఆ అక్షరం
-                  మరియు దాని పదం బిగ్గరగా చదివి వినిపిస్తుంది. ఆపాలంటే
-                  పక్కనే ఉన్న ఎరుపు బటన్ నొక్కండి.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <EditIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>రాయడం నేర్చుకోవడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  &quot;రాయండి&quot; బటన్ నొక్కితే, ఆ అక్షరాన్ని మీ
-                  స్క్రీన్ మీద వేలితో లేదా మౌస్‌తో రాసి ప్రాక్టీస్
-                  చేయొచ్చు. &quot;ముగించు&quot; నొక్కితే మామూలు వ్యూకి
-                  తిరిగి వెళ్తుంది.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <TouchAppIcon color="secondary" fontSize="small" sx={{ mt: 0.3 }} />
-              <Box>
-                <Typography fontWeight={600}>సంబంధిత అక్షరాలు చూడడం</Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                  ఏదైనా అక్షరం కార్డ్ మీద (బటన్‌లు కాకుండా) నొక్కితే, ఆ
-                  అక్షరం వర్గానికి చెందిన ఇతర సంబంధిత అక్షరాలు కింద
-                  చూపిస్తుంది — కొత్త అక్షరాలు తెలుసుకోవడానికి ఇది
-                  ఉపయోగపడుతుంది.
-                </Typography>
-              </Box>
-            </Stack>
+            {helpItems.map((item) => (
+              <Stack key={item.title} direction="row" spacing={1.5} alignItems="flex-start">
+                {item.icon}
+                <Box>
+                  <Typography
+                    fontWeight={600}
+                    color={item.highlight ? "secondary.main" : undefined}
+                  >
+                    {item.title}
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    {item.body}
+                  </Typography>
+                </Box>
+              </Stack>
+            ))}
           </Stack>
         </AccordionDetails>
       </Accordion>
 
       <Divider sx={{ my: 2 }} />
 
-      {/* 📜 MAIN CONTENT */}
+      {/* MAIN CONTENT */}
       <AksharamalaParent />
     </Box>
   );
