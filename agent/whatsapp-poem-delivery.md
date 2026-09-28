@@ -41,7 +41,7 @@ WHATSAPP_GRAPH_API_VERSION=v23.0
 POEM_CONTENT_BASE_URL=https://ratnalabala.vercel.app
 ```
 
-ఈ feature సబ్‌స్క్రిప్షన్‌ల కోసం ఇప్పటికే ఉన్న `@vercel/kv` కనెక్షన్‌ను ఉపయోగిస్తుంది. Vercelలో KV credentials సరిగా ఉండాలి. Production buildలో EVE schedule బయటపడిన తర్వాత Vercel **Settings → Cron Jobs**లో `send-scheduled-poems` job కనిపిస్తుందో చూడండి. ఇది ప్రతి 5 నిమిషాలకు నడిచి, వినియోగదారి స్థానిక సమయానికి సరిపోయినప్పుడు మాత్రమే పంపుతుంది. Vercel ప్లాన్ ప్రతి 5 నిమిషాల Cronకు మద్దతు ఇవ్వాలి; `*/5 * * * *`ని అమలు చేయలేని ప్లాన్‌లో సమయానికి పంపకం హామీ కాదు.
+ఈ feature సబ్‌స్క్రిప్షన్‌ల కోసం ఇప్పటికే ఉన్న `@vercel/kv` కనెక్షన్‌ను ఉపయోగిస్తుంది. Vercelలో KV credentials సరిగా ఉండాలి. Production buildలో EVE schedule బయటపడిన తర్వాత Vercel **Settings → Cron Jobs**లో `send-scheduled-poems` job కనిపిస్తుందో చూడండి. Hobby ప్లాన్ పరిమితికి అనుగుణంగా ఇది రోజుకు ఒక్కసారి 00:00 UTCకు నడుస్తుంది; అందువల్ల వినియోగదారి స్థానిక సమయానికి సరిపోయే పంపకాన్ని, లేదా ప్రతి 6 గంటల పంపకాన్ని హామీ ఇవ్వదు. ఈ ఖచ్చితమైన సమయాలను ఉపయోగించడానికి Pro cron cadence అవసరం.
 
 `WHATSAPP_TEMPLATE_NAME`లో ఇచ్చిన approved templateకు రెండు text variables ఉన్నాయని నిర్ధారించండి: `{{1}}` పద్యం శీర్షిక, `{{2}}` పద్యం మొదటి 600 అక్షరాలు. API అభ్యర్థనల వైఫల్యాలు Vercel **Observability → Logs**లో కనిపిస్తాయి. వినియోగదారు subscribe చేయడానికి ముందే అవసరమైన మూడు WhatsApp credentials లేకుంటే UIలో అమరిక లోపం చూపబడుతుంది.
 

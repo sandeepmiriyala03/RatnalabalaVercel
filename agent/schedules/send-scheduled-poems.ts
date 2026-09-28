@@ -93,7 +93,7 @@ async function sendTemplate(phone: string, title: string, excerpt: string) {
 }
 
 export default defineSchedule({
-  cron: "*/5 * * * *",
+  cron: "0 0 * * *",
   async run() {
     const tokens = await kv.smembers(SUBSCRIBER_INDEX) as string[];
     if (!tokens.length) return;
