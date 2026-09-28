@@ -14,8 +14,10 @@ import {
   ToggleButtonGroup,
   ToggleButton,
 } from "@mui/material";
+import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 
 import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
+import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
 
 /* ================= TYPE ================= */
 type Akshara = {
@@ -55,6 +57,8 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 export default function AksharamalaParent() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 400);
+  const [aksharas, setAksharas] = useState<string[]>([]);
+  const [analyzerState, setAnalyzerState] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<"all" | "swaralu" | "vyanjanalu">("all");
@@ -70,6 +74,32 @@ export default function AksharamalaParent() {
 
   const [similar, setSimilar] = useState<SimilarResult | null>(null);
   const [similarLoading, setSimilarLoading] = useState(false);
+
+  useEffect(() => {
+    const text = debouncedSearch.trim();
+    if (!/[\u0c00-\u0c7f]/u.test(text)) {
+      setAksharas([]);
+      setAnalyzerState("idle");
+      return;
+    }
+
+    let active = true;
+    setAnalyzerState("loading");
+    splitTeluguAksharas(text)
+      .then((segments) => {
+        if (active) {
+          setAksharas(segments);
+          setAnalyzerState("ready");
+        }
+      })
+      .catch(() => {
+        if (active) setAnalyzerState("error");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedSearch]);
 
   /* Fetch list — now triggered by DEBOUNCED search, not raw keystrokes */
   useEffect(() => {
@@ -181,6 +211,59 @@ export default function AksharamalaParent() {
             }}
             sx={{ bgcolor: "white", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
           />
+
+          {analyzerState !== "idle" && (
+            <Box
+              sx={{
+                mt: 1.5,
+                p: 1.5,
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 2,
+                textAlign: "left",
+              }}
+            >
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+              >
+                <Typography variant="caption" fontWeight={700}>
+                  విభజించిన అక్షరాలు
+                </Typography>
+                <Chip
+                  size="small"
+                  icon={<CodeRoundedIcon />}
+                  label="Rust · WebAssembly"
+                  variant="outlined"
+                  color="secondary"
+                />
+                {analyzerState === "loading" && <CircularProgress size={18} />}
+                {analyzerState === "error" && (
+                  <Typography variant="caption" color="text.secondary">
+                    విశ్లేషణ అందుబాటులో లేదు
+                  </Typography>
+                )}
+                {analyzerState === "ready" && (
+                  <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+                    {aksharas.map((akshara, index) => (
+                      <Chip
+                        key={`${index}-${akshara}`}
+                        label={akshara}
+                        size="small"
+                        clickable
+                        aria-label={`అక్షరం ${akshara} కోసం వెతకండి`}
+                        onClick={() => {
+                          setSearch(akshara);
+                          setPage(1);
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                )}
+              </Stack>
+            </Box>
+          )}
         </Box>
 
         {errorMsg && !loading && (

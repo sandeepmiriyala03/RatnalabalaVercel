@@ -4,7 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
 const isTestingProd = !!process.env.TEST_BASE_URL;
 
 export default defineConfig({
-  testDir: "./tests",
+  testDir: "./app/tests",
   timeout: 30000,
   retries: 1,
   reporter: "html",

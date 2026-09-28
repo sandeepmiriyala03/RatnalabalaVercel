@@ -19,6 +19,10 @@ test.describe("Aksharamala module", () => {
     });
   });
 
+  test("footer identifies the Rust WebAssembly Telugu engine", async ({ page }) => {
+    await expect(page.getByText("Rust · WebAssembly", { exact: true }).last()).toBeVisible();
+  });
+
   test("total count chip shows a real number", async ({ page }) => {
     const totalChip = page.getByText(/మొత్తం:/);
     await expect(totalChip).toBeVisible();
@@ -58,6 +62,7 @@ test.describe("Aksharamala module", () => {
     await page.waitForTimeout(700);
 
     await expect(page.getByText(/మొత్తం:/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "అక్షరం ఎ కోసం వెతకండి" })).toBeVisible();
     // Sametalu section only renders if matches exist — check it
     // doesn't crash the page even if empty
     await expect(page.locator("body")).not.toContainText("Error");

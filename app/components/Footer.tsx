@@ -5,8 +5,11 @@ import {
   Container,
   Typography,
   Divider,
+  Chip,
+  Tooltip,
   useTheme,
 } from "@mui/material";
+import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import { useEffect, useRef, useState } from "react";
 
 interface BuildInfo {
@@ -156,6 +159,17 @@ export default function Footer() {
             </>
           )}
         </Typography>
+
+        <Tooltip title="తెలుగు అక్షర విశ్లేషణ Rust/WebAssemblyతో నడుస్తుంది. సైట్ UI Next.jsపై నడుస్తుంది.">
+          <Chip
+            size="small"
+            icon={<CodeRoundedIcon />}
+            label="Rust · WebAssembly"
+            variant="outlined"
+            color="secondary"
+            sx={{ mt: 1, fontSize: "0.7rem" }}
+          />
+        </Tooltip>
       </Container>
     </Box>
   );
