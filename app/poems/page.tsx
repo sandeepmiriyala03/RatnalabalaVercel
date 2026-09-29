@@ -49,11 +49,6 @@ import PoemRadio from "@/app/components/Poemradio";
 import DownloadAllVideos from "@/app/components/DownloadAllVideos";
 import WebMCP from "@/app/components/WebMCP";
 
-/* ================================================================
-   GRID
-   Loaded dynamically because YuktAI Grid is client-side
-   ================================================================ */
-
 const PoemsGridView = dynamic(
   () => import("@/app/components/PoemsGridView"),
   {
@@ -80,11 +75,6 @@ interface Poem {
 
 type Tool = "radio" | "downloads";
 
-/* ================================================================
-   VIEW MODES
-   Grid is the DEFAULT view.
-   ================================================================ */
-
 type ViewMode = "grid" | "pages";
 
 const ITEMS_PER_PAGE = 3;
@@ -94,10 +84,6 @@ const POETRY_NAME =
 
 const AUTHORS: string | string[] =
   "మిరియాల వెంకటరత్నం";
-
-/* ================================================================
-   POEMS CACHE
-   ================================================================ */
 
 const POET_ID = 1;
 const CACHE_VERSION = "v1";
@@ -116,7 +102,6 @@ type CacheEntry = {
 };
 
 let memoryCache: CacheEntry | null = null;
-
 let inflight: Promise<PoemMap> | null = null;
 
 function readStored(): CacheEntry | null {
@@ -137,9 +122,7 @@ function readStored(): CacheEntry | null {
     ) {
       return parsed as CacheEntry;
     }
-  } catch {
-    // Ignore storage errors.
-  }
+  } catch {}
 
   return null;
 }
@@ -150,9 +133,7 @@ function writeStored(entry: CacheEntry) {
       CACHE_KEY,
       JSON.stringify(entry)
     );
-  } catch {
-    // Memory cache still works.
-  }
+  } catch {}
 }
 
 function isFresh(
@@ -230,10 +211,6 @@ async function getPoems(
   return inflight;
 }
 
-/* ================================================================
-   HELP
-   ================================================================ */
-
 const HELP_SEEN_KEY =
   "ratnalabala:help-seen";
 
@@ -281,10 +258,6 @@ const HELP_STEPS: {
 export default function PoemList() {
   const theme = useTheme();
 
-  /* ================================================================
-     STATE
-     ================================================================ */
-
   const [poems, setPoems] =
     useState<Poem[]>([]);
 
@@ -306,9 +279,6 @@ export default function PoemList() {
   const [page, setPage] =
     useState(1);
 
-  /*
-   * GRID IS THE DEFAULT VIEW
-   */
   const [viewMode, setViewMode] =
     useState<ViewMode>("grid");
 
@@ -318,32 +288,16 @@ export default function PoemList() {
   const [helpOpen, setHelpOpen] =
     useState(false);
 
-  /* ================================================================
-     RAG / ASK & HIGHLIGHT
-
-     These IDs can be populated when your
-     RAG/WebMCP layer identifies relevant poems.
-     ================================================================ */
-
   const [highlightIds, setHighlightIds] =
     useState<string[]>([]);
 
-  /* Keep state available for future RAG/WebMCP integration. */
   void setHighlightIds;
-
-  /* ================================================================
-     VIEW FLAGS
-     ================================================================ */
 
   const gridView =
     viewMode === "grid";
 
   const pagesView =
     viewMode === "pages";
-
-  /* ================================================================
-     HELP
-     ================================================================ */
 
   useEffect(() => {
     try {
@@ -359,14 +313,8 @@ export default function PoemList() {
           "1"
         );
       }
-    } catch {
-      // Ignore storage errors.
-    }
+    } catch {}
   }, []);
-
-  /* ================================================================
-     LOAD POEMS
-     ================================================================ */
 
   const loadPoems =
     useCallback(
@@ -410,10 +358,6 @@ export default function PoemList() {
   useEffect(() => {
     loadPoems();
   }, [loadPoems]);
-
-  /* ================================================================
-     SPEECH
-     ================================================================ */
 
   useEffect(() => {
     if (
@@ -488,10 +432,6 @@ export default function PoemList() {
       );
     };
 
-  /* ================================================================
-     FILTER
-     ================================================================ */
-
   const query =
     search.trim();
 
@@ -510,16 +450,6 @@ export default function PoemList() {
             .includes(q)
       );
     }, [poems, query]);
-
-  /* ================================================================
-     SIMPLE PAGE VIEW PAGINATION
-
-     IMPORTANT:
-     This pagination is ONLY for "పేజీలు".
-
-     Grid mode passes ALL filtered poems to YuktAI Grid,
-     so YuktAI Grid handles its own pagination.
-     ================================================================ */
 
   const itemsPerPage =
     ITEMS_PER_PAGE;
@@ -569,10 +499,6 @@ export default function PoemList() {
       });
     };
 
-  /* ================================================================
-     GRID ROW CLICK
-     ================================================================ */
-
   const openPoemFromGrid =
     (title: string) => {
       setViewMode("pages");
@@ -584,9 +510,11 @@ export default function PoemList() {
       });
     };
 
-  /* ================================================================
-     STATES
-     ================================================================ */
+  const handleAssistantSearch =
+    (query: string) => {
+      setSearch(query);
+      setViewMode("grid");
+    };
 
   const hasPoems =
     !loading &&
@@ -597,10 +525,6 @@ export default function PoemList() {
     !loading &&
     !error &&
     filtered.length === 0;
-
-  /* ================================================================
-     STYLES
-     ================================================================ */
 
   const toolButtonSx =
     (open: boolean) => ({
@@ -680,19 +604,13 @@ export default function PoemList() {
       );
     };
 
-  /* ================================================================
-     UI
-     ================================================================ */
-
   return (
     <YuktAIWrapper
       position="right"
-      showRag={true}
-      showAgent={true}
+      showRag={false}
+      showAgent={false}
       config={{
         enabled: true,
-
-        /* Accessibility */
         highContrast: true,
         darkMode: true,
         reduceMotion: true,
@@ -704,8 +622,6 @@ export default function PoemList() {
         showSkipLinks: true,
         largeTargets: true,
         dyslexiaFont: true,
-
-        /* AI accessibility */
         plainEnglish: true,
         summarisePage: true,
         voiceControl: true,
@@ -722,11 +638,6 @@ export default function PoemList() {
           mx: "auto",
         }}
       >
-
-        {/* ========================================================
-           TITLE
-           ======================================================== */}
-
         <Box
           sx={{
             textAlign: "center",
@@ -770,10 +681,6 @@ export default function PoemList() {
             )}
           </Typography>
         </Box>
-
-        {/* ========================================================
-           HOW TO USE
-           ======================================================== */}
 
         <Button
           fullWidth
@@ -941,10 +848,6 @@ export default function PoemList() {
           </Box>
         </Collapse>
 
-        {/* ========================================================
-           SEARCH
-           ======================================================== */}
-
         <TextField
           fullWidth
           placeholder="పద్యం కోసం వెతకండి..."
@@ -993,10 +896,6 @@ export default function PoemList() {
           }}
         />
 
-        {/* ========================================================
-           SEARCH STATUS + VIEW MODE
-           ======================================================== */}
-
         <Stack
           direction="row"
           alignItems="center"
@@ -1022,7 +921,6 @@ export default function PoemList() {
               : ""}
           </Typography>
 
-          {/* ONLY TWO VIEW MODES */}
           <ToggleButtonGroup
             size="small"
             exclusive
@@ -1037,7 +935,6 @@ export default function PoemList() {
             }}
             aria-label="చూపే విధానం"
           >
-            {/* DEFAULT GRID */}
             <ToggleButton
               value="grid"
               sx={{
@@ -1049,7 +946,6 @@ export default function PoemList() {
               పట్టిక
             </ToggleButton>
 
-            {/* SIMPLE PAGE VIEW */}
             <ToggleButton
               value="pages"
               sx={{
@@ -1063,15 +959,7 @@ export default function PoemList() {
           </ToggleButtonGroup>
         </Stack>
 
-        {/* ========================================================
-           WEB MCP
-           ======================================================== */}
-
         <WebMCP />
-
-        {/* ========================================================
-           TOOLS
-           ======================================================== */}
 
         {hasPoems && (
           <Box
@@ -1205,17 +1093,11 @@ export default function PoemList() {
           </Box>
         )}
 
-        {/* ========================================================
-           POEMS
-           ======================================================== */}
-
         <Box
           sx={{
             mt: 3,
           }}
         >
-          {/* LOADING */}
-
           {loading && (
             <Stack spacing={2}>
               <Stack
@@ -1258,8 +1140,6 @@ export default function PoemList() {
             </Stack>
           )}
 
-          {/* ERROR */}
-
           {error && (
             <Alert
               severity="error"
@@ -1278,8 +1158,6 @@ export default function PoemList() {
               {error}
             </Alert>
           )}
-
-          {/* EMPTY */}
 
           {isEmpty && (
             <Box
@@ -1316,14 +1194,6 @@ export default function PoemList() {
             </Box>
           )}
 
-          {/* ======================================================
-             YUKTAI GRID
-
-             IMPORTANT:
-             Pass ALL filtered poems.
-             YuktAI Grid handles its own grid pagination.
-             ====================================================== */}
-
           {hasPoems &&
             gridView && (
               <PoemsGridView
@@ -1335,14 +1205,11 @@ export default function PoemList() {
                 onOpenPoem={
                   openPoemFromGrid
                 }
+                onAssistantSearch={
+                  handleAssistantSearch
+                }
               />
             )}
-
-          {/* ======================================================
-             SIMPLE POEM PAGE VIEW
-
-             Only 3 poems per page.
-             ====================================================== */}
 
           {hasPoems &&
             pagesView &&
@@ -1364,13 +1231,6 @@ export default function PoemList() {
               )
             )}
         </Box>
-
-        {/* ========================================================
-           SIMPLE PAGE NAVIGATION
-
-           ONLY shown for "పేజీలు".
-           NOT used by YuktAI Grid.
-           ======================================================== */}
 
         {hasPoems &&
           pagesView &&

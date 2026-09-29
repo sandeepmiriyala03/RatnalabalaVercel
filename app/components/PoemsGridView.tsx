@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+
 import {
   YuktaiGrid,
+  YuktaiGridAI,
   type GridColumn,
 } from "@yuktishaalaa/yuktai";
 
@@ -54,6 +56,24 @@ const COLUMNS: GridColumn<PoemRow>[] = [
   },
 ];
 
+const AI_COLUMNS = [
+  {
+    key: "title",
+    label: "పద్యం పేరు",
+    type: "text" as const,
+  },
+  {
+    key: "content",
+    label: "పద్యం",
+    type: "text" as const,
+  },
+  {
+    key: "lines",
+    label: "పంక్తులు",
+    type: "number" as const,
+  },
+];
+
 export default function PoemsGridView({
   poems,
   highlightIds = [],
@@ -80,80 +100,58 @@ export default function PoemsGridView({
     [poems]
   );
 
+  const handleAssistantSearch = (query: string) => {
+    console.log("YuktAI Grid Assistant search:", query);
+  };
+
+  const handleAssistantSort = (
+    key: string,
+    direction: "asc" | "desc"
+  ) => {
+    console.log("YuktAI Grid Assistant sort:", key, direction);
+  };
+
   return (
-    <YuktaiGrid<PoemRow>
-      data={rows}
-      columns={COLUMNS}
-      rowKey="id"
+    <div className="w-full space-y-3">
+      <YuktaiGridAI<PoemRow>
+        data={rows}
+        columns={AI_COLUMNS}
+        onSearch={handleAssistantSearch}
+        onSort={handleAssistantSort}
+        theme="light"
+        language="te-IN"
+      />
 
-      /* Responsive */
-      view="auto"
-      mobileBreakpoint={768}
-
-      /* Telugu */
-      locale="te-IN"
-
-      /* Theme */
-      theme="default"
-
-      /* ================================================
-         GRID ASSISTANT / AI
-         ================================================ */
-      ai={{
-        search: true,
-        summary: true,
-        anomaly: true,
-        suggest: true,
-      }}
-
-      /* ================================================
-         VOICE ASSISTANT
-         ================================================ */
-      voice={{
-        control: true,
-        speakOnFocus: true,
-        speakSummary: true,
-        language: "te-IN",
-      }}
-
-      /* Search */
-      search={true}
-
-      /* Selection */
-      selectable={true}
-      selectedKeys={selectedKeys}
-      onSelectionChange={setSelectedKeys}
-
-      /* Pagination */
-      pagination={{
-        pageSize: 20,
-        showSizeChanger: true,
-        sizeOptions: [10, 20, 50, 100],
-      }}
-
-      /* Loading */
-      loading={loading}
-
-      /* ================================================
-         ASK & HIGHLIGHT
-         ================================================ */
-      highlightIds={highlightIds}
-      highlightColor="#fff3a3"
-      autoScrollToHighlight={true}
-
-      /* Open poem */
-      onRowClick={(row) => {
-        onOpenPoem(row.title);
-      }}
-
-      /* Sorting */
-      onSortChange={(sort) => {
-        console.log("YuktAI Grid sort:", sort);
-      }}
-
-      empty="పద్యాలు కనబడలేదు."
-
-      className="ratnalabala-yuktai-grid"
-    />
+      <YuktaiGrid<PoemRow>
+        data={rows}
+        columns={COLUMNS}
+        rowKey="id"
+        view="auto"
+        mobileBreakpoint={768}
+        theme="default"
+        locale="te-IN"
+        search={true}
+        selectable={true}
+        selectedKeys={selectedKeys}
+        onSelectionChange={setSelectedKeys}
+        pagination={{
+          pageSize: 20,
+          showSizeChanger: true,
+          sizeOptions: [10, 20, 50, 100],
+        }}
+        loading={loading}
+        highlightIds={highlightIds}
+        highlightColor="#fff3a3"
+        autoScrollToHighlight={true}
+        onRowClick={(row) => {
+          onOpenPoem(row.title);
+        }}
+        onSortChange={(sort) => {
+          console.log("YuktAI Grid sort:", sort);
+        }}
+        empty="పద్యాలు కనబడలేదు."
+        className="ratnalabala-yuktai-grid"
+      />
+    </div>
   );
 }
