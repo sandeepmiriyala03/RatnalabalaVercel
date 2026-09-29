@@ -2636,10 +2636,10 @@
   resolved "https://registry.npmjs.org/@xtuc/long/-/long-4.2.2.tgz"
   integrity sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==
 
-"@yuktishaalaa/yuktai@^4.0.0":
-  version "4.0.0"
-  resolved "https://registry.npmjs.org/@yuktishaalaa/yuktai/-/yuktai-4.0.0.tgz"
-  integrity sha512-k3i1fLcQpHlr14mUry5po48PO9UwFx1GDuxvdrxAKDh8/2almJyxp+gU2XugbNxBO2UpHJakvadzruI11tUo9Q==
+"@yuktishaalaa/yuktai@^4.4.1":
+  version "4.4.1"
+  resolved "https://registry.npmjs.org/@yuktishaalaa/yuktai/-/yuktai-4.4.1.tgz"
+  integrity sha512-RI9YgCDDTB3MQQM3yfqlZkmu/mZJaMHK0KvhZFfYTmiVmNinFIPmjKl7ogMMlP2SRgvpjUpmTlOrGIuevYoCbg==
   dependencies:
     jszip "^3.10.1"
 
