@@ -8,6 +8,11 @@
 # GET /api/aksharamala?endpoint=similar&letter=అ&word=అరటి
 # GET /api/aksharamala?endpoint=ai_words&letter=అ&word=అరటి   (Groq AI word ideas)
 # POST /api/aksharamala?endpoint=pronunciation or endpoint=trace
+# POST /api/aksharamala?endpoint=track   (batched anonymous UI events)
+#
+# Every API call is logged to the Neon table api_usage_log (same table
+# as api/main.py). Logging never breaks a request: if the database is
+# slow or down, the API still answers.
 #
 # The trace check here is the FALLBACK for the in-browser Rust check.
 # It uses the same method and numbers as rust/telugu-akshara/src/lib.rs
@@ -282,7 +287,7 @@ def check_pronunciation(target_word: str, spoken_text: str) -> dict:
 # ================= TRACE (fallback for the Rust check) =================
 # Same numbers as the browser / Rust version, so both behave alike.
 
-FONT_PATH = "public/fonts/NTR-Regular.ttf"
+FONT_PATH = os.path.join(os.path.dirname(__file__), "fonts", "NTR-Regular.ttf")
 TRACE_GRID = 64          # = MASK_SIDE in lib.rs
 TRACE_TOLERANCE = 2      # = TOLERANCE in lib.rs
 INK_THRESHOLD = 32       # = INK_THRESHOLD in lib.rs
@@ -450,6 +455,152 @@ def filter_and_paginate(search: str, type_filter: str, page: int, page_size: int
     }
 
 
+# ================= USAGE LOGGING (Neon · api_usage_log) =================
+# Same table and columns as api/main.py:
+#   api_name, endpoint, http_method, event_type, status_code, success
+#   (usage_id and request_date are filled by the database)
+#
+# event_type values used here:
+#   API_CALL  – a real API request (counts toward daily limits)
+#   CACHE_HIT – AI words served from memory, no Groq call (never counts)
+#   LIMIT_HIT – AI words refused because today's limit was reached
+#   UI_EVENT  – anonymous clicks sent by the page (endpoint=track)
+
+DATABASE_URL = os.environ.get("NEON_DATABASE_URL", "")
+DB_CONNECT_TIMEOUT = 3          # seconds — a slow database must not stall the API
+AI_WORDS_DAILY_LIMIT = 300      # real Groq calls per day, protects the Groq quota
+UI_API_NAME = "ui:aksharamala"  # separate name so clicks never touch API limits
+MAX_UI_EVENTS_PER_BATCH = 50
+MAX_TRACK_BODY_BYTES = 20_000
+
+UI_EVENT_NAMES = {
+    "letter_open",       # a letter card was clicked
+    "speak",             # card 🔊 (detail = voice)
+    "pronunciation",     # 🎤 result (success = correct)
+    "trace_check",       # ✍️ result (success = passed, detail = scores)
+    "ai_word_speak",     # an AI word tile was tapped
+    "family_record",     # a letter was recorded in a family voice
+    "family_voice_on",   # the family voice was selected
+    "search",            # a Telugu search was made (text is NOT stored)
+    "how_it_works",      # the explainer was opened
+}
+
+_SAFE_DETAIL = re.compile(r"[^A-Za-z0-9_.\-]")
+
+
+def _db_connect():
+    import psycopg  # imported here so a missing driver only disables logging
+    return psycopg.connect(DATABASE_URL, connect_timeout=DB_CONNECT_TIMEOUT)
+
+
+def log_api_call(api_name: str, endpoint: str, http_method: str,
+                 status_code: int, event_type: str = "API_CALL") -> None:
+    """Writes one row. Never raises."""
+    if not DATABASE_URL:
+        return
+    try:
+        with _db_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO api_usage_log
+                    (api_name, endpoint, http_method, event_type, status_code, success)
+                VALUES (%s, %s, %s, %s, %s, %s);
+                """,
+                (api_name, endpoint[:500], http_method, event_type,
+                 status_code, 200 <= status_code < 400),
+            )
+    except Exception as e:
+        print(f"[aksharamala] usage log failed: {type(e).__name__}: {e}")
+
+
+def reserve_api_call(api_name: str, endpoint: str, http_method: str,
+                     daily_limit: int) -> tuple[bool, int | None]:
+    """Same idea as reserve_api_call in api/main.py: counts today's calls and
+    inserts this one, under a lock so two requests can't both slip past the
+    limit. Returns (allowed, usage_id). If the database is unreachable the
+    call is allowed (fail open) but not logged."""
+    if not DATABASE_URL:
+        return True, None
+    try:
+        with _db_connect() as conn, conn.cursor() as cur:
+            cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s));", (api_name,))
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM api_usage_log
+                WHERE api_name = %s
+                  AND event_type = 'API_CALL'
+                  AND request_date = CURRENT_DATE;
+                """,
+                (api_name,),
+            )
+            if cur.fetchone()[0] >= daily_limit:
+                return False, None
+            cur.execute(
+                """
+                INSERT INTO api_usage_log
+                    (api_name, endpoint, http_method, event_type, status_code, success)
+                VALUES (%s, %s, %s, 'API_CALL', NULL, FALSE)
+                RETURNING usage_id;
+                """,
+                (api_name, endpoint[:500], http_method),
+            )
+            return True, cur.fetchone()[0]
+    except Exception as e:
+        print(f"[aksharamala] reserve failed (allowing call): {type(e).__name__}: {e}")
+        return True, None
+
+
+def update_api_log(usage_id: int | None, status_code: int) -> None:
+    if usage_id is None or not DATABASE_URL:
+        return
+    try:
+        with _db_connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE api_usage_log SET status_code = %s, success = %s WHERE usage_id = %s;",
+                (status_code, 200 <= status_code < 400, usage_id),
+            )
+    except Exception as e:
+        print(f"[aksharamala] usage update failed: {type(e).__name__}: {e}")
+
+
+def save_ui_events(events) -> int:
+    """Validates a batch from the page and inserts it in one go.
+    Only known event names are kept; nothing personal is stored."""
+    if not isinstance(events, list):
+        return 0
+    rows = []
+    for ev in events[:MAX_UI_EVENTS_PER_BATCH]:
+        if not isinstance(ev, dict):
+            continue
+        name = str(ev.get("name", ""))
+        if name not in UI_EVENT_NAMES:
+            continue
+        letter = str(ev.get("letter") or "").strip()
+        if letter and (len(letter) > 8 or not TELUGU_TEXT.match(letter)):
+            letter = ""
+        detail = _SAFE_DETAIL.sub("", str(ev.get("detail") or ""))[:30]
+        success = ev.get("success", True) is not False
+        endpoint = "|".join(part for part in (name, letter, detail) if part)
+        rows.append((UI_API_NAME, endpoint, "POST", "UI_EVENT", 200, success))
+
+    if not rows or not DATABASE_URL:
+        return len(rows)
+    try:
+        with _db_connect() as conn, conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO api_usage_log
+                    (api_name, endpoint, http_method, event_type, status_code, success)
+                VALUES (%s, %s, %s, %s, %s, %s);
+                """,
+                rows,
+            )
+        return len(rows)
+    except Exception as e:
+        print(f"[aksharamala] UI events failed: {type(e).__name__}: {e}")
+        return 0
+
+
 # ================= HANDLER =================
 
 class handler(BaseHTTPRequestHandler):
@@ -459,29 +610,32 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        query = parse_qs(urlparse(self.path).query)
+        endpoint = query.get("endpoint", [""])[0]
+        letter = query.get("letter", [""])[0].strip()
+
+        if endpoint in ("similar", "aksharamala_similar"):
+            log_name, log_path = "aksharamala:similar", f"/api/aksharamala?endpoint=similar&letter={letter}"
+        elif endpoint == "ai_words":
+            log_name, log_path = "aksharamala:ai_words", f"/api/aksharamala?endpoint=ai_words&letter={letter}"
+        else:
+            type_filter = query.get("type", ["all"])[0]
+            log_name, log_path = "aksharamala:list", f"/api/aksharamala?endpoint=list&type={type_filter}"
+
+        status = 500
         try:
-            query = parse_qs(urlparse(self.path).query)
-            endpoint = query.get("endpoint", [""])[0]
             if endpoint in ("similar", "aksharamala_similar"):
-                letter = query.get("letter", [""])[0]
                 if not letter:
-                    self._send_json(400, {"error": "'letter' ఖాళీగా ఉంది"})
+                    status = 400
+                    self._send_json(status, {"error": "'letter' ఖాళీగా ఉంది"})
                     return
-                self._send_json(200, find_similar(letter, query.get("word", [""])[0]))
+                status = 200
+                self._send_json(status, find_similar(letter, query.get("word", [""])[0]))
                 return
 
             if endpoint == "ai_words":
-                letter = query.get("letter", [""])[0].strip()
-                if not letter or len(letter) > 6 or not TELUGU_TEXT.match(letter):
-                    self._send_json(400, {"error": "'letter' సరైన తెలుగు అక్షరం కాదు"})
-                    return
-                try:
-                    words = suggest_ai_words(letter, query.get("word", [""])[0].strip())
-                except Exception as e:
-                    self._send_json(502, {"error": "AI పదాలు తీసుకురాలేకపోయాను.", "detail": str(e)})
-                    return
-                self._send_json(200, {"letter": letter, "words": words, "source": "groq"})
-                return
+                self._handle_ai_words(letter, query.get("word", [""])[0].strip(), log_name, log_path)
+                return  # logs its own rows (limit + cache)
 
             result = filter_and_paginate(
                 query.get("search", [""])[0],
@@ -489,45 +643,105 @@ class handler(BaseHTTPRequestHandler):
                 int(query.get("page", ["1"])[0]),
                 int(query.get("page_size", ["4"])[0]),
             )
-            self._send_json(200, result)
+            status = 200
+            self._send_json(status, result)
         except ValueError as e:
-            self._send_json(400, {"error": str(e)})
+            status = 400
+            self._send_json(status, {"error": str(e)})
         except Exception as e:
-            self._send_json(500, {"error": str(e)})
+            status = 500
+            self._send_json(status, {"error": str(e)})
+        finally:
+            if endpoint != "ai_words":
+                log_api_call(log_name, log_path, "GET", status)
+
+    def _handle_ai_words(self, letter: str, exclude_word: str, log_name: str, log_path: str):
+        if not letter or len(letter) > 6 or not TELUGU_TEXT.match(letter):
+            self._send_json(400, {"error": "'letter' సరైన తెలుగు అక్షరం కాదు"})
+            log_api_call(log_name, log_path, "GET", 400)
+            return
+
+        # Already in memory: no Groq call, so it doesn't count toward the limit
+        if letter in _ai_words_cache:
+            words = suggest_ai_words(letter, exclude_word)
+            self._send_json(200, {"letter": letter, "words": words, "source": "groq-cache"})
+            log_api_call(log_name, log_path, "GET", 200, event_type="CACHE_HIT")
+            return
+
+        allowed, usage_id = reserve_api_call(log_name, log_path, "GET", AI_WORDS_DAILY_LIMIT)
+        if not allowed:
+            self._send_json(429, {"error": "ఈరోజు AI పదాల పరిమితి ముగిసింది. రేపు మళ్ళీ ప్రయత్నించండి."})
+            # Separate event type, so hitting the limit shows in reports without counting as a call
+            log_api_call(log_name, log_path, "GET", 429, event_type="LIMIT_HIT")
+            return
+
+        try:
+            words = suggest_ai_words(letter, exclude_word)
+        except Exception as e:
+            self._send_json(502, {"error": "AI పదాలు తీసుకురాలేకపోయాను.", "detail": str(e)})
+            update_api_log(usage_id, 502)
+            return
+        self._send_json(200, {"letter": letter, "words": words, "source": "groq"})
+        update_api_log(usage_id, 200)
 
     def do_POST(self):
         query = parse_qs(urlparse(self.path).query)
         endpoint = query.get("endpoint", [""])[0]
+
         try:
             content_length = int(self.headers.get("Content-Length", 0))
+        except ValueError:
+            content_length = 0
+
+        if endpoint == "track" and content_length > MAX_TRACK_BODY_BYTES:
+            self._send_json(413, {"error": "Too many events in one batch."})
+            return
+
+        try:
             payload = json.loads(self.rfile.read(content_length)) if content_length else {}
         except (ValueError, json.JSONDecodeError):
             self._send_json(400, {"error": "Invalid JSON body."})
             return
 
+        # Anonymous UI events (sent in batches by lib/track.ts)
+        if endpoint == "track":
+            saved = save_ui_events(payload.get("events") if isinstance(payload, dict) else None)
+            self._send_json(200, {"saved": saved})
+            return
+
         if endpoint in ("pronunciation", "pronunciation_check"):
+            log_name = "aksharamala:pronunciation"
             target_word = payload.get("target_word", "")
             if not target_word:
                 self._send_json(400, {"error": "'target_word' ఖాళీగా ఉంది"})
+                log_api_call(log_name, "/api/aksharamala?endpoint=pronunciation", "POST", 400)
                 return
             self._send_json(200, check_pronunciation(target_word, payload.get("spoken_text", "")))
+            log_api_call(log_name, f"/api/aksharamala?endpoint=pronunciation&word={target_word[:30]}", "POST", 200)
             return
 
         if endpoint in ("trace", "trace_check"):
+            log_name = "aksharamala:trace"
             letter = payload.get("letter", "")
             image_data = payload.get("image_data", "")
+            log_path = f"/api/aksharamala?endpoint=trace&letter={str(letter)[:10]}"
             if not letter or not image_data:
                 self._send_json(400, {"error": "'letter' లేదా 'image_data' ఖాళీగా ఉంది"})
+                log_api_call(log_name, log_path, "POST", 400)
                 return
             try:
                 canvas_size = int(payload.get("canvas_size", 260))
             except (TypeError, ValueError):
                 self._send_json(400, {"error": "canvas_size must be an integer"})
+                log_api_call(log_name, log_path, "POST", 400)
                 return
-            self._send_json(200, check_trace(letter, image_data, canvas_size))
+            result = check_trace(letter, image_data, canvas_size)
+            self._send_json(200, result)
+            # A server-side failure (e.g. font missing) is logged as 500 so it shows up in reports
+            log_api_call(log_name, log_path, "POST", 500 if result.get("error") else 200)
             return
 
-        self._send_json(400, {"error": "Use endpoint=pronunciation or endpoint=trace."})
+        self._send_json(400, {"error": "Use endpoint=pronunciation, endpoint=trace or endpoint=track."})
 
     def _cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")

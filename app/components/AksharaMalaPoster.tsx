@@ -15,6 +15,8 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import ShareButtons from "@/app/components/ShareBar";
 import AksharaTraceBoard from "./AksharaTraceBoard";
 import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
+import { FAMILY_FALLBACK_VOICE, getFamilyVoiceName, getRecording } from "@/lib/family-voice";
+import { track } from "@/lib/track";
 
 type Akshara = {
   id: string;
@@ -27,7 +29,8 @@ type Akshara = {
 type Props = {
   akshara: Akshara;
   enableRead?: boolean;
-  voiceGender?: "male" | "female";
+  /** "family" = the parent's own recordings (see FamilyVoiceRecorder) */
+  voiceGender?: "male" | "female" | "family";
 };
 
 const CARD_VOICE_SOURCE = "edge";
@@ -148,7 +151,36 @@ const AksharaPosterCard: React.FC<Props> = ({
 
   const speak = useCallback(async () => {
     stopSpeaking();
+    track("speak", { letter: akshara.letter, detail: voiceGender });
 
+    // Family voice: play the parent's own recording if this letter has one
+    if (voiceGender === "family") {
+      const rec = await getRecording(akshara.letter);
+      if (rec) {
+        const url = URL.createObjectURL(rec.blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(url);
+        };
+        audio.onerror = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(url);
+        };
+        setIsSpeaking(true);
+        try {
+          await audio.play();
+          return;
+        } catch {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(url);
+          // fall through to the computer voice
+        }
+      }
+    }
+
+    const ttsVoice = voiceGender === "family" ? FAMILY_FALLBACK_VOICE : voiceGender;
     const textToSpeak = akshara.word
       ? `${akshara.letter} ... ${akshara.word}`
       : akshara.letter;
@@ -161,7 +193,7 @@ const AksharaPosterCard: React.FC<Props> = ({
         body: JSON.stringify({
           text: textToSpeak,
           source: CARD_VOICE_SOURCE,
-          voice: voiceGender,
+          voice: ttsVoice,
         }),
       });
 
@@ -247,12 +279,14 @@ const AksharaPosterCard: React.FC<Props> = ({
 
         const result = await res.json();
         setPracticeResult({ correct: result.correct, message: result.message });
+        track("pronunciation", { letter: akshara.letter, success: !!result.correct, detail: "server" });
       } catch (err) {
         console.error("[AksharaPosterCard] pronunciation check failed:", err);
 
         if (matches && matches.length > 0) {
           const ok = matches.filter((m) => m.matched).length;
           const allOk = ok === matches.length;
+          track("pronunciation", { letter: akshara.letter, success: allOk, detail: "local" });
           setPracticeResult({
             correct: allOk,
             message: allOk
@@ -447,7 +481,15 @@ const AksharaPosterCard: React.FC<Props> = ({
           }}
         >
           <Stack direction="row" spacing={1}>
-            <Tooltip title={voiceGender === "male" ? "వినండి (మగ స్వరం)" : "వినండి (స్త్రీ స్వరం)"}>
+            <Tooltip
+              title={
+                voiceGender === "family"
+                  ? `వినండి (${getFamilyVoiceName() || "కుటుంబ గొంతు"})`
+                  : voiceGender === "male"
+                    ? "వినండి (మగ స్వరం)"
+                    : "వినండి (స్త్రీ స్వరం)"
+              }
+            >
               <span>
                 <IconButton
                   onClick={(e) => {

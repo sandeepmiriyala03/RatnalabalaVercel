@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Stack,
   Typography,
@@ -28,10 +29,21 @@ import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRounded";
 
 import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
 import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
+import {
+  FAMILY_FALLBACK_VOICE,
+  FAMILY_VOICE_EVENT,
+  getFamilyVoiceName,
+  listRecordedLetters,
+} from "@/lib/family-voice";
 
+import { track } from "@/lib/track";
+
+
+import FamilyVoiceRecorder from "@/app/components/Familyvoicerecorder";
 /* ================= TYPES ================= */
 type Akshara = {
   id: string;
@@ -48,7 +60,8 @@ type SimilarResult = {
   source: string;
 };
 
-type VoiceGender = "male" | "female";
+/** "family" = recordings made with FamilyVoiceRecorder (stored on this device) */
+type VoiceGender = "male" | "female" | "family";
 
 type AnalyzerStats = {
   text: string;
@@ -450,6 +463,11 @@ export default function AksharamalaParent() {
   const [typeFilter, setTypeFilter] = useState<"all" | "swaralu" | "vyanjanalu">("all");
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("male");
 
+  // Family voice recordings
+  const [recorderOpen, setRecorderOpen] = useState(false);
+  const [familyCount, setFamilyCount] = useState(0);
+  const [familyName, setFamilyName] = useState("");
+
   const [items, setItems] = useState<Akshara[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [pageCount, setPageCount] = useState(1);
@@ -487,6 +505,22 @@ export default function AksharamalaParent() {
     };
   }, []);
 
+  // Keep the family-voice option in sync with what has been recorded
+  useEffect(() => {
+    const refresh = async () => {
+      setFamilyCount((await listRecordedLetters()).length);
+      setFamilyName(getFamilyVoiceName());
+    };
+    refresh();
+    window.addEventListener(FAMILY_VOICE_EVENT, refresh);
+    return () => window.removeEventListener(FAMILY_VOICE_EVENT, refresh);
+  }, []);
+
+  // If every recording was deleted, switch back to a computer voice
+  useEffect(() => {
+    if (familyCount === 0 && voiceGender === "family") setVoiceGender("male");
+  }, [familyCount, voiceGender]);
+
   // Close the mobile sheet if the screen becomes wide (rotation, resize)
   useEffect(() => {
     if (isDesktop) setSheetOpen(false);
@@ -513,6 +547,7 @@ export default function AksharamalaParent() {
         const ms = performance.now() - t0;
         if (!active) return;
 
+        track("search");
         setAksharas(segments);
         setStats({
           text,
@@ -651,6 +686,7 @@ export default function AksharamalaParent() {
 
   const handleCardClick = (a: Akshara) => {
     const clickId = ++clickIdRef.current;
+    track("letter_open", { letter: a.letter });
     setSelected(a);
     if (!isDesktop) setSheetOpen(true);
     loadSimilar(a, clickId);
@@ -668,6 +704,7 @@ export default function AksharamalaParent() {
 
   /** Speaks an AI word: same TTS as the cards, browser voice as fallback. */
   const speakWord = async (text: string) => {
+    track("ai_word_speak", { letter: selected?.letter });
     audioRef.current?.pause();
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
 
@@ -675,7 +712,12 @@ export default function AksharamalaParent() {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, source: "edge", voice: voiceGender }),
+        body: JSON.stringify({
+          text,
+          source: "edge",
+          // AI words aren't recorded, so the family option uses a computer voice here
+          voice: voiceGender === "family" ? FAMILY_FALLBACK_VOICE : voiceGender,
+        }),
       });
       if (!res.ok) throw new Error(`TTS API ${res.status}`);
 
@@ -722,17 +764,45 @@ export default function AksharamalaParent() {
             <Chip label="హల్లులు" clickable color={typeFilter === "vyanjanalu" ? "primary" : "default"} onClick={() => handleFilter("vyanjanalu")} />
           </Stack>
 
-          <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mb: 2 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            justifyContent="center"
+            alignItems="center"
+            useFlexGap
+            flexWrap="wrap"
+            sx={{ mb: 2 }}
+          >
             <Typography variant="body2" sx={{ opacity: 0.75 }}>🔊 స్వరం:</Typography>
             <ToggleButtonGroup
               size="small"
               value={voiceGender}
               exclusive
-              onChange={(_, v) => { if (v) setVoiceGender(v); }}
+              onChange={(_, v) => {
+                if (!v) return;
+                setVoiceGender(v);
+                if (v === "family") track("family_voice_on");
+              }}
+              sx={{ flexWrap: "wrap", justifyContent: "center" }}
             >
-              <ToggleButton value="male" sx={{ textTransform: "none", px: 2 }}>🎙️ మగ స్వరం</ToggleButton>
-              <ToggleButton value="female" sx={{ textTransform: "none", px: 2 }}>👩 స్త్రీ స్వరం</ToggleButton>
+              <ToggleButton value="male" sx={{ textTransform: "none", px: { xs: 1.25, sm: 2 } }}>🎙️ మగ స్వరం</ToggleButton>
+              <ToggleButton value="female" sx={{ textTransform: "none", px: { xs: 1.25, sm: 2 } }}>👩 స్త్రీ స్వరం</ToggleButton>
+              {familyCount > 0 && (
+                <ToggleButton value="family" sx={{ textTransform: "none", px: { xs: 1.25, sm: 2 } }}>
+                  🏠 {familyName || "కుటుంబ గొంతు"}
+                </ToggleButton>
+              )}
             </ToggleButtonGroup>
+            <Button
+              size="small"
+              variant={familyCount > 0 ? "text" : "outlined"}
+              color="secondary"
+              startIcon={<RecordVoiceOverRoundedIcon />}
+              onClick={() => setRecorderOpen(true)}
+              sx={{ textTransform: "none", fontWeight: 700, minHeight: 40 }}
+            >
+              {familyCount > 0 ? `మీ గొంతు (${familyCount})` : "మీ గొంతుతో రికార్డ్ చేయండి"}
+            </Button>
           </Stack>
 
           <Stack direction="row" spacing={1.5} justifyContent="center" useFlexGap flexWrap="wrap" sx={{ mb: 3 }}>
@@ -827,7 +897,10 @@ export default function AksharamalaParent() {
             size="small"
             color="secondary"
             startIcon={<HelpOutlineRoundedIcon />}
-            onClick={() => setShowHowItWorks((v) => !v)}
+            onClick={() => {
+              if (!showHowItWorks) track("how_it_works");
+              setShowHowItWorks((v) => !v);
+            }}
             sx={{ mt: 1, textTransform: "none" }}
             aria-expanded={showHowItWorks}
           >
@@ -965,7 +1038,14 @@ export default function AksharamalaParent() {
         </Box>
         {resultsPanel}
       </Drawer>
+
+      {recorderOpen && (
+        <FamilyVoiceRecorder
+          open={recorderOpen}
+          onClose={() => setRecorderOpen(false)}
+          startLetter={selected?.letter}
+        />
+      )}
     </Container>
   );
 }
-

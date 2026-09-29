@@ -8,6 +8,7 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import SendIcon from "@mui/icons-material/Send";
 
 import { getTraceMaskSide, scoreTraceMasks } from "@/lib/telugu-akshara-wasm";
+import { track } from "@/lib/track";
 
 interface TraceProps {
   letter: string;
@@ -293,10 +294,14 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
       const { coverage, precision } = await scoreTraceMasks(drawn, target);
       const ms = performance.now() - t0;
 
-      setResult({ ...describeTrace(coverage, precision), coverage, precision, ms, source: "rust" });
+      const verdict = describeTrace(coverage, precision);
+      setResult({ ...verdict, coverage, precision, ms, source: "rust" });
+      track("trace_check", { letter, success: verdict.correct, detail: `c${coverage}-p${precision}` });
     } catch (err) {
       console.warn("[AksharaTraceBoard] Rust check failed, using server:", err);
-      setResult(await checkOnServer(canvas));
+      const serverResult = await checkOnServer(canvas);
+      setResult(serverResult);
+      track("trace_check", { letter, success: !!serverResult?.correct, detail: "server" });
     } finally {
       setIsChecking(false);
     }
