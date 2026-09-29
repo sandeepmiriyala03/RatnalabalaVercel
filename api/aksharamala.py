@@ -1,23 +1,5 @@
 # api/aksharamala.py
-#
-# Search now ALSO checks sametalu data for the same term — added as
-# a plain inline function call, same file, no cross-file import
-# (avoids the exact problem we already hit once with aksharamala_data.py).
-#
-# GET /api/aksharamala?search=&type=all&page=1&page_size=4
-# GET /api/aksharamala?endpoint=similar&letter=అ&word=అరటి
-# GET /api/aksharamala?endpoint=ai_words&letter=అ&word=అరటి   (Groq AI word ideas)
-# POST /api/aksharamala?endpoint=pronunciation or endpoint=trace
-# POST /api/aksharamala?endpoint=track   (batched anonymous UI events)
-#
-# Every API call is logged to the Neon table api_usage_log (same table
-# as api/main.py). Logging never breaks a request: if the database is
-# slow or down, the API still answers.
-#
-# The trace check here is the FALLBACK for the in-browser Rust check.
-# It uses the same method and numbers as rust/telugu-akshara/src/lib.rs
-# (64×64 grid, tolerance 2, coverage + precision), so both give the
-# same kind of result.
+
 
 import base64
 import difflib
