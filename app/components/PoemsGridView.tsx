@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 
 import {
   YuktaiGrid,
-  YuktaiGridAI,
   YuktaiGridWebMCP,
   useYuktaiGridAgent,
   type GridColumn,
@@ -91,8 +90,13 @@ export default function PoemsGridView({
   onOpenPoem,
   onAssistantSearch,
 }: Props) {
-  const [selectedKeys, setSelectedKeys] =
-    useState<string[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(
+    []
+  );
+
+  const [mcpHighlightIds, setMcpHighlightIds] = useState<
+    string[]
+  >([]);
 
   const rows = useMemo<PoemRow[]>(
     () =>
@@ -112,12 +116,22 @@ export default function PoemsGridView({
     [poems]
   );
 
+  const combinedHighlightIds = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...highlightIds,
+          ...mcpHighlightIds,
+        ])
+      ),
+    [highlightIds, mcpHighlightIds]
+  );
+
   const agentTools = useMemo<GridAgentTool[]>(
     () => [
       {
         name: "search",
-        description:
-          "Search Telugu poems in the grid.",
+        description: "Search Telugu poems in the grid.",
         execute: async (
           input: Record<string, unknown>
         ) => {
@@ -129,6 +143,13 @@ export default function PoemsGridView({
             .trim()
             .toLowerCase();
 
+          if (!text) {
+            return {
+              success: false,
+              message: "Please provide a search query.",
+            };
+          }
+
           const matches = rows.filter(
             (row) =>
               row.title
@@ -139,6 +160,12 @@ export default function PoemsGridView({
                 .includes(text)
           );
 
+          const matchIds = matches.map(
+            (row) => row.id
+          );
+
+          setMcpHighlightIds(matchIds);
+
           onAssistantSearch(query);
 
           return {
@@ -148,20 +175,20 @@ export default function PoemsGridView({
           };
         },
       },
+
       {
         name: "count",
-        description:
-          "Count poems in the grid.",
+        description: "Count poems in the grid.",
         execute: async () => ({
           success: true,
           message: `${rows.length} poem(s).`,
           data: rows.length,
         }),
       },
+
       {
         name: "getRow",
-        description:
-          "Get a poem by its ID.",
+        description: "Get a poem by its ID.",
         execute: async (
           input: Record<string, unknown>
         ) => {
@@ -187,10 +214,10 @@ export default function PoemsGridView({
           };
         },
       },
+
       {
         name: "selectRow",
-        description:
-          "Select a poem row.",
+        description: "Select a poem row.",
         execute: async (
           input: Record<string, unknown>
         ) => {
@@ -218,10 +245,10 @@ export default function PoemsGridView({
           };
         },
       },
+
       {
         name: "openRow",
-        description:
-          "Open a poem.",
+        description: "Open a poem.",
         execute: async (
           input: Record<string, unknown>
         ) => {
@@ -257,46 +284,27 @@ export default function PoemsGridView({
     ]
   );
 
-  const {
-    loading: agentLoading,
-  } = useYuktaiGridAgent({
-    tools: agentTools,
-  });
-
-  const handleAssistantSearch = (
-    query: string
-  ) => {
-    onAssistantSearch(query);
-  };
-
-  const handleAssistantSort = (
-    key: string,
-    direction: "asc" | "desc"
-  ) => {
-    console.log(
-      "YuktAI Grid Assistant sort:",
-      key,
-      direction
-    );
-  };
+  const { loading: agentLoading } =
+    useYuktaiGridAgent({
+      tools: agentTools,
+    });
 
   return (
     <div className="w-full space-y-3">
-      <YuktaiGridAI<PoemRow>
-        data={rows}
-        columns={MCP_COLUMNS}
-        onSearch={handleAssistantSearch}
-        onSort={handleAssistantSort}
-        theme="light"
-        language="te-IN"
-      />
 
+      {/* =========================================================
+          WEBMCP
+          Invisible registration layer
+          ========================================================= */}
       <YuktaiGridWebMCP
         data={rows}
         columns={MCP_COLUMNS}
         name="ratnalabala_grid"
         onSelectRow={(id) => {
           setSelectedKeys([id]);
+        }}
+        onHighlightRows={(ids) => {
+          setMcpHighlightIds(ids);
         }}
         onOpenRow={(id) => {
           const row = rows.find(
@@ -307,23 +315,37 @@ export default function PoemsGridView({
             onOpenPoem(row.title);
           }
         }}
-        onHighlightRows={() => {}}
       />
 
+      {/* =========================================================
+          YUKTAI GRID
+          Agentic AI is embedded inside the Grid
+          ========================================================= */}
       <YuktaiGrid<PoemRow>
         data={rows}
         columns={COLUMNS}
         rowKey="id"
+
         view="auto"
         mobileBreakpoint={768}
+
         theme="default"
         locale="te-IN"
+
         search={true}
         selectable={true}
+
         selectedKeys={selectedKeys}
-        onSelectionChange={
-          setSelectedKeys
-        }
+        onSelectionChange={setSelectedKeys}
+
+        /* -------------------------------------------------------
+           Embedded Agentic AI
+           ------------------------------------------------------- */
+        ai={true}
+
+        /* -------------------------------------------------------
+           Pagination
+           ------------------------------------------------------- */
         pagination={{
           pageSize: 20,
           showSizeChanger: true,
@@ -334,28 +356,49 @@ export default function PoemsGridView({
             100,
           ],
         }}
+
         loading={
-          loading || agentLoading
+          loading ||
+          agentLoading
         }
-        highlightIds={highlightIds}
+
+        /* -------------------------------------------------------
+           AI / WebMCP highlighting
+           ------------------------------------------------------- */
+        highlightIds={
+          combinedHighlightIds
+        }
+
         highlightColor="#fff3a3"
+
         autoScrollToHighlight={true}
-        onRowClick={(
-          row,
-          index
-        ) => {
-          void index;
+
+        /* -------------------------------------------------------
+           Row click
+           ------------------------------------------------------- */
+        onRowClick={(row) => {
           onOpenPoem(row.title);
         }}
+
+        /* -------------------------------------------------------
+           Sorting
+           ------------------------------------------------------- */
         onSortChange={(sort) => {
           console.log(
             "YuktAI Grid sort:",
             sort
           );
         }}
+
+        /* -------------------------------------------------------
+           Empty state
+           ------------------------------------------------------- */
         empty="పద్యాలు కనబడలేదు."
+
         className="ratnalabala-yuktai-grid"
       />
     </div>
   );
+  
 }
+
