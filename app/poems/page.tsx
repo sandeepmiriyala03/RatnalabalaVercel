@@ -40,7 +40,7 @@ import QuestionAnswerRoundedIcon from "@mui/icons-material/QuestionAnswerRounded
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
 
-import { YuktAIWrapper } from "@yuktishaalaa/yuktai";
+
 
 import PoemCard from "@/app/components/PoemCard";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";
@@ -605,29 +605,6 @@ export default function PoemList() {
     };
 
   return (
-    <YuktAIWrapper
-      position="right"
-      showRag={false}
-      showAgent={false}
-      config={{
-        enabled: true,
-        highContrast: true,
-        darkMode: true,
-        reduceMotion: true,
-        autoFix: true,
-        keyboardHints: true,
-        speechEnabled: true,
-        showPreferencePanel: true,
-        showAuditBadge: true,
-        showSkipLinks: true,
-        largeTargets: true,
-        dyslexiaFont: true,
-        plainEnglish: true,
-        summarisePage: true,
-        voiceControl: true,
-        smartLabels: true,
-      }}
-    >
       <Box
         sx={{
           p: {
@@ -959,7 +936,7 @@ export default function PoemList() {
           </ToggleButtonGroup>
         </Stack>
 
-        <WebMCP />
+        
 
         {hasPoems && (
           <Box
@@ -1308,6 +1285,5 @@ export default function PoemList() {
             </Stack>
           )}
       </Box>
-    </YuktAIWrapper>
   );
 }
