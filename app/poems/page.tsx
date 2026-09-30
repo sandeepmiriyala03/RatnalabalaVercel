@@ -1,244 +1,151 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
-  Alert,
   Box,
-  Button,
-  CircularProgress,
-  Collapse,
-  IconButton,
-  InputAdornment,
-  Stack,
-  TextField,
   Typography,
+  Button,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Collapse,
+  Skeleton,
+  Alert,
+  CircularProgress,
   alpha,
   useTheme,
 } from "@mui/material";
 
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
-import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRounded";
-import SortRoundedIcon from "@mui/icons-material/SortRounded";
-import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded";
-import HubRoundedIcon from "@mui/icons-material/HubRounded";
-import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
+import SearchRoundedIcon         from "@mui/icons-material/SearchRounded";
+import HeadphonesRoundedIcon     from "@mui/icons-material/HeadphonesRounded";
+import DownloadRoundedIcon       from "@mui/icons-material/DownloadRounded";
+import ExpandMoreRoundedIcon     from "@mui/icons-material/ExpandMoreRounded";
+import ExpandLessRoundedIcon     from "@mui/icons-material/ExpandLessRounded";
+import ArrowBackRoundedIcon      from "@mui/icons-material/ArrowBackRounded";
+import ArrowForwardRoundedIcon   from "@mui/icons-material/ArrowForwardRounded";
+import HelpOutlineRoundedIcon    from "@mui/icons-material/HelpOutlineRounded";
+import VolumeUpRoundedIcon       from "@mui/icons-material/VolumeUpRounded";
+import QuestionAnswerRoundedIcon from "@mui/icons-material/QuestionAnswerRounded";
+import WhatsAppIcon              from "@mui/icons-material/WhatsApp";
+import TableRowsRoundedIcon      from "@mui/icons-material/TableRowsRounded";
 
-import {
-  YuktaiGrid,
-  type GridColumn,
-  type GridTheme,
-  type WebMCPStatus,
-} from "@yuktishaalaa/yuktai";
+import PoemCard from "@/app/components/PoemCard";
+import DownloadAllPosters from "@/app/components/DownloadAllPosters";
+import DownloadAllVoices from "@/app/components/DownloadAllVoices";
+import PoemRadio from "@/app/components/Poemradio";
+import DownloadAllVideos from "@/app/components/DownloadAllVideos";
+import type { GridTheme } from "@yuktishaalaa/yuktai";
 
-/* ------------------------------------------------------------------ */
-/* TYPES                                                              */
-/* ------------------------------------------------------------------ */
+// YuktaiGrid table view — loaded only when "పట్టిక" is chosen
+const YuktaiGridView = dynamic(() => import("@/app/components/YuktaiGridView"), {
+  ssr: false,
+  loading: () => (
+    <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
+      <CircularProgress size={28} />
+    </Box>
+  ),
+});
 
-type Poem = {
+interface Poem {
   title: string;
   content: string;
   slug?: string;
-};
+}
 
-type PoemRow = {
-  id: string;
-  title: string;
-  content: string;
-  lines: number;
-};
+type Tool = "radio" | "downloads";
+type ViewMode = "grid" | "pages";
 
-/* ------------------------------------------------------------------ */
-/* CONSTANTS                                                          */
-/* ------------------------------------------------------------------ */
+const ITEMS_PER_PAGE = 3;
+
+const POETRY_NAME = "రత్నాలబాల — పద్యాలవాల — భావాలమాల";
+const AUTHORS: string | string[] = "మిరియాల వెంకటరత్నం";
 
 const POET_ID = 1;
 
-const TOOL_PREFIX = "ratnalabala_poems";
-
-const TELUGU_FONT =
-  '"Noto Sans Telugu", "Nirmala UI", "Gautami", "Vani", sans-serif';
-
-const HELP_SEEN_KEY = "ratnalabala:grid-help-seen";
-
 /* ------------------------------------------------------------------ */
-/* GRID COLUMNS                                                       */
+/* HOW TO USE — short, simple Telugu                                   */
 /* ------------------------------------------------------------------ */
 
-const COLUMNS: GridColumn<PoemRow>[] = [
-  {
-    key: "title",
-    label: "పద్యం పేరు",
-    width: "32%",
-  },
-  {
-    key: "content",
-    label: "పద్యం",
-    sortable: false,
-    render: (value) => (
-      <Box
-        sx={{
-          whiteSpace: "pre-line",
-          fontFamily: TELUGU_FONT,
-          lineHeight: 1.9,
-          py: 0.5,
-        }}
-      >
-        {String(value ?? "")}
-      </Box>
-    ),
-  },
-  {
-    key: "lines",
-    label: "పంక్తులు",
-    type: "number",
-    align: "center",
-    width: 110,
-  },
-];
+const HELP_SEEN_KEY = "ratnalabala:help-seen";
 
-/* ------------------------------------------------------------------ */
-/* WEBMCP TOOLS                                                       */
-/* ------------------------------------------------------------------ */
-
-const TOOL_DESCRIPTIONS = {
-  search: "పద్యం పేరు లేదా పద్యంలో పదాన్ని వెతుకు.",
-  open: "ఎంచుకున్న పద్యాన్ని తెరువు.",
-  select: "ఒక పద్యాన్ని ఎంచుకో.",
-  filter: "పద్యం పేరు, పద్యం లేదా పంక్తుల సంఖ్యతో ఫిల్టర్ చేయి.",
-  sort: "పద్యాలను క్రమంలో అమర్చు.",
-  count: "మొత్తం పద్యాల సంఖ్య చూపు.",
-  columns: "పట్టిక కాలమ్‌లను చూపు.",
-  get_row: "ఒక పద్య వరుస వివరాలు చూపు.",
-  highlight: "ఒక పద్యాన్ని హైలైట్ చేయి.",
-};
-
-const TOOL_LABELS: Record<string, string> = {
-  search: "వెతుకు",
-  count: "లెక్క",
-  columns: "కాలమ్‌లు",
-  get_row: "వరుస చూపు",
-  highlight: "హైలైట్",
-  select: "ఎంచుకో",
-  open: "తెరువు",
-  filter: "ఫిల్టర్",
-  clear_filters: "ఫిల్టర్లు తీసేయి",
-  sort: "క్రమం",
-  clear_sort: "క్రమం తీసేయి",
-};
-
-const WEBMCP_TEXT: Record<WebMCPStatus["state"], string> = {
-  unsupported: "ఈ బ్రౌజర్‌లో WebMCP అందుబాటులో లేదు.",
-  registering: "AI tools నమోదవుతున్నాయి…",
-  ready: "AI agents కోసం tools సిద్ధంగా ఉన్నాయి.",
-  partial: "కొన్ని AI tools మాత్రమే నమోదయ్యాయి.",
-  error: "AI tools నమోదు కాలేదు.",
-};
-
-/* ------------------------------------------------------------------ */
-/* HELP GUIDE                                                         */
-/* ------------------------------------------------------------------ */
-
-const HELP_STEPS: {
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-}[] = [
+const HELP_STEPS: { icon: React.ReactNode; text: string }[] = [
   {
     icon: <SearchRoundedIcon />,
-    title: "వెతకండి",
-    text:
-      "పై search boxలో పద్యం పేరు లేదా పద్యంలో ఉన్న పదాన్ని టైప్ చేయండి.",
+    text: "పద్యం వెతకాలంటే “పట్టిక”లో ఉన్న శోధన గడిలో పద్యం పేరు లేదా పద్యంలోని పదాన్ని రాయండి.",
   },
   {
-    icon: <SmartToyRoundedIcon />,
-    title: "AIతో అడగండి",
-    text:
-      "YuktAI Grid Agent ద్వారా పద్యాలను వెతకడం, లెక్కించడం, filter చేయడం, sort చేయడం వంటి grid పనులను సహజ భాషలో అడగవచ్చు.",
+    icon: <VolumeUpRoundedIcon />,
+    text: "పద్యం వినాలంటే “వినండి” బటన్ నొక్కండి. ఆపాలంటే “ఆపండి” నొక్కండి.",
   },
   {
-    icon: <RecordVoiceOverRoundedIcon />,
-    title: "వాయిస్ ఉపయోగించండి",
-    text:
-      "AI Assistantలో microphone ఉపయోగించి Telugu లేదా అందుబాటులో ఉన్న ఇతర input languagesలో ప్రశ్న అడగవచ్చు.",
+    icon: <QuestionAnswerRoundedIcon />,
+    text: "పద్యం అర్థం తెలుసుకోవాలంటే “భావాలమాల” బటన్ నొక్కండి. తరువాత ➤ గుర్తు నొక్కండి. అర్థం కింద కనిపిస్తుంది. దాన్ని కూడా వినవచ్చు.",
   },
   {
-    icon: <SortRoundedIcon />,
-    title: "క్రమబద్ధీకరించండి",
-    text:
-      "Column header ద్వారా sort చేయవచ్చు. Agentను కూడా “పంక్తుల ప్రకారం క్రమం” వంటి మాటలతో అడగవచ్చు.",
-  },
-  {
-    icon: <TouchAppRoundedIcon />,
-    title: "పద్యాన్ని తెరవండి",
-    text:
-      "ఒక పద్య వరుసను ఎంచుకుంటే ఆ పద్యాన్ని తెరవడానికి page callback ఉపయోగించబడుతుంది.",
+    icon: <WhatsAppIcon />,
+    text: "ఆ అర్థాన్ని మిత్రులకు పంపాలంటే “వాట్సాప్” బటన్ నొక్కండి.",
   },
   {
     icon: <TableRowsRoundedIcon />,
-    title: "Gridలో మరిన్ని",
-    text:
-      "Pagination, mobile card view, keyboard navigation, screen-reader support, highlighting మరియు responsive grid features అందుబాటులో ఉంటాయి.",
+    text: "అన్ని పద్యాల పేర్లు ఒకేచోట చూడాలంటే “పట్టిక” నొక్కండి. పేరు నొక్కితే ఆ పద్యం తెరుచుకుంటుంది.",
   },
   {
-    icon: <HubRoundedIcon />,
-    title: "WebMCP",
-    text:
-      "WebMCP అందుబాటులో ఉన్న browserలో AI agents కోసం grid tools register అవుతాయి.",
+    icon: <ArrowForwardRoundedIcon />,
+    text: "ఇంకా పద్యాలు చూడాలంటే కింద “ముందుకు” నొక్కండి. వెనక్కి వెళ్ళాలంటే “వెనుకకు” నొక్కండి.",
+  },
+  {
+    icon: <HeadphonesRoundedIcon />,
+    text: "పద్యాలన్నీ వరుసగా వినాలంటే “రేడియో” బటన్ నొక్కండి.",
   },
 ];
 
-/* ------------------------------------------------------------------ */
-/* COMPONENT                                                          */
-/* ------------------------------------------------------------------ */
+
+
 
 export default function PoemList() {
   const theme = useTheme();
 
   const [poems, setPoems] = useState<Poem[]>([]);
-
-  const [search, setSearch] = useState("");
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  // "వినండి" uses the server voice first (Edge Mohan/Shruti); the browser
+  // voice is only a fallback. So the button must NOT wait for browser voices —
+  // many phones and in-app browsers have none, which used to disable it.
+  const [ready] = useState(true);
 
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState<string | null>(null);
 
+  const [page, setPage] = useState(1);
+  // "పట్టిక" (YuktAI Grid) opens first; "పేజీలు" shows full poem cards
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const gridView = viewMode === "grid";
+
+  // Grid theme is owned by the page so the reusable YuktAI Grid stays generic.
   const [gridTheme, setGridTheme] = useState<GridTheme>("default");
 
-  const [webmcp, setWebmcp] = useState<WebMCPStatus | null>(null);
+  // Poems to glow in the table — will be filled by RAG "search by meaning" later
+  const [highlightIds] = useState<string[]>([]);
 
+  // Which of the two tool panels (radio / bulk downloads) is open. Only one at
+  // a time, and both start closed so the page opens on search + poems.
+  const [openTool, setOpenTool] = useState<Tool | null>(null);
+
+  // "ఈ పేజీ ఎలా వాడాలి?" — opens by itself on the very first visit only.
   const [helpOpen, setHelpOpen] = useState(false);
-
-  const [lastAction, setLastAction] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
-
-  /* -------------------------------------------------------------- */
-  /* FIRST VISIT HELP                                               */
-  /* -------------------------------------------------------------- */
 
   useEffect(() => {
     try {
-      const seen = window.localStorage.getItem(HELP_SEEN_KEY);
-
-      if (!seen) {
+      if (!window.localStorage.getItem(HELP_SEEN_KEY)) {
         setHelpOpen(true);
-
         window.localStorage.setItem(HELP_SEEN_KEY, "1");
       }
     } catch {
-      // Ignore localStorage failures.
+      // storage blocked — help simply stays closed until the person opens it
     }
   }, []);
 
-  /* -------------------------------------------------------------- */
-  /* LOAD POEMS                                                      */
-  /* -------------------------------------------------------------- */
+  /* LOAD POEMS — the page owns data loading; YuktAI Grid only receives poems. */
 
   const loadPoems = useCallback(async () => {
     setLoading(true);
@@ -264,7 +171,6 @@ export default function PoemList() {
       );
     } catch (err) {
       console.error("Error loading poems:", err);
-
       setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
     } finally {
       setLoading(false);
@@ -275,478 +181,388 @@ export default function PoemList() {
     loadPoems();
   }, [loadPoems]);
 
-  /* -------------------------------------------------------------- */
-  /* SEARCH                                                         */
-  /* -------------------------------------------------------------- */
+  /* SPEECH (browser-voice fallback used by the poem cards) */
 
-  const query = search.trim();
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
 
-  const filteredPoems = useMemo(() => {
-    if (!query) {
-      return poems;
-    }
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices();
+      if (v.length) setVoices(v);
+    };
 
-    const q = query.toLocaleLowerCase();
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
 
-    return poems.filter(
-      (poem) =>
-        poem.title.toLocaleLowerCase().includes(q) ||
-        poem.content.toLocaleLowerCase().includes(q)
-    );
-  }, [poems, query]);
-
-  /* -------------------------------------------------------------- */
-  /* GRID DATA                                                       */
-  /* -------------------------------------------------------------- */
-
-  const rows = useMemo<PoemRow[]>(
-    () =>
-      filteredPoems.map((poem) => {
-        const lines = poem.content
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter(Boolean);
-
-        return {
-          id: poem.slug ?? poem.title,
-          title: poem.title,
-          content: lines.join("\n"),
-          lines: lines.length,
-        };
-      }),
-    [filteredPoems]
-  );
-
-  /* -------------------------------------------------------------- */
-  /* GRID ROW OPEN                                                   */
-  /* -------------------------------------------------------------- */
-
-  const openPoem = useCallback((row: PoemRow) => {
-    /*
-     * Keep your existing navigation behavior here.
-     *
-     * If your current application has a route,
-     * replace this with router.push(...).
-     *
-     * For now the event is exposed through the
-     * browser custom event so this component remains
-     * reusable.
-     */
-    window.dispatchEvent(
-      new CustomEvent("ratnalabala:open-poem", {
-        detail: {
-          title: row.title,
-          id: row.id,
-        },
-      })
-    );
+    return () => {
+      window.speechSynthesis.onvoiceschanged = null;
+      window.speechSynthesis.cancel();
+    };
   }, []);
 
-  /* -------------------------------------------------------------- */
-  /* REGISTERED WEBMCP LABELS                                       */
-  /* -------------------------------------------------------------- */
+  const stopSpeech = () => window.speechSynthesis?.cancel();
 
-  const registeredLabels = useMemo(
-    () =>
-      (webmcp?.registered ?? []).map((name) => {
-        const id = name.startsWith(`${TOOL_PREFIX}_`)
-          ? name.slice(TOOL_PREFIX.length + 1)
-          : name;
+  const speak = (text: string) => {
+    if (!("speechSynthesis" in window)) return;
+    stopSpeech();
 
-        return TOOL_LABELS[id] ?? id;
-      }),
-    [webmcp]
-  );
+    const u = new SpeechSynthesisUtterance(text);
 
-  /* -------------------------------------------------------------- */
-  /* SEARCH CLEAR                                                   */
-  /* -------------------------------------------------------------- */
+    u.lang = "te-IN";
+    u.rate = 0.8;
 
-  const clearSearch = () => {
-    setSearch("");
+    const voice = voices.find((v) => v.lang === "te-IN" || v.lang === "te");
+
+    if (voice) u.voice = voice;
+
+    window.speechSynthesis.speak(u);
   };
 
-  /* -------------------------------------------------------------- */
-  /* UI                                                              */
-  /* -------------------------------------------------------------- */
+  /* PAGING — search is owned by YuktAI Grid only. */
+
+  const itemsPerPage = ITEMS_PER_PAGE;
+  const totalPages = Math.max(1, Math.ceil(poems.length / itemsPerPage));
+
+  const current = poems.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
+  useEffect(() => {
+    stopSpeech();
+  }, [viewMode]);
+
+  // If the list shrinks below the current page, step back to the last page.
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const goToPage = (next: number) => {
+    setPage(Math.min(Math.max(next, 1), totalPages));
+    stopSpeech();
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  /** A row in the "పట్టిక" was clicked: open that poem in its full-card page. */
+  const openPoemFromGrid = (title: string) => {
+    const index = poems.findIndex((poem) => poem.title === title);
+
+    if (index >= 0) {
+      setPage(Math.floor(index / itemsPerPage) + 1);
+    }
+
+    setViewMode("pages");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const hasPoems = !loading && !error && poems.length > 0;
+  const isEmpty = !loading && !error && poems.length === 0;
+
+  /* STYLES */
+
+  const toolButtonSx = (open: boolean) => ({
+    flex: 1,
+    minWidth: 0,
+    minHeight: 48,
+    borderRadius: "10px",
+    textTransform: "none" as const,
+    fontWeight: 700,
+    fontSize: { xs: "0.92rem", sm: "0.95rem" },
+    color: "secondary.main",
+    borderColor: alpha(theme.palette.secondary.main, open ? 0.8 : 0.45),
+    background: alpha(theme.palette.secondary.main, open ? 0.1 : 0.04),
+    boxShadow: open
+      ? `0 0 0 3px ${alpha(theme.palette.secondary.main, 0.12)}`
+      : "none",
+    "&:hover": {
+      borderColor: "secondary.main",
+      background: alpha(theme.palette.secondary.main, 0.09),
+    },
+    "&:focus-visible": {
+      outline: `2px solid ${theme.palette.secondary.main}`,
+      outlineOffset: 2,
+    },
+  });
+
+  const pagerButtonSx = {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 56,
+    borderRadius: "14px",
+    textTransform: "none" as const,
+    fontWeight: 700,
+    fontSize: { xs: "1.02rem", sm: "1.1rem" },
+    "&:focus-visible": {
+      outline: `3px solid ${theme.palette.primary.main}`,
+      outlineOffset: 2,
+    },
+  };
+
+  const toggleTool = (tool: Tool) => {
+    setOpenTool((current) => (current === tool ? null : tool));
+  };
 
   return (
     <Box
       sx={{
-        width: "100%",
-        minWidth: 0,
-        px: {
-          xs: 1.25,
-          sm: 2,
-          md: 3,
-        },
-        py: {
-          xs: 1.5,
-          sm: 2.5,
-          md: 3,
-        },
+        p: { xs: 2, sm: 4 },
+        maxWidth: 900,
+        mx: "auto",
       }}
     >
-      <Box
+      {/* TITLE */}
+
+      <Box sx={{ textAlign: "center", mb: { xs: 2, sm: 2.5 } }}>
+        <Typography
+          variant="h3"
+          fontWeight={800}
+          sx={{
+            background: "linear-gradient(90deg,#0f172a,#2563eb)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          రత్నాలబాల
+        </Typography>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+          {loading ? (
+            "పద్యాలు లోడ్ అవుతున్నాయి…"
+          ) : (
+            <>
+              మొత్తం పద్యాలు: <strong>{poems.length}</strong>
+            </>
+          )}
+        </Typography>
+      </Box>
+
+      {/* HOW TO USE */}
+
+      <Button
+        fullWidth
+        onClick={() => setHelpOpen((v) => !v)}
+        aria-expanded={helpOpen}
+        aria-controls="poem-help"
+        startIcon={<HelpOutlineRoundedIcon />}
+        endIcon={helpOpen ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
         sx={{
-          width: "100%",
-          maxWidth: 1400,
-          mx: "auto",
+          justifyContent: "space-between",
+          minHeight: 52,
+          mb: 1.5,
+          borderRadius: "12px",
+          textTransform: "none",
+          fontWeight: 700,
+          fontSize: "1.02rem",
+          color: "primary.main",
+          background: alpha(theme.palette.primary.main, 0.06),
+          "&:hover": { background: alpha(theme.palette.primary.main, 0.1) },
         }}
       >
-        {/* ====================================================== */}
-        {/* HEADER                                                  */}
-        {/* ====================================================== */}
-
-        <Stack
-          spacing={1}
-          sx={{
-            mb: {
-              xs: 1.5,
-              sm: 2,
-            },
-          }}
-        >
-          <Typography
-            component="h1"
-            sx={{
-              fontFamily: TELUGU_FONT,
-              fontSize: {
-                xs: "1.65rem",
-                sm: "2rem",
-                md: "2.3rem",
-              },
-              lineHeight: 1.25,
-              fontWeight: 800,
-              letterSpacing: "-0.02em",
-              color: "text.primary",
-            }}
-          >
-            రత్నాలబాల
-          </Typography>
-
-          <Typography
-            sx={{
-              fontFamily: TELUGU_FONT,
-              fontSize: {
-                xs: "0.9rem",
-                sm: "1rem",
-              },
-              color: "text.secondary",
-              lineHeight: 1.6,
-            }}
-          >
-            పద్యాలను వెతకండి, చదవండి మరియు AIతో ప్రశ్నించండి
-          </Typography>
-        </Stack>
-
-        {/* ====================================================== */}
-        {/* SEARCH                                                  */}
-        {/* ====================================================== */}
-
-        <Box
-          sx={{
-            position: "sticky",
-            top: {
-              xs: 8,
-              sm: 12,
-            },
-            zIndex: 20,
-            mb: 1.5,
-          }}
-        >
-          <TextField
-            fullWidth
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="పద్యం పేరు లేదా పద్యంలో వెతకండి…"
-            aria-label="పద్యం వెతకండి"
-            autoComplete="off"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon
-                    sx={{
-                      color: "primary.main",
-                      fontSize: {
-                        xs: 24,
-                        sm: 27,
-                      },
-                    }}
-                  />
-                </InputAdornment>
-              ),
-
-              endAdornment: search ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    aria-label="వెతుకును క్లియర్ చేయండి"
-                    onClick={clearSearch}
-                    edge="end"
-                    sx={{
-                      minWidth: 44,
-                      minHeight: 44,
-                    }}
-                  >
-                    <ClearRoundedIcon />
-                  </IconButton>
-                </InputAdornment>
-              ) : null,
-
-              sx: {
-                minHeight: {
-                  xs: 54,
-                  sm: 60,
-                },
-                borderRadius: {
-                  xs: 2.5,
-                  sm: 3,
-                },
-                backgroundColor: alpha(
-                  theme.palette.background.paper,
-                  0.96
-                ),
-                backdropFilter: "blur(12px)",
-              },
-            }}
-          />
-
-          {/* SEARCH RESULT COUNT */}
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{
-              mt: 0.75,
-              px: 0.5,
-              minHeight: 28,
-            }}
-          >
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              role="status"
-              aria-live="polite"
-              sx={{
-                fontFamily: TELUGU_FONT,
-              }}
-            >
-              {loading
-                ? "పద్యాలు లోడ్ అవుతున్నాయి…"
-                : query
-                  ? `${filteredPoems.length} / ${poems.length} పద్యాలు`
-                  : `మొత్తం ${poems.length} పద్యాలు`}
-            </Typography>
-
-            {query && (
-              <Button
-                size="small"
-                onClick={clearSearch}
-                sx={{
-                  minHeight: 36,
-                  textTransform: "none",
-                  fontFamily: TELUGU_FONT,
-                  fontWeight: 700,
-                }}
-              >
-                క్లియర్
-              </Button>
-            )}
-          </Stack>
+        <Box component="span" sx={{ flex: 1, textAlign: "left", ml: 1 }}>
+          ఈ పేజీ ఎలా వాడాలి?
         </Box>
+      </Button>
 
-        {/* ====================================================== */}
-        {/* HELP GUIDE                                              */}
-        {/* ====================================================== */}
-
+      <Collapse in={helpOpen} timeout={300}>
         <Box
+          id="poem-help"
           sx={{
-            mb: 1.5,
-            borderRadius: {
-              xs: 2,
-              sm: 2.5,
-            },
-            border: `1px solid ${alpha(
-              theme.palette.primary.main,
-              0.16
-            )}`,
-            backgroundColor: alpha(
-              theme.palette.primary.main,
-              0.035
-            ),
-            overflow: "hidden",
+            mb: 2,
+            p: { xs: 1.75, sm: 2.5 },
+            borderRadius: "14px",
+            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
+            background: alpha(theme.palette.primary.main, 0.04),
           }}
         >
+          <Stack spacing={2}>
+            {HELP_STEPS.map((step, i) => (
+              <Stack key={i} direction="row" spacing={1.5} alignItems="flex-start">
+                <Box
+                  aria-hidden
+                  sx={{
+                    flex: "0 0 auto",
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "primary.main",
+                    background: alpha(theme.palette.primary.main, 0.12),
+                  }}
+                >
+                  {step.icon}
+                </Box>
+                <Typography sx={{ fontSize: "1.02rem", lineHeight: 1.8, pt: 0.25 }}>
+                  {step.text}
+                </Typography>
+              </Stack>
+            ))}
+          </Stack>
+
           <Button
             fullWidth
-            onClick={() => setHelpOpen((value) => !value)}
-            aria-expanded={helpOpen}
-            aria-controls="grid-help"
-            startIcon={<HelpOutlineRoundedIcon />}
-            endIcon={
-              helpOpen ? (
-                <ExpandLessRoundedIcon />
-              ) : (
-                <ExpandMoreRoundedIcon />
-              )
-            }
+            variant="contained"
+            disableElevation
+            onClick={() => setHelpOpen(false)}
             sx={{
-              minHeight: {
-                xs: 50,
-                sm: 54,
-              },
-              px: {
-                xs: 1.5,
-                sm: 2,
-              },
-              justifyContent: "space-between",
+              mt: 2.5,
+              minHeight: 52,
+              borderRadius: "12px",
               textTransform: "none",
-              fontFamily: TELUGU_FONT,
               fontWeight: 700,
-              fontSize: {
-                xs: "0.95rem",
-                sm: "1rem",
-              },
-              color: "primary.main",
+              fontSize: "1.05rem",
             }}
           >
-            <Box
-              component="span"
-              sx={{
-                flex: 1,
-                textAlign: "left",
-              }}
-            >
-              ఈ Grid ఎలా వాడాలి?
-            </Box>
+            అర్థమైంది
           </Button>
+        </Box>
+      </Collapse>
 
-          <Collapse in={helpOpen} timeout={300}>
-            <Box
-              id="grid-help"
-              sx={{
-                px: {
-                  xs: 1.5,
-                  sm: 2.5,
-                },
-                pb: {
-                  xs: 1.75,
-                  sm: 2.5,
-                },
-              }}
+      {/* VIEW MODE — the only search lives inside YuktAI Grid. */}
+
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="flex-end"
+        useFlexGap
+        flexWrap="wrap"
+        gap={1}
+        sx={{ mt: 1.5, minHeight: 36 }}
+      >
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={viewMode}
+          onChange={(_, value: ViewMode | null) => {
+            if (value) setViewMode(value);
+          }}
+          aria-label="చూపే విధానం"
+        >
+          <ToggleButton value="grid" sx={{ textTransform: "none", px: 1.75 }}>
+            పట్టిక
+          </ToggleButton>
+          <ToggleButton value="pages" sx={{ textTransform: "none", px: 1.75 }}>
+            పద్యాలు
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Stack>
+
+      {/* TOOLS — radio + download-all, closed by default */}
+
+      {hasPoems && (
+        <Box sx={{ mt: 1.5 }}>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => toggleTool("radio")}
+              aria-expanded={openTool === "radio"}
+              aria-controls="poem-tool-radio"
+              startIcon={<HeadphonesRoundedIcon fontSize="small" />}
+              endIcon={
+                openTool === "radio" ? (
+                  <ExpandLessRoundedIcon fontSize="small" />
+                ) : (
+                  <ExpandMoreRoundedIcon fontSize="small" />
+                )
+              }
+              sx={toolButtonSx(openTool === "radio")}
             >
-              <Stack
-                spacing={{
-                  xs: 1.5,
-                  sm: 2,
-                }}
-              >
-                {HELP_STEPS.map((step, index) => (
-                  <Stack
-                    key={step.title}
-                    direction="row"
-                    spacing={1.25}
-                    alignItems="flex-start"
-                  >
-                    <Box
-                      aria-hidden
-                      sx={{
-                        flex: "0 0 auto",
-                        width: {
-                          xs: 36,
-                          sm: 40,
-                        },
-                        height: {
-                          xs: 36,
-                          sm: 40,
-                        },
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "primary.main",
-                        backgroundColor: alpha(
-                          theme.palette.primary.main,
-                          0.1
-                        ),
-                      }}
-                    >
-                      {step.icon}
-                    </Box>
+              రేడియో
+            </Button>
 
-                    <Box sx={{ pt: 0.1 }}>
-                      <Typography
-                        sx={{
-                          fontFamily: TELUGU_FONT,
-                          fontWeight: 750,
-                          fontSize: {
-                            xs: "0.9rem",
-                            sm: "0.95rem",
-                          },
-                          mb: 0.2,
-                        }}
-                      >
-                        {index + 1}. {step.title}
-                      </Typography>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => toggleTool("downloads")}
+              aria-expanded={openTool === "downloads"}
+              aria-controls="poem-tool-downloads"
+              startIcon={<DownloadRoundedIcon fontSize="small" />}
+              endIcon={
+                openTool === "downloads" ? (
+                  <ExpandLessRoundedIcon fontSize="small" />
+                ) : (
+                  <ExpandMoreRoundedIcon fontSize="small" />
+                )
+              }
+              sx={toolButtonSx(openTool === "downloads")}
+            >
+              అన్నీ డౌన్‌లోడ్
+            </Button>
+          </Stack>
 
-                      <Typography
-                        sx={{
-                          fontFamily: TELUGU_FONT,
-                          fontSize: {
-                            xs: "0.84rem",
-                            sm: "0.9rem",
-                          },
-                          lineHeight: 1.7,
-                          color: "text.secondary",
-                        }}
-                      >
-                        {step.text}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                ))}
-              </Stack>
-
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => setHelpOpen(false)}
-                sx={{
-                  mt: 2,
-                  minHeight: 46,
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontFamily: TELUGU_FONT,
-                  fontWeight: 700,
-                }}
-              >
-                అర్థమైంది
-              </Button>
+          {/* Radio uses all poems. Grid search is intentionally independent. */}
+          <Collapse in={openTool === "radio"} timeout={300}>
+            <Box id="poem-tool-radio" sx={{ pt: 1.5 }}>
+              <PoemRadio poems={poems} />
             </Box>
           </Collapse>
-        </Box>
 
-        {/* ====================================================== */}
-        {/* ERROR                                                   */}
-        {/* ====================================================== */}
+          {/* Bulk downloads for all poems. */}
+          <Collapse in={openTool === "downloads"} timeout={300}>
+            <Stack id="poem-tool-downloads" spacing={1.5} sx={{ pt: 1.5 }}>
+              <DownloadAllPosters
+                poems={poems}
+                authors={AUTHORS}
+                poetryName={POETRY_NAME}
+              />
+
+              <DownloadAllVideos
+                poems={poems}
+                authors={AUTHORS}
+                poetryName={POETRY_NAME}
+              />
+
+              <DownloadAllVoices poems={poems} />
+            </Stack>
+          </Collapse>
+        </Box>
+      )}
+
+      {/* POEMS */}
+
+      <Box sx={{ mt: 3 }}>
+        {loading && (
+          <Stack spacing={2}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="center"
+              spacing={1.5}
+              role="status"
+              aria-live="polite"
+              sx={{ py: 1 }}
+            >
+              <CircularProgress size={24} />
+              <Typography sx={{ fontWeight: 600 }}>
+                పద్యాలు లోడ్ అవుతున్నాయి… కొంచెం ఆగండి
+              </Typography>
+            </Stack>
+
+            {[0, 1].map((i) => (
+              <Skeleton
+                key={i}
+                variant="rounded"
+                height={420}
+                sx={{ borderRadius: "16px" }}
+              />
+            ))}
+          </Stack>
+        )}
 
         {error && (
           <Alert
             severity="error"
-            sx={{
-              mb: 1.5,
-              borderRadius: 2,
-              fontFamily: TELUGU_FONT,
-            }}
             action={
               <Button
                 color="inherit"
                 size="small"
                 onClick={loadPoems}
-                sx={{
-                  fontFamily: TELUGU_FONT,
-                  fontWeight: 700,
-                }}
               >
                 మళ్ళీ ప్రయత్నించండి
               </Button>
@@ -756,334 +572,91 @@ export default function PoemList() {
           </Alert>
         )}
 
-        {/* ====================================================== */}
-        {/* GRID                                                     */}
-        {/* ====================================================== */}
+        {isEmpty && (
+          <Box sx={{ textAlign: "center", py: 6 }}>
+            <Typography color="text.secondary">
+              ఇంకా పద్యాలు లేవు.
+            </Typography>
+          </Box>
+        )}
 
-        <Box
-          sx={{
-            width: "100%",
-            minWidth: 0,
-            borderRadius: {
-              xs: 2,
-              sm: 3,
-            },
-            overflow: "hidden",
-            border: `1px solid ${alpha(
-              theme.palette.divider,
-              0.8
-            )}`,
-            backgroundColor:
-              gridTheme === "dark"
-                ? "#0f172a"
-                : gridTheme === "high-contrast"
-                  ? "#ffffff"
-                  : gridTheme === "color-blind"
-                    ? "#f4f7ff"
-                    : gridTheme === "dyslexia"
-                      ? "#fffdf5"
-                      : theme.palette.background.paper,
-            boxShadow: {
-              xs: "none",
-              sm: `0 8px 30px ${alpha(
-                theme.palette.common.black,
-                0.06
-              )}`,
-            },
-          }}
-        >
-          <YuktaiGrid<PoemRow>
-            data={rows}
-            columns={COLUMNS}
-            rowKey="id"
-
-            /*
-             * Responsive automatic view.
-             */
-            view="auto"
-            mobileBreakpoint={768}
-
-            /*
-             * Accessibility themes.
-             */
-            theme={gridTheme}
-
-            /*
-             * UI language.
-             */
-            locale="te-IN"
-
-            /*
-             * Voice / input language.
-             */
-            inputLanguage="te-IN"
-
-            /*
-             * Next.js page does not receive arbitrary props.
-             * Application-specific rules can be defined inside
-             * this page when required.
-             */
-            customRules={[]}
-
-            /*
-             * Page already owns the single
-             * search box above the grid.
-             *
-             * Agent search still works through
-             * the Agent / WebMCP tool pipeline.
-             */
-            search={false}
-
-            /*
-             * Keep grid interactions available.
-             */
-            selectable
-
-            /*
-             * Responsive pagination.
-             */
-            pagination={{
-              pageSize: 20,
-              showSizeChanger: true,
-              sizeOptions: [10, 20, 50, 100],
-            }}
-
+        {/* "పట్టిక" — every poem in one accessible table (YuktaiGrid) */}
+        {hasPoems && gridView && (
+          <YuktaiGridView
+            poems={poems}
+            highlightIds={highlightIds}
             loading={loading}
-
-            /*
-             * Highlight support.
-             */
-            highlightIds={[]}
-            autoScrollToHighlight
-
-            /*
-             * Row interaction.
-             */
-            onRowClick={openPoem}
-
-            /*
-             * Agentic AI.
-             */
-            ai
-
-            /*
-             * WebMCP.
-             */
-            webmcp
-
-            toolName={TOOL_PREFIX}
-
-            toolDescriptions={TOOL_DESCRIPTIONS}
-
-            onWebMCPStatusChange={setWebmcp}
-
-            /*
-             * Agent result.
-             */
-            onAgentResult={(result) => {
-              setLastAction({
-                success: result.success,
-                message: result.message,
-              });
-            }}
-
-            empty={
-              query
-                ? "ఈ వెతుకులో పద్యాలు కనబడలేదు."
-                : "పద్యాలు కనబడలేదు."
-            }
-
-            className="ratnalabala-yuktai-grid"
+            onOpenPoem={openPoemFromGrid}
+            theme={gridTheme}
+            onThemeChange={setGridTheme}
           />
-        </Box>
+        )}
 
-        {/* ====================================================== */}
-        {/* AGENT RESULT                                             */}
-        {/* ====================================================== */}
+        {/* "పేజీలు" / "అన్ని" — full poem cards */}
+        {hasPoems &&
+          !gridView &&
+          current.map((poem) => (
+            <PoemCard
+              key={poem.slug}
+              poem={poem}
+              ready={ready}
+              speak={speak}
+              stopSpeech={stopSpeech}
+              authors={AUTHORS}
+              poetryName={POETRY_NAME}
+            />
+          ))}
+      </Box>
 
-        {lastAction && (
-          <Box
+      {/* PAGES — two big buttons and "పేజీ 2 / 12" in the middle.
+          Not shown for "పట్టిక" (the table has its own pages). */}
+
+      {hasPoems && viewMode === "pages" && totalPages > 1 && (
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={1.5}
+          component="nav"
+          aria-label="పేజీలు"
+          sx={{ mt: 3 }}
+        >
+          <Button
+            variant="outlined"
+            onClick={() => goToPage(page - 1)}
+            disabled={page <= 1}
+            startIcon={<ArrowBackRoundedIcon />}
+            sx={pagerButtonSx}
+          >
+            వెనుకకు
+          </Button>
+
+          <Typography
             role="status"
             aria-live="polite"
             sx={{
-              mt: 1.5,
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 1,
-              px: {
-                xs: 1.25,
-                sm: 1.75,
-              },
-              py: {
-                xs: 1,
-                sm: 1.25,
-              },
-              borderRadius: 2,
-              bgcolor: alpha(
-                lastAction.success
-                  ? theme.palette.success.main
-                  : theme.palette.warning.main,
-                0.08
-              ),
-              border: `1px solid ${alpha(
-                lastAction.success
-                  ? theme.palette.success.main
-                  : theme.palette.warning.main,
-                0.18
-              )}`,
+              flex: "0 0 auto",
+              minWidth: 92,
+              textAlign: "center",
+              fontWeight: 700,
+              fontSize: { xs: "1rem", sm: "1.1rem" },
+              lineHeight: 1.4,
             }}
           >
-            <SmartToyRoundedIcon
-              fontSize="small"
-              color={
-                lastAction.success
-                  ? "success"
-                  : "warning"
-              }
-            />
+            పేజీ {page} / {totalPages}
+          </Typography>
 
-            <Typography
-              sx={{
-                fontFamily: TELUGU_FONT,
-                fontSize: {
-                  xs: "0.85rem",
-                  sm: "0.9rem",
-                },
-                lineHeight: 1.7,
-              }}
-            >
-              {lastAction.message}
-            </Typography>
-          </Box>
-        )}
-
-        {/* ====================================================== */}
-        {/* WEBMCP STATUS                                            */}
-        {/* ====================================================== */}
-
-        {webmcp && (
-          <Box
-            sx={{
-              mt: 1.5,
-              px: {
-                xs: 1.25,
-                sm: 1.5,
-              },
-              py: {
-                xs: 1,
-                sm: 1.25,
-              },
-              borderRadius: 2,
-              border: `1px dashed ${theme.palette.divider}`,
-              backgroundColor: alpha(
-                theme.palette.primary.main,
-                0.025
-              ),
-            }}
+          <Button
+            variant="contained"
+            disableElevation
+            onClick={() => goToPage(page + 1)}
+            disabled={page >= totalPages}
+            endIcon={<ArrowForwardRoundedIcon />}
+            sx={pagerButtonSx}
           >
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-            >
-              <HubRoundedIcon
-                fontSize="small"
-                color={
-                  webmcp.state === "ready"
-                    ? "success"
-                    : "disabled"
-                }
-              />
-
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{
-                  fontFamily: TELUGU_FONT,
-                  lineHeight: 1.6,
-                }}
-              >
-                WebMCP: {WEBMCP_TEXT[webmcp.state]}
-              </Typography>
-            </Stack>
-
-            {registeredLabels.length > 0 && (
-              <Stack
-                direction="row"
-                spacing={0.75}
-                useFlexGap
-                flexWrap="wrap"
-                sx={{ mt: 1 }}
-              >
-                {registeredLabels.map((label) => (
-                  <Box
-                    key={label}
-                    component="span"
-                    sx={{
-                      px: 1,
-                      py: 0.4,
-                      borderRadius: 1.5,
-                      border: `1px solid ${alpha(
-                        theme.palette.divider,
-                        0.8
-                      )}`,
-                      fontFamily: TELUGU_FONT,
-                      fontSize: "0.75rem",
-                    }}
-                  >
-                    {label}
-                  </Box>
-                ))}
-              </Stack>
-            )}
-
-            {webmcp.errors.length > 0 && (
-              <Alert
-                severity="warning"
-                sx={{
-                  mt: 1,
-                  py: 0,
-                  fontFamily: TELUGU_FONT,
-                }}
-              >
-                {webmcp.errors
-                  .map((error) => error.tool)
-                  .join(", ")}{" "}
-                నమోదు కాలేదు.
-              </Alert>
-            )}
-          </Box>
-        )}
-
-        {/* ====================================================== */}
-        {/* LOADING                                                  */}
-        {/* ====================================================== */}
-
-        {loading && (
-          <Stack
-            direction="row"
-            justifyContent="center"
-            alignItems="center"
-            spacing={1}
-            sx={{
-              mt: 1.5,
-              py: 1,
-            }}
-          >
-            <CircularProgress size={20} />
-
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                fontFamily: TELUGU_FONT,
-              }}
-            >
-              పద్యాలు లోడ్ అవుతున్నాయి…
-            </Typography>
-          </Stack>
-        )}
-      </Box>
+            ముందుకు
+          </Button>
+        </Stack>
+      )}
     </Box>
   );
 }
