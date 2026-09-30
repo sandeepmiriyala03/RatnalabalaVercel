@@ -14,13 +14,11 @@ import {
   Typography,
   alpha,
   useMediaQuery,
-  useTheme,
+  useTheme
 } from "@mui/material";
 
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import HubRoundedIcon from "@mui/icons-material/HubRounded";
-import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
-import DeleteSweepRoundedIcon from "@mui/icons-material/DeleteSweepRounded";
 import QuestionAnswerRoundedIcon from "@mui/icons-material/QuestionAnswerRounded";
 
 import {
@@ -192,32 +190,6 @@ const THEME_OPTIONS: {
 /* HELPER                                                             */
 /* ------------------------------------------------------------------ */
 
-function getQuestionHistory(
-  history:
-    | {
-        id: number;
-        tool: string;
-        input: Record<string, unknown>;
-        result: unknown;
-        source: "tool" | "ask";
-        at: number;
-      }[]
-    | undefined
-) {
-  if (!history?.length) {
-    return [];
-  }
-
-  return history
-    .filter(
-      (item) =>
-        item.source === "ask" &&
-        typeof item.input?.text === "string" &&
-        String(item.input.text).trim().length > 0
-    )
-    .map((item) => String(item.input.text).trim());
-}
-
 /* ------------------------------------------------------------------ */
 /* COMPONENT                                                          */
 /* ------------------------------------------------------------------ */
@@ -270,177 +242,11 @@ export default function YuktaiGridView({
   /* ================================================================ */
   /* CUSTOM AGENT RULES                                               */
   /* ================================================================ */
-
-  const agentRules = useMemo<
-    YuktaiGridRule<PoemRow>[]
-  >(
-    () => [
-      /* ------------------------------------------------------------ */
-      /* SHOW QUESTION HISTORY — LIFO                                 */
-      /* ------------------------------------------------------------ */
-
-      {
-        name: "show-question-history",
-
-        phrases: [
-          "నా ప్రశ్నలు",
-          "ప్రశ్నలు చూపించు",
-          "ప్రశ్నల హిస్టరీ",
-          "చాట్ హిస్టరీ",
-          "నా ప్రశ్నల హిస్టరీ",
-          "చాట్ ప్రశ్నలు",
-          "question history",
-          "chat history",
-          "my questions",
-          "show questions",
-        ],
-
-        execute: async ({ history }) => {
-          const questions =
-            getQuestionHistory(history);
-
-          if (!questions.length) {
-            return "ఇంకా ప్రశ్నలు లేవు.";
-          }
-
-          /*
-           * LIFO:
-           * Latest question first.
-           */
-          const latestFirst = [...questions].reverse();
-
-          return [
-            "మీ తాజా ప్రశ్నలు:",
-            "",
-            ...latestFirst.map(
-              (question, index) =>
-                `${index + 1}. ${question}`
-            ),
-          ].join("\n");
-        },
-      },
-
-      /* ------------------------------------------------------------ */
-      /* LAST QUESTION                                                */
-      /* ------------------------------------------------------------ */
-
-      {
-        name: "last-question",
-
-        phrases: [
-          "చివరి ప్రశ్న",
-          "తాజా ప్రశ్న",
-          "ఇప్పుడే అడిగిన ప్రశ్న",
-          "last question",
-          "latest question",
-          "recent question",
-        ],
-
-        execute: async ({ history }) => {
-          const questions =
-            getQuestionHistory(history);
-
-          const last =
-            questions[questions.length - 1];
-
-          return last
-            ? `మీ చివరి ప్రశ్న:\n${last}`
-            : "ఇంకా ప్రశ్నలు లేవు.";
-        },
-      },
-
-      /* ------------------------------------------------------------ */
-      /* PREVIOUS QUESTION                                            */
-      /* ------------------------------------------------------------ */
-
-      {
-        name: "previous-question",
-
-        phrases: [
-          "మునుపటి ప్రశ్న",
-          "గత ప్రశ్న",
-          "దాని ముందు ప్రశ్న",
-          "previous question",
-          "prior question",
-        ],
-
-        execute: async ({ history }) => {
-          const questions =
-            getQuestionHistory(history);
-
-          if (questions.length < 2) {
-            return "మునుపటి ప్రశ్న లేదు.";
-          }
-
-          return [
-            "మునుపటి ప్రశ్న:",
-            questions[questions.length - 2],
-          ].join("\n");
-        },
-      },
-
-      /* ------------------------------------------------------------ */
-      /* QUESTION COUNT                                               */
-      /* ------------------------------------------------------------ */
-
-      {
-        name: "question-count",
-
-        phrases: [
-          "ఎన్ని ప్రశ్నలు",
-          "ప్రశ్నల సంఖ్య",
-          "మొత్తం ప్రశ్నలు",
-          "how many questions",
-          "question count",
-        ],
-
-        execute: async ({ history }) => {
-          const questions =
-            getQuestionHistory(history);
-
-          return `మీరు ఇప్పటివరకు ${questions.length} ప్రశ్నలు అడిగారు.`;
-        },
-      },
-
-      /* ------------------------------------------------------------ */
-      /* CLEAR CHAT                                                    */
-      /* ------------------------------------------------------------ */
-
-      {
-        name: "clear-chat",
-
-        phrases: [
-          "చాట్ క్లియర్ చేయి",
-          "చాట్ క్లియర్",
-          "చాట్ తొలగించు",
-          "చాట్ హిస్టరీ క్లియర్ చేయి",
-          "ప్రశ్నల హిస్టరీ క్లియర్ చేయి",
-          "హిస్టరీ క్లియర్ చేయి",
-          "చాట్ రీసెట్ చేయి",
-          "clear chat",
-          "clear history",
-          "delete chat",
-          "delete history",
-          "reset chat",
-        ],
-
-        execute: async ({ clearHistory }) => {
-          clearHistory?.();
-
-          return "చాట్ హిస్టరీ క్లియర్ చేయబడింది.";
-        },
-      },
-
-      /* ------------------------------------------------------------ */
-      /* USER-PROVIDED RULES                                            */
-      /* ------------------------------------------------------------ */
-
-      ...customRules,
-    ],
+  const agentRules = useMemo<YuktaiGridRule<PoemRow>[]>(
+    () => [...customRules],
     [customRules]
   );
 
-  /* ================================================================ */
   /* WEBMCP LABELS                                                    */
   /* ================================================================ */
 
@@ -739,49 +545,35 @@ export default function YuktaiGridView({
       {/* ============================================================ */}
 
       <Box
-        sx={{
-          width: "100%",
-          minWidth: 0,
-          display: {
-            xs: "none",
-            sm: "block",
-          },
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={1}
-          useFlexGap
-          flexWrap="wrap"
-        >
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={
-              <QuestionAnswerRoundedIcon />
-            }
-            label="ప్రశ్నలు"
-          />
+  sx={{
+    width: "100%",
+    minWidth: 0,
+    display: {
+      xs: "none",
+      sm: "block",
+    },
+  }}
+>
+  <Stack
+    direction="row"
+    spacing={1}
+    useFlexGap
+    flexWrap="wrap"
+  >
+    <Chip
+      size="small"
+      variant="outlined"
+      icon={<QuestionAnswerRoundedIcon />}
+      label="ప్రశ్నలు"
+    />
 
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={
-              <HistoryRoundedIcon />
-            }
-            label="LIFO History"
-          />
-
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={
-              <DeleteSweepRoundedIcon />
-            }
-            label="Clear Chat"
-          />
-        </Stack>
-      </Box>
+    <Chip
+      size="small"
+      variant="outlined"
+      label="Clear Chat"
+    />
+  </Stack>
+</Box>
 
       {/* ============================================================ */}
       {/* GRID                                                         */}
