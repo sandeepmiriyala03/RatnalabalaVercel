@@ -236,7 +236,7 @@
     --foreground: #f0e9dd;      /* 15.2:1 on --background */
     --surface: #211c15;
     --surface-elevated: #2a241b;
-
+    --app-header-height: 64px; 
     --primary: #e2916a;         /* 7.4:1 on --background — AAA. Lightened terracotta */
     --primary-light: #e59a72;   /* 8.0:1 on --background */
     --secondary: #6bbd93;       /* 8.2:1 on --background — AAA. Lightened forest green */
