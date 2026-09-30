@@ -39,9 +39,10 @@ import DownloadAllPosters from "@/app/components/DownloadAllPosters";
 import DownloadAllVoices from "@/app/components/DownloadAllVoices";
 import PoemRadio from "@/app/components/Poemradio";
 import DownloadAllVideos from "@/app/components/DownloadAllVideos";
+import type { GridTheme } from "@yuktishaalaa/yuktai";
 
 // YuktaiGrid table view — loaded only when "పట్టిక" is chosen
-const PoemsGridView = dynamic(() => import("@/app/components/PoemsGridView"), {
+const YuktaiGridView = dynamic(() => import("@/app/components/YuktaiGridView"), {
   ssr: false,
   loading: () => (
     <Box sx={{ display: "grid", placeItems: "center", py: 6 }}>
@@ -64,105 +65,7 @@ const ITEMS_PER_PAGE = 3;
 const POETRY_NAME = "రత్నాలబాల — పద్యాలవాల — భావాలమాల";
 const AUTHORS: string | string[] = "మిరియాల వెంకటరత్నం";
 
-/* ------------------------------------------------------------------ */
-/* POEMS CACHE — the API is hit ONCE, then the poems are kept          */
-/* ------------------------------------------------------------------ */
-//
-// 1. First visit          → one request to /api/getpoems, saved in the browser.
-// 2. Next page / reload    → poems come from the saved copy. NO server call.
-// 3. After CACHE_TTL_MS    → the next visit fetches fresh poems once, again.
-// 4. Server / internet down → an older saved copy is shown instead of an error.
-//
-// Change CACHE_TTL_MS to keep poems longer or shorter (poems rarely change).
-// Bump CACHE_VERSION if the shape of the API response ever changes.
-
 const POET_ID = 1;
-const CACHE_VERSION = "v1";
-const CACHE_KEY = `ratnalabala:poems:${CACHE_VERSION}:poet-${POET_ID}`;
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-type PoemMap = Record<string, string>;
-type CacheEntry = { savedAt: number; data: PoemMap };
-
-// Survives page-to-page navigation inside the same tab (no storage read needed).
-let memoryCache: CacheEntry | null = null;
-// If two components ask at the same moment (or React dev mode mounts twice),
-// they share ONE request instead of sending two.
-let inflight: Promise<PoemMap> | null = null;
-
-function readStored(): CacheEntry | null {
-  try {
-    const raw = window.localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      typeof parsed?.savedAt === "number" &&
-      parsed.data &&
-      typeof parsed.data === "object"
-    ) {
-      return parsed as CacheEntry;
-    }
-  } catch {
-    // corrupted value or storage blocked — behave as "nothing saved"
-  }
-  return null;
-}
-
-function writeStored(entry: CacheEntry) {
-  try {
-    window.localStorage.setItem(CACHE_KEY, JSON.stringify(entry));
-  } catch {
-    // storage full / blocked (private mode) — memory cache still works
-  }
-}
-
-function isFresh(entry: CacheEntry | null): entry is CacheEntry {
-  return !!entry && Date.now() - entry.savedAt < CACHE_TTL_MS;
-}
-
-async function getPoems(forceRefresh = false): Promise<PoemMap> {
-  if (!forceRefresh) {
-    if (isFresh(memoryCache)) return memoryCache.data;
-
-    const stored = readStored();
-    if (isFresh(stored)) {
-      memoryCache = stored;
-      return stored.data;
-    }
-  }
-
-  if (inflight) return inflight;
-
-  inflight = (async () => {
-    try {
-      const response = await fetch(`/api/getpoems?poet_id=${POET_ID}`);
-
-      if (!response.ok) {
-        throw new Error("Failed to load database poems");
-      }
-
-      const data: PoemMap = await response.json();
-
-      // Never cache an empty answer — it would hide poems added a minute later.
-      if (data && Object.keys(data).length > 0) {
-        const entry = { savedAt: Date.now(), data };
-        memoryCache = entry;
-        writeStored(entry);
-      }
-
-      return data;
-    } catch (err) {
-      // Server or internet problem: an old saved copy beats an error message.
-      const stale = memoryCache ?? readStored();
-      if (stale) return stale.data;
-      throw err;
-    } finally {
-      inflight = null;
-    }
-  })();
-
-  return inflight;
-}
 
 /* ------------------------------------------------------------------ */
 /* HOW TO USE — short, simple Telugu                                   */
@@ -201,6 +104,9 @@ const HELP_STEPS: { icon: React.ReactNode; text: string }[] = [
   },
 ];
 
+
+
+
 export default function PoemList() {
   const theme = useTheme();
 
@@ -220,6 +126,9 @@ export default function PoemList() {
   // "పట్టిక" (YuktAI Grid) opens first; "పేజీలు" shows full poem cards
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const gridView = viewMode === "grid";
+
+  // Grid theme is owned by the page so the reusable YuktAI Grid stays generic.
+  const [gridTheme, setGridTheme] = useState<GridTheme>("default");
 
   // Poems to glow in the table — will be filled by RAG "search by meaning" later
   const [highlightIds] = useState<string[]>([]);
@@ -242,14 +151,22 @@ export default function PoemList() {
     }
   }, []);
 
-  /* LOAD POEMS — PostgreSQL (poet_id = 1) through the cache above */
+  /* LOAD POEMS — the page owns data loading; YuktAI Grid only receives poems. */
 
-  const loadPoems = useCallback(async (forceRefresh = false) => {
+  const loadPoems = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const data = await getPoems(forceRefresh);
+      const response = await fetch(`/api/getpoems?poet_id=${POET_ID}`, {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load poems");
+      }
+
+      const data: Record<string, string> = await response.json();
 
       setPoems(
         Object.entries(data).map(([title, content]) => ({
@@ -699,7 +616,7 @@ export default function PoemList() {
               <Button
                 color="inherit"
                 size="small"
-                onClick={() => loadPoems(true)}
+                onClick={loadPoems}
               >
                 మళ్ళీ ప్రయత్నించండి
               </Button>
@@ -731,11 +648,13 @@ export default function PoemList() {
 
         {/* "పట్టిక" — every poem in one accessible table (YuktaiGrid) */}
         {hasPoems && gridView && (
-          <PoemsGridView
+          <YuktaiGridView
             poems={filtered}
             highlightIds={highlightIds}
             loading={loading}
             onOpenPoem={openPoemFromGrid}
+            theme={gridTheme}
+            onThemeChange={setGridTheme}
           />
         )}
 
