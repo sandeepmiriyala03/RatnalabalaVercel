@@ -1,44 +1,55 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import matter from "gray-matter";
 
-export async function GET() {
+const API_URL = process.env.PYTHON_API_URL;
+
+export async function GET(request: Request) {
   try {
-    const poemsDir = path.join(process.cwd(), "poems");
-
-    // Safety check
-    if (!fs.existsSync(poemsDir)) {
+    if (!API_URL) {
       return NextResponse.json(
-        { error: "Poems directory not found" },
-        { status: 404 }
+        { error: "PYTHON_API_URL is not configured" },
+        { status: 500 }
       );
     }
 
-    const files = fs.readdirSync(poemsDir);
+    const { searchParams } = new URL(request.url);
+    const poetId = searchParams.get("poet_id");
 
-    const poemsMap: Record<string, string> = {};
+    if (!poetId) {
+      return NextResponse.json(
+        { error: "poet_id is required" },
+        { status: 400 }
+      );
+    }
 
-    files.forEach((file) => {
-      if (!file.endsWith(".md")) return;
-
-      const filePath = path.join(poemsDir, file);
-      const fileContent = fs.readFileSync(filePath, "utf-8");
-
-      const { data, content } = matter(fileContent);
-
-      const title = (data.title || "").trim();
-      const poemText = content.trim();
-
-      // Only valid entries
-      if (title && poemText) {
-        poemsMap[title] = poemText;
+    const response = await fetch(
+      `${API_URL}?endpoint=poems&poet_id=${encodeURIComponent(poetId)}`,
+      {
+        method: "GET",
+        cache: "no-store",
       }
-    });
+    );
 
-    return NextResponse.json(poemsMap);
+    if (!response.ok) {
+      const errorText = await response.text();
+
+      console.error(
+        "Python poems API failed:",
+        response.status,
+        errorText
+      );
+
+      return NextResponse.json(
+        { error: "Failed to load poems" },
+        { status: response.status }
+      );
+    }
+
+    const poems = await response.json();
+
+    return NextResponse.json(poems);
   } catch (error) {
     console.error("Error loading poems:", error);
+
     return NextResponse.json(
       { error: "Failed to load poems" },
       { status: 500 }

@@ -537,6 +537,7 @@ class Poems:
                 p.poem_id,
                 p.title,
                 p.content,
+                   p.special_line,
                 p.poet_id,
                 pt.poet_name,
                 p.created_by,
@@ -581,7 +582,8 @@ class Poems:
                 p.poem_id,
                 p.title,
                 p.content,
-                pt.poet_name
+                pt.poet_name,
+                p.special_line,
             FROM poems p
             INNER JOIN poets pt
                 ON p.poet_id = pt.poet_id
@@ -856,36 +858,48 @@ class handler(BaseHTTPRequestHandler):
             #
             # If poet_id is supplied, PostgreSQL is used.
             # Otherwise the existing Markdown collection logic is preserved.
+           
             if endpoint == "poems":
                 poet_id_value = query.get("poet_id", [""])[0].strip()
-
+            
                 if poet_id_value:
                     try:
                         poet_id = int(poet_id_value)
                     except ValueError:
                         raise ValueError("poet_id must be a valid integer.")
-
+            
                     if poet_id <= 0:
                         raise ValueError("poet_id must be greater than 0.")
-
+            
                     poems = Poems.get(poet_id)
-
-                    response = {
-                        poem["title"]: poem["content"]
+            
+                    response = [
+                        {
+                            "poem_id": poem["poem_id"],
+                            "title": poem["title"],
+                            "content": poem["content"],
+                            "special_line": poem["special_line"],
+                            "poet_id": poem["poet_id"],
+                            "poet_name": poem["poet_name"],
+                        }
                         for poem in poems
-                    }
-
+                    ]
+            
                     self._send_json(200, response)
                     return
-
+            
                 # Existing Markdown poems
                 collection = query.get("collection", [""])[0]
                 poems = get_poems(collection)
+            
                 self._send_json(200, {
-                    "success": True, "collection": collection,
-                    "count": len(poems), "poems": poems,
+                    "success": True,
+                    "collection": collection,
+                    "count": len(poems),
+                    "poems": poems,
                 })
                 return
+
 
             if endpoint == "poem":
                 collection = query.get("collection", [""])[0]

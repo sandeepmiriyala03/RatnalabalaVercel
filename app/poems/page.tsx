@@ -17,13 +17,10 @@ import {
   useTheme,
 } from "@mui/material";
 
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import QuestionAnswerRoundedIcon from "@mui/icons-material/QuestionAnswerRounded";
@@ -37,7 +34,12 @@ import DownloadAllPosters from "@/app/components/DownloadAllPosters";
 import DownloadAllVoices from "@/app/components/DownloadAllVoices";
 import PoemRadio from "@/app/components/Poemradio";
 import DownloadAllVideos from "@/app/components/DownloadAllVideos";
-import type { GridTheme } from "@yuktishaalaa/yuktai";
+import {
+  SearchIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  type GridTheme,
+} from "@yuktishaalaa/yuktai";
 
 // YuktAI Grid — loaded only when the "పట్టిక" tab is opened
 const YuktaiGridView = dynamic(() => import("@/app/components/YuktaiGridView"), {
@@ -50,8 +52,12 @@ const YuktaiGridView = dynamic(() => import("@/app/components/YuktaiGridView"), 
 });
 
 interface Poem {
+  poem_id?: number;
   title: string;
   content: string;
+  special_line?: string | null;
+  poet_id?: number;
+  poet_name?: string;
   slug?: string;
 }
 
@@ -95,7 +101,7 @@ const HELP_STEPS: { icon: React.ReactNode; text: string }[] = [
     text: "అన్ని పద్యాలు ఒకేచోట చూడాలంటే “పట్టిక” ట్యాబ్ నొక్కండి. పద్యం పేరు నొక్కితే ఆ పద్యం పూర్తిగా తెరుచుకుంటుంది.",
   },
   {
-    icon: <SearchRoundedIcon />,
+    icon: <SearchIcon size={22} label="శోధన" />,
     text: "పట్టికలోని శోధన గడిలో పద్యం పేరు లేదా పద్యంలోని పదం రాసి వెతకండి.",
   },
   {
@@ -187,24 +193,62 @@ export default function PoemList() {
   };
 
   /* LOAD POEMS — the page owns data loading; the grid only receives poems */
-  const loadPoems = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/getpoems?poet_id=${POET_ID}`, { cache: "no-store" });
-      if (!response.ok) throw new Error("Failed to load poems");
-      const data: Record<string, string> = await response.json();
-      setPoems(
-        Object.entries(data).map(([title, content]) => ({ title, content, slug: `db-${title}` }))
-      );
-    } catch (err) {
-      console.error("Error loading poems:", err);
-      setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+const loadPoems = useCallback(async () => {
+  setLoading(true);
+  setError(null);
 
+  try {
+    const response = await fetch(
+      `/api/getpoems?poet_id=${POET_ID}`,
+      { cache: "no-store" }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to load poems");
+    }
+
+    const data = await response.json();
+
+    let loadedPoems: Poem[] = [];
+
+    // New PostgreSQL API format
+    if (Array.isArray(data)) {
+      loadedPoems = data.map((poem) => ({
+        poem_id: poem.poem_id,
+        title: poem.title,
+        content: poem.content,
+        special_line: poem.special_line ?? "",
+        poet_id: poem.poet_id,
+        poet_name: poem.poet_name,
+        slug: `db-${poem.poem_id ?? poem.title}`,
+      }));
+    }
+
+    // Old API format:
+    // { "అసహనం": "poem text", "ఆకలి": "poem text" }
+    else if (data && typeof data === "object") {
+      loadedPoems = Object.entries(data)
+        .filter(([key]) => key !== "error")
+        .map(([title, content]) => ({
+          title,
+          content: String(content),
+          special_line: "",
+          slug: `db-${title}`,
+        }));
+    }
+
+    if (!loadedPoems.length) {
+      throw new Error("No poems returned from API");
+    }
+
+    setPoems(loadedPoems);
+  } catch (err) {
+    console.error("Error loading poems:", err);
+    setError("పద్యాలను లోడ్ చేయడంలో లోపం సంభవించింది.");
+  } finally {
+    setLoading(false);
+  }
+}, []);
   useEffect(() => {
     loadPoems();
   }, [loadPoems]);
@@ -566,7 +610,7 @@ export default function PoemList() {
 
             {totalPages > 1 && (
               <Stack direction="row" alignItems="center" spacing={1.5} component="nav" aria-label="పేజీలు" sx={{ mt: 3 }}>
-                <Button variant="outlined" onClick={() => goToPage(page - 1)} disabled={page <= 1} startIcon={<ArrowBackRoundedIcon />} sx={pagerButtonSx}>
+                <Button variant="outlined" onClick={() => goToPage(page - 1)} disabled={page <= 1} startIcon={<ChevronLeftIcon size={22} label="వెనుకకు" />} sx={pagerButtonSx}>
                   వెనుకకు
                 </Button>
                 <Typography
@@ -576,7 +620,7 @@ export default function PoemList() {
                 >
                   పేజీ {page} / {totalPages}
                 </Typography>
-                <Button variant="contained" disableElevation onClick={() => goToPage(page + 1)} disabled={page >= totalPages} endIcon={<ArrowForwardRoundedIcon />} sx={pagerButtonSx}>
+                <Button variant="contained" disableElevation onClick={() => goToPage(page + 1)} disabled={page >= totalPages} endIcon={<ChevronRightIcon size={22} label="ముందుకు" />} sx={pagerButtonSx}>
                   ముందుకు
                 </Button>
               </Stack>

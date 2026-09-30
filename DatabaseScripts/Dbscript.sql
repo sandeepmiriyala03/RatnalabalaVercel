@@ -469,3 +469,305 @@ CREATE TABLE api_usage_log (
 
     metadata          JSONB
 );
+
+
+
+-- ============================================================
+-- YuktishaalaaAI - Ratnalabala
+-- SPECIAL LINE MIGRATION
+--
+-- IMPORTANT:
+--   1. Does NOT DROP any table
+--   2. Does NOT recreate poems
+--   3. Adds special_line to existing poems
+--   4. Adds old/new special_line to poems_audit
+--   5. Updates existing 36 Ratnalabala poems
+--   6. Records the update in poems_audit
+--   7. Future poems can keep special_line = NULL
+-- ============================================================
+
+BEGIN;
+
+
+-- ============================================================
+-- 1. ADD SPECIAL LINE TO EXISTING POEMS TABLE
+-- ============================================================
+
+ALTER TABLE poems
+ADD COLUMN IF NOT EXISTS special_line TEXT NULL;
+
+
+-- ============================================================
+-- 2. ADD SPECIAL LINE HISTORY TO EXISTING AUDIT TABLE
+-- ============================================================
+
+ALTER TABLE poems_audit
+ADD COLUMN IF NOT EXISTS old_special_line TEXT NULL;
+
+ALTER TABLE poems_audit
+ADD COLUMN IF NOT EXISTS new_special_line TEXT NULL;
+
+
+-- ============================================================
+-- 3. SPECIAL LINE DATA
+--
+-- special_line = 3rd line of each Ratnalabala poem
+-- ============================================================
+
+CREATE TEMP TABLE tmp_poem_special_line (
+    title TEXT PRIMARY KEY,
+    special_line TEXT NOT NULL
+) ON COMMIT DROP;
+
+
+INSERT INTO tmp_poem_special_line
+(
+    title,
+    special_line
+)
+VALUES
+
+('అసహనం',
+ 'హంస జూచి కాకి హింసించబూనదా ?'),
+
+('ఆకలి',
+ 'ఆకలుడిగినపుడు ఆకులైనను వద్దు'),
+
+('ఆనందం',
+ 'ఆత్మగౌరవమున ఆనందమొనగూరు'),
+
+('ఋణం',
+ 'ఋణము, రణము కన్న వ్రణములే నయమగు'),
+
+('క్రమశిక్షణ',
+ 'ముసలితనమునందు బుద్ధిగా చూతురు !'),
+
+('గర్వం',
+ 'గర్వమున్నవాడు సర్వనాశనమగు'),
+
+('గుణం',
+ 'కరచి అరుచువారు నరులయందున్నారు !'),
+
+('గౌరవం',
+ 'గుణముచెడ్డదైన గణన కెక్కుట యెట్లు ?'),
+
+('జాప్యం',
+ 'అమృతంబు కూడ అయిపోవు గరళంబు'),
+
+('జ్ఞానం',
+ 'తెలుసుకోనివాడు ధీమంతు డెట్లగు ?'),
+
+('దయ',
+ 'దయ నెరుగనివాడు దైవమెట్లగునురా !'),
+
+('దానం',
+ 'దానహీనులెల్ల జ్ఞానహీనులు సుమీ !'),
+
+('దారిద్య్రం',
+ 'ఇంతకన్న చిత్ర మియుగంబున లేదు !'),
+
+('దురాశ',
+ 'ఆశలేనివాడు అధికసంపన్నుడు'),
+
+('ద్రోహం',
+ 'ఆగితీరవలెను బాగుగా యోచించి'),
+
+('ధనం',
+ 'మాటవరుసకైన మారకుందురు సుమా'),
+
+('న్యాయం',
+ 'మంచిచెడ్డ లెంచి మసలుటే న్యాయము'),
+
+('పెద్దలు',
+ 'పాడుబోధ చేయువాడెట్లు పెద్దరా ?'),
+
+('పొదుపు',
+ 'ఋణము చేయు బాధ రేపు కూడా రాదు !'),
+
+('పౌరుషం',
+ 'పౌరుషంబు తోడ పడగెత్తి కరువరా ?'),
+
+('బాల్యం',
+ 'పెద్దవారలైన పిదప భేధింపరా ?'),
+
+('భారం',
+ 'భారమెక్కువైన బాధలే ఎక్కువ !'),
+
+('మంచితనం',
+ 'మంచియందు వలయు కొంచెము జాగ్రత్త !'),
+
+('మనసు',
+ 'మనసు మంచిదైన మకరందములు చిమ్ము !'),
+
+('మనిషి',
+ 'మదము తగ్గినపుడె మానవుడై యొప్పు !'),
+
+('మాటలు',
+ 'మసలుచుండువారె మాననీయులు సుమీ !'),
+
+('మైత్రి',
+ 'మంచివారినెన్ని మెత్రిచేయుట మేలు'),
+
+('లోకం',
+ 'లోకనీతి యింత లోపలే ఉన్నది !'),
+
+('విషం',
+ 'విషముకున్న మహిమ విరితేనె కున్నదా ?'),
+
+('వైద్యం',
+ 'రోగముక్తి కొరకు వాగుడు లేలరా ?'),
+
+('వ్యసనం',
+ 'కాలయాపనము కేలరా వ్యసనాలు ?'),
+
+('శుచి',
+ 'శుచి నశించువారి చూచుటే చికాకు !'),
+
+('సాహసం',
+ 'మనిషి సాహసించి మసలకూడని బాట !'),
+
+('సుఖం',
+ 'సంతసంబు కంటె సౌఖ్యమేమున్నది ?'),
+
+('సొగసు',
+ 'వాదులాడి తుదకు వాడిపోదురు సుమీ !'),
+
+('సౌజన్యం',
+ 'మేలుకీడులెంచి కాలుంచవలయును !');
+
+
+-- ============================================================
+-- 4. INSERT AUDIT HISTORY
+--
+-- Only records rows where special_line actually changes.
+-- Existing NULL -> new special_line is recorded as UPDATE.
+-- ============================================================
+
+INSERT INTO poems_audit
+(
+    poem_id,
+    operation,
+
+    old_title,
+    new_title,
+
+    old_content,
+    new_content,
+
+    old_poet_id,
+    new_poet_id,
+
+    old_special_line,
+    new_special_line,
+
+    changed_by,
+    changed_date
+)
+SELECT
+    p.poem_id,
+    'UPDATE',
+
+    p.title,
+    p.title,
+
+    p.content,
+    p.content,
+
+    p.poet_id,
+    p.poet_id,
+
+    p.special_line,
+    s.special_line,
+
+    'సందీప్ మిరియాల',
+    CURRENT_TIMESTAMP
+
+FROM poems p
+INNER JOIN tmp_poem_special_line s
+    ON s.title = p.title
+
+WHERE p.special_line IS DISTINCT FROM s.special_line;
+
+
+-- ============================================================
+-- 5. UPDATE EXISTING POEMS
+-- ============================================================
+
+UPDATE poems AS p
+SET
+    special_line = s.special_line,
+    modified_by = 'సందీప్ మిరియాల',
+    modified_date = CURRENT_TIMESTAMP
+
+FROM tmp_poem_special_line AS s
+
+WHERE p.title = s.title
+  AND p.special_line IS DISTINCT FROM s.special_line;
+
+
+-- ============================================================
+-- 6. VERIFICATION
+-- ============================================================
+
+DO $$
+DECLARE
+    total_special_lines INTEGER;
+BEGIN
+
+    SELECT COUNT(*)
+    INTO total_special_lines
+    FROM poems p
+    INNER JOIN tmp_poem_special_line s
+        ON s.title = p.title
+    WHERE p.special_line = s.special_line;
+
+    IF total_special_lines <> 36 THEN
+        RAISE EXCEPTION
+            'Expected 36 special_line values, but found %',
+            total_special_lines;
+    END IF;
+
+END
+$$;
+
+
+-- ============================================================
+-- 7. COMMIT
+-- ============================================================
+
+COMMIT;
+
+
+-- ============================================================
+-- 8. FINAL VERIFICATION
+-- ============================================================
+
+SELECT
+    p.poem_id,
+    p.title,
+    p.special_line,
+    p.modified_by,
+    p.modified_date
+FROM poems p
+WHERE p.title IN (
+    SELECT title
+    FROM tmp_poem_special_line
+)
+ORDER BY p.poem_id;
+
+
+-- ============================================================
+-- 9. AUDIT VERIFICATION
+-- ============================================================
+
+SELECT
+    audit_id,
+    poem_id,
+    operation,
+    old_special_line,
+    new_special_line,
+    changed_by,
+    changed_date
+FROM poems_audit
+WHERE new_special_line IS NOT NULL
+ORDER BY audit_id;

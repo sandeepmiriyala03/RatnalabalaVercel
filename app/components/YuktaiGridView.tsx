@@ -13,14 +13,13 @@ import {
   alpha,
   useTheme,
 } from "@mui/material";
-import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
-import HubRoundedIcon from "@mui/icons-material/HubRounded";
-import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import InfoRoundedIcon from "@mui/icons-material/InfoRounded";
 
 import {
   YuktaiGrid,
+  SearchIcon,
+  SortUpIcon,
+  CheckIcon,
+  CloseIcon,
   type GridColumn,
   type GridTheme,
   type WebMCPStatus,
@@ -35,8 +34,8 @@ type PoemRow = {
   id: string;
   title: string;
   content: string;
-  firstLine: string;
-  lines: number;
+  specialLine: string;
+  makutam: string;
 };
 
 type Props = {
@@ -72,33 +71,44 @@ const fontStack = (font?: string) =>
   font ? `"${font}", "Noto Sans Telugu", "Nirmala UI", "Gautami", sans-serif` : "inherit";
 
 const COLUMNS: GridColumn<PoemRow>[] = [
-  { key: "title", label: "పద్యం పేరు", width: "28%" },
+  { key: "title", label: "పద్యం పేరు", width: "24%" },
   {
     key: "content",
     label: "పద్యం",
     sortable: false,
-    // Phones show a compact 2-column list; tapping a row opens the full card
-    hiddenOnMobile: true,
     render: (value) => (
-      <Box sx={{ whiteSpace: "pre-line", lineHeight: 1.9, py: 0.5 }}>{String(value ?? "")}</Box>
+      <Box sx={{ whiteSpace: "pre-line", lineHeight: 1.9, py: 0.5 }}>
+        {String(value ?? "")}
+      </Box>
     ),
   },
-  { key: "lines", label: "పంక్తులు", type: "number", align: "center", width: 96 },
+  {
+    key: "specialLine",
+    label: "ప్రత్యేక పంక్తి",
+    width: "30%",
+    sortable: false,
+    render: (value) => (
+      <Box sx={{ fontWeight: 700, lineHeight: 1.7 }}>
+        {String(value ?? "")}
+      </Box>
+    ),
+  },
 ];
 
 // What AI agents read to choose a tool. English works best for tool
 // selection; the poems themselves are Telugu.
 const TOOL_DESCRIPTIONS = {
-  search: "Search the 36 Telugu poems by title or by a word in the poem. Matches are highlighted.",
-  open: "Open one poem by its ID to show the full poem card with listen and meaning buttons.",
-  get_row: "Get one poem (title, full text, first line) by its ID.",
-  highlight: "Highlight poems by ID without filtering the list.",
-  filter: "Filter poems by title or poem text.",
-  clear_filters: "Remove all filters.",
-  sort: "Sort poems by title (Telugu alphabetical order).",
-  clear_sort: "Remove sorting.",
-  count: "Count the poems in the list.",
-  columns: "List the columns: title, poem text, first line, number of lines.",
+  search: "Search the Telugu poems by unique title or by any word in the poem.",
+  open: "Open one poem using its unique poem ID or title and show the full poem card.",
+  get_row: "Get complete information about one poem: title, full text, special identity line and makutam.",
+  highlight: "Highlight one or more poems by their unique IDs without removing other rows.",
+  select: "Select one poem row in the grid.",
+  filter: "Filter poems by title, poem text, special identity line or makutam.",
+  clear_filters: "Remove all active poem filters.",
+  sort: "Sort poems by title or special identity line.",
+  clear_sort: "Remove the current sorting.",
+  count: "Return the total number of poems.",
+  columns: "List the available grid columns: poem name, poem text and special identity line.",
 };
 
 const TOOL_LABELS: Record<string, string> = {
@@ -207,14 +217,27 @@ export const POEM_RULES: YuktaiGridRule<PoemRow>[] = [
   },
 
   {
+    name: "special-line",
+    phrases: ["ప్రత్యేక పంక్తి", "ప్రత్యేక లైన్", "special line", "identity line", "identity"],
+    description: "Return the unique third line that identifies the poem.",
+    execute: ({ input, data }) => {
+      const poem = findMentionedPoem(input, data);
+      return poem
+        ? `"${poem.title}" ప్రత్యేక పంక్తి: ${poem.specialLine}`
+        : 'ఏ పద్యం? ఉదా: "గర్వం ప్రత్యేక పంక్తి".';
+    },
+  },
+
+  {
     name: "first-line",
     phrases: ["మొదటి పంక్తి", "తొలి పంక్తి", "first line"],
     description: "First line of the poem named in the question.",
     execute: ({ input, data }) => {
       const poem = findMentionedPoem(input, data);
+      const firstLine = poem?.content.split("\n")[0]?.trim() ?? "";
       return poem
-        ? `"${poem.title}" మొదటి పంక్తి: ${poem.firstLine}`
-        : "ఏ పద్యం? పేరు చెప్పండి — ఉదా: \"గర్వం మొదటి పంక్తి\".";
+        ? `"${poem.title}" మొదటి పంక్తి: ${firstLine}`
+        : 'ఏ పద్యం? పేరు చెప్పండి — ఉదా: "గర్వం మొదటి పంక్తి".';
     },
   },
 
@@ -239,7 +262,12 @@ export const POEM_RULES: YuktaiGridRule<PoemRow>[] = [
     execute: ({ input, data, executeTool }) => {
       const word = extractWord(input, /(\S+)\s*(అనే పదం|పదం ఉన్న|ఉన్న పద్యాలు|containing)/i);
       if (!word) return "ఏ పదం? ఉదా: \"బుద్ధి\" ఉన్న పద్యాలు.";
-      const matches = data.filter((p) => norm(p.content).includes(word) || norm(p.title).includes(word));
+      const matches = data.filter(
+        (p) =>
+          norm(p.content).includes(word) ||
+          norm(p.title).includes(word) ||
+          norm(p.specialLine).includes(word)
+      );
       if (!matches.length) return `"${word}" ఉన్న పద్యం లేదు.`;
       void executeTool("highlight", { ids: matches.map((p) => p.id) });
       return `"${word}" ఉన్న ${matches.length} పద్యాలు (హైలైట్ చేశాను): ${titles(matches)}`;
@@ -254,7 +282,7 @@ export const POEM_RULES: YuktaiGridRule<PoemRow>[] = [
       if (!data.length) return "పద్యాలు ఏవీ లేవు.";
       const poem = data[dayOfYear() % data.length];
       void executeTool("highlight", { ids: [poem.id] });
-      return `ఈరోజు పద్యం: "${poem.title}" — ${poem.firstLine}`;
+      return `ఈరోజు పద్యం: "${poem.title}" — ${poem.specialLine}`;
     },
   },
 
@@ -266,7 +294,7 @@ export const POEM_RULES: YuktaiGridRule<PoemRow>[] = [
       if (!data.length) return "పద్యాలు ఏవీ లేవు.";
       const poem = data[Math.floor(Math.random() * data.length)];
       void executeTool("highlight", { ids: [poem.id] });
-      return `ఈ పద్యం చదవండి: "${poem.title}" — ${poem.firstLine}`;
+      return `ఈ పద్యం చదవండి: "${poem.title}" — ${poem.specialLine}`;
     },
   },
 
@@ -274,11 +302,7 @@ export const POEM_RULES: YuktaiGridRule<PoemRow>[] = [
     name: "count-poems",
     phrases: ["ఎన్ని పద్యాలు", "మొత్తం పద్యాలు", "పద్యాలు ఎన్ని", "how many poems", "total poems"],
     description: "Number of poems.",
-    execute: ({ data }) => {
-      const lineCounts = new Set(data.map((p) => p.lines));
-      const sameLength = lineCounts.size === 1 ? ` ప్రతి పద్యంలో ${[...lineCounts][0]} పంక్తులు.` : "";
-      return `మొత్తం ${data.length} పద్యాలు ఉన్నాయి.${sameLength}`;
-    },
+    execute: ({ data }) => `మొత్తం ${data.length} పద్యాలు ఉన్నాయి.`,
   },
 
   {
@@ -287,6 +311,17 @@ export const POEM_RULES: YuktaiGridRule<PoemRow>[] = [
     description: "All poem titles.",
     execute: ({ data }) =>
       data.length ? `పద్యాల పేర్లు (${data.length}): ${data.map((p) => p.title).join(" • ")}` : "పద్యాలు ఏవీ లేవు.",
+  },
+
+  {
+    name: "poem-details",
+    phrases: ["వివరాలు", "పూర్తి వివరాలు", "details", "special identity"],
+    description: "Return the poem title, special identity line and makutam.",
+    execute: ({ input, data }) => {
+      const poem = findMentionedPoem(input, data);
+      if (!poem) return 'ఏ పద్యం? ఉదా: "గర్వం వివరాలు".';
+      return `"${poem.title}" — ప్రత్యేక పంక్తి: ${poem.specialLine} — మకుటం: ${poem.makutam}`;
+    },
   },
 
   {
@@ -341,8 +376,8 @@ export default function YuktaiGridView({
           id: poem.slug ?? poem.title,
           title: poem.title,
           content: lines.join("\n"),
-          firstLine: lines[0] ?? "",
-          lines: lines.length,
+          specialLine: lines[2] ?? "",
+          makutam: lines[3] ?? "",
         };
       }),
     [poems]
@@ -406,16 +441,16 @@ export default function YuktaiGridView({
           </Box>
 
           <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
-            <Chip size="small" icon={<SmartToyRoundedIcon />} label="AI" variant="outlined" />
+            <Chip size="small" icon={<SearchIcon size={16} />} label="AI" variant="outlined" />
             {webmcp?.state === "ready" && (
-              <Chip size="small" icon={<HubRoundedIcon />} label="WebMCP" color="success" variant="outlined" />
+              <Chip size="small" icon={<CheckIcon size={16} />} label="WebMCP" color="success" variant="outlined" />
             )}
             <FormControl size="small" sx={{ minWidth: { xs: 150, sm: 190 }, flex: { xs: 1, sm: "none" } }}>
               <Select
                 value={theme}
                 onChange={(e) => onThemeChange?.(e.target.value as GridTheme)}
                 inputProps={{ "aria-label": "పట్టిక రూపం (accessibility theme)" }}
-                startAdornment={<ContrastRoundedIcon fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />}
+                startAdornment={<SortUpIcon size={16} color="currentColor" />}
                 sx={{ minHeight: 40, fontFamily: font }}
               >
                 {THEME_OPTIONS.map((o) => (
@@ -428,6 +463,34 @@ export default function YuktaiGridView({
           </Stack>
         </Stack>
       </Box>
+
+      {/* ============================================================ */}
+      {/* WEBMCP — the tools the browser really registered              */}
+      {/* ============================================================ */}
+      {webmcp && webmcp.state !== "unsupported" && (
+        <Box sx={{ px: 1.5, py: 1.1, borderRadius: 2, border: `1px dashed ${border}` }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <SearchIcon size={16} color="currentColor" />
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: font }}>
+              WebMCP: {WEBMCP_TEXT[webmcp.state]}
+            </Typography>
+          </Stack>
+
+          {registeredLabels.length > 0 && (
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+              {registeredLabels.map((label) => (
+                <Chip key={label} size="small" variant="outlined" label={label} sx={{ fontFamily: font }} />
+              ))}
+            </Stack>
+          )}
+
+          {webmcp.errors.length > 0 && (
+            <Alert severity="warning" sx={{ mt: 1, py: 0 }}>
+              {webmcp.errors.map((e) => e.tool).join(", ")} నమోదు కాలేదు.
+            </Alert>
+          )}
+        </Box>
+      )}
 
       {/* ============================================================ */}
       {/* GRID — table on every screen; phones show 2 compact columns.  */}
@@ -531,9 +594,9 @@ export default function YuktaiGridView({
           }}
         >
           {lastAction.success ? (
-            <CheckCircleRoundedIcon fontSize="small" color="success" sx={{ mt: 0.25 }} />
+            <CheckIcon size={16} color="currentColor" />
           ) : (
-            <InfoRoundedIcon fontSize="small" color="warning" sx={{ mt: 0.25 }} />
+            <CloseIcon size={16} color="currentColor" />
           )}
           <Typography variant="body2" sx={{ lineHeight: 1.75, overflowWrap: "anywhere", fontFamily: font }}>
             {lastAction.message}
@@ -541,33 +604,7 @@ export default function YuktaiGridView({
         </Box>
       )}
 
-      {/* ============================================================ */}
-      {/* WEBMCP — the tools the browser really registered              */}
-      {/* ============================================================ */}
-      {webmcp && webmcp.state !== "unsupported" && (
-        <Box sx={{ px: 1.5, py: 1.1, borderRadius: 2, border: `1px dashed ${border}` }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <HubRoundedIcon fontSize="small" color={webmcp.state === "ready" ? "success" : "disabled"} />
-            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: font }}>
-              WebMCP: {WEBMCP_TEXT[webmcp.state]}
-            </Typography>
-          </Stack>
 
-          {registeredLabels.length > 0 && (
-            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-              {registeredLabels.map((label) => (
-                <Chip key={label} size="small" variant="outlined" label={label} sx={{ fontFamily: font }} />
-              ))}
-            </Stack>
-          )}
-
-          {webmcp.errors.length > 0 && (
-            <Alert severity="warning" sx={{ mt: 1, py: 0 }}>
-              {webmcp.errors.map((e) => e.tool).join(", ")} నమోదు కాలేదు.
-            </Alert>
-          )}
-        </Box>
-      )}
     </Stack>
   );
 }
