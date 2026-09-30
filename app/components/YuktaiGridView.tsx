@@ -1,207 +1,321 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
 import {
   Alert,
   Box,
   Chip,
   FormControl,
-  InputLabel,
   MenuItem,
   Select,
   Stack,
   Typography,
   alpha,
-  useMediaQuery,
   useTheme,
 } from "@mui/material";
+import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
+import HubRoundedIcon from "@mui/icons-material/HubRounded";
+import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import InfoRoundedIcon from "@mui/icons-material/InfoRounded";
 
 import {
   YuktaiGrid,
-
-  // YuktAI custom icons ONLY
-  SearchIcon,
-  SortUpIcon,
-  SortDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  CheckIcon,
-  CloseIcon,
-
   type GridColumn,
-  type WebMCPStatus,
   type GridTheme,
+  type WebMCPStatus,
   type YuktaiGridRule,
 } from "@yuktishaalaa/yuktai";
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* TYPES                                                              */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 
 type PoemRow = {
   id: string;
   title: string;
   content: string;
+  firstLine: string;
   lines: number;
 };
 
 type Props = {
-  poems: {
-    title: string;
-    content: string;
-    slug?: string;
-  }[];
-
+  poems: { title: string; content: string; slug?: string }[];
+  /** Poems to glow (e.g. future RAG "search by meaning" results) */
   highlightIds?: string[];
-
   loading?: boolean;
-
+  /** Row click, the assistant ("గర్వం తెరువు") or an AI agent opened a poem */
   onOpenPoem: (title: string) => void;
-
   theme?: GridTheme;
-
   onThemeChange?: (theme: GridTheme) => void;
-
-  customRules?: YuktaiGridRule<PoemRow>[];
+  /**
+   * Optional Telugu font family name. When not given, the grid uses the
+   * site's current font (so the site-wide font picker keeps working).
+   */
+  teluguFont?: string;
+  /**
+   * Height (px) of anything already stuck to the top of the page above this
+   * grid, e.g. the page's tab bar. The grid header sticks just below it.
+   * A fixed site header can be accounted for with the CSS variable
+   * --app-header-height on :root.
+   */
+  stickyOffset?: number;
 };
 
-/* ------------------------------------------------------------------ */
-/* CONSTANTS                                                          */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
+/* CONSTANTS (module level → stable between renders)                  */
+/* ================================================================== */
 
 const TOOL_PREFIX = "ratnalabala_poems";
 
-const TELUGU_FONT =
-  '"Noto Sans Telugu", "Nirmala UI", "Gautami", "Vani", sans-serif';
-
-/* ------------------------------------------------------------------ */
-/* GRID COLUMNS                                                       */
-/* ------------------------------------------------------------------ */
+const fontStack = (font?: string) =>
+  font ? `"${font}", "Noto Sans Telugu", "Nirmala UI", "Gautami", sans-serif` : "inherit";
 
 const COLUMNS: GridColumn<PoemRow>[] = [
-  {
-    key: "title",
-    label: "పద్యం పేరు",
-    width: "32%",
-  },
-
+  { key: "title", label: "పద్యం పేరు", width: "28%" },
   {
     key: "content",
     label: "పద్యం",
     sortable: false,
-
+    // Phones show a compact 2-column list; tapping a row opens the full card
+    hiddenOnMobile: true,
     render: (value) => (
-      <Box
-        sx={{
-          whiteSpace: "pre-line",
-          fontFamily: TELUGU_FONT,
-          lineHeight: 1.9,
-          py: 0.5,
-        }}
-      >
-        {String(value ?? "")}
-      </Box>
+      <Box sx={{ whiteSpace: "pre-line", lineHeight: 1.9, py: 0.5 }}>{String(value ?? "")}</Box>
     ),
   },
-
-  {
-    key: "lines",
-    label: "పంక్తులు",
-    type: "number",
-    align: "center",
-    width: 110,
-  },
+  { key: "lines", label: "పంక్తులు", type: "number", align: "center", width: 96 },
 ];
 
-/* ------------------------------------------------------------------ */
-/* WEBMCP                                                             */
-/* ------------------------------------------------------------------ */
-
+// What AI agents read to choose a tool. English works best for tool
+// selection; the poems themselves are Telugu.
 const TOOL_DESCRIPTIONS = {
-  search: "పద్యం పేరు లేదా పద్యంలో పదాన్ని వెతుకు.",
-  open: "ఎంచుకున్న పద్యాన్ని తెరువు.",
-  select: "ఒక పద్యాన్ని ఎంచుకో.",
-  filter: "పద్యం పేరు, పద్యం లేదా పంక్తుల సంఖ్యతో ఫిల్టర్ చేయి.",
-  sort: "పద్యాలను క్రమంలో అమర్చు.",
-  count: "మొత్తం పద్యాల సంఖ్య చూపు.",
-  columns: "పట్టిక కాలమ్‌లను చూపు.",
-  get_row: "ఒక పద్య వరుస వివరాలు చూపు.",
-  highlight: "ఒక పద్యాన్ని హైలైట్ చేయి.",
+  search: "Search the 36 Telugu poems by title or by a word in the poem. Matches are highlighted.",
+  open: "Open one poem by its ID to show the full poem card with listen and meaning buttons.",
+  get_row: "Get one poem (title, full text, first line) by its ID.",
+  highlight: "Highlight poems by ID without filtering the list.",
+  filter: "Filter poems by title or poem text.",
+  clear_filters: "Remove all filters.",
+  sort: "Sort poems by title (Telugu alphabetical order).",
+  clear_sort: "Remove sorting.",
+  count: "Count the poems in the list.",
+  columns: "List the columns: title, poem text, first line, number of lines.",
 };
 
 const TOOL_LABELS: Record<string, string> = {
   search: "వెతుకు",
   count: "లెక్క",
   columns: "కాలమ్‌లు",
-  get_row: "వరుస",
+  get_row: "పద్యం వివరాలు",
   highlight: "హైలైట్",
   select: "ఎంచుకో",
   open: "తెరువు",
   filter: "ఫిల్టర్",
-  clear_filters: "ఫిల్టర్లు",
+  clear_filters: "ఫిల్టర్లు తీసేయి",
   sort: "క్రమం",
-  clear_sort: "క్రమం తొలగింపు",
+  clear_sort: "క్రమం తీసేయి",
 };
-
-/* ------------------------------------------------------------------ */
-/* WEBMCP STATUS                                                      */
-/* ------------------------------------------------------------------ */
 
 const WEBMCP_TEXT: Record<WebMCPStatus["state"], string> = {
-  unsupported:
-    "ఈ బ్రౌజర్‌లో WebMCP అందుబాటులో లేదు.",
-
-  registering:
-    "AI tools నమోదవుతున్నాయి…",
-
-  ready:
-    "AI agents కోసం tools సిద్ధంగా ఉన్నాయి.",
-
-  partial:
-    "కొన్ని AI tools మాత్రమే నమోదయ్యాయి.",
-
-  error:
-    "AI tools నమోదు కాలేదు.",
+  unsupported: "ఈ బ్రౌజర్‌లో WebMCP లేదు. (Chrome లో ఆన్ చేసినప్పుడు AI agents వాడవచ్చు.)",
+  registering: "AI tools నమోదవుతున్నాయి…",
+  ready: "AI agents కోసం tools సిద్ధం.",
+  partial: "కొన్ని AI tools మాత్రమే నమోదయ్యాయి.",
+  error: "AI tools నమోదు కాలేదు.",
 };
 
-/* ------------------------------------------------------------------ */
-/* GRID THEMES                                                        */
-/* ------------------------------------------------------------------ */
+const THEME_OPTIONS: { value: GridTheme; label: string }[] = [
+  { value: "default", label: "సాధారణం" },
+  { value: "dark", label: "చీకటి" },
+  { value: "high-contrast", label: "అధిక కాంట్రాస్ట్" },
+  { value: "color-blind", label: "రంగు అంధత్వం" },
+  { value: "dyslexia", label: "డిస్లెక్సియా" },
+];
 
-const THEME_OPTIONS: {
-  value: GridTheme;
-  label: string;
-}[] = [
+// Shown under the grid so people know what they can ask
+const EXAMPLE_QUESTIONS = [
+  "గర్వం తెరువు",
+  "ఎన్ని పద్యాలు",
+  "మకుటం ఏమిటి",
+  "క తో మొదలయ్యే పద్యాలు",
+  "\"బుద్ధి\" ఉన్న పద్యాలు",
+  "ఈరోజు పద్యం",
+];
+
+/* ================================================================== */
+/* HELPERS FOR THE RULES                                              */
+/* ================================================================== */
+
+const norm = (s: string) => s.normalize("NFC").trim();
+
+/** The poem whose title is mentioned in the text (longest title wins). */
+function findMentionedPoem(input: string, data: PoemRow[]): PoemRow | undefined {
+  const text = norm(input);
+  return [...data]
+    .sort((a, b) => b.title.length - a.title.length)
+    .find((poem) => text.includes(norm(poem.title)));
+}
+
+/** A word in quotes, or the word right before one of the marker phrases. */
+function extractWord(input: string, marker: RegExp): string {
+  const quoted = input.match(/["“”'‘’]([^"“”'‘’]+)["“”'‘’]/);
+  if (quoted) return norm(quoted[1]);
+  const before = input.match(marker);
+  return before?.[1] ? norm(before[1]) : "";
+}
+
+function dayOfYear(date = new Date()): number {
+  const start = new Date(date.getFullYear(), 0, 0);
+  return Math.floor((date.getTime() - start.getTime()) / 86_400_000);
+}
+
+const titles = (list: PoemRow[]) => list.map((p) => p.title).join(", ");
+
+/* ================================================================== */
+/* AGENT RULES — built for these 36 poems                             */
+/*                                                                    */
+/* Facts in the data: every poem has 4 lines and ends with the same   */
+/* మకుటం "భావరత్నబాల ! భాగ్యలీల !"; titles are single-word themes      */
+/* (గర్వం, దయ, ధనం…). So line-count rules would always say "4" and   */
+/* are left out. Order matters: specific rules first, general last.   */
+/* ================================================================== */
+
+export const POEM_RULES: YuktaiGridRule<PoemRow>[] = [
   {
-    value: "default",
-    label: "Default",
+    name: "help",
+    phrases: ["ఏం అడగవచ్చు", "ఏమి అడగవచ్చు", "సహాయం", "help", "what can i ask"],
+    description: "What the assistant can do with these poems.",
+    execute: () =>
+      `ఇలా అడగండి: ${EXAMPLE_QUESTIONS.join(" • ")} • అక్షర క్రమంలో • ఏదైనా పద్యం • పద్యాల పేర్లు`,
   },
 
   {
-    value: "dark",
-    label: "Dark Mode",
+    name: "makutam",
+    phrases: ["మకుటం", "మకుటము", "చివరి పంక్తి అన్ని", "refrain", "makutam"],
+    description: "The refrain (makutam) shared by the poems.",
+    execute: ({ data }) => {
+      const counts = new Map<string, number>();
+      for (const poem of data) {
+        const last = poem.content.split("\n").pop()?.trim();
+        if (last) counts.set(last, (counts.get(last) ?? 0) + 1);
+      }
+      const [line, count] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0] ?? [];
+      if (!line) return "పద్యాలు ఏవీ లేవు.";
+      return count === data.length
+        ? `${data.length} పద్యాలూ "${line}" అనే మకుటంతో ముగుస్తాయి.`
+        : `${data.length} లో ${count} పద్యాలు "${line}" అనే మకుటంతో ముగుస్తాయి.`;
+    },
   },
 
   {
-    value: "high-contrast",
-    label: "High Contrast",
+    name: "first-line",
+    phrases: ["మొదటి పంక్తి", "తొలి పంక్తి", "first line"],
+    description: "First line of the poem named in the question.",
+    execute: ({ input, data }) => {
+      const poem = findMentionedPoem(input, data);
+      return poem
+        ? `"${poem.title}" మొదటి పంక్తి: ${poem.firstLine}`
+        : "ఏ పద్యం? పేరు చెప్పండి — ఉదా: \"గర్వం మొదటి పంక్తి\".";
+    },
   },
 
   {
-    value: "color-blind",
-    label: "Color Blind",
+    name: "starts-with-letter",
+    phrases: ["తో మొదలయ్యే", "తో మొదలు", "starting with", "starts with"],
+    description: "Poems whose title starts with a letter.",
+    execute: ({ input, data, executeTool }) => {
+      const letter = extractWord(input, /(\S+)\s*(తో మొదల|starting with|starts with)/i);
+      if (!letter) return "ఏ అక్షరం? ఉదా: \"క తో మొదలయ్యే పద్యాలు\".";
+      const matches = data.filter((p) => norm(p.title).startsWith(letter));
+      if (!matches.length) return `"${letter}" తో మొదలయ్యే పద్యం లేదు.`;
+      void executeTool("highlight", { ids: matches.map((p) => p.id) });
+      return `"${letter}" తో మొదలయ్యే ${matches.length} పద్యాలు: ${titles(matches)}`;
+    },
   },
 
   {
-    value: "dyslexia",
-    label: "Dyslexia Friendly",
+    name: "word-in-poems",
+    phrases: ["ఉన్న పద్యాలు", "అనే పదం", "పదం ఉన్న", "పద్యంలో వెతుకు", "poems with", "containing"],
+    description: "Poems that contain a word; they are highlighted.",
+    execute: ({ input, data, executeTool }) => {
+      const word = extractWord(input, /(\S+)\s*(అనే పదం|పదం ఉన్న|ఉన్న పద్యాలు|containing)/i);
+      if (!word) return "ఏ పదం? ఉదా: \"బుద్ధి\" ఉన్న పద్యాలు.";
+      const matches = data.filter((p) => norm(p.content).includes(word) || norm(p.title).includes(word));
+      if (!matches.length) return `"${word}" ఉన్న పద్యం లేదు.`;
+      void executeTool("highlight", { ids: matches.map((p) => p.id) });
+      return `"${word}" ఉన్న ${matches.length} పద్యాలు (హైలైట్ చేశాను): ${titles(matches)}`;
+    },
+  },
+
+  {
+    name: "poem-of-the-day",
+    phrases: ["ఈరోజు పద్యం", "ఈ రోజు పద్యం", "రోజుకో పద్యం", "poem of the day", "today's poem"],
+    description: "Same poem for everyone today.",
+    execute: ({ data, executeTool }) => {
+      if (!data.length) return "పద్యాలు ఏవీ లేవు.";
+      const poem = data[dayOfYear() % data.length];
+      void executeTool("highlight", { ids: [poem.id] });
+      return `ఈరోజు పద్యం: "${poem.title}" — ${poem.firstLine}`;
+    },
+  },
+
+  {
+    name: "random-poem",
+    phrases: ["ఏదైనా పద్యం", "యాదృచ్ఛిక", "random poem", "surprise"],
+    description: "A random poem, highlighted.",
+    execute: ({ data, executeTool }) => {
+      if (!data.length) return "పద్యాలు ఏవీ లేవు.";
+      const poem = data[Math.floor(Math.random() * data.length)];
+      void executeTool("highlight", { ids: [poem.id] });
+      return `ఈ పద్యం చదవండి: "${poem.title}" — ${poem.firstLine}`;
+    },
+  },
+
+  {
+    name: "count-poems",
+    phrases: ["ఎన్ని పద్యాలు", "మొత్తం పద్యాలు", "పద్యాలు ఎన్ని", "how many poems", "total poems"],
+    description: "Number of poems.",
+    execute: ({ data }) => {
+      const lineCounts = new Set(data.map((p) => p.lines));
+      const sameLength = lineCounts.size === 1 ? ` ప్రతి పద్యంలో ${[...lineCounts][0]} పంక్తులు.` : "";
+      return `మొత్తం ${data.length} పద్యాలు ఉన్నాయి.${sameLength}`;
+    },
+  },
+
+  {
+    name: "list-titles",
+    phrases: ["పద్యాల పేర్లు", "పద్యాల జాబితా", "అన్ని పద్యాలు", "list poems", "poem names"],
+    description: "All poem titles.",
+    execute: ({ data }) =>
+      data.length ? `పద్యాల పేర్లు (${data.length}): ${data.map((p) => p.title).join(" • ")}` : "పద్యాలు ఏవీ లేవు.",
+  },
+
+  {
+    name: "alphabetical",
+    phrases: ["అక్షర క్రమం", "అక్షర క్రమంలో", "alphabetical", "a to z"],
+    description: "Sort titles in Telugu alphabetical order.",
+    execute: ({ executeTool }) => {
+      void executeTool("sort", { key: "title", direction: "asc" });
+      return "పద్యాలను అక్షర క్రమంలో అమర్చాను.";
+    },
+  },
+
+  {
+    // General "open/show <title>" — kept LAST so the specific rules win
+    name: "open-poem",
+    phrases: ["తెరువు", "తెరవండి", "చూపించు", "చూపించండి", "open", "show"],
+    description: "Open the poem named in the question.",
+    execute: ({ input, data, executeTool }) => {
+      const poem = findMentionedPoem(input, data);
+      if (!poem) return "ఆ పేరుతో పద్యం కనబడలేదు. \"పద్యాల పేర్లు\" అని అడిగి చూడండి.";
+      void executeTool("open", { id: poem.id });
+      return `"${poem.title}" తెరుస్తున్నాను.`;
+    },
   },
 ];
 
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 /* COMPONENT                                                          */
-/* ------------------------------------------------------------------ */
+/* ================================================================== */
 
 export default function YuktaiGridView({
   poems,
@@ -210,690 +324,246 @@ export default function YuktaiGridView({
   onOpenPoem,
   theme = "default",
   onThemeChange,
-  customRules = [],
+  teluguFont,
+  stickyOffset = 0,
 }: Props) {
-  const muiTheme = useTheme();
+  const mui = useTheme();
+  const font = fontStack(teluguFont);
 
-  const isMobile = useMediaQuery(
-    muiTheme.breakpoints.down("sm")
-  );
-
-  const [webmcp, setWebmcp] =
-    useState<WebMCPStatus | null>(null);
-
-  const [lastAction, setLastAction] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
-
-  /* ================================================================ */
-  /* GRID DATA                                                        */
-  /* ================================================================ */
+  const [webmcp, setWebmcp] = useState<WebMCPStatus | null>(null);
+  const [lastAction, setLastAction] = useState<{ success: boolean; message: string } | null>(null);
 
   const rows = useMemo<PoemRow[]>(
     () =>
       poems.map((poem) => {
-        const lines = poem.content
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter(Boolean);
-
+        const lines = poem.content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
         return {
           id: poem.slug ?? poem.title,
           title: poem.title,
           content: lines.join("\n"),
+          firstLine: lines[0] ?? "",
           lines: lines.length,
         };
       }),
     [poems]
   );
 
-  /* ================================================================ */
-  /* CUSTOM AGENT RULES                                               */
-  /* ================================================================ */
-
-  const agentRules = useMemo<
-    YuktaiGridRule<PoemRow>[]
-  >(
-    () => [...customRules],
-    [customRules]
-  );
-
-  /* ================================================================ */
-  /* WEBMCP LABELS                                                    */
-  /* ================================================================ */
-
   const registeredLabels = useMemo(
     () =>
       (webmcp?.registered ?? []).map((name) => {
-        const id = name.startsWith(
-          `${TOOL_PREFIX}_`
-        )
-          ? name.slice(
-              TOOL_PREFIX.length + 1
-            )
-          : name;
-
+        const id = name.startsWith(`${TOOL_PREFIX}_`) ? name.slice(TOOL_PREFIX.length + 1) : name;
         return TOOL_LABELS[id] ?? id;
       }),
     [webmcp]
   );
 
-  /* ================================================================ */
-  /* THEME                                                            */
-  /* ================================================================ */
-
+  /* Theme colours for the frame and the sticky header */
   const dark = theme === "dark";
-
-  const gridBackground =
-    theme === "dark"
-      ? "#0f172a"
-      : theme === "high-contrast"
-        ? "#ffffff"
-        : theme === "color-blind"
-          ? "#f4f7ff"
-          : theme === "dyslexia"
-            ? "#fffdf5"
-            : muiTheme.palette.background.paper;
-
-  const gridText =
-    theme === "dark"
-      ? "#f8fafc"
-      : "#0f172a";
-
-  /* ================================================================ */
-  /* UI                                                               */
-  /* ================================================================ */
+  const frameBg =
+    theme === "dark" ? "#0f172a"
+    : theme === "color-blind" ? "#f4f7ff"
+    : theme === "dyslexia" ? "#fffdf5"
+    : "#ffffff";
+  const headerBg =
+    theme === "dark" ? "#1e293b"
+    : theme === "high-contrast" ? "#000000"
+    : theme === "color-blind" ? "#e8eeff"
+    : theme === "dyslexia" ? "#fbf6e6"
+    : "#f8fafc";
+  const headerText = theme === "dark" || theme === "high-contrast" ? "#ffffff" : "#0f172a";
+  const border = alpha(mui.palette.divider, 0.9);
 
   return (
-    <Stack
-      spacing={{
-        xs: 1.25,
-        sm: 1.75,
-        md: 2,
-      }}
-      sx={{
-        width: "100%",
-        minWidth: 0,
-        maxWidth: "100%",
-        fontFamily: TELUGU_FONT,
-
-        "& .MuiTypography-root": {
-          fontFamily: TELUGU_FONT,
-        },
-
-        "& .MuiButtonBase-root": {
-          fontFamily: TELUGU_FONT,
-        },
-
-        "& input, & textarea": {
-          fontFamily: TELUGU_FONT,
-        },
-      }}
-    >
+    <Stack spacing={{ xs: 1.25, sm: 1.75 }} sx={{ width: "100%", minWidth: 0, fontFamily: font }}>
       {/* ============================================================ */}
-      {/* SUMMARY                                                      */}
+      {/* HEADER — sticky on phones so it stays while the list scrolls */}
       {/* ============================================================ */}
-
       <Box
         sx={{
-          width: "100%",
-          minWidth: 0,
-          p: {
-            xs: 1.25,
-            sm: 1.5,
-          },
-          borderRadius: {
-            xs: 2,
-            sm: 2.5,
-          },
-          border: `1px solid ${alpha(
-            muiTheme.palette.divider,
-            0.8
-          )}`,
-          backgroundColor:
-            muiTheme.palette.background.paper,
+          position: { xs: "sticky", md: "static" },
+          top: { xs: `calc(var(--app-header-height, 0px) + ${stickyOffset}px)`, md: "auto" },
+          zIndex: 4,
+          p: { xs: 1.25, sm: 1.5 },
+          borderRadius: 2.5,
+          border: `1px solid ${border}`,
+          bgcolor: "background.paper",
+          boxShadow: { xs: `0 4px 14px ${alpha(mui.palette.common.black, 0.06)}`, md: "none" },
         }}
       >
         <Stack
-          direction={{
-            xs: "column",
-            sm: "row",
-          }}
-          spacing={1}
-          alignItems={{
-            xs: "stretch",
-            sm: "center",
-          }}
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.25}
+          alignItems={{ xs: "stretch", sm: "center" }}
           justifyContent="space-between"
         >
-          <Box>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 800,
-                lineHeight: 1.5,
-              }}
-            >
-              రత్నాలబాల — AI Grid
+          <Box sx={{ minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 800, lineHeight: 1.4, fontFamily: font }}>
+              పద్యాల పట్టిక
             </Typography>
-
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                display: "block",
-                mt: 0.25,
-              }}
-            >
-              పద్యాలను AIతో వెతకండి, ప్రశ్నలు అడగండి
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: font }}>
+              {rows.length} పద్యాలు · AI సహాయకుడిని తెలుగులో అడగండి
             </Typography>
           </Box>
 
-          <Stack
-            direction="row"
-            spacing={0.75}
-            useFlexGap
-            flexWrap="wrap"
-          >
-            <Chip
-              size="small"
-              label={`పద్యాలు: ${rows.length}`}
-            />
-
-            {/* YuktAI icon */}
-            <Chip
-              size="small"
-              variant="outlined"
-              icon={
-                <CheckIcon
-                  size={18}
-                  label="AI"
-                />
-              }
-              label="AI"
-            />
-
-            {/* YuktAI icon */}
-            <Chip
-              size="small"
-              variant="outlined"
-              icon={
-                <SearchIcon
-                  size={18}
-                  label="WebMCP"
-                />
-              }
-              label="WebMCP"
-            />
+          <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+            <Chip size="small" icon={<SmartToyRoundedIcon />} label="AI" variant="outlined" />
+            {webmcp?.state === "ready" && (
+              <Chip size="small" icon={<HubRoundedIcon />} label="WebMCP" color="success" variant="outlined" />
+            )}
+            <FormControl size="small" sx={{ minWidth: { xs: 150, sm: 190 }, flex: { xs: 1, sm: "none" } }}>
+              <Select
+                value={theme}
+                onChange={(e) => onThemeChange?.(e.target.value as GridTheme)}
+                inputProps={{ "aria-label": "పట్టిక రూపం (accessibility theme)" }}
+                startAdornment={<ContrastRoundedIcon fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />}
+                sx={{ minHeight: 40, fontFamily: font }}
+              >
+                {THEME_OPTIONS.map((o) => (
+                  <MenuItem key={o.value} value={o.value} sx={{ minHeight: 44, fontFamily: font }}>
+                    {o.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </Stack>
         </Stack>
       </Box>
 
       {/* ============================================================ */}
-      {/* THEME SELECTOR                                               */}
+      {/* GRID — table on every screen; phones show 2 compact columns.  */}
+      {/* The table scrolls inside its own box, so the column header    */}
+      {/* stays fixed at the top while scrolling (phones included).     */}
       {/* ============================================================ */}
-
-      <Box
-        sx={{
-          width: "100%",
-          p: {
-            xs: 1.25,
-            sm: 1.5,
-          },
-          borderRadius: {
-            xs: 2,
-            sm: 2.5,
-          },
-          border: `1px solid ${alpha(
-            muiTheme.palette.divider,
-            0.8
-          )}`,
-          backgroundColor:
-            dark
-              ? "#1e293b"
-              : muiTheme.palette.background.paper,
-        }}
-      >
-        <Stack
-          direction={{
-            xs: "column",
-            sm: "row",
-          }}
-          spacing={1.25}
-          alignItems={{
-            xs: "stretch",
-            sm: "center",
-          }}
-          justifyContent="space-between"
-        >
-          <Box>
-            <Typography
-              sx={{
-                fontWeight: 800,
-                color: dark
-                  ? "#f8fafc"
-                  : "text.primary",
-              }}
-            >
-              Grid Theme
-            </Typography>
-
-            <Typography
-              variant="caption"
-              sx={{
-                color: dark
-                  ? "#cbd5e1"
-                  : "text.secondary",
-              }}
-            >
-              Accessibility theme
-            </Typography>
-          </Box>
-
-          <FormControl
-            size="small"
-            fullWidth={isMobile}
-            sx={{
-              minWidth: {
-                xs: "100%",
-                sm: 230,
-              },
-              maxWidth: {
-                xs: "100%",
-                sm: 280,
-              },
-            }}
-          >
-            <InputLabel
-              sx={{
-                color: dark
-                  ? "#cbd5e1"
-                  : undefined,
-              }}
-            >
-              Theme
-            </InputLabel>
-
-            <Select
-              value={theme}
-              label="Theme"
-              onChange={(event) =>
-                onThemeChange?.(
-                  event.target.value as GridTheme
-                )
-              }
-              sx={{
-                minHeight: 44,
-                fontFamily: TELUGU_FONT,
-
-                color: dark
-                  ? "#f8fafc"
-                  : undefined,
-
-                "& .MuiOutlinedInput-notchedOutline":
-                  {
-                    borderColor: dark
-                      ? "#475569"
-                      : undefined,
-                  },
-
-                "& .MuiSvgIcon-root": {
-                  color: dark
-                    ? "#f8fafc"
-                    : undefined,
-                },
-              }}
-            >
-              {THEME_OPTIONS.map(
-                (option) => (
-                  <MenuItem
-                    key={option.value}
-                    value={option.value}
-                    sx={{
-                      fontFamily:
-                        TELUGU_FONT,
-                      minHeight: 44,
-                    }}
-                  >
-                    {option.label}
-                  </MenuItem>
-                )
-              )}
-            </Select>
-          </FormControl>
-        </Stack>
-      </Box>
-
-      {/* ============================================================ */}
-      {/* AGENT QUICK ACTIONS                                          */}
-      {/* ============================================================ */}
-
       <Box
         sx={{
           width: "100%",
           minWidth: 0,
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={1}
-          useFlexGap
-          flexWrap="wrap"
-        >
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={
-              <SearchIcon
-                size={18}
-                label="ప్రశ్నలు"
-              />
-            }
-            label="ప్రశ్నలు"
-          />
-
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={
-              <CloseIcon
-                size={18}
-                label="Clear Chat"
-              />
-            }
-            label="Clear Chat"
-          />
-        </Stack>
-      </Box>
-
-      {/* ============================================================ */}
-      {/* GRID                                                         */}
-      {/* ============================================================ */}
-
-      <Box
-        sx={{
-          width: "100%",
-          minWidth: 0,
-          maxWidth: "100%",
           overflow: "hidden",
+          borderRadius: { xs: 2, sm: 3 },
+          border: `1px solid ${border}`,
+          bgcolor: frameBg,
+          color: dark ? "#f8fafc" : "#0f172a",
+          boxShadow: { xs: "none", sm: `0 8px 30px ${alpha(mui.palette.common.black, 0.06)}` },
 
-          borderRadius: {
-            xs: 2,
-            sm: 3,
+          "& input, & textarea, & button, & select, & table, & th, & td": { fontFamily: font },
+
+          // The package wraps the table in a horizontally scrolling div.
+          // Give that div a height, so the header can stick inside it.
+          "& div:has(> table)": {
+            maxHeight: { xs: "62vh", md: "70vh" },
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            WebkitOverflowScrolling: "touch",
           },
-
-          border: `1px solid ${alpha(
-            muiTheme.palette.divider,
-            0.8
-          )}`,
-
-          backgroundColor:
-            gridBackground,
-
-          color: gridText,
-
-          boxShadow: {
-            xs: "none",
-            sm: `0 8px 30px ${alpha(
-              muiTheme.palette.common.black,
-              0.06
-            )}`,
+          "& thead th": {
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            background: headerBg,
+            color: headerText,
+            boxShadow: `inset 0 -1px 0 ${border}`,
+            fontWeight: 800,
           },
-
-          "& [data-yuktai-language-selector]":
-            {
-              display:
-                "none !important",
-            },
-
-          "& [data-language-selector]": {
-            display:
-              "none !important",
-          },
-
-          "& .ratnalabala-yuktai-grid": {
-            width: "100%",
-            maxWidth: "100%",
-            minWidth: 0,
-          },
+          // Bigger tap targets on phones
+          "& tbody td": { py: { xs: 1.25, sm: 1 } },
         }}
       >
         <YuktaiGrid<PoemRow>
           data={rows}
           columns={COLUMNS}
           rowKey="id"
-
-          view="auto"
+          view="table"
           mobileBreakpoint={768}
-
           theme={theme}
-
           locale="te-IN"
           inputLanguage="te-IN"
-
-          customRules={agentRules}
-
-          /*
-           * YuktAI Grid owns the single search.
-           */
+          customRules={POEM_RULES}
           search
-
-          selectable={false}
-
-          pagination={{
-            pageSize: 20,
-            showSizeChanger: true,
-            sizeOptions: [
-              10,
-              20,
-              50,
-              100,
-            ],
-          }}
-
+          pagination={{ pageSize: 20, showSizeChanger: true, sizeOptions: [10, 20, 36] }}
           loading={loading}
-
           highlightIds={highlightIds}
           autoScrollToHighlight
-
-          onRowClick={(row) =>
-            onOpenPoem(row.title)
-          }
-
+          onRowClick={(row) => onOpenPoem(row.title)}
           ai
-
           webmcp
-
           toolName={TOOL_PREFIX}
-          toolDescriptions={
-            TOOL_DESCRIPTIONS
-          }
-
-          onWebMCPStatusChange={
-            setWebmcp
-          }
-
-          onAgentResult={(result) =>
-            setLastAction({
-              success: result.success,
-              message: result.message,
-            })
-          }
-
+          toolDescriptions={TOOL_DESCRIPTIONS}
+          onWebMCPStatusChange={setWebmcp}
+          onAgentResult={(result) => setLastAction({ success: result.success, message: result.message })}
           empty="పద్యాలు కనబడలేదు."
-
           className="ratnalabala-yuktai-grid"
         />
       </Box>
 
       {/* ============================================================ */}
-      {/* LAST AGENT RESULT                                            */}
+      {/* WHAT TO ASK                                                   */}
       {/* ============================================================ */}
+      <Box sx={{ px: 0.5 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: font }}>
+          AI సహాయకుడిని ఇలా అడగండి:
+        </Typography>
+        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
+          {EXAMPLE_QUESTIONS.map((q) => (
+            <Chip key={q} size="small" variant="outlined" label={q} sx={{ fontFamily: font }} />
+          ))}
+        </Stack>
+      </Box>
 
+      {/* ============================================================ */}
+      {/* LAST AGENT ACTION — a plain Telugu sentence, never raw JSON   */}
+      {/* ============================================================ */}
       {lastAction && (
         <Box
           role="status"
           aria-live="polite"
           sx={{
-            width: "100%",
-            minWidth: 0,
-
             display: "flex",
             alignItems: "flex-start",
             gap: 1,
-
-            px: {
-              xs: 1.25,
-              sm: 1.75,
-            },
-
-            py: {
-              xs: 1.1,
-              sm: 1.25,
-            },
-
+            px: { xs: 1.25, sm: 1.75 },
+            py: 1.1,
             borderRadius: 2,
-
-            bgcolor: alpha(
-              lastAction.success
-                ? muiTheme.palette.success.main
-                : muiTheme.palette.warning.main,
-              0.08
-            ),
-
+            bgcolor: alpha(lastAction.success ? mui.palette.success.main : mui.palette.warning.main, 0.08),
             border: `1px solid ${alpha(
-              lastAction.success
-                ? muiTheme.palette.success.main
-                : muiTheme.palette.warning.main,
-              0.18
+              lastAction.success ? mui.palette.success.main : mui.palette.warning.main,
+              0.2
             )}`,
           }}
         >
-          <CheckIcon
-            size={20}
-            label={
-              lastAction.success
-                ? "విజయం"
-                : "హెచ్చరిక"
-            }
-          />
-
-          <Typography
-            variant="body2"
-            sx={{
-              lineHeight: 1.75,
-              overflowWrap: "anywhere",
-              wordBreak: "break-word",
-            }}
-          >
+          {lastAction.success ? (
+            <CheckCircleRoundedIcon fontSize="small" color="success" sx={{ mt: 0.25 }} />
+          ) : (
+            <InfoRoundedIcon fontSize="small" color="warning" sx={{ mt: 0.25 }} />
+          )}
+          <Typography variant="body2" sx={{ lineHeight: 1.75, overflowWrap: "anywhere", fontFamily: font }}>
             {lastAction.message}
           </Typography>
         </Box>
       )}
 
       {/* ============================================================ */}
-      {/* WEBMCP STATUS                                                */}
+      {/* WEBMCP — the tools the browser really registered              */}
       {/* ============================================================ */}
-
-      {webmcp && (
-        <Box
-          sx={{
-            width: "100%",
-            minWidth: 0,
-
-            px: {
-              xs: 1.25,
-              sm: 1.5,
-            },
-
-            py: {
-              xs: 1.1,
-              sm: 1.25,
-            },
-
-            borderRadius: 2,
-
-            border: `1px dashed ${muiTheme.palette.divider}`,
-
-            backgroundColor: alpha(
-              muiTheme.palette.primary.main,
-              0.025
-            ),
-          }}
-        >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-          >
-            <SearchIcon
-              size={20}
-              label="WebMCP"
-            />
-
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                lineHeight: 1.6,
-              }}
-            >
-              WebMCP:{" "}
-              {WEBMCP_TEXT[
-                webmcp.state
-              ]}
+      {webmcp && webmcp.state !== "unsupported" && (
+        <Box sx={{ px: 1.5, py: 1.1, borderRadius: 2, border: `1px dashed ${border}` }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <HubRoundedIcon fontSize="small" color={webmcp.state === "ready" ? "success" : "disabled"} />
+            <Typography variant="caption" color="text.secondary" sx={{ fontFamily: font }}>
+              WebMCP: {WEBMCP_TEXT[webmcp.state]}
             </Typography>
           </Stack>
 
-          {/* REGISTERED TOOLS */}
-
           {registeredLabels.length > 0 && (
-            <Stack
-              direction="row"
-              spacing={0.75}
-              useFlexGap
-              flexWrap="wrap"
-              sx={{
-                mt: 1,
-              }}
-            >
-              {registeredLabels.map(
-                (label) => (
-                  <Chip
-                    key={label}
-                    size="small"
-                    variant="outlined"
-                    label={label}
-                    sx={{
-                      fontFamily:
-                        TELUGU_FONT,
-                    }}
-                  />
-                )
-              )}
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+              {registeredLabels.map((label) => (
+                <Chip key={label} size="small" variant="outlined" label={label} sx={{ fontFamily: font }} />
+              ))}
             </Stack>
           )}
 
-          {/* WEBMCP ERRORS */}
-
           {webmcp.errors.length > 0 && (
-            <Alert
-              severity="warning"
-              sx={{
-                mt: 1,
-                py: 0,
-                fontFamily:
-                  TELUGU_FONT,
-              }}
-            >
-              {webmcp.errors
-                .map(
-                  (error) =>
-                    error.tool
-                )
-                .join(", ")}{" "}
-              నమోదు కాలేదు.
+            <Alert severity="warning" sx={{ mt: 1, py: 0 }}>
+              {webmcp.errors.map((e) => e.tool).join(", ")} నమోదు కాలేదు.
             </Alert>
           )}
         </Box>
