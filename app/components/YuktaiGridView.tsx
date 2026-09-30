@@ -14,15 +14,21 @@ import {
   Typography,
   alpha,
   useMediaQuery,
-  useTheme
+  useTheme,
 } from "@mui/material";
-
-import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
-import HubRoundedIcon from "@mui/icons-material/HubRounded";
-import QuestionAnswerRoundedIcon from "@mui/icons-material/QuestionAnswerRounded";
 
 import {
   YuktaiGrid,
+
+  // YuktAI custom icons ONLY
+  SearchIcon,
+  SortUpIcon,
+  SortDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CheckIcon,
+  CloseIcon,
+
   type GridColumn,
   type WebMCPStatus,
   type GridTheme,
@@ -57,10 +63,6 @@ type Props = {
 
   onThemeChange?: (theme: GridTheme) => void;
 
-  /**
-   * Additional application-specific Agent rules.
-   * These are executed before the generic Grid Agent rules.
-   */
   customRules?: YuktaiGridRule<PoemRow>[];
 };
 
@@ -83,10 +85,12 @@ const COLUMNS: GridColumn<PoemRow>[] = [
     label: "పద్యం పేరు",
     width: "32%",
   },
+
   {
     key: "content",
     label: "పద్యం",
     sortable: false,
+
     render: (value) => (
       <Box
         sx={{
@@ -100,6 +104,7 @@ const COLUMNS: GridColumn<PoemRow>[] = [
       </Box>
     ),
   },
+
   {
     key: "lines",
     label: "పంక్తులు",
@@ -146,12 +151,16 @@ const TOOL_LABELS: Record<string, string> = {
 const WEBMCP_TEXT: Record<WebMCPStatus["state"], string> = {
   unsupported:
     "ఈ బ్రౌజర్‌లో WebMCP అందుబాటులో లేదు.",
+
   registering:
     "AI tools నమోదవుతున్నాయి…",
+
   ready:
     "AI agents కోసం tools సిద్ధంగా ఉన్నాయి.",
+
   partial:
     "కొన్ని AI tools మాత్రమే నమోదయ్యాయి.",
+
   error:
     "AI tools నమోదు కాలేదు.",
 };
@@ -168,27 +177,27 @@ const THEME_OPTIONS: {
     value: "default",
     label: "Default",
   },
+
   {
     value: "dark",
     label: "Dark Mode",
   },
+
   {
     value: "high-contrast",
     label: "High Contrast",
   },
+
   {
     value: "color-blind",
     label: "Color Blind",
   },
+
   {
     value: "dyslexia",
     label: "Dyslexia Friendly",
   },
 ];
-
-/* ------------------------------------------------------------------ */
-/* HELPER                                                             */
-/* ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ */
 /* COMPONENT                                                          */
@@ -242,11 +251,15 @@ export default function YuktaiGridView({
   /* ================================================================ */
   /* CUSTOM AGENT RULES                                               */
   /* ================================================================ */
-  const agentRules = useMemo<YuktaiGridRule<PoemRow>[]>(
+
+  const agentRules = useMemo<
+    YuktaiGridRule<PoemRow>[]
+  >(
     () => [...customRules],
     [customRules]
   );
 
+  /* ================================================================ */
   /* WEBMCP LABELS                                                    */
   /* ================================================================ */
 
@@ -388,17 +401,29 @@ export default function YuktaiGridView({
               label={`పద్యాలు: ${rows.length}`}
             />
 
+            {/* YuktAI icon */}
             <Chip
               size="small"
               variant="outlined"
-              icon={<SmartToyRoundedIcon />}
+              icon={
+                <CheckIcon
+                  size={18}
+                  label="AI"
+                />
+              }
               label="AI"
             />
 
+            {/* YuktAI icon */}
             <Chip
               size="small"
               variant="outlined"
-              icon={<HubRoundedIcon />}
+              icon={
+                <SearchIcon
+                  size={18}
+                  label="WebMCP"
+                />
+              }
               label="WebMCP"
             />
           </Stack>
@@ -541,39 +566,46 @@ export default function YuktaiGridView({
       </Box>
 
       {/* ============================================================ */}
-      {/* AGENT QUICK INFO                                             */}
+      {/* AGENT QUICK ACTIONS                                          */}
       {/* ============================================================ */}
 
       <Box
-  sx={{
-    width: "100%",
-    minWidth: 0,
-    display: {
-      xs: "none",
-      sm: "block",
-    },
-  }}
->
-  <Stack
-    direction="row"
-    spacing={1}
-    useFlexGap
-    flexWrap="wrap"
-  >
-    <Chip
-      size="small"
-      variant="outlined"
-      icon={<QuestionAnswerRoundedIcon />}
-      label="ప్రశ్నలు"
-    />
+        sx={{
+          width: "100%",
+          minWidth: 0,
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          flexWrap="wrap"
+        >
+          <Chip
+            size="small"
+            variant="outlined"
+            icon={
+              <SearchIcon
+                size={18}
+                label="ప్రశ్నలు"
+              />
+            }
+            label="ప్రశ్నలు"
+          />
 
-    <Chip
-      size="small"
-      variant="outlined"
-      label="Clear Chat"
-    />
-  </Stack>
-</Box>
+          <Chip
+            size="small"
+            variant="outlined"
+            icon={
+              <CloseIcon
+                size={18}
+                label="Clear Chat"
+              />
+            }
+            label="Clear Chat"
+          />
+        </Stack>
+      </Box>
 
       {/* ============================================================ */}
       {/* GRID                                                         */}
@@ -609,24 +641,17 @@ export default function YuktaiGridView({
             )}`,
           },
 
-          /*
-           * Language selector is intentionally hidden.
-           *
-           * Ratnalabala uses Telugu as its fixed
-           * Grid language/input language.
-           */
           "& [data-yuktai-language-selector]":
             {
-              display: "none !important",
+              display:
+                "none !important",
             },
 
           "& [data-language-selector]": {
-            display: "none !important",
+            display:
+              "none !important",
           },
 
-          /*
-           * Prevent horizontal page overflow.
-           */
           "& .ratnalabala-yuktai-grid": {
             width: "100%",
             maxWidth: "100%",
@@ -639,38 +664,22 @@ export default function YuktaiGridView({
           columns={COLUMNS}
           rowKey="id"
 
-          /* -------------------------------------------------------- */
-          /* RESPONSIVE                                               */
-          /* -------------------------------------------------------- */
-
           view="auto"
           mobileBreakpoint={768}
 
-          /* -------------------------------------------------------- */
-          /* ACCESSIBILITY                                            */
-          /* -------------------------------------------------------- */
-
           theme={theme}
 
-          /* Fixed Telugu */
           locale="te-IN"
           inputLanguage="te-IN"
 
-          /* -------------------------------------------------------- */
-          /* AGENT                                                    */
-          /* -------------------------------------------------------- */
-
           customRules={agentRules}
 
-          /* Page owns search */
-          search={false}
+          /*
+           * YuktAI Grid owns the single search.
+           */
+          search
 
-          /* No selection checkboxes */
           selectable={false}
-
-          /* -------------------------------------------------------- */
-          /* PAGINATION                                               */
-          /* -------------------------------------------------------- */
 
           pagination={{
             pageSize: 20,
@@ -685,42 +694,25 @@ export default function YuktaiGridView({
 
           loading={loading}
 
-          /* -------------------------------------------------------- */
-          /* HIGHLIGHT                                                */
-          /* -------------------------------------------------------- */
-
           highlightIds={highlightIds}
           autoScrollToHighlight
-
-          /* -------------------------------------------------------- */
-          /* ROW OPEN                                                 */
-          /* -------------------------------------------------------- */
 
           onRowClick={(row) =>
             onOpenPoem(row.title)
           }
 
-          /* -------------------------------------------------------- */
-          /* AI                                                       */
-          /* -------------------------------------------------------- */
-
           ai
 
-          /* -------------------------------------------------------- */
-          /* WEBMCP                                                   */
-          /* -------------------------------------------------------- */
-
           webmcp
+
           toolName={TOOL_PREFIX}
-          toolDescriptions={TOOL_DESCRIPTIONS}
+          toolDescriptions={
+            TOOL_DESCRIPTIONS
+          }
 
           onWebMCPStatusChange={
             setWebmcp
           }
-
-          /* -------------------------------------------------------- */
-          /* AGENT RESULT                                             */
-          /* -------------------------------------------------------- */
 
           onAgentResult={(result) =>
             setLastAction({
@@ -778,12 +770,12 @@ export default function YuktaiGridView({
             )}`,
           }}
         >
-          <SmartToyRoundedIcon
-            fontSize="small"
-            color={
+          <CheckIcon
+            size={20}
+            label={
               lastAction.success
-                ? "success"
-                : "warning"
+                ? "విజయం"
+                : "హెచ్చరిక"
             }
           />
 
@@ -835,13 +827,9 @@ export default function YuktaiGridView({
             spacing={1}
             alignItems="center"
           >
-            <HubRoundedIcon
-              fontSize="small"
-              color={
-                webmcp.state === "ready"
-                  ? "success"
-                  : "disabled"
-              }
+            <SearchIcon
+              size={20}
+              label="WebMCP"
             />
 
             <Typography
@@ -852,7 +840,9 @@ export default function YuktaiGridView({
               }}
             >
               WebMCP:{" "}
-              {WEBMCP_TEXT[webmcp.state]}
+              {WEBMCP_TEXT[
+                webmcp.state
+              ]}
             </Typography>
           </Stack>
 
