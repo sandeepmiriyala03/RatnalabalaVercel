@@ -7,7 +7,6 @@ import {
   Typography,
   TextField,
   Button,
-  Pagination,
   Stack,
   InputAdornment,
   IconButton,
@@ -21,14 +20,19 @@ import {
   useMediaQuery,
 } from "@mui/material";
 
-import SearchRoundedIcon     from "@mui/icons-material/SearchRounded";
 import ClearRoundedIcon      from "@mui/icons-material/ClearRounded";
+
+import {
+  SearchIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@yuktishaalaa/yuktai";
 import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
 import DownloadRoundedIcon   from "@mui/icons-material/DownloadRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 
-import type { GridTheme, YuktaiGridRule } from "@yuktishaalaa/yuktai";
+import type { GridTheme } from "@yuktishaalaa/yuktai";
 
 const YuktaiGridView = dynamic(
   () => import("@/app/components/YuktaiGridView"),
@@ -57,6 +61,8 @@ interface Poem {
   slug?: string;
 }
 
+
+
 type Tool = "radio" | "downloads";
 
 const ITEMS_PER_PAGE = 3;
@@ -65,33 +71,7 @@ const ITEMS_PER_PAGE = 3;
 const POETRY_NAME = " మిరా పద్యాలు";
 const AUTHORS: string | string[] = "డాక్టర్ మిరియాల రామకృష్ణ";
 
-const poemRules: YuktaiGridRule<Poem>[] = [
-  {
-    name: "help",
-    description: "Explain how to use the poem grid.",
-    matches: (input) =>
-      /help|how to|సహాయం|ఎలా ఉపయోగించ|ఎలా వాడాలి/i.test(input),
-    execute: async () =>
-      "పద్యం పేరు లేదా పద్యంలో ఉన్న పదంతో వెతకండి. తెలుగులో ప్రశ్న అడగండి. ఒక పద్యాన్ని తెరవడానికి పద్యం పేరు చెప్పవచ్చు.",
-  },
-  {
-    name: "count-poems",
-    description: "Count the available poems.",
-    matches: (input) =>
-      /how many|count|ఎన్ని|మొత్తం.*పద్య/i.test(input),
-    execute: async ({ data }) => `మొత్తం ${data.length} పద్యాలు ఉన్నాయి.`,
-  },
-  {
-    name: "list-titles",
-    description: "List poem titles.",
-    matches: (input) =>
-      /list.*poem|titles|పద్యాల పేర్లు|పద్యాలు చెప్పు/i.test(input),
-    execute: async ({ data }) =>
-      data.length
-        ? data.map((poem, index) => `${index + 1}. ${poem.title}`).join("\n")
-        : "పద్యాలు లేవు.",
-  },
-];
+
 
 export default function PoemList() {
   const theme = useTheme();
@@ -329,7 +309,7 @@ export default function PoemList() {
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              <SearchRoundedIcon sx={{ color: "text.secondary" }} />
+              <SearchIcon size={22} color="currentColor" label="శోధన" />
             </InputAdornment>
           ),
           endAdornment: search ? (
@@ -471,7 +451,6 @@ export default function PoemList() {
                 setViewMode("cards");
               }
             }}
-            customRules={poemRules}
             theme={gridTheme}
             onThemeChange={setGridTheme}
           />
@@ -543,22 +522,35 @@ export default function PoemList() {
 
       {viewMode === "cards" && hasPoems && !viewAll && filtered.length > ITEMS_PER_PAGE && (
         <Stack alignItems="center" spacing={1} sx={{ mt: 3 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            siblingCount={isMobile ? 0 : 1}
-            color="primary"
-            showFirstButton
-            showLastButton
-            onChange={(_, val) => {
-              setPage(val);
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <IconButton
+              aria-label="మునుపటి పేజీ"
+              disabled={page <= 1}
+              onClick={() => {
+                setPage((currentPage) => Math.max(1, currentPage - 1));
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              <ChevronLeftIcon size={24} label="మునుపటి పేజీ" />
+            </IconButton>
 
-              window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-              });
-            }}
-          />
+            <Typography variant="body2" sx={{ minWidth: 72, textAlign: "center" }}>
+              {page} / {totalPages}
+            </Typography>
+
+            <IconButton
+              aria-label="తదుపరి పేజీ"
+              disabled={page >= totalPages}
+              onClick={() => {
+                setPage((currentPage) =>
+                  Math.min(totalPages, currentPage + 1)
+                );
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              <ChevronRightIcon size={24} label="తదుపరి పేజీ" />
+            </IconButton>
+          </Stack>
 
           <Typography variant="caption" color="text.secondary">
             పద్యాలు {rangeStart}–{rangeEnd} / {filtered.length}
