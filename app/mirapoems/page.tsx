@@ -360,7 +360,7 @@ export default function PoemList() {
             పద్యాలు
           </ToggleButton>
           <ToggleButton value="grid" sx={{ textTransform: "none", px: 1.75 }}>
-            పట్టిక
+            యుక్తి AI
           </ToggleButton>
         </ToggleButtonGroup>
       </Stack>

@@ -41,7 +41,7 @@ import {
   type GridTheme,
 } from "@yuktishaalaa/yuktai";
 
-// YuktAI Grid — loaded only when the "పట్టిక" tab is opened
+// YuktAI Grid — loaded only when the "యుక్తి AI" tab is opened
 const YuktaiGridView = dynamic(() => import("@/app/components/YuktaiGridView"), {
   ssr: false,
   loading: () => (
@@ -98,15 +98,15 @@ const HELP_STEPS: { icon: React.ReactNode; text: string }[] = [
   },
   {
     icon: <TableRowsRoundedIcon />,
-    text: "అన్ని పద్యాలు ఒకేచోట చూడాలంటే “పట్టిక” ట్యాబ్ నొక్కండి. పద్యం పేరు నొక్కితే ఆ పద్యం పూర్తిగా తెరుచుకుంటుంది.",
+    text: "అన్ని పద్యాలు ఒకేచోట చూడాలంటే “యుక్తి AI” ట్యాబ్ నొక్కండి. పద్యం పేరు నొక్కితే ఆ పద్యం పూర్తిగా తెరుచుకుంటుంది.",
   },
   {
     icon: <SearchIcon size={22} label="శోధన" />,
-    text: "పట్టికలోని శోధన గడిలో పద్యం పేరు లేదా పద్యంలోని పదం రాసి వెతకండి.",
+    text: "యుక్తి AIలోని శోధన గడిలో పద్యం పేరు లేదా పద్యంలోని పదం రాసి వెతకండి.",
   },
   {
     icon: <SmartToyRoundedIcon />,
-    text: "పట్టికలోని AI సహాయకుడిని తెలుగులో అడగండి: “గర్వం తెరువు”, “మకుటం ఏమిటి”, “ఈరోజు పద్యం”.",
+    text: "యుక్తి AIలోని AI సహాయకుడిని తెలుగులో అడగండి: “గర్వం తెరువు”, “మకుటం ఏమిటి”, “ఈరోజు పద్యం”.",
   },
   {
     icon: <HeadphonesRoundedIcon />,
@@ -540,7 +540,7 @@ const loadPoems = useCallback(async () => {
             aria-controls="poem-panel-grid"
             icon={<TableRowsRoundedIcon fontSize="small" />}
             iconPosition="start"
-            label="పట్టిక"
+            label="యుక్తి AI"
           />
         </Tabs>
       </Box>
@@ -628,7 +628,7 @@ const loadPoems = useCallback(async () => {
           </Box>
         )}
 
-        {/* TAB 2 — "పట్టిక": YuktAI Grid with the assistant + WebMCP */}
+        {/* TAB 2 — "యుక్తి AI": YuktAI Grid with the assistant + WebMCP */}
         {hasPoems && tab === "grid" && (
           <Box role="tabpanel" id="poem-panel-grid" aria-labelledby="poem-tab-grid">
             <YuktaiGridView
