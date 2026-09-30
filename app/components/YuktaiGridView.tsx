@@ -18,6 +18,7 @@ import {
   type GridColumn,
   type WebMCPStatus,
   type GridTheme,
+  type YuktaiGridRule,
 } from "@yuktishaalaa/yuktai";
 
 type PoemRow = {
@@ -38,6 +39,12 @@ type Props = {
   onOpenPoem: (title: string) => void;
   theme?: GridTheme;
   onThemeChange?: (theme: GridTheme) => void;
+
+  /**
+   * Application-specific Agent rules.
+   * These are executed before the generic Grid Agent rules.
+   */
+  customRules?: YuktaiGridRule<PoemRow>[];
 };
 
 const TOOL_PREFIX = "ratnalabala_poems";
@@ -55,7 +62,6 @@ const COLUMNS: GridColumn<PoemRow>[] = [
     key: "content",
     label: "పద్యం",
     sortable: false,
-    hiddenOnMobile: true,
     render: (value) => (
       <Box
         sx={{
@@ -78,16 +84,15 @@ const COLUMNS: GridColumn<PoemRow>[] = [
 ];
 
 const TOOL_DESCRIPTIONS = {
-  search:
-    "Search Telugu poems by title or poem text. Matching poems are highlighted.",
-  open: "Open a Telugu poem by its ID and show the complete poem.",
-  select: "Select a poem by its ID.",
-  filter: "Filter poems by title, text, or number of lines.",
-  sort: "Sort poems by title or number of lines.",
-  count: "Count the poems currently available.",
-  columns: "Show the available poem table columns.",
-  get_row: "Get one poem row by its ID.",
-  highlight: "Highlight a poem row by its ID.",
+  search: "పద్యం పేరు లేదా పద్యంలో వెతుకు.",
+  open: "ఎంచుకున్న పద్యాన్ని తెరువు.",
+  select: "ఒక పద్యాన్ని ఎంచుకో.",
+  filter: "పద్యం పేరు, పద్యం లేదా పంక్తుల సంఖ్యతో ఫిల్టర్ చేయి.",
+  sort: "పద్యాలను క్రమంలో అమర్చు.",
+  count: "మొత్తం పద్యాల సంఖ్య చూపు.",
+  columns: "పట్టిక కాలమ్‌లను చూపు.",
+  get_row: "ఒక పద్య వరుస వివరాలు చూపు.",
+  highlight: "ఒక పద్యాన్ని హైలైట్ చేయి.",
 };
 
 const TOOL_LABELS: Record<string, string> = {
@@ -118,10 +123,12 @@ export default function YuktaiGridView({
   loading = false,
   onOpenPoem,
   theme = "default",
+  customRules = [],
 }: Props) {
   const muiTheme = useTheme();
 
-  const [webmcp, setWebmcp] = useState<WebMCPStatus | null>(null);
+  const [webmcp, setWebmcp] =
+    useState<WebMCPStatus | null>(null);
 
   const [lastAction, setLastAction] = useState<{
     success: boolean;
@@ -246,29 +253,63 @@ export default function YuktaiGridView({
           mobileBreakpoint={768}
           theme={theme}
           locale="te-IN"
+
+          /*
+           * 5.0.1:
+           * Application-specific rules are passed to the Agent.
+           */
+          customRules={customRules}
+
+          /*
+           * Speech/input language is independent from UI locale.
+           */
           inputLanguage="te-IN"
+
+          /*
+           * Ratnalabala owns search at page level.
+           */
           search={false}
+
           selectable={false}
+
           pagination={{
             pageSize: 20,
             showSizeChanger: true,
             sizeOptions: [10, 20, 50, 100],
           }}
+
           loading={loading}
+
           highlightIds={highlightIds}
           autoScrollToHighlight
-          onRowClick={(row) => onOpenPoem(row.title)}
+
+          onRowClick={(row) =>
+            onOpenPoem(row.title)
+          }
+
+          /*
+           * Agentic AI
+           */
           ai
+
+          /*
+           * WebMCP
+           */
           webmcp
+
           toolName={TOOL_PREFIX}
+
           toolDescriptions={TOOL_DESCRIPTIONS}
+
           onWebMCPStatusChange={setWebmcp}
+
           onAgentResult={(result) =>
             setLastAction({
               success: result.success,
               message: result.message,
             })
           }
+
           empty="పద్యాలు కనబడలేదు."
           className="ratnalabala-yuktai-grid"
         />
