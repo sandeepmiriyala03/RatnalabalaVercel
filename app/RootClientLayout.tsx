@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import ClientWrapper from "@/app/components/ClientWrapper";
 import Navbar from "@/app/components/Navbar";
 
@@ -18,224 +18,113 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import AudioPlayer from "@/app/components/AudioPlayer";
 import MusicPlayer from "@/app/components/MusicPlayer";
 import DownloadRingtones from "@/app/components/DownloadRingtones";
-/* 🔤 Allowed Telugu Fonts */
-export type TeluguFont =
-  | "Gurajada"
-  | "NTR"
-  | "Ramaneeya"
-  | "Veturi"
-  | "Sirivennela"
+import type { TeluguFont } from "@/app/types/fonts";
 
-  | "Chathura-Thin"
-  | "Chathura-Light"
-  | "Chathura-Regular"
-  | "Chathura-Bold"
-  | "Chathura-ExtraBold"
+// One list of font names for the whole app (it lives in app/types/fonts.ts).
+// Re-exported so existing `import { TeluguFont } from ".../RootClientLayout"` keeps working.
+export type { TeluguFont };
 
-  | "Ramaraja"
-  | "RaviPrakash"
-  | "TenaliRamakrishna"
-  | "Timmana"
-  | "TANA"
-  | "Ponnala-Regular"
+// MUST match DEFAULT_FONT / DEFAULT_SIZE in FontControlsTelugu and in the
+// Python font API — otherwise the page opens on one "default" and the
+// "డిఫాల్ట్" button restores another. (This used to be "Ramaneeya".)
+const DEFAULT_FONT: TeluguFont = "Dhurjati";
+const DEFAULT_SIZE = 1.0;
 
-  | "Gidugu"
-  | "Gidugu-Italic"
-
-  | "LakkiReddy"
-
-  | "Nandakam"
-  | "Nandakam-Italic"
-
-  | "Peddana"
-
-  | "Purushothamaa"
-  | "Purushothamaa-Italic"
-
-  | "Ramabhadra"
-  | "Ramabhadra-Italic"
-
-  | "SreeKrushnadevaraya"
-  | "SreeKrushnadevaraya-Italic"
-
-  | "Suranna-Regular"
-  | "Suranna-Bold"
-  | "Suranna-Italic"
-  | "Suranna-BoldItalic"
-
-  | "Suravaram"
-  | "Suravaram-Italic"
-    /* =========================
-     🆕 Newly Added Fonts
-     ========================= */
-
-  | "Annamayya"
-  | "Annamayya-Bold"
-  | "Annamayya-Italic"
-  | "Annamayya-BoldItalic"
-
-  | "Dhurjati"
-  | "Dhurjati-Italic"
-
-  | "JIMS"
-  | "JIMS-Italic"
-
-  | "KanakaDurga"
-  | "KanakaDurga-Italic"
-
-  | "Mandali-Regular"
-  | "Mandali-Bold"
-  | "Mandali-Italic"
-  | "Mandali-BoldItalic"
-
-  | "PottiSreeramulu"
-  | "TiroSundaraTelugu-Regular"  
-  | "NATS"
-  | "NATS-Italic"
-  ;
-
-
-const DEFAULT_FONT: TeluguFont = "Ramaneeya";
-const DEFAULT_SIZE = 1;
+// Marks that the poems were already copied into IndexedDB, so they aren't
+// downloaded again on every visit. Bump the version when the poems change.
 const CACHE_VERSION_KEY = "bhavalamala_cache_v1";
 
-
-export default function RootClientLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [mounted, setMounted] = useState(false);
+export default function RootClientLayout({ children }: { children: React.ReactNode }) {
+  // Fonts: FontControlsTelugu is the ONLY place that decides and applies
+  // them (agent, device, CSS variables). The layout just holds the state.
   const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
   const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
 
-  /* 🔽 Accordion state: only ONE of "intro" / "ringtones" can be open
-     at a time. Both start closed (null) on every mount/page load so
-     the page never opens tall by default. */
+  // Only ONE of "intro" / "ringtones" open at a time; both start closed
   const [openSection, setOpenSection] = useState<"intro" | "ringtones" | null>(null);
-
-  const toggleSection = (section: "intro" | "ringtones") => {
+  const toggleSection = (section: "intro" | "ringtones") =>
     setOpenSection((prev) => (prev === section ? null : section));
-  };
 
-const bootstrapRef = useRef(false);
-/* 🔁 1. MOUNT FIRST */
-useEffect(() => {
-  setMounted(true);
-}, []);
-
-
-
-  /* 🧠 0. BOOTSTRAP INDEXEDDB (FIRST LOAD ONLY) */
-useEffect(() => {
-  if (!mounted) return;
-
-  // 🚫 Prevent double execution (StrictMode)
-  if (bootstrapRef.current) return;
-  bootstrapRef.current = true;
-
-  async function bootstrapIndexedDB() {
-    if (localStorage.getItem(CACHE_VERSION_KEY) === "done") {
-      console.log("✅ IndexedDB already initialized");
-      return;
-    }
-
-    try {
-      console.log("⏳ Fetching all poems from API...");
-      const res = await fetch("/api/shatakamu?key=all");
-
-      if (!res.ok) {
-        throw new Error("API failed");
-      }
-
-      const data = await res.json();
-
-      if (data.success) {
-        console.log("⏳ Writing poems to IndexedDB...");
-        await cacheAllPoems(data.poems);
-        localStorage.setItem(CACHE_VERSION_KEY, "done");
-        console.log("✅ IndexedDB bootstrap completed");
-      }
-    } catch (err) {
-      console.error("❌ IndexedDB bootstrap failed:", err);
-      bootstrapRef.current = false; // allow retry
-    }
-  }
-
-  bootstrapIndexedDB();
-}, [mounted]);
-useEffect(() => {
-  if (!mounted) return;
-  if (getCookieConsent() !== "accepted") return;
-  fetch("/api/pageview", { method: "POST" }).catch(() => {});
-}, [mounted]);
-
-  /* ✅ 2. SERVICE WORKER */
+  /* 1. Copy all poems into IndexedDB once — when the browser is idle,
+        so it never slows down the first page the visitor opens. */
+  const bootstrapRef = useRef(false);
   useEffect(() => {
-    if (!mounted || !("serviceWorker" in navigator)) return;
+    if (bootstrapRef.current) return; // React StrictMode runs effects twice in dev
+    bootstrapRef.current = true;
 
-    const handleLoad = () => {
-      navigator.serviceWorker.register("/sw.js").then((registration) => {
-        console.log("✅ SW registered: ", registration.scope);
-      }).catch((error) => {
-        console.log("❌ SW registration failed: ", error);
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      try {
+        if (localStorage.getItem(CACHE_VERSION_KEY) === "done") return;
+      } catch {
+        // storage blocked (private mode) — still try; IndexedDB may work
+      }
+
+      try {
+        const res = await fetch("/api/shatakamu?key=all");
+        if (!res.ok) throw new Error(`API failed: ${res.status}`);
+        const data = await res.json();
+        if (cancelled || !data?.success || !Array.isArray(data.poems)) return;
+
+        await cacheAllPoems(data.poems);
+        try {
+          localStorage.setItem(CACHE_VERSION_KEY, "done");
+        } catch {
+          /* ignore */
+        }
+      } catch (err) {
+        console.error("IndexedDB bootstrap failed:", err);
+        bootstrapRef.current = false; // allow a retry on the next mount
+      }
+    };
+
+    // requestIdleCallback isn't in Safari — fall back to a short delay
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const idleId = w.requestIdleCallback
+      ? w.requestIdleCallback(() => void bootstrap(), { timeout: 5000 })
+      : window.setTimeout(() => void bootstrap(), 2000);
+
+    return () => {
+      cancelled = true;
+      if (w.cancelIdleCallback) w.cancelIdleCallback(idleId);
+      else window.clearTimeout(idleId);
+    };
+  }, []);
+
+  /* 2. Page view — only with cookie consent */
+  useEffect(() => {
+    if (getCookieConsent() !== "accepted") return;
+    fetch("/api/pageview", { method: "POST" }).catch(() => {});
+  }, []);
+
+  /* 3. Service worker — production only. In development Serwist is disabled,
+        but an old public/sw.js from an earlier build could still be
+        registered here and serve stale files during development. */
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
+
+    const register = () => {
+      navigator.serviceWorker.register("/sw.js").catch((error) => {
+        console.warn("Service worker registration failed:", error);
       });
     };
 
     if (document.readyState === "complete") {
-      handleLoad();
-    } else {
-      window.addEventListener("load", handleLoad);
-      return () => window.removeEventListener("load", handleLoad);
+      register();
+      return;
     }
-  }, [mounted]);
+    window.addEventListener("load", register, { once: true });
+    return () => window.removeEventListener("load", register);
+  }, []);
 
-  /* 🔁 3. Restore settings */
-  useEffect(() => {
-    if (!mounted) return;
-    const saved = localStorage.getItem("teluguFontSettings");
-    if (saved) {
-      try {
-        const { family, size } = JSON.parse(saved);
-        if (family) setFontFamily(family as TeluguFont);
-        if (size) setFontSize(size);
-      } catch (e) {
-        console.warn("Font settings parse error:", e);
-      }
-    }
-  }, [mounted]);
-
-  /* ✅ 4. Apply fonts */
-  useEffect(() => {
-    if (!mounted) return;
-    const root = document.documentElement;
-    root.style.setProperty("--telugu-font-family", fontFamily);
-    root.style.setProperty("--telugu-font-size", `${fontSize}rem`);
-    localStorage.setItem(
-      "teluguFontSettings",
-      JSON.stringify({ family: fontFamily, size: fontSize })
-    );
-  }, [fontFamily, fontSize, mounted]);
-
-  // ✅ FIXED SSR - SIMPLE LOADING SCREEN (No Client Components)
-  if (!mounted) {
-    return (
-      <div 
-        style={{ 
-          minHeight: '100vh', 
-          padding: '64px 16px', 
-          fontFamily: 'system-ui, sans-serif',
-          opacity: 0.01 
-        }}
-      >
-
-      </div>
-    );
-  }
-
+  // Rendered on the server too (no "mounted" gate any more): search engines,
+  // link previews and slow phones get real HTML instead of a blank page.
   return (
     <>
-    
       <Navbar />
 
       <Container sx={{ mt: 1 }}>
@@ -245,18 +134,14 @@ useEffect(() => {
           fontSize={fontSize}
           setFontSize={setFontSize}
         />
+
         <Box sx={{ mt: 2, textAlign: "center" }}>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              flexWrap: "wrap",
-              gap: 1,
-            }}
-          >
+          <Box sx={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 1 }}>
             <Button
               onClick={() => toggleSection("intro")}
               size="small"
+              aria-expanded={openSection === "intro"}
+              aria-controls="intro-audio-panel"
               startIcon={<HeadphonesRoundedIcon fontSize="small" />}
               endIcon={
                 openSection === "intro" ? (
@@ -265,15 +150,7 @@ useEffect(() => {
                   <ExpandMoreRoundedIcon fontSize="small" />
                 )
               }
-              sx={{
-                textTransform: "none",
-                fontWeight: 700,
-                color: "var(--primary)",
-                borderRadius: "999px",
-                px: 2,
-                "&:hover": { bgcolor: "var(--surface)" },
-                "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
-              }}
+              sx={sectionButtonSx}
             >
               రత్నాలబాల పరిచయ ఆడియో
             </Button>
@@ -281,6 +158,8 @@ useEffect(() => {
             <Button
               onClick={() => toggleSection("ringtones")}
               size="small"
+              aria-expanded={openSection === "ringtones"}
+              aria-controls="ringtones-panel"
               startIcon={<DownloadRoundedIcon fontSize="small" />}
               endIcon={
                 openSection === "ringtones" ? (
@@ -289,15 +168,7 @@ useEffect(() => {
                   <ExpandMoreRoundedIcon fontSize="small" />
                 )
               }
-              sx={{
-                textTransform: "none",
-                fontWeight: 700,
-                color: "var(--primary)",
-                borderRadius: "999px",
-                px: 2,
-                "&:hover": { bgcolor: "var(--surface)" },
-                "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
-              }}
+              sx={sectionButtonSx}
             >
               రింగ్‌టోన్‌లు డౌన్‌లోడ్ చేయండి
             </Button>
@@ -305,21 +176,7 @@ useEffect(() => {
 
           {/* Intro audio panel */}
           <Collapse in={openSection === "intro"} timeout={240} unmountOnExit>
-            <Box
-              sx={{
-                mt: 1.5,
-                mx: "auto",
-                maxWidth: 420,
-                p: 2,
-                borderRadius: "var(--radius)",
-                border: "1.5px solid var(--border-strong)",
-                bgcolor: "var(--surface-elevated)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 1,
-              }}
-            >
+            <Box id="intro-audio-panel" sx={{ ...panelSx, display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
               <AudioPlayer src="/audio/Intro.m4a" />
               <Typography variant="caption" sx={{ color: "var(--muted-text)" }}>
                 ఈ వెబ్‌సైట్ గురించి తెలుసుకోవడానికి ఈ ఆడియో వినండి.
@@ -329,17 +186,7 @@ useEffect(() => {
 
           {/* Ringtones panel */}
           <Collapse in={openSection === "ringtones"} timeout={240} unmountOnExit>
-            <Box
-              sx={{
-                mt: 1.5,
-                mx: "auto",
-                maxWidth: 420,
-                p: 2,
-                borderRadius: "var(--radius)",
-                border: "1.5px solid var(--border-strong)",
-                bgcolor: "var(--surface-elevated)",
-              }}
-            >
+            <Box id="ringtones-panel" sx={panelSx}>
               <DownloadRingtones />
             </Box>
           </Collapse>
@@ -351,12 +198,35 @@ useEffect(() => {
           <ClientWrapper>{children}</ClientWrapper>
         </Box>
       </Container>
+
       <PwaInstallPrompt />
       <ReadingActivityTracker />
       <MusicPlayer />
       <FloatingAIButton />
       <CookieConsentBanner />
-
     </>
   );
 }
+
+/* ---------- styles ---------- */
+
+const sectionButtonSx = {
+  textTransform: "none",
+  fontWeight: 700,
+  color: "var(--primary)",
+  borderRadius: "999px",
+  px: 2,
+  minHeight: 40,
+  "&:hover": { bgcolor: "var(--surface)" },
+  "&:focus-visible": { outline: "3px solid var(--primary)", outlineOffset: "4px" },
+} as const;
+
+const panelSx = {
+  mt: 1.5,
+  mx: "auto",
+  maxWidth: 420,
+  p: 2,
+  borderRadius: "var(--radius)",
+  border: "1.5px solid var(--border-strong)",
+  bgcolor: "var(--surface-elevated)",
+} as const;
