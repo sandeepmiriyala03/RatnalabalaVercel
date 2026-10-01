@@ -443,7 +443,7 @@ export default function PoemList() {
           <YuktaiGridView
             poems={filtered}
             highlightIds={highlightIds}
-            loading={loading}
+            loading={loading} toolName="mira_poems"
             onOpenPoem={(title: string) => {
               const poem = poems.find((item) => item.title === title);
               if (poem) {
