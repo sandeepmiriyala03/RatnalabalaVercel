@@ -1,7 +1,7 @@
 // AGENTS.md → see "FontControlsTelugu Component Rules"
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Box,
@@ -20,105 +20,178 @@ import {
 import BoltIcon from "@mui/icons-material/Bolt";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+// YuktAI icons wherever one fits; MUI only where YuktAI has no matching icon
+import { SearchIcon, CheckIcon, CloseIcon } from "@yuktishaalaa/yuktai";
 import type { TeluguFont } from "@/app/types/fonts";
 import { useDeviceFontBounds } from "./useDeviceFontBounds";
+
+type ContentType = "sloka" | "ui" | "heading";
+type Device = "phone" | "tablet" | "desktop";
 
 type Props = {
   fontFamily: TeluguFont;
   setFontFamily: React.Dispatch<React.SetStateAction<TeluguFont>>;
   fontSize: number;
   setFontSize: React.Dispatch<React.SetStateAction<number>>;
-  /** Optional manual override. Leave unset and the component figures
-   * out the content type automatically from the current URL — see
-   * PATH_CONTENT_TYPE below. Only pass this if a specific page needs
-   * to deliberately override what auto-detection would pick. */
-  contentType?: "sloka" | "ui" | "heading";
+  /** Optional manual override; normally detected from the URL (PATH_CONTENT_TYPE). */
+  contentType?: ContentType;
 };
 
 type FontOption = { label: string; value: TeluguFont };
 
-// ── DEFAULTS + SAVED CHOICE ──
-// DEFAULT_FONT / DEFAULT_SIZE are what "డిఫాల్ట్" restores. They must be the
-// same values the parent uses as its initial fontFamily / fontSize state,
-// otherwise the page opens on one "default" and the button restores another.
+type AgentDecision = { fontFamily: TeluguFont; fontSizeMultiplier: number; reason: string };
+
+/* ================================================================== */
+/* DEFAULTS                                                           */
+/* ================================================================== */
+
+// What "డిఫాల్ట్" restores. Use the SAME values as the parent's initial
+// fontFamily / fontSize state, and DEFAULT_FONT in the Python API.
 const DEFAULT_FONT: TeluguFont = "Dhurjati";
 const DEFAULT_SIZE = 1.0;
 
-// The person's own choice (font picked, size changed, or "డిఫాల్ట్" pressed) is
-// remembered here so it survives reloads and route changes. A saved choice
-// ALWAYS wins over the font agent — that is what stops the agent from
-// re-picking a font on every page load and forcing a "డిఫాల్ట్" click.
-const STORAGE_KEY = "ratnalabala:font-prefs";
-
-// true  → first-time visitors (nothing saved) get the agent's pick.
-// false → skip the agent completely: pages open on the saved choice, or on
-//         DEFAULT_FONT / DEFAULT_SIZE when nothing is saved.
+// true  → the agent picks a font + size for the page type and the device.
+// false → everyone sees DEFAULT_FONT / DEFAULT_SIZE until they choose.
 const USE_FONT_AGENT = true;
 
-type SavedPrefs = { fontFamily: TeluguFont; fontSize: number };
+const STEP = 0.1;
 
-function readSavedPrefs(): SavedPrefs | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      typeof parsed?.fontFamily === "string" &&
-      parsed.fontFamily &&
-      typeof parsed?.fontSize === "number" &&
-      Number.isFinite(parsed.fontSize)
-    ) {
-      return { fontFamily: parsed.fontFamily as TeluguFont, fontSize: parsed.fontSize };
-    }
-  } catch {
-    // corrupted value or storage blocked — behave as "nothing saved"
-  }
-  return null;
-}
+// Used after every font name, so text still renders in Telugu if a font fails
+const FALLBACK_STACK = '"Noto Sans Telugu", "Nirmala UI", "Gautami", "Vani", sans-serif';
+const fontStack = (font: string) => `"${font}", ${FALLBACK_STACK}`;
 
-function savePrefs(prefs: SavedPrefs) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-  } catch {
-    // storage full / blocked (private mode) — the choice just won't persist
-  }
-}
+// Shown until (or if never) the font list arrives from the API — so the
+// picker is never empty, even in `next dev` where Python isn't running.
+const FALLBACK_FONTS: FontOption[] = [
+  { label: "ధూర్జటి", value: "Dhurjati" as TeluguFont },
+  { label: "మండలి (Regular)", value: "Mandali-Regular" as TeluguFont },
+  { label: "ఎన్‌టిఆర్", value: "NTR" as TeluguFont },
+  { label: "అన్నమయ్య", value: "Annamayya" as TeluguFont },
+  { label: "గురజాడ", value: "Gurajada" as TeluguFont },
+  { label: "శ్రీ కృష్ణదేవరాయ", value: "SreeKrushnadevaraya" as TeluguFont },
+  { label: "సురన్న (Bold)", value: "Suranna-Bold" as TeluguFont },
+  { label: "చతుర (ExtraBold)", value: "Chathura-ExtraBold" as TeluguFont },
+];
 
-// ── AUTO-DETECTION TABLE ──
-// Built directly from NAV_GROUPS (Navbar.tsx) — one place to maintain
-// instead of setting contentType by hand on every page.
-//
-// "sloka" bucket = traditional/calligraphic fonts (verse, poem,
-// devotional long-form reading content) — used for the సాహిత్యం
-// (Literature) group and గీతామాల (Gita)
-// "ui" bucket = default, legibility-first fonts — used for వ్యాకరణం
-// (Grammar/reference tools) and కళలు (Arts/gallery pages), since
-// those are functional/browsing pages rather than long-form reading
-const PATH_CONTENT_TYPE: { prefix: string; type: "sloka" | "ui" | "heading" }[] = [
-  // సాహిత్యం (Literature) — verse/poem content
+/**
+ * Nothing is stored in the browser. Once the person picks a font or size
+ * (or presses "డిఫాల్ట్"), the agent stops changing it for the rest of this
+ * visit — even across page changes. A reload starts fresh.
+ * (Module-level, so it also survives this component re-mounting.)
+ */
+let manualChoiceThisVisit = false;
+
+/* ================================================================== */
+/* CONTENT TYPE FROM THE URL                                          */
+/* ================================================================== */
+
+// "sloka" = traditional fonts for verse/poems/Gita; everything else "ui".
+const PATH_CONTENT_TYPE: { prefix: string; type: ContentType }[] = [
   { prefix: "/poems", type: "sloka" },
   { prefix: "/mirapoems", type: "sloka" },
   { prefix: "/shatakamu", type: "sloka" },
   { prefix: "/smruthimala", type: "sloka" },
-  { prefix: "/kathamala", type: "sloka" }, // stories — narrative prose, not verse, but still long-form; revisit if this reads better as "ui"
+  { prefix: "/kathamala", type: "sloka" },
   { prefix: "/parabhava", type: "sloka" },
-
-  // గీతామాల (Gita)
   { prefix: "/geeta", type: "sloka" },
-
-  // వ్యాకరణం (Grammar/reference tools) — falls through to "ui" default,
-  // no entry needed: /aksharamala, /guninta, /padalamala, /sametalu,
-  // /sandhi, /samasa
-
-  // కళలు (Arts/gallery) — falls through to "ui" default, no entry
-  // needed: /chitramala, /swaramala, /lipimala, /khatiMala,
-  // /rahasyabhasha, /shailimala
 ];
 
-function detectContentTypeFromPath(pathname: string): "sloka" | "ui" | "heading" {
-  const match = PATH_CONTENT_TYPE.find((rule) => pathname.startsWith(rule.prefix));
-  return match?.type ?? "ui";
+function detectContentTypeFromPath(pathname: string): ContentType {
+  return PATH_CONTENT_TYPE.find((rule) => pathname.startsWith(rule.prefix))?.type ?? "ui";
 }
+
+/* ================================================================== */
+/* DEVICE + LOCAL AGENT (same rules as the Python API)                */
+/* ================================================================== */
+
+// Keep in sync with device_for_width() in api/main.py
+function deviceForWidth(width: number): Device {
+  if (width < 600) return "phone";
+  if (width < 1024) return "tablet";
+  return "desktop";
+}
+
+const DEVICE_TE: Record<Device, string> = { phone: "ఫోన్", tablet: "ట్యాబ్లెట్", desktop: "కంప్యూటర్" };
+
+// Keep in sync with PREFERRED_FONTS / SIZE_BY_DEVICE in api/main.py.
+// Used when the API is unreachable (e.g. `next dev`) or answers badly.
+const LOCAL_RULES: Record<ContentType, { font: TeluguFont; size: Record<Device, number>; te: string }> = {
+  sloka: {
+    font: "Annamayya" as TeluguFont,
+    size: { phone: 1.0, tablet: 1.05, desktop: 1.1 },
+    te: "పద్య/శ్లోక కంటెంట్ — సంప్రదాయ, కళాత్మక ఫాంట్",
+  },
+  ui: {
+    font: "Mandali-Regular" as TeluguFont,
+    size: { phone: 1.0, tablet: 1.0, desktop: 1.0 },
+    te: "సాధారణ పేజీ — స్పష్టంగా చదవగలిగే ఫాంట్",
+  },
+  heading: {
+    font: "Chathura-ExtraBold" as TeluguFont,
+    size: { phone: 1.05, tablet: 1.1, desktop: 1.2 },
+    te: "శీర్షికలు — బోల్డ్, ప్రభావవంతమైన ఫాంట్",
+  },
+};
+
+function localDecideFont(contentType: ContentType, device: Device): AgentDecision {
+  const rule = LOCAL_RULES[contentType];
+  const size = rule.size[device];
+  return {
+    fontFamily: rule.font,
+    fontSizeMultiplier: size,
+    reason: `${rule.te}, ${DEVICE_TE[device]} స్క్రీన్‌కు తగిన సైజ్ (${Math.round(size * 100)}%).`,
+  };
+}
+
+function isValidDecision(d: unknown): d is AgentDecision {
+  const x = d as Partial<AgentDecision> | null;
+  return (
+    !!x &&
+    typeof x.fontFamily === "string" &&
+    x.fontFamily.trim() !== "" &&
+    typeof x.fontSizeMultiplier === "number" &&
+    Number.isFinite(x.fontSizeMultiplier) &&
+    x.fontSizeMultiplier >= 0.5 &&
+    x.fontSizeMultiplier <= 2 &&
+    typeof x.reason === "string"
+  );
+}
+
+function isFontList(d: unknown): d is FontOption[] {
+  return (
+    Array.isArray(d) &&
+    d.length > 0 &&
+    d.every((f) => f && typeof f.label === "string" && typeof f.value === "string" && f.value)
+  );
+}
+
+/**
+ * Can the browser actually draw this font? An empty result from
+ * document.fonts.load means no @font-face exists for that name, so
+ * applying it would silently show some other font.
+ */
+async function fontIsUsable(font: string): Promise<boolean> {
+  if (typeof document === "undefined" || !document.fonts?.load) return true; // can't check → trust
+  try {
+    const faces = await Promise.race([
+      document.fonts.load(`1em "${font}"`, "అ"),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+    ]);
+    if (faces === null) return true; // slow network — don't block on it
+    return faces.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+// useLayoutEffect on the client (runs before paint → no flash), useEffect on the server
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/* ================================================================== */
+/* COMPONENT                                                          */
+/* ================================================================== */
 
 export default function FontControlsTelugu({
   fontFamily,
@@ -128,202 +201,196 @@ export default function FontControlsTelugu({
   contentType: contentTypeOverride,
 }: Props) {
   const pathname = usePathname();
-  // Explicit prop wins if a page deliberately passes one; otherwise
-  // auto-detect from the current route.
   const contentType = contentTypeOverride ?? detectContentTypeFromPath(pathname ?? "");
-  const [snackbarOpen, setSnackbarOpen] = React.useState(false);
-  const [agentApplied, setAgentApplied] = useState(false);
+
+  /* ---------- device bounds (guarded) ---------- */
+  const bounds = useDeviceFontBounds();
+  // Guard against inverted or broken bounds (would loop the clamp forever)
+  const lo = Number.isFinite(bounds.min) ? Math.min(bounds.min, bounds.max) : 0.8;
+  const hi = Number.isFinite(bounds.max) ? Math.max(bounds.min, bounds.max) : 1.6;
+
+  const clampSize = useCallback(
+    (size: number) => {
+      const value = Number.isFinite(size) ? size : DEFAULT_SIZE;
+      return round2(Math.min(hi, Math.max(lo, value)));
+    },
+    [lo, hi]
+  );
+  // Latest clamp for async callbacks (agent answers arrive later)
+  const clampRef = useRef(clampSize);
+  clampRef.current = clampSize;
+
+  // "డిఫాల్ట్" on THIS device: 100%, or the nearest size the device allows
+  const defaultSize = clampSize(DEFAULT_SIZE);
+
+  /* ---------- state ---------- */
+  const [fonts, setFonts] = useState<FontOption[]>(FALLBACK_FONTS);
+  const [fontsFromServer, setFontsFromServer] = useState(false);
+  const [device, setDevice] = useState<Device | null>(null);
   const [agentReason, setAgentReason] = useState<string | null>(null);
-  const { min, max } = useDeviceFontBounds();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [loadTime, setLoadTime] = useState<number | null>(null);
 
-  // Always holds the latest device bounds, so the agent's answer (which
-  // arrives asynchronously) is clamped with current values, not stale ones.
-  const boundsRef = useRef({ min, max });
-  boundsRef.current = { min, max };
-
-  // True once the person has chosen something themselves (font, size or
-  // "డిఫాల్ట్"). A late agent answer must never overwrite that.
-  const manualRef = useRef(false);
-
-  // Font list comes from the Python backend instead of being hardcoded.
-  const [teluguFonts, setTeluguFonts] = useState<FontOption[]>([]);
-
-  useEffect(() => {
-    fetch("/api/main?endpoint=fonts")
-      .then((res) => res.json())
-      .then((data: FontOption[]) => setTeluguFonts(data))
-      .catch(() => {
-        // API unreachable — leave the list empty rather than crashing.
-      });
+  /* ---------- 1. Device class, known before the first paint ---------- */
+  useIsomorphicLayoutEffect(() => {
+    setDevice(deviceForWidth(window.innerWidth));
   }, []);
 
-  // A→Z, sorted by the Telugu label the user actually reads — not
-  // insertion order from the API, and not a plain JS string sort
-  // either, since that sorts by raw code-point order rather than real
-  // Telugu alphabetical order. localeCompare with the "te" locale
-  // gives correct Telugu collation (vowels/consonants in the right
-  // traditional sequence, matras ordered under their base letter, etc).
-  const sortedFonts = useMemo(
-    () => [...teluguFonts].sort((a, b) => a.label.localeCompare(b.label, "te")),
-    [teluguFonts]
-  );
-
-  // ── WHAT THE PAGE OPENS WITH ──
-  // 1. A saved choice (font / size / "డిఫాల్ట్" pressed before) → apply it.
-  //    The agent is NOT asked at all.
-  // 2. Nothing saved + agent enabled → perceive the screen width, ask the
-  //    Python agent for a font + size and apply its answer automatically.
-  // 3. Nothing saved + agent disabled → open on the app default.
+  /* ---------- 2. Follow the device (rotation, resizing) ---------- */
   useEffect(() => {
-    let cancelled = false;
+    const update = () => setDevice(deviceForWidth(window.innerWidth));
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+    };
+  }, []);
 
-    const saved = readSavedPrefs();
-    if (saved) {
-      manualRef.current = true;
-      setAgentApplied(false);
-      setAgentReason(null);
-      setFontFamily(saved.fontFamily);
-      setFontSize(saved.fontSize);
-      return;
-    }
+  /* ---------- 3. Font list from the API (fallback list stays if it fails) ---------- */
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/main?endpoint=fonts", { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isFontList(data)) {
+          setFonts(data);
+          setFontsFromServer(true);
+        }
+      })
+      .catch(() => {
+        // unreachable — keep FALLBACK_FONTS
+      });
+    return () => controller.abort();
+  }, []);
 
-    manualRef.current = false;
+  /* ---------- 4. Agent: page type + device → font + size ---------- */
+  // Runs on first load, on page change and when the device class changes
+  // (phone ↔ tablet ↔ desktop) — until the person makes their own choice.
+  useEffect(() => {
+    if (!device || manualChoiceThisVisit) return;
 
     if (!USE_FONT_AGENT) {
       setFontFamily(DEFAULT_FONT);
-      setFontSize(DEFAULT_SIZE);
+      setFontSize(clampRef.current(DEFAULT_SIZE));
       return;
     }
 
-    const width = typeof window !== "undefined" ? window.innerWidth : 1024;
+    const controller = new AbortController();
+    setAgentReason(null); // don't show the previous page's reason meanwhile
 
-    fetch(`/api/main?endpoint=font_agent&content_type=${contentType}&width=${width}`)
-      .then((res) => res.json())
-      .then((decision: { fontFamily: string; fontSizeMultiplier: number; reason: string }) => {
-        // Ignore the answer if the person already chose something while it
-        // was loading, or if they navigated away before it arrived.
-        if (cancelled || manualRef.current) return;
+    (async () => {
+      // Local rules first: used if the API is down or answers badly
+      let decision = localDecideFont(contentType, device);
+      try {
+        const res = await fetch(
+          `/api/main?endpoint=font_agent&content_type=${contentType}&width=${window.innerWidth}`,
+          { signal: controller.signal }
+        );
+        if (res.ok) {
+          const data: unknown = await res.json();
+          if (isValidDecision(data)) decision = data;
+        }
+      } catch {
+        if (controller.signal.aborted) return;
+      }
 
-        const { min: lo, max: hi } = boundsRef.current;
-        const size = Math.min(hi, Math.max(lo, +(1.0 * decision.fontSizeMultiplier).toFixed(2)));
+      const usable = await fontIsUsable(decision.fontFamily);
+      if (controller.signal.aborted || manualChoiceThisVisit) return;
 
-        setFontFamily(decision.fontFamily as TeluguFont);
-        setFontSize(size);
-        setAgentApplied(true);
-        setAgentReason(decision.reason);
-      })
-      .catch(() => {
-        // Agent unreachable — keep whatever default the parent passed in.
-      });
+      const font = usable ? decision.fontFamily : DEFAULT_FONT;
+      setFontFamily(font);
+      setFontSize(clampRef.current(decision.fontSizeMultiplier));
+      setAgentReason(usable ? decision.reason : `${decision.reason} (ఆ ఫాంట్ లోడ్ కాలేదు — ధూర్జటి వాడుతున్నాను)`);
+    })();
 
-    return () => {
-      cancelled = true;
-    };
-    // Re-runs whenever the route changes, since auto-detected
-    // contentType depends on pathname — navigating from /geeta to
-    // /poems (client-side, no full reload) should re-ask the agent
-    // (unless the person has a saved choice, which always wins).
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  }, [contentType, device]);
 
-  useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--telugu-font-size",
-      `${fontSize}rem`
-    );
-  }, [fontSize]);
-
-  useEffect(() => {
-    document.documentElement.style.setProperty("--telugu-font-family", fontFamily);
+  /* ---------- 5. CSS variables (before paint, with Telugu fallbacks) ---------- */
+  useIsomorphicLayoutEffect(() => {
+    document.documentElement.style.setProperty("--telugu-font-family", fontStack(fontFamily));
   }, [fontFamily]);
 
-  // Keep the size inside the device bounds no matter who set it
-  // (saved value, agent, slider). Depends on fontSize too, so a value that
-  // arrives after the bounds were computed is still corrected.
+  useIsomorphicLayoutEffect(() => {
+    const safe = Number.isFinite(fontSize) ? fontSize : DEFAULT_SIZE;
+    document.documentElement.style.setProperty("--telugu-font-size", `${safe}rem`);
+  }, [fontSize]);
+
+  /* ---------- 6. Keep the size inside the device bounds ---------- */
   useEffect(() => {
-    if (fontSize < min) setFontSize(min);
-    else if (fontSize > max) setFontSize(max);
+    const fixed = clampSize(fontSize);
+    if (fixed !== fontSize) setFontSize(fixed);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [min, max, fontSize]);
+  }, [fontSize, clampSize]);
 
-  /* ⚡ Load time — scoped to this component only */
-  const [loadTime, setLoadTime] = useState<number | null>(null);
-
+  /* ---------- 7. Page load time (measured AFTER load finishes) ---------- */
   useEffect(() => {
+    let timer: number | undefined;
+
     const measure = () => {
-      const nav = performance.getEntriesByType(
-        "navigation"
-      )[0] as PerformanceNavigationTiming | undefined;
-
-      const time = nav
-        ? Math.round(nav.loadEventEnd - nav.startTime)
-        : Math.round(performance.now());
-
-      setLoadTime(time);
+      // loadEventEnd is only filled in once all load handlers have run,
+      // so read it on the next tick (reading it inside the handler gave 0.00s)
+      timer = window.setTimeout(() => {
+        const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+        const end = nav && nav.loadEventEnd > 0 ? nav.loadEventEnd : nav?.domContentLoadedEventEnd || performance.now();
+        setLoadTime(Math.max(1, Math.round(end - (nav?.startTime ?? 0))));
+      }, 0);
     };
 
-    if (document.readyState === "complete") {
-      measure();
-    } else {
-      window.addEventListener("load", measure);
-      return () => window.removeEventListener("load", measure);
-    }
+    if (document.readyState === "complete") measure();
+    else window.addEventListener("load", measure, { once: true });
+
+    return () => {
+      window.removeEventListener("load", measure);
+      if (timer) window.clearTimeout(timer);
+    };
   }, []);
 
-  const getSpeedColor = (ms: number) => {
-    if (ms < 800) return "#22c55e";
-    if (ms < 2000) return "#eab308";
-    return "#ef4444";
-  };
-
-  const STEP = 0.1;
-
-  // Every manual change: stop the agent from overriding it, and remember it.
+  /* ---------- actions ---------- */
   const markManual = () => {
-    manualRef.current = true;
-    setAgentApplied(false);
+    manualChoiceThisVisit = true;
     setAgentReason(null);
   };
 
-  const increase = () => {
+  const changeSize = (next: number) => {
     markManual();
-    const next = Math.min(max, +(fontSize + STEP).toFixed(2));
-    setFontSize(next);
-    savePrefs({ fontFamily, fontSize: next });
-  };
-
-  const decrease = () => {
-    markManual();
-    const next = Math.max(min, +(fontSize - STEP).toFixed(2));
-    setFontSize(next);
-    savePrefs({ fontFamily, fontSize: next });
+    setFontSize(clampSize(next));
   };
 
   const restoreDefaults = () => {
     markManual();
     setFontFamily(DEFAULT_FONT);
-    setFontSize(DEFAULT_SIZE);
-    // Remembered too — so the next page load opens on the default and the
-    // agent does not pick something else again.
-    savePrefs({ fontFamily: DEFAULT_FONT, fontSize: DEFAULT_SIZE });
+    setFontSize(defaultSize);
     setSnackbarOpen(true);
   };
 
-  const isAtMin = fontSize <= min;
-  const isAtMax = fontSize >= max;
-  const isDefault = fontFamily === DEFAULT_FONT && fontSize === DEFAULT_SIZE;
+  /* ---------- derived ---------- */
+  const isAtMin = fontSize <= lo;
+  const isAtMax = fontSize >= hi;
+  const isDefault = fontFamily === DEFAULT_FONT && Math.abs(fontSize - defaultSize) < 0.001;
+  const sizePercent = Math.round((Number.isFinite(fontSize) ? fontSize : DEFAULT_SIZE) * 100);
 
-  const sizePercent = Math.round(fontSize * 100);
+  // Telugu A→Z; the current font is always an option (so the box is never blank)
+  const options = useMemo(() => {
+    const list = [...fonts];
+    if (!list.some((f) => f.value === fontFamily)) list.push({ label: fontFamily, value: fontFamily });
+    return list.sort((a, b) => a.label.localeCompare(b.label, "te"));
+  }, [fonts, fontFamily]);
 
-  const currentFontLabel =
-    teluguFonts.find((f) => f.value === fontFamily)?.label ?? fontFamily;
+  const selectedOption = options.find((f) => f.value === fontFamily)!;
+  const currentFontLabel = selectedOption?.label ?? fontFamily;
 
-  // Autocomplete works with the option object, not the raw string
-  // value — this finds the FontOption matching the current fontFamily
-  // so the input shows the right label instead of the raw value.
-  // Falls back to `undefined` (not `null`) because `disableClearable`
-  // below narrows MUI's expected value type to exclude null.
-  const selectedOption = sortedFonts.find((f) => f.value === fontFamily) ?? undefined;
+  const getSpeedColor = (ms: number) => (ms < 800 ? "#22c55e" : ms < 2000 ? "#eab308" : "#ef4444");
+
+  const sizeButtonSx = {
+    border: "1px solid",
+    borderColor: "var(--border, #e4dacb)",
+    width: 40,
+    height: 40,
+    "&:hover": { borderColor: "var(--primary, #8b3a1f)" },
+  };
 
   return (
     <>
@@ -336,8 +403,9 @@ export default function FontControlsTelugu({
           backgroundColor: "var(--surface, #f7f2ea)",
         }}
       >
-        {agentApplied && agentReason && (
+        {agentReason && (
           <Box
+            role="status"
             sx={{
               display: "flex",
               alignItems: "flex-start",
@@ -362,17 +430,13 @@ export default function FontControlsTelugu({
           justifyContent="space-between"
           gap={2.5}
         >
-          {/* 🔤 Font Selector — Autocomplete instead of a plain Select
-              so it's actually searchable (type to filter by label),
-              with options sorted A→Z above via sortedFonts. */}
+          {/* 🔤 Font — searchable, Telugu A→Z */}
           <Box display="flex" alignItems="center" gap={1} flex={1.2} minWidth={0}>
-            <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap", fontWeight: 600 }}>
-              తెలుగు ఫాంట్
-            </Typography>
+            <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap", fontWeight: 600 }}>తెలుగు ఫాంట్</Typography>
 
             <Autocomplete
               size="small"
-              options={sortedFonts}
+              options={options}
               value={selectedOption}
               getOptionLabel={(option) => option.label}
               isOptionEqualToValue={(option, value) => option.value === value.value}
@@ -380,16 +444,11 @@ export default function FontControlsTelugu({
                 if (!newValue) return;
                 markManual();
                 setFontFamily(newValue.value);
-                savePrefs({ fontFamily: newValue.value, fontSize });
               }}
               disableClearable
-              sx={{
-                minWidth: 180,
-                flex: 1,
-                backgroundColor: "var(--surface-elevated, #fff)",
-              }}
+              sx={{ minWidth: 180, flex: 1, backgroundColor: "var(--surface-elevated, #fff)" }}
               renderOption={(props, option) => (
-                <MenuItem {...props} key={option.value} sx={{ fontFamily: `${option.value}, system-ui` }}>
+                <MenuItem {...props} key={option.value} sx={{ fontFamily: fontStack(option.value), minHeight: 44 }}>
                   {option.label}
                 </MenuItem>
               )}
@@ -397,11 +456,20 @@ export default function FontControlsTelugu({
                 <TextField
                   {...params}
                   placeholder="ఫాంట్ వెతకండి…"
+                  inputProps={{ ...params.inputProps, "aria-label": "తెలుగు ఫాంట్ ఎంచుకోండి" }}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <Box component="span" aria-hidden sx={{ display: "flex", ml: 0.5, color: "text.secondary" }}>
+                          <SearchIcon size={16} label="" />
+                        </Box>
+                        {params.InputProps.startAdornment}
+                      </>
+                    ),
+                  }}
                   sx={{
-                    "& .MuiInputBase-root": {
-                      height: 36,
-                      fontFamily: `${fontFamily}, system-ui`,
-                    },
+                    "& .MuiInputBase-root": { minHeight: 40, fontFamily: fontStack(fontFamily) },
                     "& .MuiOutlinedInput-notchedOutline": { borderColor: "var(--border, #e4dacb)" },
                     "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "var(--primary, #8b3a1f)" },
                     "& .Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "var(--primary, #8b3a1f)" },
@@ -411,26 +479,13 @@ export default function FontControlsTelugu({
             />
           </Box>
 
-          {/* 🔠 Font Size */}
-          <Box
-            display="flex"
-            flexDirection="column"
-            gap={0.5}
-            flex={1}
-            minWidth={{ xs: "100%", md: 220 }}
-          >
+          {/* 🔠 Size */}
+          <Box display="flex" flexDirection="column" gap={0.5} flex={1} minWidth={{ xs: "100%", md: 220 }}>
             <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Typography sx={{ fontSize: "0.9rem", fontWeight: 600 }}>
-                అక్షర సైజ్
-              </Typography>
+              <Typography sx={{ fontSize: "0.9rem", fontWeight: 600 }}>అక్షర సైజ్</Typography>
               <Typography
-                sx={{
-                  fontSize: "0.85rem",
-                  fontWeight: 700,
-                  color: "var(--primary, #8b3a1f)",
-                  minWidth: 42,
-                  textAlign: "right",
-                }}
+                aria-live="polite"
+                sx={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--primary, #8b3a1f)", minWidth: 42, textAlign: "right" }}
               >
                 {sizePercent}%
               </Typography>
@@ -441,17 +496,10 @@ export default function FontControlsTelugu({
                 <span>
                   <IconButton
                     size="small"
-                    onClick={decrease}
+                    onClick={() => changeSize(fontSize - STEP)}
                     disabled={isAtMin}
-                    aria-label="Decrease font size"
-                    sx={{
-                      border: "1px solid",
-                      borderColor: "var(--border, #e4dacb)",
-                      width: 32,
-                      height: 32,
-                      fontSize: "0.8rem",
-                      "&:hover": { borderColor: "var(--primary, #8b3a1f)" },
-                    }}
+                    aria-label="అక్షరాలు చిన్నవి చేయండి"
+                    sx={{ ...sizeButtonSx, fontSize: "0.8rem" }}
                   >
                     అ
                   </IconButton>
@@ -460,17 +508,15 @@ export default function FontControlsTelugu({
 
               <Slider
                 size="small"
-                value={fontSize}
-                min={min}
-                max={max}
+                value={Number.isFinite(fontSize) ? fontSize : defaultSize}
+                min={lo}
+                max={hi}
                 step={STEP}
                 onChange={(_, v) => {
                   markManual();
-                  setFontSize(v as number);
+                  setFontSize(clampSize(v as number));
                 }}
-                // Saved once when the person lets go, not on every drag tick.
-                onChangeCommitted={(_, v) => savePrefs({ fontFamily, fontSize: v as number })}
-                aria-label="Font size"
+                aria-label="అక్షర సైజ్"
                 sx={{ color: "var(--primary, #8b3a1f)", mx: 0.5 }}
               />
 
@@ -478,17 +524,10 @@ export default function FontControlsTelugu({
                 <span>
                   <IconButton
                     size="small"
-                    onClick={increase}
+                    onClick={() => changeSize(fontSize + STEP)}
                     disabled={isAtMax}
-                    aria-label="Increase font size"
-                    sx={{
-                      border: "1px solid",
-                      borderColor: "var(--border, #e4dacb)",
-                      width: 32,
-                      height: 32,
-                      fontSize: "1.15rem",
-                      "&:hover": { borderColor: "var(--primary, #8b3a1f)" },
-                    }}
+                    aria-label="అక్షరాలు పెద్దవి చేయండి"
+                    sx={{ ...sizeButtonSx, fontSize: "1.15rem" }}
                   >
                     అ
                   </IconButton>
@@ -497,7 +536,7 @@ export default function FontControlsTelugu({
             </Box>
           </Box>
 
-          {/* ♻️ Reset */}
+          {/* ♻️ Default */}
           <Button
             variant="outlined"
             size="small"
@@ -505,14 +544,12 @@ export default function FontControlsTelugu({
             disabled={isDefault}
             startIcon={<RestartAltIcon fontSize="small" />}
             sx={{
+              minHeight: 40,
               textTransform: "none",
               whiteSpace: "nowrap",
               borderColor: "var(--primary, #8b3a1f)",
               color: "var(--primary, #8b3a1f)",
-              "&:hover": {
-                borderColor: "var(--primary, #8b3a1f)",
-                backgroundColor: "rgba(139, 58, 31, 0.08)",
-              },
+              "&:hover": { borderColor: "var(--primary, #8b3a1f)", backgroundColor: "rgba(139, 58, 31, 0.08)" },
             }}
           >
             డిఫాల్ట్
@@ -520,7 +557,14 @@ export default function FontControlsTelugu({
         </Box>
 
         <Typography variant="caption" sx={{ opacity: 0.7, display: "block", mt: 1.5 }}>
-          ప్రస్తుతం <strong>{teluguFonts.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
+          {fontsFromServer ? (
+            <>
+              ప్రస్తుతం <strong>{fonts.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
+            </>
+          ) : (
+            <>ముఖ్యమైన {fonts.length} ఫాంట్లు చూపిస్తున్నాం (పూర్తి జాబితా లోడ్ కాలేదు).</>
+          )}
+          {device && <> · {DEVICE_TE[device]}</>}
         </Typography>
       </Paper>
 
@@ -550,15 +594,19 @@ export default function FontControlsTelugu({
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={10000}
+        autoHideDuration={4000}
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert
-          onClose={() => setSnackbarOpen(false)}
           severity="success"
           variant="filled"
-          icon={<RestartAltIcon fontSize="small" />}
+          icon={<CheckIcon size={18} label="" />}
+          action={
+            <IconButton size="small" aria-label="మూసివేయండి" onClick={() => setSnackbarOpen(false)} sx={{ color: "inherit" }}>
+              <CloseIcon size={16} label="" />
+            </IconButton>
+          }
           sx={{
             backgroundColor: "var(--primary, #8b3a1f)",
             color: "#fff",

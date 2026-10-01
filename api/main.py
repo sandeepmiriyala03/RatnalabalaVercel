@@ -55,7 +55,6 @@ POEMS_ROOT = Path(__file__).resolve().parent.parent / "content"
 def log(message: str):
     print(f"[Ratnalabala] {message}")
 
-
 # ═══════════════════════════════════════════════════════════════
 # FONTS ENDPOINT
 # ═══════════════════════════════════════════════════════════════
@@ -115,39 +114,94 @@ FONT_CATALOG = [
     {"label": "నాట్స్ (ఇటాలిక్)", "value": "NATS-Italic"},
 ]
 
+FONT_VALUES = {f["value"] for f in FONT_CATALOG}
+
+# Must match DEFAULT_FONT in FontControlsTelugu.tsx
+DEFAULT_FONT = "Dhurjati"
+
 
 def handle_fonts():
-    return 200, FONT_CATALOG
+    # A copy, so no request can ever change the shared list
+    return 200, [dict(f) for f in FONT_CATALOG]
 
 
-UI_FONTS = ["Mandali-Regular", "NTR"]
-SLOKA_FONTS = ["Annamayya", "SreeKrushnadevaraya", "Gurajada"]
-HEADING_FONTS = ["Chathura-ExtraBold", "Suranna-Bold"]
+# ── FONT AGENT ──────────────────────────────────────────────────
+# Keep these rules in sync with localDecideFont() in
+# FontControlsTelugu.tsx (the browser uses it when this API is down).
+
+CONTENT_TYPES = {"sloka", "ui", "heading"}
+
+# First font in each list that exists in the catalog is used
+PREFERRED_FONTS = {
+    "sloka": ["Annamayya", "SreeKrushnadevaraya", "Gurajada"],
+    "ui": ["Mandali-Regular", "NTR"],
+    "heading": ["Chathura-ExtraBold", "Suranna-Bold"],
+}
+
+# Size multipliers per device. Telugu letters (conjuncts, vowel signs)
+# get hard to read when small, so phones never go below 1.0 for
+# reading content.
+SIZE_BY_DEVICE = {
+    "sloka":   {"phone": 1.0,  "tablet": 1.05, "desktop": 1.1},
+    "ui":      {"phone": 1.0,  "tablet": 1.0,  "desktop": 1.0},
+    "heading": {"phone": 1.05, "tablet": 1.1,  "desktop": 1.2},
+}
+
+DEVICE_TE = {"phone": "ఫోన్", "tablet": "ట్యాబ్లెట్", "desktop": "కంప్యూటర్"}
+
+CONTENT_TE = {
+    "sloka": "పద్య/శ్లోక కంటెంట్ — సంప్రదాయ, కళాత్మక ఫాంట్",
+    "ui": "సాధారణ పేజీ — స్పష్టంగా చదవగలిగే ఫాంట్",
+    "heading": "శీర్షికలు — బోల్డ్, ప్రభావవంతమైన ఫాంట్",
+}
+
+
+def device_for_width(width: int) -> str:
+    if width < 600:
+        return "phone"
+    if width < 1024:
+        return "tablet"
+    return "desktop"
+
+
+def pick_font(content_type: str) -> str:
+    for font in PREFERRED_FONTS[content_type]:
+        if font in FONT_VALUES:
+            return font
+    return DEFAULT_FONT
 
 
 def decide_font(content_type: str, width: int) -> dict:
-    is_narrow = width < 600
-    if content_type == "sloka":
-        font = SLOKA_FONTS[0]
-        size_multiplier = 0.95 if is_narrow else 1.1
-        size_note = "చిన్న స్క్రీన్ కోసం తగ్గించిన సైజ్‌లో" if is_narrow else "చదవడానికి వీలుగా కొంచెం పెద్ద సైజ్‌లో"
-        reason = f"శ్లోకం/పద్య కంటెంట్ — సంప్రదాయ, కళాత్మక ఫాంట్‌ను {size_note} ఎంచుకున్నాను."
-    elif content_type == "heading":
-        font = HEADING_FONTS[0]
-        size_multiplier = 1.0 if is_narrow else 1.2
-        reason = "శీర్షిక/టైటిల్ టెక్స్ట్ — బోల్డ్, ప్రభావవంతమైన ఫాంట్‌ను ఎంచుకున్నాను."
-    else:
-        font = UI_FONTS[0]
-        size_multiplier = 0.9 if is_narrow else 1.0
-        size_note = "చిన్న ఫోన్ సైజ్‌లలో" if is_narrow else "సాధారణ డెస్క్‌టాప్ సైజ్‌లో"
-        reason = f"సాధారణ UI టెక్స్ట్ — {size_note} స్పష్టంగా కనిపించేలా రూపొందించిన ఫాంట్‌ను ఎంచుకున్నాను."
-    return {"fontFamily": font, "fontSizeMultiplier": size_multiplier, "reason": reason}
+    if content_type not in CONTENT_TYPES:
+        content_type = "ui"
+    width = max(240, min(width, 7680))  # ignore nonsense widths
+    device = device_for_width(width)
+
+    font = pick_font(content_type)
+    size = SIZE_BY_DEVICE[content_type][device]
+    reason = f"{CONTENT_TE[content_type]}, {DEVICE_TE[device]} స్క్రీన్‌కు తగిన సైజ్ ({round(size * 100)}%)."
+
+    return {
+        "fontFamily": font,
+        "fontSizeMultiplier": size,
+        "device": device,
+        "contentType": content_type,
+        "reason": reason,
+    }
+
+
+def _first(query: dict, key: str, default: str) -> str:
+    """parse_qs gives lists; accept plain strings too."""
+    value = query.get(key, default)
+    if isinstance(value, list):
+        value = value[0] if value else default
+    return str(value).strip() or default
 
 
 def handle_font_agent(query: dict):
-    content_type = query.get("content_type", ["ui"])[0]
+    content_type = _first(query, "content_type", "ui").lower()
     try:
-        width = int(query.get("width", ["1024"])[0])
+        width = int(float(_first(query, "width", "1024")))
     except ValueError:
         width = 1024
     return 200, decide_font(content_type, width)
