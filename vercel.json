@@ -1,8 +1,8 @@
 {
   "functions": {
-    "api/*.py": {
-      "includeFiles": "api/**",
-      "excludeFiles": "{.eve/**,.gradle/**,public/**,.next/**,node_modules/**,rust/**,rag-env/**,playwright-report/**,test-results/**,e2e/**}"
+    "api/main.py": {
+      "includeFiles": "pylib/**",
+      "excludeFiles": "{**/__pycache__/**,**/*.pyc,**/tests/**,rag-env/**,node_modules/**,.next/**,public/**,rust/**,e2e/**,playwright-report/**,test-results/**,.gradle/**,.eve/**}"
     }
   },
   "rewrites": [
