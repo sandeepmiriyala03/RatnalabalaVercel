@@ -1136,6 +1136,71 @@ a.accent-link {
   font-display: swap;
 }
 
+/* BVSatyamurty */
+@font-face {
+  font-family: "BVSatyamurty";
+  src: url("/Fonts/BVSatyamurty.otf") format("opentype"),
+       url("/Fonts/BVSatyamurty.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Mallanna */
+@font-face {
+  font-family: "Mallanna";
+  src: url("/Fonts/Mallanna.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Mallanna-Italic";
+  src: url("/Fonts/Mallanna-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* PVNR (PV Narasimha Rao) */
+@font-face {
+  font-family: "PVNR";
+  src: url("/Fonts/PVNR.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* SeelaVeerraju */
+@font-face {
+  font-family: "SeelaVeerraju";
+  src: url("/Fonts/SeelaVeerraju.otf") format("opentype"),
+       url("/Fonts/SeelaVeerraju.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* SPBalasubrahmanyam */
+@font-face {
+  font-family: "SPBalasubrahmanyam";
+  src: url("/Fonts/SPBalasubrahmanyam.otf") format("opentype"),
+       url("/Fonts/SPBalasubrahmanyam.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Syamala Ramana */
+@font-face {
+  font-family: "Syamala Ramana";
+  src: url("/Fonts/Syamala Ramana.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* =========================
    🆕 ANNAMAYYA
 ========================= */
@@ -1249,5 +1314,58 @@ a.accent-link {
   font-weight: 400;
   font-style: italic;
   font-display: swap;
+}
+
+/* =========================
+   B. V. SATYAMURTY
+========================= */
+
+.chitramala-font-bvsatyamurty {
+  font-family: "BVSatyamurty", system-ui;
+}
+
+/* =========================
+   MALLANNA
+========================= */
+
+.chitramala-font-mallanna {
+  font-family: "Mallanna", system-ui;
+}
+
+.chitramala-font-mallanna-italic {
+  font-family: "MallannaItalic", system-ui;
+}
+
+/* =========================
+   PVNR
+========================= */
+
+.chitramala-font-pvnr {
+  font-family: "PVNR", system-ui;
+}
+
+/* =========================
+   SEELA VEERRAJU
+========================= */
+
+.chitramala-font-seelaveerraju {
+  font-family: "SeelaVeerraju", system-ui;
+}
+
+/* =========================
+   S. P. BALASUBRAHMANYAM
+========================= */
+
+.chitramala-font-spbalasubrahmanyam {
+  font-family: "SPBalasubrahmanyam", system-ui;
+  font-feature-settings: "liga" 1, "calt" 1;
+}
+
+/* =========================
+   SYAMALA RAMANA
+========================= */
+
+.chitramala-font-syamalaramana {
+  font-family: "SyamalaRamana", system-ui;
 }
  

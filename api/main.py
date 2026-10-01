@@ -112,6 +112,13 @@ FONT_CATALOG = [
     {"label": "తిరొ సుందర తెలుగు", "value": "TiroSundaraTelugu-Regular"},
     {"label": "నాట్స్", "value": "NATS"},
     {"label": "నాట్స్ (ఇటాలిక్)", "value": "NATS-Italic"},
+     {"label": "బి వి సత్యమూర్తి", "value": "BVSatyamurty"},
+    {"label": "మల్లన్న", "value": "Mallanna"},
+    {"label": "మల్లన్న (ఇటాలిక్)", "value": "Mallanna-Italic"},
+    {"label": "పి వి నరసింహారావు", "value": "PVNR"},
+    {"label": "శీల వీర్రాజు", "value": "SeelaVeerraju"},
+    {"label": "ఎస్ పి బాలసుబ్రహ్మణ్యం", "value": "SPBalasubrahmanyam"},
+    {"label": "శ్యామల రమణ", "value": "Syamala Ramana"},
 ]
 
 FONT_VALUES = {f["value"] for f in FONT_CATALOG}
