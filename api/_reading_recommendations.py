@@ -1,4 +1,4 @@
-﻿import json
+import json
 import sys
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -25,13 +25,13 @@ class ReadingState(TypedDict, total=False):
 PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
-        "మీరు తెలుగు సాహిత్య పఠన సహాయకుడు. ఇవ్వబడిన candidates నుంచే ఒక అంశాన్ని ఎంచుకోండి; "
-        "కొత్త శీర్షిక లేదా పద్యం కల్పించవద్దు. JSON మాత్రమే ఇవ్వండి: "
-        '{{"title":"...","folder":"...","reason":"..."}}. reason ఒక చిన్న తెలుగు వాక్యం కావాలి.',
+        "???? ?????? ??????? ??? ????????. ???????? candidates ????? ?? ???????? ?????????; "
+        "????? ??????? ???? ????? ????????????. JSON ??????? ???????: "
+        '{{"title":"...","folder":"...","reason":"..."}}. reason ?? ????? ?????? ?????? ??????.',
     ),
     (
         "human",
-        "ఇష్టమైనవి: {favorites}\nఇటీవల చదివినవి: {recent}\nఅందుబాటులో ఉన్న candidates: {candidates}",
+        "?????????: {favorites}\n????? ????????: {recent}\n?????????? ???? candidates: {candidates}",
     ),
 ])
 
@@ -67,7 +67,7 @@ def _clean_items(value) -> list[dict[str, str]]:
 
 def _retrieve_candidates(state: ReadingState) -> ReadingState:
     preferences = state["favorites"] + state["recent"]
-    query = "తెలుగు సాహిత్య పఠన సూచన. " + "; ".join(
+    query = "?????? ??????? ??? ????. " + "; ".join(
         f"{item['module']}: {item['title']}" for item in preferences
     )
     documents = retrieve(query[:1200], k=8)
@@ -108,7 +108,7 @@ def _choose_candidate(state: ReadingState) -> ReadingState:
     )
     reason = parsed.get("reason")
     if not isinstance(reason, str) or not reason.strip():
-        reason = "మీరు చదివిన తెలుగు సాహిత్యానికి దగ్గరగా ఉన్న అంశం."
+        reason = "???? ?????? ?????? ???????????? ??????? ???? ????."
 
     return {
         "recommendation": {
@@ -133,29 +133,29 @@ class handler(BaseHTTPRequestHandler):
         try:
             content_length = int(self.headers.get("Content-Length", 0))
             if content_length > 12000:
-                self._send_json(413, {"error": "అభ్యర్థన చాలా పెద్దది."})
+                self._send_json(413, {"error": "???????? ???? ???????."})
                 return
 
             try:
                 data = json.loads(self.rfile.read(content_length))
             except json.JSONDecodeError:
-                self._send_json(400, {"error": "చెల్లని JSON అభ్యర్థన."})
+                self._send_json(400, {"error": "??????? JSON ????????."})
                 return
             if not isinstance(data, dict):
-                self._send_json(400, {"error": "చెల్లని అభ్యర్థన."})
+                self._send_json(400, {"error": "??????? ????????."})
                 return
 
             favorites = _clean_items(data.get("favorites"))
             recent = _clean_items(data.get("recent"))
             if not favorites and not recent:
-                self._send_json(400, {"error": "ముందుగా కొన్ని అంశాలు చదవండి లేదా ఇష్టమైనవిగా ఎంచుకోండి."})
+                self._send_json(400, {"error": "??????? ?????? ?????? ?????? ???? ??????????? ?????????."})
                 return
 
             result = reading_graph.invoke({"favorites": favorites, "recent": recent})
             self._send_json(200, {"recommendation": result["recommendation"]})
         except Exception as error:
             print(f"[Reading recommendations] Failed: {type(error).__name__}")
-            self._send_json(500, {"error": "సూచన రూపొందించలేకపోయాం. API అమరికను పరిశీలించండి."})
+            self._send_json(500, {"error": "???? ?????????????????. API ??????? ????????????."})
 
     def _send_json(self, status: int, payload: dict):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
