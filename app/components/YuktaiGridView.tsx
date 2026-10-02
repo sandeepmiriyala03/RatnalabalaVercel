@@ -1,21 +1,42 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Box,
+  Button,
+  ButtonBase,
   Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
+  FormControlLabel,
+  IconButton,
+  LinearProgress,
   MenuItem,
   Select,
+  Slider,
   Stack,
+  Switch,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
   alpha,
+  useMediaQuery,
   useTheme,
 } from "@mui/material";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import HubRoundedIcon from "@mui/icons-material/HubRounded";
 import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
+import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
+import GridOnRoundedIcon from "@mui/icons-material/GridOnRounded";
+import FontDownloadRoundedIcon from "@mui/icons-material/FontDownloadRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 
 import {
   YuktaiGrid,
@@ -25,6 +46,28 @@ import {
   type YuktaiGridRule,
 } from "@yuktishaalaa/yuktai";
 
+import {
+  buildPdfHtml,
+  DEFAULT_PDF_SETTINGS,
+  ensureFontLoaded,
+  exportPoemsToExcel,
+  exportPoemsToPdf,
+  findFont,
+  fontStack,
+  loadPref,
+  PAGE_SIZES,
+  parseFonts,
+  PDF_THEMES,
+  savePref,
+  SITE_FONT,
+  SITE_FONT_ID,
+  siteFontScale,
+  type ExportOptions,
+  type PageSizeId,
+  type PdfSettings,
+  type TeluguFont,
+} from "@/app/components/exportPoems";
+
 /* ================================================================== */
 /* TYPES                                                              */
 /* ================================================================== */
@@ -33,18 +76,17 @@ type PoemRow = {
   id: string;
   title: string;
   content: string;
-  /** Every poem's 3rd line is its special (identity) line */
+  /** Database special_line; if empty, falls back to the 3rd line */
   specialLine: string;
 };
 
 type Props = {
-  poems: { title: string; content: string; slug?: string }[];
-  /** కవి పేరు — header, "కవి ఎవరు" answer, and AI tool descriptions */
+  poems: { title: string; content: string; slug?: string; special_line?: string | null }[];
+  /** కవి పేరు — header, "కవి ఎవరు" answer, AI tool descriptions, downloads */
   poet?: string;
-  /**
-   * Prefix for the AI tool names, different per page so agents can tell
-   * the collections apart, e.g. "ratnalabala_poems" / "mira_poems".
-   */
+  /** శతకం / సంకలనం పేరు — PDF ముఖపేజీ, Excel sheet, file పేరు */
+  poetryName?: string;
+  /** Prefix for the AI tool names, different per page, e.g. "shatakam_4" / "mira_poems" */
   toolName?: string;
   /** Poems to glow (e.g. future RAG "search by meaning" results) */
   highlightIds?: string[];
@@ -56,6 +98,27 @@ type Props = {
   /** Height (px) of a sticky bar above this grid (e.g. page tabs) */
   stickyOffset?: number;
 };
+
+const GRID_FONT_KEY = "ratnalabala-grid-font";
+
+/* ================================================================== */
+/* తెలుగు fonts — main.py నుండి (/api/main?endpoint=fonts)             */
+/* ఒక్కసారే పిలుస్తాం; విఫలమైతే "సైట్ ఫాంట్" మాత్రమే.                    */
+/* ================================================================== */
+
+let fontsRequest: Promise<TeluguFont[]> | null = null;
+
+function loadTeluguFonts(): Promise<TeluguFont[]> {
+  fontsRequest ??= fetch("/api/main?endpoint=fonts")
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then((data) => [SITE_FONT, ...parseFonts(data)])
+    .catch((err) => {
+      console.warn("Telugu fonts API failed, using site font only:", err);
+      fontsRequest = null; // తర్వాత మళ్ళీ ప్రయత్నించడానికి
+      return [SITE_FONT];
+    });
+  return fontsRequest;
+}
 
 /* ================================================================== */
 /* CONSTANTS                                                          */
@@ -188,11 +251,11 @@ function buildRules(poet: string): YuktaiGridRule<PoemRow>[] {
     {
       name: "special-line",
       phrases: ["ప్రత్యేక పంక్తి", "ప్రత్యేక లైన్", "special line"],
-      description: "The 3rd (identity) line of the named poem.",
+      description: "The special (key) line of the named poem.",
       execute: ({ input, data }) => {
         const p = findMentionedPoem(input, data);
         if (!p) return 'ఏ పద్యం? ఉదా: "గర్వం ప్రత్యేక పంక్తి".';
-        return p.specialLine ? `"${p.title}" ప్రత్యేక పంక్తి: ${p.specialLine}` : `"${p.title}" లో 3 పంక్తులు లేవు.`;
+        return p.specialLine ? `"${p.title}" ప్రత్యేక పంక్తి: ${p.specialLine}` : `"${p.title}" కు ప్రత్యేక పంక్తి ఇంకా లేదు.`;
       },
     },
     {
@@ -270,6 +333,7 @@ function buildRules(poet: string): YuktaiGridRule<PoemRow>[] {
 export default function YuktaiGridView({
   poems,
   poet = "",
+  poetryName = "పద్యాలు",
   toolName = "telugu_poems",
   highlightIds = [],
   loading = false,
@@ -280,6 +344,31 @@ export default function YuktaiGridView({
 }: Props) {
   const mui = useTheme();
   const [webmcp, setWebmcp] = useState<WebMCPStatus | null>(null);
+  const [pdfOpen, setPdfOpen] = useState(false);
+  const [excelProgress, setExcelProgress] = useState<{ percent: number; message: string } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  /* పట్టిక ఫాంట్ — main.py fonts API నుండి; వినియోగదారుడి ఎంపిక గుర్తుంచుకుంటాం */
+  const [fonts, setFonts] = useState<TeluguFont[]>([SITE_FONT]);
+  const [fontId, setFontId] = useState<string>(SITE_FONT_ID);
+  useEffect(() => {
+    let alive = true;
+    setFontId(loadPref<{ fontId: string }>(GRID_FONT_KEY, { fontId: SITE_FONT_ID }).fontId);
+    loadTeluguFonts().then((list) => alive && setFonts(list));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  // దాచిన font API జాబితాలో లేకపోతే సైట్ ఫాంట్
+  const font = useMemo(() => findFont(fonts, fontId), [fonts, fontId]);
+  useEffect(() => {
+    ensureFontLoaded(font);
+  }, [font]);
+  const changeFont = (id: string) => {
+    setFontId(id);
+    savePref(GRID_FONT_KEY, { fontId: id });
+  };
+  const gridFont = fontStack(font);
 
   const rows = useMemo<PoemRow[]>(
     () =>
@@ -289,7 +378,8 @@ export default function YuktaiGridView({
           id: poem.slug ?? poem.title,
           title: poem.title,
           content: lines.join("\n"),
-          specialLine: lines[2] ?? "",
+          // Database choice first (AI / reviewed); old poems fall back to the 3rd line
+          specialLine: poem.special_line?.trim() || lines[2] || "",
         };
       }),
     [poems]
@@ -303,12 +393,33 @@ export default function YuktaiGridView({
     return {
       search: `Search Telugu poems${by} by title or any word in the poem. Matches are highlighted.`,
       open: "Open one poem by its ID to show the full poem card (listen, meaning, share).",
-      get_row: "Get one poem by its ID: title, full text, and its special (3rd) line.",
+      get_row: "Get one poem by its ID: title, full text, and its special (key) line.",
     };
   }, [poet]);
 
+  /* Downloads: whatever this grid received (the page's search already applied) */
+  const exportOptions = useMemo<ExportOptions>(() => ({ poems: rows, poetryName, poet }), [rows, poetryName, poet]);
+
+  const excelBusy = excelProgress !== null && excelProgress.percent < 100;
+
+  const downloadExcel = async () => {
+    if (excelBusy || !rows.length) return;
+    setExportError(null);
+    try {
+      await exportPoemsToExcel(exportOptions, (percent, message) => setExcelProgress({ percent, message }));
+      setTimeout(() => setExcelProgress(null), 3000); // "అయింది ✓" కొద్దిసేపు కనిపించి పోతుంది
+    } catch (err) {
+      console.error("Excel export failed:", err);
+      setExcelProgress(null);
+      setExportError("Excel తయారు కాలేదు. మళ్ళీ ప్రయత్నించండి.");
+    }
+  };
+
   const border = alpha(mui.palette.divider, 0.9);
   const header = HEADER_COLORS[theme] ?? HEADER_COLORS.default;
+  const canExport = !loading && rows.length > 0;
+
+  const exportButtonSx = { textTransform: "none" as const, fontWeight: 700, minHeight: 40, borderRadius: "10px" };
 
   return (
     <Stack spacing={{ xs: 1.25, sm: 1.5 }} sx={{ width: "100%", minWidth: 0 }}>
@@ -376,6 +487,85 @@ export default function YuktaiGridView({
             )}
           </Stack>
         </Stack>
+
+        {/* TOOLBAR — ఫాంట్ + PDF + Excel */}
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          alignItems={{ xs: "stretch", sm: "center" }}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ mt: 1.25, pt: 1.25, borderTop: `1px dashed ${border}` }}
+        >
+          <FormControl size="small" sx={{ minWidth: { sm: 190 } }}>
+            <Select
+              value={font.id}
+              onChange={(e) => changeFont(e.target.value)}
+              inputProps={{ "aria-label": "పట్టిక ఫాంట్" }}
+              startAdornment={<FontDownloadRoundedIcon fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />}
+              sx={{ minHeight: 40 }}
+            >
+              {fonts.map((f) => (
+                <MenuItem key={f.id} value={f.id} sx={{ minHeight: 44 }}>
+                  {f.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Box sx={{ flex: 1, display: { xs: "none", sm: "block" } }} />
+
+          <Stack direction="row" spacing={1}>
+            <Button
+              size="small"
+              variant="outlined"
+              color="error"
+              disabled={!canExport}
+              onClick={() => setPdfOpen(true)}
+              startIcon={<PictureAsPdfRoundedIcon fontSize="small" />}
+              sx={{ ...exportButtonSx, flex: { xs: 1, sm: "none" } }}
+            >
+              PDF
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              color="success"
+              disabled={!canExport || excelBusy}
+              onClick={downloadExcel}
+              startIcon={excelBusy ? <CircularProgress size={16} color="inherit" /> : <GridOnRoundedIcon fontSize="small" />}
+              sx={{ ...exportButtonSx, flex: { xs: 1, sm: "none" } }}
+            >
+              Excel
+            </Button>
+          </Stack>
+        </Stack>
+
+        {/* Excel progress — 10% → 50% → 90% → 100% */}
+        {excelProgress && (
+          <Box sx={{ mt: 1.25 }} role="status" aria-live="polite">
+            <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+              <Typography variant="body2" fontWeight={600}>
+                {excelProgress.message}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {excelProgress.percent}%
+              </Typography>
+            </Stack>
+            <LinearProgress
+              variant="determinate"
+              value={excelProgress.percent}
+              color={excelProgress.percent >= 100 ? "success" : "primary"}
+              sx={{ height: 6, borderRadius: 3 }}
+            />
+          </Box>
+        )}
+
+        {exportError && (
+          <Alert severity="error" onClose={() => setExportError(null)} sx={{ mt: 1.25 }}>
+            {exportError}
+          </Alert>
+        )}
       </Box>
 
       {/* GRID — the column header stays fixed while the table scrolls */}
@@ -407,6 +597,8 @@ export default function YuktaiGridView({
             fontWeight: 800,
           },
           "& tbody td": { py: { xs: 1.25, sm: 1 } },
+          // ఎంచుకున్న తెలుగు ఫాంట్ — పట్టికలోని పద్యాలకు
+          "& table, & table *": { fontFamily: `${gridFont} !important` },
         }}
       >
         <YuktaiGrid<PoemRow>
@@ -436,6 +628,347 @@ export default function YuktaiGridView({
           empty="పద్యాలు కనబడలేదు."
         />
       </Box>
+
+      <PdfExportDialog open={pdfOpen} onClose={() => setPdfOpen(false)} options={exportOptions} initialFontId={font.id} fonts={fonts} />
     </Stack>
+  );
+}
+
+/* ================================================================== */
+/* PDF WINDOW — సెట్టింగ్స్ + నమూనా + progress                          */
+/* ================================================================== */
+
+const PDF_PREF_KEY = "ratnalabala-pdf-settings";
+const MM_TO_PX = 96 / 25.4;
+const PREVIEW_HEIGHT = 520;
+
+type PdfDialogProps = {
+  open: boolean;
+  onClose: () => void;
+  options: ExportOptions;
+  /** Grid లో ఎంచుకున్న font — PDF కి కూడా అదే మొదట వస్తుంది */
+  initialFontId: string;
+  /** main.py fonts API నుండి వచ్చిన జాబితా (grid నుండి) */
+  fonts: TeluguFont[];
+};
+
+type PdfProgress = { percent: number; message: string } | null;
+
+function PdfExportDialog({ open, onClose, options, initialFontId, fonts }: PdfDialogProps) {
+  const mui = useTheme();
+  const fullScreen = useMediaQuery(mui.breakpoints.down("sm"));
+
+  const [settings, setSettings] = useState<PdfSettings>(DEFAULT_PDF_SETTINGS);
+  const [progress, setProgress] = useState<PdfProgress>(null);
+  const [error, setError] = useState<string | null>(null);
+  const busy = progress !== null && progress.percent < 100;
+
+  /* తెరిచినప్పుడు: దాచిన సెట్టింగ్స్, లేకపోతే సైట్ అక్షర సైజు + grid font */
+  useEffect(() => {
+    if (!open) return;
+    // మొదటిసారి: grid font + సైట్ అక్షర సైజు. తర్వాత: వినియోగదారుడు చివరిగా ఎంచుకున్నవి
+    setSettings(loadPref<PdfSettings>(PDF_PREF_KEY, { ...DEFAULT_PDF_SETTINGS, fontId: initialFontId, fontScale: siteFontScale() }));
+    setProgress(null);
+    setError(null);
+  }, [open, initialFontId]);
+
+  const update = (patch: Partial<PdfSettings>) =>
+    setSettings((cur) => {
+      const next = { ...cur, ...patch };
+      savePref(PDF_PREF_KEY, next);
+      return next;
+    });
+
+  // దాచిన font ఇప్పుడు API జాబితాలో లేకపోతే సైట్ ఫాంట్
+  const font = useMemo(() => findFont(fonts, settings.fontId), [fonts, settings.fontId]);
+
+  useEffect(() => {
+    if (open) ensureFontLoaded(font);
+  }, [open, font]);
+
+  /* ---------------- నమూనా (preview) ---------------- */
+
+  const [previewHtml, setPreviewHtml] = useState("");
+  useEffect(() => {
+    if (!open) return;
+    // త్వరగా మార్చినప్పుడు ప్రతిసారీ కొత్తగా గీయకుండా చిన్న విరామం
+    const id = setTimeout(() => setPreviewHtml(buildPdfHtml(options, settings, font, true)), 250);
+    return () => clearTimeout(id);
+  }, [open, options, settings, font]);
+
+  const frameBoxRef = useRef<HTMLDivElement>(null);
+  const [boxWidth, setBoxWidth] = useState(360);
+  useEffect(() => {
+    const el = frameBoxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => setBoxWidth(entry.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [open]);
+
+  const size = PAGE_SIZES.find((s) => s.id === settings.pageSize) ?? PAGE_SIZES[0];
+  // కాగితం వెడల్పు + చుట్టూ బూడిద అంచు
+  const pagePx = size.widthMm * MM_TO_PX + 12 * MM_TO_PX;
+  const scale = Math.min(1, boxWidth / pagePx);
+
+  /* ---------------- డౌన్‌లోడ్ ---------------- */
+
+  const download = async () => {
+    if (busy) return;
+    setError(null);
+    setProgress({ percent: 5, message: "మొదలుపెడుతున్నాం…" });
+    try {
+      await exportPoemsToPdf(options, settings, font, (percent, message) => setProgress({ percent, message }));
+      setProgress({ percent: 100, message: "పూర్తయింది ✓ మళ్ళీ కావాలంటే సెట్టింగ్స్ మార్చి మళ్ళీ నొక్కండి." });
+    } catch (err) {
+      console.error("PDF export failed:", err);
+      setProgress(null);
+      setError(
+        err instanceof Error && err.message === "Popup blocked"
+          ? "బ్రౌజర్ కొత్త tab ను ఆపింది. ఈ సైట్‌కి popups అనుమతించి మళ్ళీ ప్రయత్నించండి."
+          : "PDF తయారు కాలేదు. మళ్ళీ ప్రయత్నించండి."
+      );
+    }
+  };
+
+  const themeOf = useMemo(() => PDF_THEMES.find((t) => t.id === settings.theme) ?? PDF_THEMES[0], [settings.theme]);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={busy ? undefined : onClose}
+      fullScreen={fullScreen}
+      maxWidth="lg"
+      fullWidth
+      aria-labelledby="pdf-dialog-title"
+    >
+      <DialogTitle id="pdf-dialog-title" sx={{ pr: 6, fontWeight: 800 }}>
+        PDF డౌన్‌లోడ్
+        <Typography variant="body2" color="text.secondary">
+          {options.poetryName} · {options.poems.length} పద్యాలు
+        </Typography>
+        <IconButton aria-label="మూసివేయి" onClick={onClose} disabled={busy} sx={{ position: "absolute", right: 12, top: 12 }}>
+          <CloseRoundedIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent dividers>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
+          {/* ---------- సెట్టింగ్స్ ---------- */}
+          <Stack spacing={2.5} sx={{ width: { xs: "100%", md: 320 }, flexShrink: 0 }}>
+            {/* ఫాంట్ */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                అక్షర శైలి (ఫాంట్)
+              </Typography>
+              <FormControl size="small" fullWidth>
+                <Select
+                  value={font.id}
+                  onChange={(e) => update({ fontId: e.target.value })}
+                  inputProps={{ "aria-label": "అక్షర శైలి" }}
+                  disabled={busy}
+                >
+                  {fonts.map((f) => (
+                    <MenuItem key={f.id} value={f.id}>
+                      {f.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* పేజీ సైజు */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                పేజీ సైజు
+              </Typography>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={settings.pageSize}
+                onChange={(_, v: PageSizeId | null) => v && update({ pageSize: v })}
+                disabled={busy}
+                aria-label="పేజీ సైజు"
+              >
+                {PAGE_SIZES.map((s) => (
+                  <ToggleButton key={s.id} value={s.id} sx={{ textTransform: "none", flexDirection: "column", lineHeight: 1.3, py: 0.75 }}>
+                    <b>{s.label}</b>
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      {s.hint}
+                    </Typography>
+                  </ToggleButton>
+                ))}
+              </ToggleButtonGroup>
+            </Box>
+
+            {/* రంగుల థీమ్ */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                రంగుల థీమ్
+              </Typography>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" role="radiogroup" aria-label="రంగుల థీమ్">
+                {PDF_THEMES.map((t) => {
+                  const selected = t.id === settings.theme;
+                  return (
+                    <ButtonBase
+                      key={t.id}
+                      role="radio"
+                      aria-checked={selected}
+                      disabled={busy}
+                      onClick={() => update({ theme: t.id })}
+                      sx={{
+                        flexDirection: "column",
+                        gap: 0.5,
+                        p: 0.75,
+                        width: 58,
+                        borderRadius: 2,
+                        border: "2px solid",
+                        borderColor: selected ? t.accent : "transparent",
+                        "&:focus-visible": { outline: `2px solid ${mui.palette.primary.main}`, outlineOffset: 2 },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          position: "relative",
+                          width: 36,
+                          height: 36,
+                          borderRadius: "50%",
+                          background: `linear-gradient(135deg, ${t.paper} 0 50%, ${t.accent} 50% 100%)`,
+                          border: `1px solid ${t.rule}`,
+                          display: "grid",
+                          placeItems: "center",
+                        }}
+                      >
+                        {selected && <CheckRoundedIcon sx={{ fontSize: 18, color: "#fff", filter: "drop-shadow(0 0 2px rgba(0,0,0,.6))" }} />}
+                      </Box>
+                      <Typography variant="caption" sx={{ lineHeight: 1.2, textAlign: "center" }}>
+                        {t.label}
+                      </Typography>
+                    </ButtonBase>
+                  );
+                })}
+              </Stack>
+            </Box>
+
+            {/* అక్షర సైజు */}
+            <Box>
+              <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+                <Typography variant="subtitle2" fontWeight={700}>
+                  అక్షర సైజు
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {Math.round(settings.fontScale * 100)}%
+                </Typography>
+              </Stack>
+              <Slider
+                value={settings.fontScale}
+                min={0.8}
+                max={1.6}
+                step={0.1}
+                marks={[{ value: 0.8, label: "చిన్న" }, { value: 1, label: "100%" }, { value: 1.6, label: "పెద్ద" }]}
+                onChange={(_, v) => update({ fontScale: v as number })}
+                disabled={busy}
+                aria-label="అక్షర సైజు"
+                sx={{ mx: 1, width: "calc(100% - 16px)" }}
+              />
+            </Box>
+
+            <FormControlLabel
+              control={
+                <Switch checked={settings.showSpecialLine} onChange={(e) => update({ showSpecialLine: e.target.checked })} disabled={busy} />
+              }
+              label="ప్రత్యేక పంక్తి చూపించు"
+            />
+          </Stack>
+
+          {/* ---------- నమూనా ---------- */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+              నమూనా
+            </Typography>
+            <Box
+              ref={frameBoxRef}
+              sx={{
+                position: "relative",
+                height: PREVIEW_HEIGHT,
+                overflow: "hidden",
+                borderRadius: 2,
+                bgcolor: "#d9dee5",
+                border: `1px solid ${mui.palette.divider}`,
+              }}
+            >
+              {previewHtml && (
+                <iframe
+                  title="PDF నమూనా"
+                  srcDoc={previewHtml}
+                  style={{
+                    border: 0,
+                    width: pagePx,
+                    height: PREVIEW_HEIGHT / scale,
+                    transform: `scale(${scale})`,
+                    transformOrigin: "top left",
+                    background: "#d9dee5",
+                  }}
+                />
+              )}
+            </Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75, fontFamily: fontStack(font) }}>
+              {themeOf.label} థీమ్ · {size.label} · {Math.round(settings.fontScale * 100)}% — నమూనాలో scroll చేసి చూడండి
+            </Typography>
+          </Box>
+        </Stack>
+
+        {error && (
+          <Alert severity="error" sx={{ mt: 2 }} onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, py: 2, flexDirection: { xs: "column", sm: "row" }, alignItems: "stretch", gap: 1.5 }}>
+        {/* Progress — 10% → 35% → 60% → 100% సరళమైన తెలుగు సందేశాలతో */}
+        <Box sx={{ flex: 1, minWidth: 0, alignSelf: "center" }} role="status" aria-live="polite">
+          {progress ? (
+            <>
+              <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                <Typography variant="body2" fontWeight={600}>
+                  {progress.message}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {progress.percent}%
+                </Typography>
+              </Stack>
+              <LinearProgress
+                variant="determinate"
+                value={progress.percent}
+                color={progress.percent >= 100 ? "success" : "primary"}
+                sx={{ height: 8, borderRadius: 4 }}
+              />
+            </>
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              బటన్ నొక్కిన తర్వాత Print window తెరుచుకుంటుంది. అక్కడ &quot;Save as PDF&quot; ఎంచుకోండి. More settings లో &quot;Background graphics&quot; ఆన్ చేయండి.
+            </Typography>
+          )}
+        </Box>
+
+        <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Button onClick={onClose} disabled={busy} sx={{ textTransform: "none" }}>
+            మూసివేయి
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={download}
+            disabled={busy || !options.poems.length}
+            startIcon={<PictureAsPdfRoundedIcon />}
+            sx={{ textTransform: "none", fontWeight: 700, minWidth: 160 }}
+          >
+            {busy ? "తయారవుతోంది…" : "PDF డౌన్‌లోడ్"}
+          </Button>
+        </Stack>
+      </DialogActions>
+    </Dialog>
   );
 }

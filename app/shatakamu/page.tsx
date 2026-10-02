@@ -23,20 +23,21 @@ import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRound
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import MovieCreationRoundedIcon from "@mui/icons-material/MovieCreationRounded";
 
-import PoemListByKey from "@/app/components/PoemListByKey";
+import PoemBrowser from "@/app/components/PoemBrowser";
 import {
   POETRY_COLLECTIONS,
   DEFAULT_POETRY_KEY,
-  PoetryKey,
+  authorsToText,
+  type PoetryKey,
 } from "@/types/poetry";
 
-// ── ఫ్లాట్‌ఫామ్ ముఖ్యమైన ఫీచర్లు (Features Grid Data)
+// ── ఫ్లాట్‌ఫామ్ ముఖ్యమైన ఫీచర్లు
 const FEATURES = [
   {
     icon: <MenuBookRoundedIcon color="primary" fontSize="large" />,
     title: "డిజిటల్ పఠనం",
     description:
-      "సుమతి, వేమన వంటి అనేక శతకాలలోని పద్యాలను స్పష్టమైన తెలుగు లిపిలో, మొబైల్ మరియు కంప్యూటర్ స్క్రీన్లకు అనుకూలంగా చదువుకోవచ్చు.",
+      "సుమతి, శ్రీకాళహస్తీశ్వర వంటి అనేక శతకాలలోని పద్యాలను స్పష్టమైన తెలుగు లిపిలో, మొబైల్ మరియు కంప్యూటర్ స్క్రీన్లకు అనుకూలంగా చదువుకోవచ్చు.",
   },
   {
     icon: <RecordVoiceOverRoundedIcon color="secondary" fontSize="large" />,
@@ -52,59 +53,61 @@ const FEATURES = [
   },
   {
     icon: <MovieCreationRoundedIcon color="success" fontSize="large" />,
-    title: "వీడియో మేకర్ & షేరింగ్",
+    title: "వీడియో, PDF & Excel",
     description:
-      "బ్రౌజర్‌లోనే నేరుగా పోస్టర్ ఇమేజ్, వాయిస్, బ్యాక్‌గ్రౌండ్ మ్యూజిక్‌లను కలిపి పద్యాల వీడియోలను తయారు చేసి, ఇతరులతో పంచుకోవచ్చు.",
+      "బ్రౌజర్‌లోనే పద్యాల పోస్టర్లు, వీడియోలు తయారు చేయవచ్చు. యుక్తి AI పట్టిక నుండి పద్యాలను PDF లేదా Excel గా డౌన్‌లోడ్ చేసుకోవచ్చు.",
   },
 ];
 
 // ── "ఎలా పనిచేస్తుంది" Pipeline steps
 const WORKFLOW_STEPS: string[] = [
   "మీరు ఒక శతకాన్ని డ్రాప్‌డౌన్ నుండి ఎంచుకుంటారు.",
-  "ఫ్రంటెండ్ (Next.js) /api/main?endpoint=poems&collection=... కి రిక్వెస్ట్ పంపుతుంది.",
-  "Vercel పైథాన్ సర్వర్‌లెస్ ఫంక్షన్ content/ ఫోల్డర్‌లోని .md ఫైళ్లను నేరుగా చదివి, ప్రతి పద్యం (శీర్షిక, కవి, పాఠ్యం) JSON‌గా తిరిగి పంపుతుంది — డేటాబేస్ లేదు, ఫైళ్లే మూలం.",
-  "ప్రతి పద్యం ఒక కార్డ్‌గా చూపబడుతుంది — వినడానికి, వీడియోగా దాచుకోవడానికి, AI అసిస్టెంట్‌ని అడగడానికి ఆప్షన్లతో.",
+  "ఫ్రంటెండ్ (Next.js) /api/getpoems?poet_id=... కి రిక్వెస్ట్ పంపుతుంది.",
+  "సర్వర్ PostgreSQL డేటాబేస్ నుండి ఆ కవి పద్యాలను (శీర్షిక, పాఠ్యం, ప్రత్యేక పంక్తి) వరుస క్రమంలో JSON‌గా తిరిగి పంపుతుంది.",
+  "ప్రతి పద్యం ఒక కార్డ్‌గా చూపబడుతుంది — వినడానికి, వీడియోగా దాచుకోవడానికి, AI అసిస్టెంట్‌ని అడగడానికి ఆప్షన్లతో. \"యుక్తి AI\" ఎంచుకుంటే అవే పద్యాలు పట్టికగా వస్తాయి.",
   "\"వినండి\" నొక్కితే → /api/tts కి రిక్వెస్ట్ వెళ్లి, Microsoft Edge TTS లేదా Google TTS ద్వారా వాయిస్ తయారవుతుంది.",
-  "\"పద్యం గురించి అడగండి (AI)\" నొక్కితే → /api/main?endpoint=poem-ai కి ప్రశ్న వెళ్లుతుంది. సర్వర్ అసలు .md ఫైల్‌ని మళ్ళీ చదివి, ఆ పాఠ్యాన్నే Groq కి పంపి సమాధానం తీసుకువస్తుంది — ఇది కల్పించి చెప్పదు, ఫైల్‌లో ఉన్నదాని ఆధారంగానే జవాబిస్తుంది.",
-  "\"వీడియోగా డౌన్‌లోడ్\" పూర్తిగా మీ బ్రౌజర్‌లోనే జరుగుతుంది — పోస్టర్ ఇమేజ్ + వాయిస్ + నేపథ్య సంగీతం కలిపి ఒక వీడియోగా తయారవుతుంది. ఏ ఫైలూ సర్వర్‌కి అప్‌లోడ్ కాదు.",
+  "\"పద్యం గురించి అడగండి (AI)\" నొక్కితే → ప్రశ్న, అసలు పద్యం Groq కి వెళ్లి సమాధానం వస్తుంది — పద్యంలో ఉన్నదాని ఆధారంగానే జవాబిస్తుంది.",
+  "వీడియో, PDF, Excel అన్నీ మీ బ్రౌజర్‌లోనే తయారవుతాయి. ఏ ఫైలూ సర్వర్‌కి అప్‌లోడ్ కాదు.",
 ];
 
 // ── Actual technologies in use
 const TECH_STACK: { label: string; detail: string }[] = [
   { label: "Next.js (React)", detail: "ఫ్రంటెండ్ — పేజీలు, కార్డ్‌లు, UI మొత్తం" },
   { label: "Material UI", detail: "బటన్లు, డ్రాప్‌డౌన్‌లు, లేఅవుట్ కాంపొనెంట్లు" },
-  { label: "Python (Vercel Serverless)", detail: "బ్యాక్‌ఎండ్ — api/main.py, డేటాబేస్ లేకుండా ఫైల్-ఆధారితం" },
-  { label: "Markdown (.md) ఫైళ్లు", detail: "ప్రతి పద్యం ఒక ఫైల్‌గా, frontmatterలో శీర్షిక/కవి వివరాలతో" },
+  { label: "PostgreSQL", detail: "పద్యాలు, కవులు, ప్రత్యేక పంక్తులు — ఒకే డేటాబేస్" },
+  { label: "యుక్తి AI Grid", detail: "పద్యాల పట్టిక, తెలుగు AI సహాయకుడు, WebMCP" },
   { label: "Groq (LLM)", detail: "\"పద్యం గురించి అడగండి\" ఫీచర్ కోసం — పద్యం ఆధారంగా మాత్రమే సమాధానం" },
   { label: "Microsoft Edge TTS / Google TTS", detail: "పద్యం వాయిస్ నేరేషన్ కోసం" },
   { label: "html2canvas + Web Audio API", detail: "పోస్టర్ + వాయిస్ + సంగీతం కలిపి బ్రౌజర్‌లోనే వీడియో తయారీ" },
-  { label: "Vercel", detail: "హోస్టింగ్ — ఫ్రంటెండ్ మరియు పైథాన్ ఫంక్షన్లు రెండూ ఇక్కడే" },
+  { label: "SheetJS + Browser Print", detail: "Excel మరియు PDF డౌన్‌లోడ్ — తెలుగు అక్షరాలు సరిగ్గా" },
+  { label: "Vercel", detail: "హోస్టింగ్ — ఫ్రంటెండ్ మరియు API రెండూ ఇక్కడే" },
 ];
 
 export default function PoemsPage() {
   const [selectedKey, setSelectedKey] = useState<PoetryKey>(DEFAULT_POETRY_KEY);
   const [infoOpen, setInfoOpen] = useState(false);
+  /** Live count from the database for the selected shatakam (null while loading) */
+  const [liveCount, setLiveCount] = useState<number | null>(null);
 
-  /* ✅ Safe selected collection */
   const selected = useMemo(
     () => POETRY_COLLECTIONS.find((p) => p.key === selectedKey) ?? POETRY_COLLECTIONS[0],
     [selectedKey]
   );
 
   /* 📊 Platform totals */
-  const totalCollections = useMemo(() => POETRY_COLLECTIONS.length, []);
+  const totalCollections = POETRY_COLLECTIONS.length;
   const totalPoemsAll = useMemo(
     () => POETRY_COLLECTIONS.reduce((sum, p) => sum + (p.totalPoems ?? 0), 0),
     []
   );
 
-  /* ✅ Display poems count */
-  const displayTotalPoems =
-    selected.key === "Jandhyala" ? totalPoemsAll : selected.totalPoems ?? 0;
+  /* ✅ This shatakam's count: database first, config as fallback */
+  const displayTotalPoems = liveCount ?? selected.totalPoems ?? 0;
 
-  const authorsText = Array.isArray(selected.authors)
-    ? selected.authors.join(", ")
-    : selected.authors;
+  const changeCollection = (key: PoetryKey) => {
+    setLiveCount(null);
+    setSelectedKey(key);
+  };
 
   return (
     <Box sx={{ py: { xs: 3, md: 5 }, px: 2, maxWidth: 1100, mx: "auto" }}>
@@ -131,7 +134,6 @@ export default function PoemsPage() {
 
       {/* 🧠 Description */}
       <Typography
-        component="div"
         align="center"
         sx={{
           maxWidth: 800,
@@ -142,21 +144,14 @@ export default function PoemsPage() {
           lineHeight: 1.8,
         }}
       >
-        <Typography paragraph sx={{ mb: 1.5 }}>
-          <strong>శతకాలమాల</strong> అనేది కృత్రిమ మేధ (AI) మరియు ఆధునిక సాంకేతికత సహాయంతో రూపొందించిన తెలుగు శతకాల డిజిటల్ వేదిక. శతాబ్దాల నాటి సంప్రదాయ సాహిత్యాన్ని నేటి డిజిటల్ యుగానికి తగినట్లుగా <strong>చదవడానికి, వినడానికి, పంచుకోవడానికి</strong> ఇది సహాయపడుతుంది.
-        </Typography>
+        <strong>శతకాలమాల</strong> అనేది కృత్రిమ మేధ (AI) మరియు ఆధునిక సాంకేతికత సహాయంతో రూపొందించిన తెలుగు శతకాల డిజిటల్ వేదిక. శతాబ్దాల నాటి సంప్రదాయ సాహిత్యాన్ని నేటి డిజిటల్ యుగానికి తగినట్లుగా <strong>చదవడానికి, వినడానికి, పంచుకోవడానికి</strong> ఇది సహాయపడుతుంది.
       </Typography>
 
       {/* 🌟 Features Grid */}
       <Box sx={{ mb: 5 }}>
         <Grid container spacing={2.5}>
-          {FEATURES.map((feature, index) => (
-            // FIX: MUI v6/v7's default `Grid` export dropped the old
-            // `item` boolean prop and the separate xs={}/sm={} shorthand
-            // props entirely — that's exactly what TS2769 above is
-            // complaining about ("Property 'item' does not exist").
-            // The new API takes ONE `size` prop object instead.
-            <Grid key={index} size={{ xs: 12, sm: 6 }}>
+          {FEATURES.map((feature) => (
+            <Grid key={feature.title} size={{ xs: 12, sm: 6 }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -167,10 +162,7 @@ export default function PoemsPage() {
                   borderColor: "divider",
                   bgcolor: "background.paper",
                   transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-                  "&:hover": {
-                    transform: "translateY(-3px)",
-                    boxShadow: "0 6px 20px rgba(0,0,0,0.06)",
-                  },
+                  "&:hover": { transform: "translateY(-3px)", boxShadow: "0 6px 20px rgba(0,0,0,0.06)" },
                 }}
               >
                 <Stack direction="row" spacing={2} alignItems="flex-start">
@@ -187,17 +179,10 @@ export default function PoemsPage() {
                     {feature.icon}
                   </Box>
                   <Box>
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: 700, mb: 0.5, fontSize: "1rem" }}
-                    >
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, fontSize: "1rem" }}>
                       {feature.title}
                     </Typography>
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ lineHeight: 1.6, fontSize: "0.875rem" }}
-                    >
+                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6, fontSize: "0.875rem" }}>
                       {feature.description}
                     </Typography>
                   </Box>
@@ -217,11 +202,7 @@ export default function PoemsPage() {
         sx={{ mb: 3 }}
       >
         <Chip label={`📚 శతకములు: ${totalCollections}`} variant="outlined" />
-        <Chip
-          label={`🧮 మొత్తం పద్యాలు: ${totalPoemsAll}`}
-          color="success"
-          variant="outlined"
-        />
+        <Chip label={`🧮 మొత్తం పద్యాలు: ${totalPoemsAll}`} color="success" variant="outlined" />
         <Chip label="✨ సంప్రదాయం × సాంకేతికత" variant="outlined" />
       </Stack>
 
@@ -253,9 +234,7 @@ export default function PoemsPage() {
               mx: "auto",
             }}
           >
-            <Typography sx={{ fontWeight: 700, mb: 1.5 }}>
-              ఎలా పనిచేస్తుంది
-            </Typography>
+            <Typography sx={{ fontWeight: 700, mb: 1.5 }}>ఎలా పనిచేస్తుంది</Typography>
 
             <Stack spacing={1.25} sx={{ mb: 3 }}>
               {WORKFLOW_STEPS.map((step, i) => (
@@ -287,9 +266,7 @@ export default function PoemsPage() {
 
             <Divider sx={{ mb: 2 }} />
 
-            <Typography sx={{ fontWeight: 700, mb: 1.5 }}>
-              వాడిన సాంకేతికతలు
-            </Typography>
+            <Typography sx={{ fontWeight: 700, mb: 1.5 }}>వాడిన సాంకేతికతలు</Typography>
 
             <Stack spacing={1}>
               {TECH_STACK.map((tech) => (
@@ -314,13 +291,10 @@ export default function PoemsPage() {
         sx={{ mb: 3 }}
       >
         <FormControl size="small" sx={{ minWidth: 240 }}>
-          <Typography sx={{ fontSize: "0.8rem", mb: 0.5, opacity: 0.8 }}>
-            శతకము ఎంచుకోండి
-          </Typography>
-
+          <Typography sx={{ fontSize: "0.8rem", mb: 0.5, opacity: 0.8 }}>శతకము ఎంచుకోండి</Typography>
           <Select
             value={selectedKey}
-            onChange={(e) => setSelectedKey(e.target.value as PoetryKey)}
+            onChange={(e) => changeCollection(e.target.value as PoetryKey)}
             aria-label="శతకము ఎంచుకోండి"
           >
             {POETRY_COLLECTIONS.map((p) => (
@@ -335,7 +309,7 @@ export default function PoemsPage() {
           variant="outlined"
           size="small"
           disabled={selectedKey === DEFAULT_POETRY_KEY}
-          onClick={() => setSelectedKey(DEFAULT_POETRY_KEY)}
+          onClick={() => changeCollection(DEFAULT_POETRY_KEY)}
         >
           డీఫాల్ట్
         </Button>
@@ -349,21 +323,21 @@ export default function PoemsPage() {
         alignItems="center"
         sx={{ mb: 3 }}
       >
-        <Chip
-          label={`📘 ఈ శతకంలో పద్యాలు: ${displayTotalPoems}`}
-          color="primary"
-          variant="outlined"
-        />
-        <Chip label={`✍️ కవి: ${authorsText}`} variant="outlined" />
+        <Chip label={`📘 ఈ శతకంలో పద్యాలు: ${displayTotalPoems}`} color="primary" variant="outlined" />
+        <Chip label={`✍️ కవి: ${authorsToText(selected.authors)}`} variant="outlined" />
       </Stack>
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* 📜 Poems List */}
-      <PoemListByKey
-        apiKey={selected.key}
+      {/* 📜 Poems — same component as మిరా పద్యాలు.
+          key = శతకం → changing it starts fresh (search, page, grid, radio). */}
+      <PoemBrowser
+        key={selected.key}
+        poetId={selected.poetId}
         poetryName={selected.label}
         authors={selected.authors}
+        toolName={`shatakam_${selected.poetId}`}
+        onCountChange={setLiveCount}
       />
     </Box>
   );
