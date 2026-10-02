@@ -242,6 +242,10 @@ export type ExportOptions = {
   /** శతకం / సంకలనం పేరు — PDF ముఖపేజీ, file పేరు */
   poetryName: string;
   poet?: string;
+  /** PDF లో అంశాల పేరు — డిఫాల్ట్ "పద్యాలు" (ఉదా: "సంధులు", "పదాలు", "కథలు") */
+  unitLabel?: string;
+  /** చివరి పేజీలో సంకలనం పేరు ముందు పదం — డిఫాల్ట్ "శతకం" */
+  collectionLabel?: string;
 };
 
 /** Progress: 0–100 మరియు ఒక సరళమైన తెలుగు సందేశం */
@@ -391,7 +395,7 @@ const LOGO_PATH = "/icons/android-launchericon-512-512.png";
  * preview = true అయితే మొదటి 3 పద్యాలు మాత్రమే.
  */
 export function buildPdfHtml(
-  { poems, poetryName, poet = "" }: ExportOptions,
+  { poems, poetryName, poet = "", unitLabel = "పద్యాలు", collectionLabel = "శతకం" }: ExportOptions,
   settings: PdfSettings,
   font: TeluguFont,
   preview = false
@@ -435,7 +439,7 @@ export function buildPdfHtml(
   const row = (k: string, v: string) => `<tr><th>${k}</th><td>${escapeHtml(v)}</td></tr>`;
   const previewNote =
     preview && poems.length > list.length
-      ? `<p class="note">నమూనా: మొదటి ${teluguNumber(list.length)} పద్యాలు మాత్రమే. PDF లో మొత్తం ${teluguNumber(poems.length)} పద్యాలు ఉంటాయి.</p>`
+      ? `<p class="note">నమూనా: మొదటి ${teluguNumber(list.length)} ${unitLabel} మాత్రమే. PDF లో మొత్తం ${teluguNumber(poems.length)} ${unitLabel} ఉంటాయి.</p>`
       : "";
 
   return `<!doctype html>
@@ -504,7 +508,7 @@ ${fontLinks}
     <h1>${escapeHtml(title)}</h1>
     ${poet ? `<p class="poet">${escapeHtml(poet)}</p>` : ""}
     <div class="band"></div>
-    <p class="meta">${teluguNumber(poems.length)} పద్యాలు</p>
+    <p class="meta">${teluguNumber(poems.length)} ${unitLabel}</p>
     <p class="meta">${SITE_NAME}</p>
   </section>
   ${poemsHtml}
@@ -512,9 +516,9 @@ ${fontLinks}
     <img src="${logo}" alt="">
     <h3>ఈ పుస్తకం గురించి</h3>
     <table>
-      ${row("శతకం", title)}
+      ${row(collectionLabel, title)}
       ${poet ? row("కవి", poet) : ""}
-      ${row("పద్యాలు", teluguNumber(poems.length))}
+      ${row(unitLabel, teluguNumber(poems.length))}
       ${row("ఫాంట్", font.label)}
       ${row("పేజీ సైజు", `${size.label} (${size.hint})`)}
       ${row("రంగుల థీమ్", t.label)}
@@ -602,15 +606,20 @@ export async function exportPoemsToPdf(
   onProgress: ProgressFn = () => {}
 ): Promise<void> {
   if (!options.poems.length) return;
+  onProgress(10, "పద్యాలు సిద్ధం చేస్తున్నాం…");
+  // ఇక్కడ await లేదు — iPhone లో కొత్త tab బటన్ నొక్కిన వెంటనే తెరవాలి
+  return printHtml(buildPdfHtml(options, settings, font), onProgress);
+}
 
+/**
+ * ఏ print HTML నైనా బ్రౌజర్ Print window లో తెరుస్తుంది (పద్యాలు, అక్షరమాల…).
+ * HTML లో <html data-paged="1"> ఉండాలి, లేదా పేజీలు అమర్చే script అది సెట్ చేయాలి.
+ */
+export async function printHtml(html: string, onProgress: ProgressFn = () => {}): Promise<void> {
   // iPhone/iPad: కొత్త tab. window.open ఏ await కంటే ముందే ఉండాలి (popup blocker).
   const ios = isIOS();
   const iosWin = ios ? window.open("", "_blank") : null;
   if (ios && !iosWin) throw new Error("Popup blocked");
-
-  onProgress(10, "పద్యాలు సిద్ధం చేస్తున్నాం…");
-  await pause(50);
-  const html = buildPdfHtml(options, settings, font);
 
   onProgress(35, "పేజీలు అమరుస్తున్నాం…");
 
@@ -698,5 +707,216 @@ export async function exportPoemsToExcel(
 
   onProgress(90, "డౌన్‌లోడ్ అవుతోంది…");
   XLSX.writeFile(wb, `${safeName(poetryName)}_${today()}.xlsx`);
+  onProgress(100, "Excel డౌన్‌లోడ్ అయింది ✓");
+}
+
+/* ================================================================== */
+/* అక్షరమాల — PDF చార్ట్ మరియు Excel                                    */
+/* ================================================================== */
+
+export type AksharaExportRow = {
+  letter: string;
+  word: string;
+  typeLabel: string;
+  image?: string;
+};
+
+/** ఒక A4 పేజీకి 12 అక్షరాలు (3 × 4) — పిల్లల చార్ట్ లాగా */
+const AKSHARA_COLS = 3;
+const AKSHARA_PER_PAGE = 12;
+
+const absoluteSrc = (src: string) => {
+  try {
+    return new URL(src, window.location.origin).href;
+  } catch {
+    return src;
+  }
+};
+
+export function buildAksharaChartHtml(title: string, rows: AksharaExportRow[]): string {
+  const site = collectSiteFontCss();
+  const origin = window.location.origin;
+  const logo = `${origin}${LOGO_PATH}`;
+  const madeOn = new Date().toLocaleDateString("te-IN", { day: "numeric", month: "long", year: "numeric" });
+
+  const cell = (r: AksharaExportRow) => `<div class="cell">
+  <div class="pic">${r.image ? `<img src="${escapeHtml(absoluteSrc(r.image))}" alt="">` : ""}</div>
+  <div class="letter">${escapeHtml(r.letter)}</div>
+  <div class="word">${escapeHtml(r.word)}</div>
+  <div class="type">${escapeHtml(r.typeLabel)}</div>
+</div>`;
+
+  const chunks: AksharaExportRow[][] = [];
+  for (let i = 0; i < rows.length; i += AKSHARA_PER_PAGE) chunks.push(rows.slice(i, i + AKSHARA_PER_PAGE));
+  const total = chunks.length + 1; // + ముఖపేజీ
+
+  const pages = chunks
+    .map(
+      (chunk, i) => `<div class="page">
+  <div class="content"><div class="chart">${chunk.map(cell).join("")}</div></div>
+  <div class="foot">పుట ${teluguNumber(i + 2)} / ${teluguNumber(total)}</div>
+</div>`
+    )
+    .join("\n");
+
+  return `<!doctype html>
+<html lang="te" data-paged="1">
+<head>
+<meta charset="utf-8">
+<title>${escapeHtml(safeName(title))}_${today()}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;700&display=swap">
+${site.links}
+<style>${site.css}</style>
+<style>
+  @page { size: 210mm 297mm; margin: 0; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  body { font-family: ${fontStack(SITE_FONT)}; color: #0f172a; }
+  .page { width: 210mm; height: 296.4mm; display: flex; flex-direction: column; overflow: hidden; break-after: page; page-break-after: always; }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+  .content { flex: 1; min-height: 0; padding: 12mm 12mm 0; }
+  .foot { height: 12mm; display: flex; align-items: center; justify-content: center; gap: 0.6em; font-size: 9pt; color: #64748b; }
+  .foot::before, .foot::after { content: ""; width: 2.2em; height: 0.5pt; background: #cbd5e1; }
+  .foot:empty { visibility: hidden; }
+
+  .chart { height: 100%; display: grid; grid-template-columns: repeat(${AKSHARA_COLS}, 1fr); grid-template-rows: repeat(4, 1fr); gap: 4mm; }
+  .cell { border: 0.8pt solid #c7d2fe; border-radius: 4mm; background: #f8faff; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3mm; text-align: center; overflow: hidden; }
+  .pic { height: 26mm; display: flex; align-items: center; justify-content: center; }
+  .pic img { max-height: 26mm; max-width: 100%; object-fit: contain; }
+  .letter { font-size: 34pt; font-weight: 900; line-height: 1.15; color: #1a237e; }
+  .word { font-size: 14pt; font-weight: 700; line-height: 1.4; color: #6a1b9a; }
+  .type { font-size: 8pt; color: #64748b; margin-top: 1mm; }
+
+  .cover { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .cover img { width: 36mm; height: 36mm; object-fit: contain; margin-bottom: 8mm; }
+  .cover h1 { font-size: 34pt; margin: 0 0 4mm; color: #1a237e; }
+  .cover .sample { font-size: 22pt; letter-spacing: 0.25em; color: #6a1b9a; margin: 0 0 8mm; }
+  .cover p { margin: 1mm 0; color: #475569; font-size: 11pt; }
+
+  @media screen {
+    html, body { background: #d9dee5; }
+    body { padding: 6mm 0; }
+    .page { margin: 0 auto 6mm; background: #fff; box-shadow: 0 2px 12px rgba(15, 23, 42, 0.18); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="content"><section class="cover">
+    <img src="${logo}" alt="">
+    <h1>${escapeHtml(title)}</h1>
+    <p class="sample">${rows.slice(0, 5).map((r) => escapeHtml(r.letter)).join(" ")}</p>
+    <p>${teluguNumber(rows.length)} అక్షరాలు</p>
+    <p>${SITE_NAME} · ${madeOn}</p>
+  </section></div>
+  <div class="foot"></div>
+</div>
+${pages}
+</body>
+</html>`;
+}
+
+export async function exportAksharasToPdf(
+  title: string,
+  rows: AksharaExportRow[],
+  onProgress: ProgressFn = () => {}
+): Promise<void> {
+  if (!rows.length) return;
+  onProgress(10, "అక్షరాలు సిద్ధం చేస్తున్నాం…");
+  return printHtml(buildAksharaChartHtml(title, rows), onProgress);
+}
+
+export async function exportAksharasToExcel(
+  title: string,
+  rows: AksharaExportRow[],
+  onProgress: ProgressFn = () => {}
+): Promise<void> {
+  if (!rows.length) return;
+
+  onProgress(10, "అక్షరాలు సిద్ధం చేస్తున్నాం…");
+  const XLSX = await import("xlsx");
+
+  onProgress(50, "Excel పట్టిక తయారవుతోంది…");
+  await pause(50);
+
+  const header = ["సంఖ్య", "అక్షరం", "పదం", "వర్గం", "చిత్రం"];
+  const body = rows.map((r, i) => [i + 1, r.letter, r.word, r.typeLabel, r.image ? absoluteSrc(r.image) : ""]);
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+  ws["!cols"] = [{ wch: 7 }, { wch: 10 }, { wch: 22 }, { wch: 12 }, { wch: 50 }];
+  ws["!autofilter"] = { ref: `A1:E${body.length + 1}` };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, (title.replace(/[\\/?*[\]:]/g, "").trim() || "అక్షరమాల").slice(0, 31));
+
+  onProgress(90, "డౌన్‌లోడ్ అవుతోంది…");
+  XLSX.writeFile(wb, `${safeName(title)}_${today()}.xlsx`);
+  onProgress(100, "Excel డౌన్‌లోడ్ అయింది ✓");
+}
+
+/* ================================================================== */
+/* ఏ జాబితానైనా (సంధులు, పదాలు, కథలు…) — PDF మరియు Excel                */
+/* పద్యాల PDF రూపమే: ముఖపేజీ, తెలుగు పుట సంఖ్యలు, చివరి పేజీ             */
+/* ================================================================== */
+
+export type RecordColumn = { key: string; label: string };
+export type RecordRow = { id: string } & Record<string, string>;
+
+export type RecordsExport = {
+  /** PDF ముఖపేజీ / file పేరు, ఉదా: "సంధి మాల" */
+  title: string;
+  /** ఉదా: "సంధులు", "పదాలు" */
+  unitLabel: string;
+  columns: RecordColumn[];
+  rows: RecordRow[];
+  /** ప్రతి అంశం శీర్షికగా వచ్చే column */
+  titleKey: string;
+  /** PDF లో highlight పెట్టెలో వచ్చే column (ఐచ్ఛికం) */
+  highlightKey?: string;
+};
+
+function recordsToPoems({ columns, rows, titleKey, highlightKey }: RecordsExport): ExportPoem[] {
+  return rows.map((r) => ({
+    title: r[titleKey] ?? "",
+    content: columns
+      .filter((c) => c.key !== titleKey && c.key !== highlightKey && (r[c.key] ?? "").trim())
+      .map((c) => `${c.label}: ${r[c.key]}`)
+      .join("\n"),
+    specialLine: highlightKey ? r[highlightKey] ?? "" : "",
+  }));
+}
+
+export async function exportRecordsToPdf(data: RecordsExport, onProgress: ProgressFn = () => {}): Promise<void> {
+  if (!data.rows.length) return;
+  onProgress(10, `${data.unitLabel} సిద్ధం చేస్తున్నాం…`);
+  const html = buildPdfHtml(
+    { poems: recordsToPoems(data), poetryName: data.title, unitLabel: data.unitLabel, collectionLabel: "విభాగం" },
+    { ...DEFAULT_PDF_SETTINGS, theme: "neeli", showSpecialLine: Boolean(data.highlightKey) },
+    SITE_FONT
+  ).replace(/<span>ప్రత్యేక పంక్తి<\/span>/g, `<span>${escapeHtml(data.columns.find((c) => c.key === data.highlightKey)?.label ?? "")}</span>`);
+  return printHtml(html, onProgress);
+}
+
+export async function exportRecordsToExcel(data: RecordsExport, onProgress: ProgressFn = () => {}): Promise<void> {
+  if (!data.rows.length) return;
+
+  onProgress(10, `${data.unitLabel} సిద్ధం చేస్తున్నాం…`);
+  const XLSX = await import("xlsx");
+
+  onProgress(50, "Excel పట్టిక తయారవుతోంది…");
+  await pause(50);
+
+  const header = ["సంఖ్య", ...data.columns.map((c) => c.label)];
+  const body = data.rows.map((r, i) => [i + 1, ...data.columns.map((c) => r[c.key] ?? "")]);
+
+  const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
+  ws["!cols"] = [{ wch: 7 }, ...data.columns.map((c) => ({ wch: Math.min(60, Math.max(12, ...data.rows.slice(0, 50).map((r) => (r[c.key] ?? "").length))) }))];
+  ws["!autofilter"] = { ref: `A1:${String.fromCharCode(65 + data.columns.length)}${body.length + 1}` };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, (data.title.replace(/[\\/?*[\]:]/g, "").trim() || "జాబితా").slice(0, 31));
+
+  onProgress(90, "డౌన్‌లోడ్ అవుతోంది…");
+  XLSX.writeFile(wb, `${safeName(data.title)}_${today()}.xlsx`);
   onProgress(100, "Excel డౌన్‌లోడ్ అయింది ✓");
 }

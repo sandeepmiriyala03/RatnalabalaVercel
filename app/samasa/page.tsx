@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import {
   Box, Typography, Card, CardContent, Chip,
   TextField, InputAdornment, Collapse, Divider,
-  Stack, Button, alpha, useTheme, Tab, Tabs,
+  Stack, Button, alpha, Tab, Tabs,
 } from "@mui/material";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
@@ -12,7 +12,9 @@ import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
 import FindInPageRoundedIcon from "@mui/icons-material/FindInPageRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
 import SamasaDetectorPanel from "@/app/components/SamasaDetectorPanel";
+import { SamasaGrid } from "@/app/components/TeluguDataGrid";
 /* ═══════════════════════════════════════════
    DATA
 ═══════════════════════════════════════════ */
@@ -127,7 +129,6 @@ const SAMASA_RULES = [
   },
 ];
 
-const CAT_COLOR: Record<string, string> = { "ముఖ్య సమాసాలు": "#2d6a4f" };
 const SAMASA_COLORS = ["#2d6a4f","#1a5276","#6c3483","#784212","#922b21","#1a5c3a"];
 
 /* ═══════════════════════════════════════════
@@ -257,6 +258,7 @@ export default function SamasaMalaPage() {
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)}
+          variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile
           sx={{
             "& .MuiTab-root": { fontFamily: "'Noto Serif Telugu', serif", fontWeight: 700, fontSize: 14, textTransform: "none" },
             "& .Mui-selected": { color: "#2d6a4f !important" },
@@ -264,6 +266,7 @@ export default function SamasaMalaPage() {
           }}>
           <Tab icon={<MenuBookRoundedIcon fontSize="small" />} iconPosition="start" label="సమాస జాబితా" />
           <Tab icon={<FindInPageRoundedIcon fontSize="small" />} iconPosition="start" label="సమాస గుర్తించు" />
+          <Tab icon={<TableRowsRoundedIcon fontSize="small" />} iconPosition="start" label="యుక్తి AI పట్టిక" />
         </Tabs>
       </Box>
 
@@ -294,7 +297,9 @@ export default function SamasaMalaPage() {
       {/* TAB 1 — DETECTOR */}
       {tab === 1 && <SamasaDetectorPanel />}
 
-     
+      {/* TAB 2 — యుక్తి AI పట్టిక · PDF · Excel */}
+      {tab === 2 && <SamasaGrid rules={SAMASA_RULES} />}
+
     </Box>
   );
 }

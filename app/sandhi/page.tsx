@@ -4,7 +4,7 @@ import React, { useState, useMemo } from "react";
 import {
   Box, Typography, Card, CardContent, Chip,
   TextField, InputAdornment, Collapse, Divider,
-  Stack, Button, alpha, useTheme, Tab, Tabs,
+  Stack, Button, alpha, Tab, Tabs,
 } from "@mui/material";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
@@ -12,6 +12,9 @@ import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
 import FindInPageRoundedIcon from "@mui/icons-material/FindInPageRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
+
+import { SandhiGrid } from "@/app/components/TeluguDataGrid";
 
 /* ═══════════════════════════════════════════
    DATA
@@ -469,7 +472,6 @@ function DetectorResult({ res, input }: { res: DetectResult; input: string }) {
    MAIN PAGE
 ═══════════════════════════════════════════ */
 export default function SandhiMalaPage() {
-  const theme = useTheme();
   const [tab, setTab] = useState(0);
 
   // List tab state
@@ -518,6 +520,7 @@ export default function SandhiMalaPage() {
       {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)}
+          variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile
           sx={{
             "& .MuiTab-root": { fontFamily: "'Noto Serif Telugu', serif", fontWeight: 700, fontSize: 14, textTransform: "none" },
             "& .Mui-selected": { color: "#2d6a4f !important" },
@@ -525,6 +528,7 @@ export default function SandhiMalaPage() {
           }}>
           <Tab icon={<MenuBookRoundedIcon fontSize="small" />} iconPosition="start" label="సంధి జాబితా" />
           <Tab icon={<FindInPageRoundedIcon fontSize="small" />} iconPosition="start" label="సంధి గుర్తించు" />
+          <Tab icon={<TableRowsRoundedIcon fontSize="small" />} iconPosition="start" label="యుక్తి AI పట్టిక" />
         </Tabs>
       </Box>
 
@@ -572,6 +576,9 @@ export default function SandhiMalaPage() {
           )}
         </Box>
       )}
+
+      {/* ── TAB 2: యుక్తి AI పట్టిక · PDF · Excel ── */}
+      {tab === 2 && <SandhiGrid rules={SANDHI_RULES} />}
 
       {/* ── TAB 1: DETECTOR ── */}
       {tab === 1 && (

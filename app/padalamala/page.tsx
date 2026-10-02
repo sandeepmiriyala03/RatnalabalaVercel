@@ -11,6 +11,8 @@ import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import StopRoundedIcon from "@mui/icons-material/StopRounded";
 
+import { GridSection, PadalaGrid } from "@/app/components/TeluguDataGrid";
+
 /* ═══════════════════════════════════════════
    DATA
 ═══════════════════════════════════════════ */
@@ -355,6 +357,11 @@ export default function PadalaMala() {
           <AksharaBar selected={aksharamu} onChange={a => { setAksharamu(a); setSearch(""); }} />
         </CardContent>
       </Card>
+
+      {/* 📊 యుక్తి AI పట్టిక · PDF · Excel */}
+      <GridSection>
+        <PadalaGrid twoLetter={TWO_LETTER} threeFour={THREE_FOUR_LETTER} swaralu={SWARALU} />
+      </GridSection>
 
       {/* Words */}
       {filtered.length === 0 ? (

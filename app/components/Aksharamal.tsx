@@ -20,6 +20,7 @@ import {
   Drawer,
   IconButton,
   InputAdornment,
+  LinearProgress,
   MenuItem,
   Select,
   Skeleton,
@@ -35,6 +36,8 @@ import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded";
 import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRounded";
 import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
+import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
+import GridOnRoundedIcon from "@mui/icons-material/GridOnRounded";
 
 // యుక్తి AI icons — సైట్ అంతా ఒకే రూపం
 import { CloseIcon, SearchIcon } from "@yuktishaalaa/yuktai";
@@ -53,6 +56,7 @@ import {
 import { track } from "@/lib/track";
 
 import FamilyVoiceRecorder from "@/app/components/Familyvoicerecorder";
+import { exportAksharasToExcel, exportAksharasToPdf } from "@/app/components/exportPoems";
 
 /** యుక్తి AI పట్టిక — బ్రౌజర్‌లో మాత్రమే (server render లేదు) */
 const YuktaiGrid = dynamic(() => import("@yuktishaalaa/yuktai").then((m) => m.YuktaiGrid), {
@@ -403,6 +407,8 @@ function CardResults({
   aiWords,
   onSpeak,
   onPickLetter,
+  card,
+  isGrid = false,
 }: {
   selected: Akshara | null;
   similar: SimilarResult | null;
@@ -410,6 +416,9 @@ function CardResults({
   aiWords: AiWordsState;
   onSpeak: (word: string) => void;
   onPickLetter: (letter: string) => void;
+  /** పట్టిక మోడ్‌లో: ఎంచుకున్న అక్షరం పూర్తి కార్డ్ (వినండి, చెప్పండి, రాయండి) */
+  card?: React.ReactNode;
+  isGrid?: boolean;
 }) {
   if (!selected) {
     return (
@@ -423,9 +432,13 @@ function CardResults({
         }}
       >
         <TouchAppRoundedIcon color="secondary" sx={{ fontSize: 36, mb: 1 }} />
-        <Typography fontWeight={700}>ఏదైనా అక్షరం కార్డ్‌పై నొక్కండి</Typography>
+        <Typography fontWeight={700}>
+          {isGrid ? "పట్టికలో ఏదైనా అక్షరంపై నొక్కండి" : "ఏదైనా అక్షరం కార్డ్‌పై నొక్కండి"}
+        </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          సంబంధిత అక్షరాలు, AI సూచించిన కొత్త పదాలు ఇక్కడ కనిపిస్తాయి.
+          {isGrid
+            ? "ఆ అక్షరం కార్డ్ (వినండి, చెప్పండి, రాయండి), సంబంధిత అక్షరాలు, AI పదాలు ఇక్కడ కనిపిస్తాయి."
+            : "సంబంధిత అక్షరాలు, AI సూచించిన కొత్త పదాలు ఇక్కడ కనిపిస్తాయి."}
         </Typography>
       </Box>
     );
@@ -433,7 +446,10 @@ function CardResults({
 
   return (
     <Stack spacing={2}>
-      {/* Selected letter */}
+      {/* పట్టిక మోడ్: పూర్తి కార్డ్ | కార్డుల మోడ్: చిన్న శీర్షిక (కార్డ్ ఇప్పటికే ఎడమ వైపు ఉంది) */}
+      {card ? (
+        <Box onClick={(e) => e.stopPropagation()}>{card}</Box>
+      ) : (
       <Stack direction="row" spacing={2} alignItems="center">
         <Box
           sx={{
@@ -462,6 +478,7 @@ function CardResults({
           )}
         </Box>
       </Stack>
+      )}
 
       {/* Related letters */}
       <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
@@ -624,6 +641,9 @@ export default function AksharamalaParent() {
   // కార్డులు / యుక్తి AI పట్టిక
   const [viewMode, setViewMode] = useState<ViewMode>("cards");
   const [gridTheme, setGridTheme] = useState<GridTheme>("default");
+  // PDF / Excel డౌన్‌లోడ్ — 10% → 100% తెలుగు సందేశాలతో
+  const [exportJob, setExportJob] = useState<{ percent: number; message: string } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   // Family voice recordings
   const [recorderOpen, setRecorderOpen] = useState(false);
@@ -984,10 +1004,42 @@ export default function AksharamalaParent() {
       aiWords={aiWords}
       onSpeak={speakWord}
       onPickLetter={handlePickLetter}
+      isGrid={isGrid}
+      card={
+        // పట్టికలో కార్డులు లేవు — ఎంచుకున్న ఒక్క అక్షరం కార్డ్ మాత్రమే (memory సురక్షితం).
+        // key = అక్షరం id → వేరే అక్షరం ఎంచుకుంటే కార్డ్ కొత్తగా మొదలవుతుంది (పాత ఆడియో, రాత ఆగుతాయి)
+        isGrid && selected ? (
+          <AksharaPosterCard key={selected.id} akshara={selected} enableRead={true} voiceGender={voiceGender} />
+        ) : undefined
+      }
     />
   );
 
   const gridBorder = alpha(theme.palette.divider, 0.9);
+
+  /* ---------- PDF / Excel: పట్టికలో ఉన్న అక్షరాలు (పై filter, search తో) ---------- */
+  const exportBusy = exportJob !== null && exportJob.percent < 100;
+  const exportTitle =
+    typeFilter === "swaralu" ? "తెలుగు అక్షరమాల — అచ్చులు" : typeFilter === "vyanjanalu" ? "తెలుగు అక్షరమాల — హల్లులు" : "తెలుగు అక్షరమాల";
+
+  const runExport = (kind: "pdf" | "excel") => {
+    if (exportBusy || !gridRows.length) return;
+    setExportError(null);
+    const onProgress = (percent: number, message: string) => setExportJob({ percent, message });
+    // await లేకుండా నేరుగా పిలుపు — iPhone లో PDF tab బటన్ నొక్కిన వెంటనే తెరుచుకోవాలి
+    const job = kind === "pdf" ? exportAksharasToPdf(exportTitle, gridRows, onProgress) : exportAksharasToExcel(exportTitle, gridRows, onProgress);
+    job
+      .then(() => setTimeout(() => setExportJob(null), 3000))
+      .catch((err: unknown) => {
+        console.error(`[Aksharamala] ${kind} export failed:`, err);
+        setExportJob(null);
+        setExportError(
+          err instanceof Error && err.message === "Popup blocked"
+            ? "బ్రౌజర్ కొత్త tab ను ఆపింది. ఈ సైట్‌కి popups అనుమతించి మళ్ళీ ప్రయత్నించండి."
+            : `${kind === "pdf" ? "PDF" : "Excel"} తయారు కాలేదు. మళ్ళీ ప్రయత్నించండి.`
+        );
+      });
+  };
 
   return (
     <Container maxWidth="lg">
@@ -1089,7 +1141,6 @@ export default function AksharamalaParent() {
               onChange={(_, v: ViewMode | null) => {
                 if (!v) return;
                 setViewMode(v);
-              
               }}
               aria-label="చూపే విధానం"
             >
@@ -1219,21 +1270,76 @@ export default function AksharamalaParent() {
                         AI ని అడగండి: {GRID_EXAMPLES.join(" • ")}
                       </Typography>
                     </Box>
-                    <Select
-                      size="small"
-                      value={gridTheme}
-                      onChange={(e) => setGridTheme(e.target.value as GridTheme)}
-                      inputProps={{ "aria-label": "పట్టిక రూపం" }}
-                      startAdornment={<ContrastRoundedIcon fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />}
-                      sx={{ minWidth: 170, minHeight: 40 }}
-                    >
-                      {GRID_THEMES.map((o) => (
-                        <MenuItem key={o.value} value={o.value} sx={{ minHeight: 44 }}>
-                          {o.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
+                    <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
+                      <Select
+                        size="small"
+                        value={gridTheme}
+                        onChange={(e) => setGridTheme(e.target.value as GridTheme)}
+                        inputProps={{ "aria-label": "పట్టిక రూపం" }}
+                        startAdornment={<ContrastRoundedIcon fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />}
+                        sx={{ minWidth: 170, minHeight: 40, flex: { xs: "1 1 100%", sm: "none" } }}
+                      >
+                        {GRID_THEMES.map((o) => (
+                          <MenuItem key={o.value} value={o.value} sx={{ minHeight: 44 }}>
+                            {o.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        disabled={loading || !gridRows.length || exportBusy}
+                        onClick={() => runExport("pdf")}
+                        startIcon={<PictureAsPdfRoundedIcon fontSize="small" />}
+                        sx={{ textTransform: "none", fontWeight: 700, minHeight: 40, borderRadius: "10px", flex: { xs: 1, sm: "none" } }}
+                      >
+                        PDF
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="success"
+                        disabled={loading || !gridRows.length || exportBusy}
+                        onClick={() => runExport("excel")}
+                        startIcon={exportBusy ? <CircularProgress size={16} color="inherit" /> : <GridOnRoundedIcon fontSize="small" />}
+                        sx={{ textTransform: "none", fontWeight: 700, minHeight: 40, borderRadius: "10px", flex: { xs: 1, sm: "none" } }}
+                      >
+                        Excel
+                      </Button>
+                    </Stack>
                   </Stack>
+
+                  {exportJob && (
+                    <Box role="status" aria-live="polite" sx={{ px: 0.5 }}>
+                      <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                        <Typography variant="body2" fontWeight={600}>
+                          {exportJob.message}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {exportJob.percent}%
+                        </Typography>
+                      </Stack>
+                      <LinearProgress
+                        variant="determinate"
+                        value={exportJob.percent}
+                        color={exportJob.percent >= 100 ? "success" : "primary"}
+                        sx={{ height: 6, borderRadius: 3 }}
+                      />
+                    </Box>
+                  )}
+
+                  {exportError && (
+                    <Alert severity="error" onClose={() => setExportError(null)} sx={{ borderRadius: "12px" }}>
+                      {exportError}
+                    </Alert>
+                  )}
+
+                  {!exportJob && (
+                    <Typography variant="caption" color="text.secondary" sx={{ px: 0.5 }}>
+                      📄 PDF: ఒక పేజీకి 12 అక్షరాలు, చిత్రాలతో. Print window లో &quot;Save as PDF&quot; ఎంచుకోండి. 📊 Excel: అక్షరం, పదం, వర్గం.
+                    </Typography>
+                  )}
 
                   <Box
                     sx={{

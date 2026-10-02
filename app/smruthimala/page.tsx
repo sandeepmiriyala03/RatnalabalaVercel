@@ -25,6 +25,7 @@ import html2canvas from "html2canvas";
 
 // జేసన్ డేటా ఇంపోర్ట్
 import seethamalaData from "@/data/Pingali_Seethamama.json";
+import { GridSection, SmruthiGrid } from "@/app/components/TeluguDataGrid";
 
 interface Story {
   story_id: string;
@@ -193,6 +194,11 @@ export default function SmruthimalaPage() {
         </Box>
 
         <Divider sx={{ mb: 5, borderColor: "#000000" }} />
+
+        {/* 📊 యుక్తి AI పట్టిక · PDF · Excel */}
+        <GridSection>
+          <SmruthiGrid stories={stories} />
+        </GridSection>
 
         {/* కథల లిస్ట్ */}
         <Stack spacing={5}>

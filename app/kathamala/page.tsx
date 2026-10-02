@@ -15,6 +15,7 @@ import {
 import storiesData from "@/data/kids_stories_te.json";
 import StoryListByAge from "@/app/components/StoryListByAge";
 import { AGE_GROUPS,DEFAULT_AGE_KEY,AgeKey} from "@/app/types/kathamala";
+import { GridSection, KathaGrid } from "@/app/components/TeluguDataGrid";
 export default function KathamalaPage() {
     const [selectedAge, setSelectedAge] =useState<AgeKey>(DEFAULT_AGE_KEY);
     const stories = storiesData.stories;
@@ -149,6 +150,11 @@ export default function KathamalaPage() {
       </Stack>
 
       <Divider sx={{ mb: 3 }} />
+
+      {/* 📊 యుక్తి AI పట్టిక · PDF · Excel — పైన ఎంచుకున్న వయస్సు ప్రకారమే */}
+      <GridSection>
+        <KathaGrid stories={stories} ageKey={selectedAge} ageGroups={AGE_GROUPS} />
+      </GridSection>
 
       {/* 📖 Stories List */}
       <StoryListByAge ageKey={selectedAge} />

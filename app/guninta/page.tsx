@@ -9,6 +9,8 @@ import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import StopRoundedIcon from "@mui/icons-material/StopRounded";
 
+import { GridSection, GunintaGrid } from "@/app/components/TeluguDataGrid";
+
 /* ═══════════════════════════════════════════
    DATA
 ═══════════════════════════════════════════ */
@@ -318,6 +320,11 @@ export default function GunintaMala() {
           💡 గుణింత రూపం click చేస్తే వినిపిస్తుంది · row లో 🔊 నొక్కితే ఆ వ్యంజనం అన్ని గుణింతాలు వినిపిస్తాయి
         </Typography>
       </Box>
+
+      {/* 📊 యుక్తి AI పట్టిక · PDF · Excel */}
+      <GridSection>
+        <GunintaGrid vyanjanalu={VYANJANALU} marks={GUNINTA_MARKS} names={GUNINTA_NAMES} />
+      </GridSection>
 
       {/* Rows */}
       <Stack spacing={0}>

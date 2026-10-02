@@ -19,8 +19,10 @@ import SametaluList from "@/app/components/SametaluList";
 import PythonSametaluChat from "@/app/components/PythonSametaluChat";
 import {
   SAMETALU_GROUPS,
+  SAMETALU_FILE_MAP,
   TeluguLetter,
 } from "@/app/types/sametalu";
+import { GridSection, SametaluGrid } from "@/app/components/TeluguDataGrid";
 
 export default function SametaluPage() {
   const [letter, setLetter] = useState<TeluguLetter>("అ");
@@ -85,6 +87,11 @@ export default function SametaluPage() {
           ))}
         </Select>
       </FormControl>
+
+      {/* 📊 యుక్తి AI పట్టిక · PDF · Excel */}
+      <GridSection>
+        <SametaluGrid letter={letter} fileMap={SAMETALU_FILE_MAP} />
+      </GridSection>
 
       <Divider sx={{ my: 3 }} />
 
