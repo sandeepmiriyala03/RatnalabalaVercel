@@ -82,6 +82,22 @@ async rewrites() {
       source: "/api/aksharamala",
       destination: "/api/main?__fn=aksharamala",
     },
+    {
+      source: "/api/gita",
+      destination: "/api/main?__fn=gita",
+    },
+    {
+      source: "/api/rag_chat",
+      destination: "/api/main?__fn=rag_chat",
+    },
+    {
+      source: "/api/reading_recommendations",
+      destination: "/api/main?__fn=reading_recommendations",
+    },
+    {
+      source: "/api/sametalu_agent",
+      destination: "/api/main?__fn=sametalu_agent",
+    },
   ];
 },
 
