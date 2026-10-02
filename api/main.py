@@ -17,8 +17,8 @@ from psycopg.rows import dict_row
 import httpx
 
 # 6 Python functions → 1: /api/aksharamala, /api/gita, ... ఈ main.py నుండే నడుస్తాయి
-from _router import delegate
 
+from api._router import delegate
 # ═══════════════════════════════════════════════════════════════
 # CONFIG
 # ═══════════════════════════════════════════════════════════════
