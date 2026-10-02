@@ -16,3 +16,10 @@ app/build/
 build/
 out/
 unused-report.txt
+
+.eve/
+.vercel/
+.gradle/
+*.apk
+*.aab
+
