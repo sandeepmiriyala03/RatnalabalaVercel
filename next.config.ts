@@ -72,14 +72,20 @@ const nextConfig: NextConfig = {
   },
 
   // Kept here (works in `next dev` too) — remove the same rule from vercel.json
-  async rewrites() {
-    return [
-      {
-        source: "/api/extract-news",
-        destination: "/api/main?endpoint=extract-news",
-      },
-    ];
-  },
+async rewrites() {
+  return [
+    {
+      source: "/api/extract-news",
+      destination: "/api/main?endpoint=extract-news",
+    },
+    {
+      source: "/api/aksharamala",
+      destination: "/api/main?__fn=aksharamala",
+    },
+  ];
+},
+
+
 
   experimental: {
     // Navigations, data fetches and Server Actions wait while offline and
