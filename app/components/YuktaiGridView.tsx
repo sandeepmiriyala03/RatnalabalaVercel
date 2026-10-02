@@ -931,7 +931,7 @@ function PdfExportDialog({ open, onClose, options, initialFontId, fonts }: PdfDi
             </>
           ) : (
             <Typography variant="caption" color="text.secondary">
-              బటన్ నొక్కిన తర్వాత Print window తెరుచుకుంటుంది. అక్కడ &quot;Save as PDF&quot; ఎంచుకోండి. More settings లో &quot;Background graphics&quot; ఆన్ చేయండి.
+              బటన్ నొక్కిన తర్వాత Print window తెరుచుకుంటుంది. Destination లో &quot;Save as PDF&quot; ఎంచుకోండి (Microsoft Print to PDF కాదు — అది అక్షరాలను చిత్రంగా మారుస్తుంది). More settings లో &quot;Background graphics&quot; ఆన్ చేయండి.
             </Typography>
           )}
         </Box>

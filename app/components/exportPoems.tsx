@@ -376,9 +376,19 @@ function collectSiteFontCss(family?: string): { links: string; css: string } {
 /* 📄 PDF HTML                                                         */
 /* ------------------------------------------------------------------ */
 
+/** తెలుగు అంకెలు: 12 → ౧౨ */
+const TE_DIGITS = "౦౧౨౩౪౫౬౭౮౯";
+export const teluguNumber = (n: number | string) => String(n).replace(/\d/g, (d) => TE_DIGITS[Number(d)]);
+
+/** ముఖపేజీ, చివరి పేజీలోని లోగో (public/icons) */
+const LOGO_PATH = "/icons/android-launchericon-512-512.png";
+
 /**
- * Print కోసం HTML. preview = true అయితే మొదటి 3 పద్యాలు మాత్రమే,
- * స్క్రీన్‌పై కాగితం లాగా కనిపించేలా.
+ * Print కోసం HTML — ప్రతి పేజీని మనమే అమరుస్తాం (బ్రౌజర్ కాదు):
+ *  • @page margin 0 → బ్రౌజర్ పెట్టే తేదీ, సమయం, URL, "1/10" రావు
+ *  • ప్రతి పేజీ కింద తెలుగు అంకెలతో "పుట ౩ / ౧౦"
+ *  • మొదటి పేజీ: లోగో + శీర్షిక; చివరి పేజీ: ఈ పుస్తకం వివరాలు (ఫాంట్, సైజు, థీమ్)
+ * preview = true అయితే మొదటి 3 పద్యాలు మాత్రమే.
  */
 export function buildPdfHtml(
   { poems, poetryName, poet = "" }: ExportOptions,
@@ -391,7 +401,10 @@ export function buildPdfHtml(
   const t = PDF_THEMES.find((x) => x.id === settings.theme) ?? PDF_THEMES[0];
   const scale = Math.min(1.6, Math.max(0.8, settings.fontScale));
   // A5 చిన్న పేజీ — అక్షరాలు కొంచెం చిన్నగా
-  const basePt = (size.id === "A5" ? 10.5 : 12) * scale;
+  const basePt = (size.id === "A5" ? 11 : 13) * scale;
+  const m = size.marginMm;
+  // ముద్రణలో చిన్న గుండ్రని తేడాల వల్ల ఖాళీ పేజీ రాకుండా 0.6mm తక్కువ
+  const pageH = size.heightMm - 0.6;
 
   // సైట్ ఫాంట్ → అన్ని @font-face; link ఉన్న font → ఆ link; main.py fonts (link లేవు) → సైట్ CSS లోని ఆ font నియమాలు
   let fontLinks: string;
@@ -402,6 +415,11 @@ export function buildPdfHtml(
     fontLinks = fontHeadHtml(font);
   }
 
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const logo = `${origin}${LOGO_PATH}`;
+  const madeOn = new Date().toLocaleDateString("te-IN", { day: "numeric", month: "long", year: "numeric" });
+  const site = origin.replace(/^https?:\/\//, "");
+
   const list = preview ? poems.slice(0, 3) : poems;
   const poemsHtml = list
     .map((p, i) => {
@@ -410,18 +428,14 @@ export function buildPdfHtml(
         settings.showSpecialLine && p.specialLine
           ? `<p class="special"><span>ప్రత్యేక పంక్తి</span>${escapeHtml(p.specialLine)}</p>`
           : "";
-      return `<article class="poem">
-  <h2><span class="num">${i + 1}</span>${escapeHtml(p.title)}</h2>
-  <p class="text">${lines}</p>
-  ${special}
-</article>`;
+      return `<article class="poem"><h2><span class="num">${teluguNumber(i + 1)}</span>${escapeHtml(p.title)}</h2><p class="text">${lines}</p>${special}</article>`;
     })
     .join("\n");
 
-  const coverHeight = size.heightMm - size.marginMm * 2 - 14;
+  const row = (k: string, v: string) => `<tr><th>${k}</th><td>${escapeHtml(v)}</td></tr>`;
   const previewNote =
     preview && poems.length > list.length
-      ? `<p class="preview-note">నమూనా: మొదటి ${list.length} పద్యాలు మాత్రమే. PDF లో మొత్తం ${poems.length} పద్యాలు ఉంటాయి.</p>`
+      ? `<p class="note">నమూనా: మొదటి ${teluguNumber(list.length)} పద్యాలు మాత్రమే. PDF లో మొత్తం ${teluguNumber(poems.length)} పద్యాలు ఉంటాయి.</p>`
       : "";
 
   return `<!doctype html>
@@ -433,48 +447,124 @@ export function buildPdfHtml(
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;700&display=swap">
 ${fontLinks}
 <style>
-  @page { size: ${size.id === "Letter" ? "letter" : size.id}; margin: ${size.marginMm}mm; }
+  @page { size: ${size.widthMm}mm ${size.heightMm}mm; margin: 0; }
   * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  html, body { margin: 0; padding: 0; }
-  html { background: ${t.paper}; }
-  body { font-family: ${fontStack(font)}; color: ${t.text}; font-size: ${basePt.toFixed(2)}pt; line-height: 1.8; }
+  html, body { margin: 0; padding: 0; background: ${t.paper}; }
+  body { font-family: ${fontStack(font)}; color: ${t.text}; font-size: ${basePt.toFixed(2)}pt; line-height: 1.65; }
+  #src { display: none; }
 
-  .cover { min-height: ${coverHeight}mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; page-break-after: always; break-after: page; }
-  .cover .band { width: 3.5em; height: 0.3em; background: ${t.accent}; border-radius: 1em; margin-bottom: 1.6em; }
-  .cover h1 { font-size: 2.4em; margin: 0 0 0.45em; line-height: 1.35; color: ${t.accent}; }
-  .cover .poet { font-size: 1.25em; margin: 0 0 1.6em; }
-  .cover .meta { font-size: 0.88em; color: ${t.muted}; margin: 0.15em 0; }
+  /* ఒక్కో పేజీ — స్థిరమైన కాగితం సైజు */
+  .page { width: ${size.widthMm}mm; height: ${pageH}mm; display: flex; flex-direction: column; overflow: hidden; background: ${t.paper}; break-after: page; page-break-after: always; }
+  .page:last-child { break-after: auto; page-break-after: auto; }
+  .content { flex: 1; min-height: 0; overflow: hidden; padding: ${m}mm ${m}mm 2mm; }
+  .foot { height: ${Math.max(10, m - 2)}mm; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 0.6em; font-size: 0.72em; color: ${t.muted}; }
+  .foot::before, .foot::after { content: ""; width: 2.2em; height: 0.5pt; background: ${t.rule}; }
+  .foot:empty { visibility: hidden; }
 
-  .poem { page-break-inside: avoid; break-inside: avoid; padding: 0.9em 0 1em; border-bottom: 0.5pt solid ${t.rule}; }
-  .poem:last-of-type { border-bottom: 0; }
-  h2 { font-size: 1.08em; margin: 0 0 0.35em; display: flex; gap: 0.6em; align-items: baseline; page-break-after: avoid; break-after: avoid; }
-  h2 .num { color: ${t.accent}; min-width: 2em; }
-  .text { margin: 0 0 0 2.6em; }
-  .special { margin: 0.6em 0 0 2.6em; padding: 0.35em 0.7em; border-left: 3pt solid ${t.accent}; background: ${t.soft}; font-weight: 700; }
-  .special span { display: block; font-size: 0.7em; font-weight: 400; color: ${t.muted}; }
-  footer { margin-top: 1.5em; text-align: center; font-size: 0.75em; color: ${t.muted}; }
-  .preview-note { display: none; }
+  /* పద్యం — పూర్తి వెడల్పు, చిన్న సంఖ్య గుర్తు */
+  .poem { padding: 0.6em 0 0.7em; border-bottom: 0.5pt solid ${t.rule}; }
+  .poem:last-child { border-bottom: 0; }
+  h2 { font-size: 1.05em; margin: 0 0 0.3em; display: flex; align-items: baseline; gap: 0.55em; color: ${t.text}; }
+  h2 .num { flex-shrink: 0; min-width: 1.9em; padding: 0 0.4em; border-radius: 1em; background: ${t.soft}; color: ${t.accent}; font-size: 0.8em; text-align: center; border: 0.5pt solid ${t.rule}; }
+  .text { margin: 0; padding-left: 0.2em; }
+  .special { margin: 0.55em 0 0; padding: 0.35em 0.75em; border-left: 3pt solid ${t.accent}; background: ${t.soft}; font-weight: 700; border-radius: 0 0.3em 0.3em 0; }
+  .special span { display: block; font-size: 0.68em; font-weight: 400; color: ${t.muted}; }
 
-  /* స్క్రీన్ నమూనా: ఒక కాగితం లాగా */
+  /* ముఖపేజీ */
+  .cover { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .cover img { width: 38mm; height: 38mm; object-fit: contain; margin-bottom: 9mm; }
+  .cover h1 { font-size: 2.5em; margin: 0 0 0.35em; line-height: 1.35; color: ${t.accent}; }
+  .cover .poet { font-size: 1.2em; margin: 0 0 1.4em; }
+  .cover .band { width: 3.5em; height: 0.25em; border-radius: 1em; background: ${t.accent}; margin: 0 auto 1.2em; }
+  .cover .meta { font-size: 0.85em; color: ${t.muted}; margin: 0.1em 0; }
+
+  /* చివరి పేజీ — ఈ పుస్తకం గురించి */
+  .colophon { height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .colophon img { width: 22mm; height: 22mm; object-fit: contain; margin-bottom: 6mm; }
+  .colophon h3 { font-size: 1.15em; margin: 0 0 0.8em; color: ${t.accent}; }
+  .colophon table { border-collapse: collapse; font-size: 0.85em; margin-bottom: 1.4em; }
+  .colophon th { text-align: left; font-weight: 400; color: ${t.muted}; padding: 0.25em 1.2em 0.25em 0; }
+  .colophon td { text-align: left; font-weight: 700; padding: 0.25em 0; }
+  .colophon .thanks { font-size: 0.85em; color: ${t.muted}; margin: 0.2em 0; }
+  .colophon .note { font-size: 0.75em; color: ${t.muted}; margin-top: 1.2em; }
+
+  /* స్క్రీన్ నమూనా: పేజీలు ఒకదాని కింద ఒకటి */
   @media screen {
-    html { background: #d9dee5; }
-    body { width: ${size.widthMm}mm; margin: 6mm auto; padding: ${size.marginMm}mm; background: ${t.paper}; box-shadow: 0 2px 12px rgba(15, 23, 42, 0.18); }
-    .cover { min-height: ${Math.round(coverHeight * 0.45)}mm; border-bottom: 1px dashed ${t.rule}; margin-bottom: 1em; }
-    .preview-note { display: block; text-align: center; font-size: 0.8em; color: ${t.muted}; margin-top: 1.2em; }
+    html, body { background: #d9dee5; }
+    body { padding: 6mm 0; }
+    .page { margin: 0 auto 6mm; box-shadow: 0 2px 12px rgba(15, 23, 42, 0.18); }
   }
 </style>
 </head>
 <body>
+<div id="pages"></div>
+<template id="src">
   <section class="cover">
-    <div class="band"></div>
+    <img src="${logo}" alt="">
     <h1>${escapeHtml(title)}</h1>
     ${poet ? `<p class="poet">${escapeHtml(poet)}</p>` : ""}
-    <p class="meta">${poems.length} పద్యాలు</p>
-    <p class="meta">${SITE_NAME} · ${today()}</p>
+    <div class="band"></div>
+    <p class="meta">${teluguNumber(poems.length)} పద్యాలు</p>
+    <p class="meta">${SITE_NAME}</p>
   </section>
   ${poemsHtml}
-  ${previewNote}
-  <footer>${SITE_NAME}</footer>
+  <section class="colophon">
+    <img src="${logo}" alt="">
+    <h3>ఈ పుస్తకం గురించి</h3>
+    <table>
+      ${row("శతకం", title)}
+      ${poet ? row("కవి", poet) : ""}
+      ${row("పద్యాలు", teluguNumber(poems.length))}
+      ${row("ఫాంట్", font.label)}
+      ${row("పేజీ సైజు", `${size.label} (${size.hint})`)}
+      ${row("రంగుల థీమ్", t.label)}
+      ${row("తయారైన తేదీ", madeOn)}
+    </table>
+    <p class="thanks">${SITE_NAME}</p>
+    ${site ? `<p class="thanks">${escapeHtml(site)}</p>` : ""}
+    ${previewNote}
+  </section>
+</template>
+<script>
+(function () {
+  var TE = "${TE_DIGITS}";
+  function te(n) { return String(n).replace(/\\d/g, function (d) { return TE[+d]; }); }
+  function run() {
+    var pages = document.getElementById("pages");
+    var items = Array.prototype.slice.call(document.getElementById("src").content.children);
+    function newPage(cls) {
+      var p = document.createElement("div");
+      p.className = "page" + (cls ? " " + cls : "");
+      p.innerHTML = '<div class="content"></div><div class="foot"></div>';
+      pages.appendChild(p);
+      return p.firstChild;
+    }
+    var box = null;
+    items.forEach(function (it) {
+      if (it.classList.contains("cover") || it.classList.contains("colophon")) {
+        newPage(it.className + "-page").appendChild(it);
+        box = null;
+        return;
+      }
+      if (!box) box = newPage("");
+      box.appendChild(it);
+      // ఈ పేజీలో పట్టకపోతే కొత్త పేజీకి (ఒక పద్యం ఎప్పుడూ రెండు పేజీల మధ్య విడిపోదు)
+      if (box.scrollHeight > box.clientHeight + 1 && box.children.length > 1) {
+        box.removeChild(it);
+        box = newPage("");
+        box.appendChild(it);
+      }
+    });
+    var all = pages.children;
+    for (var i = 1; i < all.length; i++) {
+      all[i].lastChild.textContent = "పుట " + te(i + 1) + " / " + te(all.length);
+    }
+  }
+  function done() { document.documentElement.setAttribute("data-paged", "1"); }
+  var ready = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+  ready.then(function () { setTimeout(function () { try { run(); } finally { done(); } }, 60); });
+})();
+</script>
 </body>
 </html>`;
 }
@@ -487,7 +577,13 @@ const isIOS = () =>
 async function waitAndPrint(win: Window, onProgress: ProgressFn): Promise<void> {
   onProgress(60, "తెలుగు అక్షరాలు లోడ్ అవుతున్నాయి…");
   await withTimeout(win.document.fonts.ready, 6000);
-  await pause(300); // గుణింతాలు పూర్తిగా అమరడానికి
+
+  onProgress(80, "పుటలు అమరుస్తున్నాం…");
+  // పేజీల script పూర్తయ్యే వరకు (గరిష్ఠం 8 సెకన్లు)
+  for (let waited = 0; waited < 8000 && win.document.documentElement.getAttribute("data-paged") !== "1"; waited += 100) {
+    await pause(100);
+  }
+  await pause(200); // లోగో చిత్రం, గుణింతాలు పూర్తిగా అమరడానికి
 
   onProgress(100, "సిద్ధం! Print window లో \"Save as PDF\" ఎంచుకోండి.");
   await pause(150); // సందేశం కనిపించడానికి (print window తెరిస్తే పేజీ ఆగుతుంది)
