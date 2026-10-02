@@ -29,6 +29,9 @@ import {
 import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
 import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import GridOnRoundedIcon from "@mui/icons-material/GridOnRounded";
+import DataObjectRoundedIcon from "@mui/icons-material/DataObjectRounded";
+import TextFieldsRoundedIcon from "@mui/icons-material/TextFieldsRounded";
+import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import StopRoundedIcon from "@mui/icons-material/StopRounded";
@@ -38,10 +41,19 @@ import type * as Yuktai from "@yuktishaalaa/yuktai";
 import type { GridColumn, GridTheme, YuktaiGridRule } from "@yuktishaalaa/yuktai";
 
 import {
+  PDF_THEMES,
+  SITE_FONT,
+  ensureFontLoaded,
   exportRecordsToExcel,
+  exportRecordsToJson,
   exportRecordsToPdf,
+  fetchTeluguFonts,
+  findFont,
+  fontStack,
+  type PdfThemeId,
   type RecordColumn,
   type RecordRow,
+  type TeluguFont,
 } from "@/app/components/exportPoems";
 
 const YuktaiGrid = dynamic(() => import("@yuktishaalaa/yuktai").then((m) => m.YuktaiGrid), {
@@ -83,6 +95,8 @@ type Props = {
   /** WebMCP tool పేరు, ప్రతి పేజీకి వేరు: "sandhi", "padalu" … */
   toolName: string;
   examples?: string[];
+  /** PDF లో గరిష్ఠ అంశాలు — ఎక్కువైతే "ముందు filter చేయండి" (బ్రౌజర్ ఆగిపోకుండా) */
+  pdfLimit?: number;
 };
 
 const GRID_THEMES: { value: GridTheme; label: string }[] = [
@@ -140,6 +154,7 @@ export default function TeluguDataGrid({
   renderDetail,
   toolName,
   examples = [],
+  pdfLimit,
 }: Props) {
   const mui = useTheme();
   const [theme, setTheme] = useState<GridTheme>("default");
@@ -147,6 +162,19 @@ export default function TeluguDataGrid({
   const [job, setJob] = useState<{ percent: number; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const busy = job !== null && job.percent < 100;
+
+  /* PDF ఫాంట్ (పద్యాలు, శతకాల పట్టిక లాగే — main.py 59 fonts) మరియు రంగుల థీమ్ */
+  const [fonts, setFonts] = useState<TeluguFont[]>([SITE_FONT]);
+  const [fontId, setFontId] = useState<string>(SITE_FONT.id);
+  const [pdfTheme, setPdfTheme] = useState<PdfThemeId>("neeli");
+  useEffect(() => {
+    let alive = true;
+    fetchTeluguFonts().then((list) => alive && setFonts(list));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const pdfFont = findFont(fonts, fontId);
 
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId]);
 
@@ -223,13 +251,23 @@ export default function TeluguDataGrid({
   );
 
   /* PDF / Excel — పట్టికలోని అన్నీ */
-  const runExport = (kind: "pdf" | "excel") => {
+  const runExport = (kind: "pdf" | "excel" | "json") => {
     if (busy || !rows.length) return;
     setError(null);
+    if (kind === "pdf" && pdfLimit && rows.length > pdfLimit) {
+      setError(
+        `PDF కి గరిష్ఠంగా ${pdfLimit} ${unitLabel} మాత్రమే. ఇప్పుడు ${rows.length} ఉన్నాయి — పైన విభాగం ఎంచుకుని తగ్గించండి. (Excel కి పరిమితి లేదు.)`
+      );
+      return;
+    }
     const data = { title, unitLabel, rows, columns: [...columns, ...exportColumns], titleKey, highlightKey };
     const onProgress = (percent: number, message: string) => setJob({ percent, message });
     // await లేకుండా — iPhone లో PDF tab వెంటనే తెరుచుకోవాలి
-    (kind === "pdf" ? exportRecordsToPdf(data, onProgress) : exportRecordsToExcel(data, onProgress))
+    (kind === "pdf"
+      ? exportRecordsToPdf(data, onProgress, pdfFont, pdfTheme)
+      : kind === "excel"
+        ? exportRecordsToExcel(data, onProgress)
+        : exportRecordsToJson(data, onProgress))
       .then(() => setTimeout(() => setJob(null), 3000))
       .catch((err: unknown) => {
         console.error(`[${toolName}] ${kind} export failed:`, err);
@@ -237,7 +275,7 @@ export default function TeluguDataGrid({
         setError(
           err instanceof Error && err.message === "Popup blocked"
             ? "బ్రౌజర్ కొత్త tab ను ఆపింది. ఈ సైట్‌కి popups అనుమతించి మళ్ళీ ప్రయత్నించండి."
-            : `${kind === "pdf" ? "PDF" : "Excel"} తయారు కాలేదు. మళ్ళీ ప్రయత్నించండి.`
+            : `${kind === "pdf" ? "PDF" : kind === "excel" ? "Excel" : "JSON"} తయారు కాలేదు. మళ్ళీ ప్రయత్నించండి.`
         );
       });
   };
@@ -301,7 +339,55 @@ export default function TeluguDataGrid({
           >
             Excel
           </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="info"
+            disabled={!rows.length || busy}
+            onClick={() => runExport("json")}
+            startIcon={<DataObjectRoundedIcon fontSize="small" />}
+            sx={buttonSx}
+          >
+            JSON
+          </Button>
         </Stack>
+      </Stack>
+
+      {/* PDF ఎంపికలు — ఫాంట్ (59) మరియు రంగుల థీమ్ */}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ px: 0.5 }}>
+        <Select
+          size="small"
+          value={fontId}
+          onChange={(e) => setFontId(String(e.target.value))}
+          onOpen={() => fonts.slice(0, 80).forEach(ensureFontLoaded)}
+          inputProps={{ "aria-label": "PDF ఫాంట్" }}
+          startAdornment={<TextFieldsRoundedIcon fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />}
+          renderValue={(id) => `PDF ఫాంట్: ${findFont(fonts, String(id)).label}`}
+          MenuProps={{ PaperProps: { sx: { maxHeight: 360 } } }}
+          sx={{ minWidth: 220, minHeight: 40, flex: { xs: "1 1 auto", sm: "none" } }}
+        >
+          {fonts.map((f) => (
+            <MenuItem key={f.id} value={f.id} sx={{ minHeight: 44, fontFamily: fontStack(f), fontSize: "1.05rem" }}>
+              {f.label}
+            </MenuItem>
+          ))}
+        </Select>
+        <Select
+          size="small"
+          value={pdfTheme}
+          onChange={(e) => setPdfTheme(e.target.value as PdfThemeId)}
+          inputProps={{ "aria-label": "PDF రంగుల థీమ్" }}
+          startAdornment={<PaletteRoundedIcon fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />}
+          renderValue={(id) => `PDF థీమ్: ${PDF_THEMES.find((t) => t.id === id)?.label ?? ""}`}
+          sx={{ minWidth: 200, minHeight: 40, flex: { xs: "1 1 auto", sm: "none" } }}
+        >
+          {PDF_THEMES.map((t) => (
+            <MenuItem key={t.id} value={t.id} sx={{ minHeight: 44 }}>
+              <Box component="span" sx={{ width: 14, height: 14, borderRadius: "50%", bgcolor: t.accent, mr: 1, display: "inline-block" }} />
+              {t.label}
+            </MenuItem>
+          ))}
+        </Select>
       </Stack>
 
       {/* PROGRESS — 10% → 100% */}

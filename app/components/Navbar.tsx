@@ -23,7 +23,7 @@ const NAV_GROUPS = [
     label: "సాహిత్యం",
     icon: "📚",
     items: [
-      { label: "పద్యాలవాల",    path: "/poems" },
+      { label: "పద్యాలమాల",    path: "/poems" },
       { label: "మిరా",          path: "/mirapoems" },
       { label: "శతకాలమాల",     path: "/shatakamu" },
       { label: "స్మృతిమాల",     path: "/smruthimala" },
@@ -38,7 +38,7 @@ const NAV_GROUPS = [
     items: [
       { label: "అక్షరమాల",     path: "/aksharamala" },
       { label: "గుణింతమాల",     path: "/guninta" },
-      { label: "పదాలమాల ",      path: "/padalamala" },
+      { label: "పదాలమాల",      path: "/padalamala" },
       { label: "సామెతలమాల",    path: "/sametalu" },
       { label: "సంధిమాల",     path: "/sandhi" },
       { label: "సమాసముమాల",   path: "/samasa" },
@@ -68,6 +68,13 @@ const NAV_GROUPS = [
     icon: "🕉️",
     items: [
       { label: "భగవద్గీత", path: "/geeta" },
+    ],
+  },
+  {
+    label: "జ్ఞానమాల",
+    icon: "🪔",
+    items: [
+      { label: "అన్ని మాలలు ఒకే చోట", path: "/gnanamala" },
     ],
   },
 ];

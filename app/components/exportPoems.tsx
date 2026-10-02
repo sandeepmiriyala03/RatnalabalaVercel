@@ -886,13 +886,18 @@ function recordsToPoems({ columns, rows, titleKey, highlightKey }: RecordsExport
   }));
 }
 
-export async function exportRecordsToPdf(data: RecordsExport, onProgress: ProgressFn = () => {}): Promise<void> {
+export async function exportRecordsToPdf(
+  data: RecordsExport,
+  onProgress: ProgressFn = () => {},
+  font: TeluguFont = SITE_FONT,
+  theme: PdfThemeId = "neeli"
+): Promise<void> {
   if (!data.rows.length) return;
   onProgress(10, `${data.unitLabel} సిద్ధం చేస్తున్నాం…`);
   const html = buildPdfHtml(
     { poems: recordsToPoems(data), poetryName: data.title, unitLabel: data.unitLabel, collectionLabel: "విభాగం" },
-    { ...DEFAULT_PDF_SETTINGS, theme: "neeli", showSpecialLine: Boolean(data.highlightKey) },
-    SITE_FONT
+    { ...DEFAULT_PDF_SETTINGS, theme, showSpecialLine: Boolean(data.highlightKey) },
+    font
   ).replace(/<span>ప్రత్యేక పంక్తి<\/span>/g, `<span>${escapeHtml(data.columns.find((c) => c.key === data.highlightKey)?.label ?? "")}</span>`);
   return printHtml(html, onProgress);
 }
@@ -919,4 +924,33 @@ export async function exportRecordsToExcel(data: RecordsExport, onProgress: Prog
   onProgress(90, "డౌన్‌లోడ్ అవుతోంది…");
   XLSX.writeFile(wb, `${safeName(data.title)}_${today()}.xlsx`);
   onProgress(100, "Excel డౌన్‌లోడ్ అయింది ✓");
+}
+
+/** JSON డౌన్‌లోడ్ — తెలుగు శీర్షికలతో, సంఖ్య, తేదీ సహా (ఇతర apps / పరిశోధనకు) */
+export async function exportRecordsToJson(data: RecordsExport, onProgress: ProgressFn = () => {}): Promise<void> {
+  if (!data.rows.length) return;
+  onProgress(30, "JSON తయారవుతోంది…");
+  await pause(30);
+  const items = data.rows.map((r, i) => {
+    const o: Record<string, string | number> = { "సంఖ్య": i + 1 };
+    for (const c of data.columns) o[c.label] = r[c.key] ?? "";
+    return o;
+  });
+  const payload = {
+    title: data.title,
+    source: typeof window !== "undefined" ? window.location.origin : "",
+    exported: new Date().toISOString(),
+    count: items.length,
+    items,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${safeName(data.title)}_${today()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  onProgress(100, "JSON డౌన్‌లోడ్ అయింది ✓");
 }

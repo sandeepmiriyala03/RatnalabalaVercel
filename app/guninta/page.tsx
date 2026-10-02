@@ -10,24 +10,14 @@ import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import StopRoundedIcon from "@mui/icons-material/StopRounded";
 
 import { GridSection, GunintaGrid } from "@/app/components/TeluguDataGrid";
+import { GUNINTA_MARKS, GUNINTA_NAMES, GUNINTA_SWARALU, GUNINTA_VYANJANALU } from "@/data/bhashaMala";
 
 /* ═══════════════════════════════════════════
    DATA
 ═══════════════════════════════════════════ */
-const GUNINTA_MARKS = ["", "ా","ి","ీ","ు","ూ","ృ","ౄ","ె","ే","ై","ొ","ో","ౌ","ం","ః"];
-const GUNINTA_NAMES = [
-  "అకారము","ఆకారము","ఇకారము","ఈకారము","ఉకారము","ఊకారము",
-  "ఋకారము","ౠకారము","ఎకారము","ఏకారము","ఐకారము","ఒకారము",
-  "ఓకారము","ఔకారము","పూర్ణానుస్వారము","విసర్గ",
-];
-const SWARALU = ["అ","ఆ","ఇ","ఈ","ఉ","ఊ","ఋ","ౠ","ఎ","ఏ","ఐ","ఒ","ఓ","ఔ","అం","అః"];
-
-const VYANJANALU = [
-  "క","ఖ","గ","ఘ","చ","ఛ","జ","ఝ",
-  "ట","ఠ","డ","ఢ","ణ","త","థ","ద","ధ","న",
-  "ప","ఫ","బ","భ","మ","య","ర","ల","వ",
-  "శ","ష","స","హ","ళ","క్ష","ఱ",
-];
+// data → data/bhashaMala.ts (జ్ఞానమాల కూడా అదే వాడుతుంది)
+const SWARALU = GUNINTA_SWARALU;
+const VYANJANALU = GUNINTA_VYANJANALU;
 
 // Generate gunintam for each vyanjana
 // Special suffixes for అం (ం) and అః (ః)
