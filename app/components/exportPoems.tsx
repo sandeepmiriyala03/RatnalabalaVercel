@@ -83,6 +83,74 @@ export function parseFonts(data: unknown): TeluguFont[] {
   return fonts;
 }
 
+/* ------------------------------------------------------------------ */
+/* main.py fonts API — ఒక్కసారే పిలుపు (Grid, ఖతి మాల, PDF అన్నీ ఇదే)    */
+/* ------------------------------------------------------------------ */
+
+let fontsRequest: Promise<TeluguFont[]> | null = null;
+
+export function fetchTeluguFonts(): Promise<TeluguFont[]> {
+  fontsRequest ??= fetch("/api/main?endpoint=fonts")
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then((data) => [SITE_FONT, ...parseFonts(data)])
+    .catch((err) => {
+      console.warn("Telugu fonts API failed, using site font only:", err);
+      fontsRequest = null; // తర్వాత మళ్ళీ ప్రయత్నించడానికి
+      return [SITE_FONT];
+    });
+  return fontsRequest;
+}
+
+/* ------------------------------------------------------------------ */
+/* main.py "value" → సైట్ CSS లోని అసలు font-family పేరు                */
+/* ఉదా: "Mallanna-Italic" → "MallannaItalic", "Syamala Ramana" →        */
+/* "SyamalaRamana", "Suranna-Regular" → "Suranna". రెండో జాబితా అక్కర్లేదు. */
+/* ------------------------------------------------------------------ */
+
+const normFamily = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+let familyIndex: Map<string, string> | null = null;
+
+function buildFamilyIndex(): Map<string, string> {
+  const map = new Map<string, string>();
+  const add = (raw: string) => {
+    const family = raw.replace(/["']/g, "").trim();
+    if (!family) return;
+    const key = normFamily(family);
+    if (!map.has(key)) map.set(key, family);
+    const bare = key.replace(/regular$/, "");
+    if (bare && !map.has(bare)) map.set(bare, family);
+  };
+  try {
+    document.fonts.forEach((face) => add(face.family));
+  } catch {
+    /* పాత బ్రౌజర్లు */
+  }
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) {
+        if (rule.cssText.startsWith("@font-face")) add((rule as CSSFontFaceRule).style.getPropertyValue("font-family"));
+      }
+    } catch {
+      /* వేరే origin stylesheet */
+    }
+  }
+  return map;
+}
+
+export function resolveFontFamily(value: string): string {
+  if (typeof document === "undefined" || !value) return value;
+  const key = normFamily(value);
+  const find = () => familyIndex!.get(key) ?? familyIndex!.get(key.replace(/regular$/, ""));
+  familyIndex ??= buildFamilyIndex();
+  let hit = find();
+  if (!hit) {
+    familyIndex = buildFamilyIndex(); // CSS ఆలస్యంగా load అయి ఉండవచ్చు
+    hit = find();
+  }
+  return hit ?? value;
+}
+
 export const findFont = (fonts: TeluguFont[], id: string): TeluguFont =>
   fonts.find((f) => f.id === id) ?? SITE_FONT;
 
@@ -108,7 +176,7 @@ export function siteTeluguFont(): string {
 
 /** పూర్తి font-family stack — ఎంచుకున్న font లేకపోతే మంచి fallback లు */
 export function fontStack(font: TeluguFont): string {
-  const first = font.id === SITE_FONT_ID ? siteTeluguFont() : `"${font.family.replace(/"/g, "")}"`;
+  const first = font.id === SITE_FONT_ID ? siteTeluguFont() : `"${resolveFontFamily(font.family).replace(/"/g, "")}"`;
   return [first, '"Noto Sans Telugu"', '"Nirmala UI"', "Gautami", "sans-serif"].filter(Boolean).join(", ");
 }
 
@@ -328,7 +396,7 @@ export function buildPdfHtml(
   // సైట్ ఫాంట్ → అన్ని @font-face; link ఉన్న font → ఆ link; main.py fonts (link లేవు) → సైట్ CSS లోని ఆ font నియమాలు
   let fontLinks: string;
   if (font.id === SITE_FONT_ID || (!font.cssUrl && !font.fileUrl)) {
-    const site = collectSiteFontCss(font.id === SITE_FONT_ID ? undefined : font.family);
+    const site = collectSiteFontCss(font.id === SITE_FONT_ID ? undefined : resolveFontFamily(font.family));
     fontLinks = `${site.links}\n<style>${site.css}</style>`;
   } else {
     fontLinks = fontHeadHtml(font);

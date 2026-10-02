@@ -52,6 +52,7 @@ import {
   ensureFontLoaded,
   exportPoemsToExcel,
   exportPoemsToPdf,
+  fetchTeluguFonts,
   findFont,
   fontStack,
   loadPref,
@@ -101,24 +102,6 @@ type Props = {
 
 const GRID_FONT_KEY = "ratnalabala-grid-font";
 
-/* ================================================================== */
-/* తెలుగు fonts — main.py నుండి (/api/main?endpoint=fonts)             */
-/* ఒక్కసారే పిలుస్తాం; విఫలమైతే "సైట్ ఫాంట్" మాత్రమే.                    */
-/* ================================================================== */
-
-let fontsRequest: Promise<TeluguFont[]> | null = null;
-
-function loadTeluguFonts(): Promise<TeluguFont[]> {
-  fontsRequest ??= fetch("/api/main?endpoint=fonts")
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-    .then((data) => [SITE_FONT, ...parseFonts(data)])
-    .catch((err) => {
-      console.warn("Telugu fonts API failed, using site font only:", err);
-      fontsRequest = null; // తర్వాత మళ్ళీ ప్రయత్నించడానికి
-      return [SITE_FONT];
-    });
-  return fontsRequest;
-}
 
 /* ================================================================== */
 /* CONSTANTS                                                          */
@@ -354,7 +337,7 @@ export default function YuktaiGridView({
   useEffect(() => {
     let alive = true;
     setFontId(loadPref<{ fontId: string }>(GRID_FONT_KEY, { fontId: SITE_FONT_ID }).fontId);
-    loadTeluguFonts().then((list) => alive && setFonts(list));
+    fetchTeluguFonts().then((list) => alive && setFonts(list));
     return () => {
       alive = false;
     };
