@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   Stack,
@@ -19,6 +19,11 @@ import {
   Divider,
   Drawer,
   IconButton,
+  InputAdornment,
+  MenuItem,
+  Select,
+  Skeleton,
+  alpha,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -28,8 +33,13 @@ import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
 import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRounded";
+import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
+
+// యుక్తి AI icons — సైట్ అంతా ఒకే రూపం
+import { CloseIcon, SearchIcon } from "@yuktishaalaa/yuktai";
+import type * as Yuktai from "@yuktishaalaa/yuktai";
+import type { GridColumn, GridTheme, YuktaiGridRule } from "@yuktishaalaa/yuktai";
 
 import AksharaPosterCard from "@/app/components/AksharaMalaPoster";
 import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
@@ -42,8 +52,14 @@ import {
 
 import { track } from "@/lib/track";
 
-
 import FamilyVoiceRecorder from "@/app/components/Familyvoicerecorder";
+
+/** యుక్తి AI పట్టిక — బ్రౌజర్‌లో మాత్రమే (server render లేదు) */
+const YuktaiGrid = dynamic(() => import("@yuktishaalaa/yuktai").then((m) => m.YuktaiGrid), {
+  ssr: false,
+  loading: () => <Skeleton variant="rounded" width="100%" height={420} />,
+}) as unknown as typeof Yuktai.YuktaiGrid;
+
 /* ================= TYPES ================= */
 type Akshara = {
   id: string;
@@ -62,6 +78,8 @@ type SimilarResult = {
 
 /** "family" = recordings made with FamilyVoiceRecorder (stored on this device) */
 type VoiceGender = "male" | "female" | "family";
+
+type ViewMode = "cards" | "grid";
 
 type AnalyzerStats = {
   text: string;
@@ -84,16 +102,44 @@ type AiWordsState =
   | { status: "ready"; letter: string; words: AiWord[]; rejected: number }
   | { status: "error"; letter: string };
 
+/** పట్టికలో ఒక వరుస */
+type AksharaRow = {
+  id: string;
+  letter: string;
+  word: string;
+  typeLabel: string;
+  image: string;
+};
+
 /* ================= CONSTANTS ================= */
 
 // Was 100 (all 44 cards mounted at once, each with TTS/canvas/audio refs),
 // which caused an Out of Memory crash. 4 fills a 2×2 grid next to the panel.
 const PAGE_SIZE = 4;
+// పట్టిక వరుసలు తేలికైనవి — అన్ని అక్షరాలు తెస్తాం. సర్వర్ పరిమితిని బట్టి
+// పెద్ద సైజు నుండి చిన్నదానికి ప్రయత్నిస్తాం (చివరిది కార్డుల సైజు, అది ఎప్పుడూ పనిచేస్తుంది).
+const GRID_CHUNK_SIZES = [50, 20, PAGE_SIZE];
 const DEBOUNCE_MS = 400;
 const AI_TIMEOUT_MS = 20000;
 const PANEL_WIDTH = 380;
 const API_BASE = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/api";
 const VIRAMA = "\u0c4d";
+
+const TYPE_TE: Record<Akshara["type"], string> = {
+  swaralu: "అచ్చు",
+  vyanjanalu: "హల్లు",
+  gunintalu: "గుణింతం",
+};
+
+const GRID_THEMES: { value: GridTheme; label: string }[] = [
+  { value: "default", label: "సాధారణం" },
+  { value: "dark", label: "చీకటి" },
+  { value: "high-contrast", label: "అధిక కాంట్రాస్ట్" },
+  { value: "color-blind", label: "రంగు అంధత్వం" },
+  { value: "dyslexia", label: "డిస్లెక్సియా" },
+];
+
+const GRID_EXAMPLES = ["క పదం", "క వినిపించు", "క తెరువు", "అచ్చులు", "హల్లులు"];
 
 /* ================= HELPERS ================= */
 
@@ -123,6 +169,14 @@ function firstAksharaMatches(aksharas: string[], letter: string): boolean {
   const first = aksharas[0];
   if (!first || !first.startsWith(letter)) return false;
   return first.charAt(letter.length) !== VIRAMA;
+}
+
+const norm = (s: string) => s.normalize("NFC").trim();
+
+/** ప్రశ్నలో ఏ అక్షరం ఉందో — పొడవైనది ముందు ("క్ష" ను "క" గా పొరబడకుండా) */
+function findLetter(input: string, rows: AksharaRow[]): AksharaRow | undefined {
+  const text = norm(input);
+  return [...rows].sort((a, b) => b.letter.length - a.letter.length).find((r) => text.startsWith(norm(r.letter)));
 }
 
 /* ================= HOW-IT-WORKS PANEL ================= */
@@ -441,6 +495,110 @@ function CardResults({
   );
 }
 
+/* ================= YUKTAI GRID (అక్షరాల పట్టిక) ================= */
+
+const GRID_COLUMNS: GridColumn<AksharaRow>[] = [
+  {
+    key: "image",
+    label: "చిత్రం",
+    sortable: false,
+    hiddenOnMobile: true,
+    width: 90,
+    render: (value, row) =>
+      value ? (
+        <Box
+          component="img"
+          src={String(value)}
+          alt={row.word || row.letter}
+          loading="lazy"
+          sx={{ width: 56, height: 56, objectFit: "contain", display: "block" }}
+        />
+      ) : null,
+  },
+  {
+    key: "letter",
+    label: "అక్షరం",
+    width: 100,
+    render: (value) => (
+      <Box sx={{ fontSize: "2rem", fontWeight: 900, lineHeight: 1.2, color: "#1a237e" }}>{String(value ?? "")}</Box>
+    ),
+  },
+  {
+    key: "word",
+    label: "పదం",
+    render: (value) => <Box sx={{ fontSize: "1.15rem", fontWeight: 700 }}>{String(value ?? "")}</Box>,
+  },
+  { key: "typeLabel", label: "వర్గం", width: 110 },
+];
+
+function buildAksharaRules(onOpen: (row: AksharaRow) => void, onSpeak: (text: string) => void): YuktaiGridRule<AksharaRow>[] {
+  const byType = (data: AksharaRow[], type: string) => data.filter((r) => r.typeLabel === type);
+  return [
+    {
+      name: "help",
+      phrases: ["ఏం అడగవచ్చు", "ఏమి అడగవచ్చు", "సహాయం", "help"],
+      description: "What can be asked.",
+      execute: () => `ఇలా అడగండి: ${GRID_EXAMPLES.join(" • ")}`,
+    },
+    {
+      name: "vowels",
+      phrases: ["అచ్చులు"],
+      description: "List the vowels (highlighted).",
+      execute: ({ data, executeTool }) => {
+        const list = byType(data, TYPE_TE.swaralu);
+        if (!list.length) return "ఈ జాబితాలో అచ్చులు లేవు.";
+        void executeTool("highlight", { ids: list.map((r) => r.id) });
+        return `${list.length} అచ్చులు: ${list.map((r) => r.letter).join(" ")}`;
+      },
+    },
+    {
+      name: "consonants",
+      phrases: ["హల్లులు"],
+      description: "List the consonants (highlighted).",
+      execute: ({ data, executeTool }) => {
+        const list = byType(data, TYPE_TE.vyanjanalu);
+        if (!list.length) return "ఈ జాబితాలో హల్లులు లేవు.";
+        void executeTool("highlight", { ids: list.map((r) => r.id) });
+        return `${list.length} హల్లులు: ${list.map((r) => r.letter).join(" ")}`;
+      },
+    },
+    {
+      name: "word-of-letter",
+      phrases: ["పదం", "పదము", "word"],
+      description: "The word for a letter.",
+      execute: ({ input, data, executeTool }) => {
+        const row = findLetter(input, data);
+        if (!row) return 'ఏ అక్షరం? ఉదా: "క పదం".';
+        void executeTool("highlight", { ids: [row.id] });
+        return row.word ? `"${row.letter}" — ${row.word}` : `"${row.letter}" కు పదం లేదు.`;
+      },
+    },
+    {
+      name: "speak",
+      phrases: ["వినిపించు", "వినిపించండి", "చదువు", "speak"],
+      description: "Say a letter and its word aloud.",
+      execute: ({ input, data }) => {
+        const row = findLetter(input, data);
+        if (!row) return 'ఏ అక్షరం? ఉదా: "క వినిపించు".';
+        onSpeak(row.word ? `${row.letter} ... ${row.word}` : row.letter);
+        return `🔊 "${row.letter}" వినిపిస్తున్నాను.`;
+      },
+    },
+    {
+      // General "open" — LAST, so the specific rules win
+      name: "open-letter",
+      phrases: ["తెరువు", "తెరవండి", "చూపించు", "చూపించండి", "open", "show"],
+      description: "Open a letter (related letters + AI words).",
+      execute: ({ input, data }) => {
+        const row = findLetter(input, data);
+        if (!row) return 'ఏ అక్షరం? ఉదా: "క తెరువు".';
+        onOpen(row);
+        return `"${row.letter}" తెరుస్తున్నాను.`;
+      },
+    },
+  ];
+}
+
 /* ================= MAIN COMPONENT ================= */
 
 export default function AksharamalaParent() {
@@ -462,6 +620,10 @@ export default function AksharamalaParent() {
   const [page, setPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<"all" | "swaralu" | "vyanjanalu">("all");
   const [voiceGender, setVoiceGender] = useState<VoiceGender>("male");
+
+  // కార్డులు / యుక్తి AI పట్టిక
+  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [gridTheme, setGridTheme] = useState<GridTheme>("default");
 
   // Family voice recordings
   const [recorderOpen, setRecorderOpen] = useState(false);
@@ -485,6 +647,8 @@ export default function AksharamalaParent() {
   const [aiWords, setAiWords] = useState<AiWordsState>({ status: "idle" });
   const clickIdRef = useRef(0); // ignores late answers from an older click
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const isGrid = viewMode === "grid";
 
   /* 1. Preload WASM once, so the search timer measures only the analysis */
   useEffect(() => {
@@ -566,7 +730,9 @@ export default function AksharamalaParent() {
     };
   }, [debouncedSearch]);
 
-  /* 3. Fetch the list from the server, and time it */
+  /* 3. Fetch the list from the server, and time it.
+        Cards: 4 per page. Grid: every letter — fetched in pages the server allows
+        (tries 50, then 20, then 4 per request), so a server page-size limit never breaks it. */
   useEffect(() => {
     const controller = new AbortController();
 
@@ -578,39 +744,74 @@ export default function AksharamalaParent() {
       setApiMs(null);
     };
 
-    const fetchData = async () => {
-      setLoading(true);
-      setErrorMsg(null);
+    type PageResult =
+      | { ok: true; data: { items?: Akshara[]; total_count?: number; page_count?: number; sametalu_matches?: string[] } }
+      | { ok: false; status: number; statusText: string; body: string };
 
+    const getPage = async (p: number, size: number): Promise<PageResult> => {
       const url = `${API_BASE}/aksharamala?${new URLSearchParams({
         search: debouncedSearch,
         type: typeFilter,
-        page: String(page),
-        page_size: String(PAGE_SIZE),
+        page: String(p),
+        page_size: String(size),
       })}`;
+      const res = await fetch(url, { signal: controller.signal });
+      if (!res.ok) return { ok: false, status: res.status, statusText: res.statusText, body: await res.text() };
+      return { ok: true, data: await res.json() };
+    };
 
+    const showError = (r: Extract<PageResult, { ok: false }>) => {
+      console.error(`[Aksharamala] ${r.status} ${r.statusText}\n${r.body}`);
+      setErrorMsg(`API ఎర్రర్ (${r.status}): ${r.body.slice(0, 200) || r.statusText}`);
+      resetResults();
+    };
+
+    const fetchData = async () => {
+      setLoading(true);
+      setErrorMsg(null);
       const t0 = performance.now();
 
       try {
-        const res = await fetch(url, { signal: controller.signal });
-
-        if (!res.ok) {
-          const bodyText = await res.text();
+        if (!isGrid) {
+          const r = await getPage(page, PAGE_SIZE);
           if (controller.signal.aborted) return;
-          console.error(`[Aksharamala] ${res.status} ${res.statusText}\n${bodyText}`);
-          setErrorMsg(`API ఎర్రర్ (${res.status}): ${bodyText.slice(0, 200) || res.statusText}`);
-          resetResults();
+          if (!r.ok) return showError(r);
+          setApiMs(performance.now() - t0);
+          setItems(r.data.items || []);
+          setTotalCount(r.data.total_count || 0);
+          setPageCount(r.data.page_count || 1);
+          setSametaluMatches(r.data.sametalu_matches || []);
           return;
         }
 
-        const data = await res.json();
-        if (controller.signal.aborted) return;
+        // Grid: largest page size the server accepts, then the remaining pages
+        let lastError: Extract<PageResult, { ok: false }> | null = null;
+        for (const size of GRID_CHUNK_SIZES) {
+          const first = await getPage(1, size);
+          if (controller.signal.aborted) return;
+          if (!first.ok) {
+            lastError = first;
+            if (first.status === 400 || first.status === 422) continue; // too big — try smaller
+            break;
+          }
 
-        setApiMs(performance.now() - t0);
-        setItems(data.items || []);
-        setTotalCount(data.total_count || 0);
-        setPageCount(data.page_count || 1);
-        setSametaluMatches(data.sametalu_matches || []);
+          const all: Akshara[] = [...(first.data.items || [])];
+          const pages = first.data.page_count || 1;
+          for (let p = 2; p <= pages; p++) {
+            const next = await getPage(p, size);
+            if (controller.signal.aborted) return;
+            if (!next.ok) return showError(next);
+            all.push(...(next.data.items || []));
+          }
+
+          setApiMs(performance.now() - t0);
+          setItems(all);
+          setTotalCount(first.data.total_count || all.length);
+          setPageCount(1);
+          setSametaluMatches(first.data.sametalu_matches || []);
+          return;
+        }
+        if (lastError) showError(lastError);
       } catch (err) {
         if (controller.signal.aborted) return; // a newer search replaced this one
         console.error("[Aksharamala] fetch failed:", err);
@@ -623,7 +824,7 @@ export default function AksharamalaParent() {
 
     fetchData();
     return () => controller.abort();
-  }, [debouncedSearch, typeFilter, page]);
+  }, [debouncedSearch, typeFilter, page, isGrid]);
 
   /* 4. Card click: similar letters (fast) and AI words (slower), in parallel */
 
@@ -697,6 +898,7 @@ export default function AksharamalaParent() {
   const handlePickLetter = (letter: string) => {
     setSheetOpen(false);
     setTypeFilter("all");
+    setViewMode("cards");
     setSearch(letter);
     setPage(1);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -742,6 +944,38 @@ export default function AksharamalaParent() {
     setPage(1);
   };
 
+  /* Grid rows + AI rules (rules call the latest handlers through a ref) */
+  const gridRows = useMemo<AksharaRow[]>(
+    () =>
+      items.map((a) => ({
+        id: a.id,
+        letter: a.letter,
+        word: a.word || "",
+        typeLabel: TYPE_TE[a.type] ?? a.type,
+        image: a.image || "",
+      })),
+    [items]
+  );
+
+  const handlersRef = useRef({ open: (_r: AksharaRow) => {}, speak: (_t: string) => {} });
+  handlersRef.current = {
+    open: (row) => {
+      const a = items.find((x) => x.id === row.id);
+      if (a) handleCardClick(a);
+    },
+    speak: (text) => {
+      void speakWord(text);
+    },
+  };
+  const gridRules = useMemo(
+    () =>
+      buildAksharaRules(
+        (row) => handlersRef.current.open(row),
+        (text) => handlersRef.current.speak(text)
+      ),
+    []
+  );
+
   const resultsPanel = (
     <CardResults
       selected={selected}
@@ -752,6 +986,8 @@ export default function AksharamalaParent() {
       onPickLetter={handlePickLetter}
     />
   );
+
+  const gridBorder = alpha(theme.palette.divider, 0.9);
 
   return (
     <Container maxWidth="lg">
@@ -807,7 +1043,7 @@ export default function AksharamalaParent() {
 
           <Stack direction="row" spacing={1.5} justifyContent="center" useFlexGap flexWrap="wrap" sx={{ mb: 3 }}>
             <Chip label={`మొత్తం: ${totalCount}`} color="secondary" sx={{ fontWeight: 800 }} />
-            <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />
+            {!isGrid && <Chip label={`పేజీ: ${page} / ${pageCount}`} color="primary" variant="outlined" sx={{ fontWeight: 800 }} />}
             {apiMs !== null && !loading && !errorMsg && (
               <Chip
                 icon={<CloudOutlinedIcon />}
@@ -826,8 +1062,41 @@ export default function AksharamalaParent() {
               setSearch(e.target.value);
               setPage(1);
             }}
+            inputProps={{ "aria-label": "అక్షరం లేదా పదం వెతకండి" }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon size={22} color="currentColor" label="శోధన" />
+                </InputAdornment>
+              ),
+              endAdornment: search ? (
+                <InputAdornment position="end">
+                  <IconButton edge="end" size="small" aria-label="క్లియర్" onClick={() => { setSearch(""); setPage(1); }}>
+                    <CloseIcon size={18} color="currentColor" />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
+            }}
             sx={{ bgcolor: "white", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
           />
+
+          {/* కార్డులు / యుక్తి AI పట్టిక */}
+          <Stack direction="row" justifyContent="center" sx={{ mt: 1.5 }}>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={viewMode}
+              onChange={(_, v: ViewMode | null) => {
+                if (!v) return;
+                setViewMode(v);
+              
+              }}
+              aria-label="చూపే విధానం"
+            >
+              <ToggleButton value="cards" sx={{ textTransform: "none", px: 2 }}>కార్డులు</ToggleButton>
+              <ToggleButton value="grid" sx={{ textTransform: "none", px: 2 }}>యుక్తి AI పట్టిక</ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
 
           {analyzerState !== "idle" && (
             <Box
@@ -922,7 +1191,7 @@ export default function AksharamalaParent() {
           </Alert>
         )}
 
-        {/* MAIN: cards on the left, results panel on the right (desktop) */}
+        {/* MAIN: cards / grid on the left, results panel on the right (desktop) */}
         <Box
           sx={{
             display: "grid",
@@ -933,7 +1202,83 @@ export default function AksharamalaParent() {
         >
           {/* Left column */}
           <Stack spacing={3}>
-            {loading ? (
+            {isGrid ? (
+              errorMsg ? null : (
+                <Stack spacing={1.25} sx={{ minWidth: 0 }}>
+                  {/* Grid header: రూపం + ఉదాహరణ ప్రశ్నలు */}
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    justifyContent="space-between"
+                    sx={{ p: 1.25, borderRadius: 2.5, border: `1px solid ${gridBorder}`, bgcolor: "background.paper" }}
+                  >
+                    <Box>
+                      <Typography sx={{ fontWeight: 800, lineHeight: 1.4 }}>అక్షరాల పట్టిక</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        AI ని అడగండి: {GRID_EXAMPLES.join(" • ")}
+                      </Typography>
+                    </Box>
+                    <Select
+                      size="small"
+                      value={gridTheme}
+                      onChange={(e) => setGridTheme(e.target.value as GridTheme)}
+                      inputProps={{ "aria-label": "పట్టిక రూపం" }}
+                      startAdornment={<ContrastRoundedIcon fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />}
+                      sx={{ minWidth: 170, minHeight: 40 }}
+                    >
+                      {GRID_THEMES.map((o) => (
+                        <MenuItem key={o.value} value={o.value} sx={{ minHeight: 44 }}>
+                          {o.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </Stack>
+
+                  <Box
+                    sx={{
+                      width: "100%",
+                      minWidth: 0,
+                      overflow: "hidden",
+                      borderRadius: { xs: 2, sm: 3 },
+                      border: `1px solid ${gridBorder}`,
+                      // Voice input is always Telugu here — hide the input-language picker
+                      '& div:has(> select[aria-label="ఇన్‌పుట్ భాష"]), & div:has(> select[aria-label="Input language"])': {
+                        display: "none !important",
+                      },
+                      "& div:has(> table)": { maxHeight: { xs: "62vh", md: "70vh" }, overflowY: "auto", overscrollBehavior: "contain" },
+                      "& thead th": { position: "sticky", top: 0, zIndex: 2, boxShadow: `inset 0 -1px 0 ${gridBorder}`, fontWeight: 800 },
+                      "& tbody tr": { cursor: "pointer" },
+                    }}
+                  >
+                    <YuktaiGrid<AksharaRow>
+                      data={gridRows}
+                      columns={GRID_COLUMNS}
+                      rowKey="id"
+                      view="table"
+                      theme={gridTheme}
+                      locale="te-IN"
+                      inputLanguage="te-IN"
+                      customRules={gridRules}
+                      search
+                      pagination={{ pageSize: 10, showSizeChanger: true, sizeOptions: [10, 20, 50, 100] }}
+                      loading={loading}
+                      highlightIds={selected ? [selected.id] : []}
+                      onRowClick={(row) => handlersRef.current.open(row)}
+                      ai
+                      webmcp
+                      toolName="aksharamala"
+                      toolDescriptions={{
+                        search: "Search Telugu letters (aksharas) by letter or by their example word.",
+                        open: "Open one letter to show related letters and AI-suggested words.",
+                        get_row: "Get one letter by its ID: letter, example word, type (vowel/consonant), image.",
+                      }}
+                      empty="అక్షరాలు కనబడలేదు."
+                    />
+                  </Box>
+                </Stack>
+              )
+            ) : loading ? (
               <Box textAlign="center" sx={{ py: 10 }}>
                 <CircularProgress />
               </Box>
@@ -982,7 +1327,7 @@ export default function AksharamalaParent() {
               </Box>
             )}
 
-            {pageCount > 1 && (
+            {!isGrid && pageCount > 1 && (
               <Box display="flex" justifyContent="center">
                 <Pagination
                   count={pageCount}
@@ -1033,7 +1378,7 @@ export default function AksharamalaParent() {
         <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: "divider", mx: "auto", mb: 1 }} />
         <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
           <IconButton onClick={() => setSheetOpen(false)} aria-label="మూసివేయండి" size="small">
-            <CloseRoundedIcon />
+            <CloseIcon size={20} color="currentColor" />
           </IconButton>
         </Box>
         {resultsPanel}

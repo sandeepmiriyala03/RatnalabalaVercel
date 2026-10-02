@@ -10,13 +10,16 @@ import {
   AccordionDetails,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import SearchIcon from "@mui/icons-material/Search";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import EditIcon from "@mui/icons-material/Edit";
 import TouchAppIcon from "@mui/icons-material/TouchApp";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import MicIcon from "@mui/icons-material/Mic";
+import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
+
+// యుక్తి AI icon — సైట్ అంతా ఒకే శోధన గుర్తు
+import { SearchIcon } from "@yuktishaalaa/yuktai";
 
 import AksharamalaParent from "@/app/components/Aksharamal";
 
@@ -31,13 +34,33 @@ type HelpItem = {
 
 const helpItems: HelpItem[] = [
   {
-    icon: <SearchIcon color="primary" fontSize="small" sx={{ mt: 0.3 }} />,
+    icon: (
+      <Box component="span" sx={{ color: "primary.main", display: "inline-flex", mt: 0.3 }}>
+        <SearchIcon size={20} color="currentColor" />
+      </Box>
+    ),
     title: "వెతకడం",
     body: (
       <>
         పైన ఉన్న సెర్చ్ బాక్స్‌లో ఏదైనా అక్షరం లేదా పదం టైప్ చేయండి — ఉదాహరణకు
         &quot;ఎలుక&quot; అని టైప్ చేస్తే, ఆ పదానికి సంబంధించిన అక్షరం చూపిస్తుంది.
         దానితో పాటు, ఆ పదం ఉన్న సామెతలు కూడా కింద కనిపిస్తాయి.
+      </>
+    ),
+  },
+  {
+    icon: <TableRowsRoundedIcon color="secondary" fontSize="small" sx={{ mt: 0.3 }} />,
+    title: "యుక్తి AI పట్టిక",
+    highlight: true,
+    body: (
+      <>
+        సెర్చ్ బాక్స్ కింద &quot;యుక్తి AI పట్టిక&quot; నొక్కితే, అన్ని అక్షరాలు ఒకే
+        పట్టికలో — చిత్రం, అక్షరం, పదం, వర్గంతో — కనిపిస్తాయి.
+        <br />
+        • తెలుగులో అడగండి: &quot;క పదం&quot;, &quot;క వినిపించు&quot;, &quot;క తెరువు&quot;,
+        &quot;అచ్చులు&quot;, &quot;హల్లులు&quot;.
+        <br />
+        • వరుసపై నొక్కితే, సంబంధిత అక్షరాలు మరియు AI పదాలు పక్కన చూపిస్తుంది.
       </>
     ),
   },
@@ -164,6 +187,7 @@ export default function AksharamalaPage() {
         <Chip label="🔊 వినే అవకాశం" />
         <Chip label="🎤 పలికే ప్రాక్టీస్" />
         <Chip label="✍️ రాసే ప్రాక్టీస్" />
+        <Chip label="🤖 యుక్తి AI పట్టిక" color="secondary" variant="outlined" />
         <Chip label="⚡ బ్రౌజర్‌లోనే విశ్లేషణ (Rust · WASM)" color="secondary" variant="outlined" />
       </Stack>
 
@@ -204,7 +228,7 @@ export default function AksharamalaPage() {
                   >
                     {item.title}
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                  <Typography variant="body2" component="div" sx={{ opacity: 0.8 }}>
                     {item.body}
                   </Typography>
                 </Box>
@@ -221,4 +245,3 @@ export default function AksharamalaPage() {
     </Box>
   );
 }
-
