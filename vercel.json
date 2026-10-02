@@ -1,11 +1,9 @@
 {
-  "functions": {
-    "api/main.py": {
-      "includeFiles": "pylib/**",
-      "excludeFiles": "{**/__pycache__/**,**/*.pyc,**/tests/**,rag-env/**,node_modules/**,.next/**,public/**,rust/**,e2e/**,playwright-report/**,test-results/**,.gradle/**,.eve/**}"
-    }
-  },
   "rewrites": [
-    { "source": "/api/extract-news", "destination": "/api/main?endpoint=extract-news" }
+    { "source": "/api/aksharamala", "destination": "/api/main?__fn=aksharamala" },
+    { "source": "/api/gita", "destination": "/api/main?__fn=gita" },
+    { "source": "/api/rag_chat", "destination": "/api/main?__fn=rag_chat" },
+    { "source": "/api/reading_recommendations", "destination": "/api/main?__fn=reading_recommendations" },
+    { "source": "/api/sametalu_agent", "destination": "/api/main?__fn=sametalu_agent" }
   ]
 }

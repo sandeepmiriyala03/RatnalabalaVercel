@@ -6,7 +6,6 @@ import os
 import re
 import time
 import traceback
-
 import psycopg
 
 from datetime import datetime
@@ -16,6 +15,9 @@ from urllib.parse import parse_qs, urlparse
 from psycopg.rows import dict_row
 
 import httpx
+
+# 6 Python functions → 1: /api/aksharamala, /api/gita, ... ఈ main.py నుండే నడుస్తాయి
+from _router import delegate
 
 # ═══════════════════════════════════════════════════════════════
 # CONFIG
@@ -112,7 +114,7 @@ FONT_CATALOG = [
     {"label": "తిరొ సుందర తెలుగు", "value": "TiroSundaraTelugu-Regular"},
     {"label": "నాట్స్", "value": "NATS"},
     {"label": "నాట్స్ (ఇటాలిక్)", "value": "NATS-Italic"},
-     {"label": "బి వి సత్యమూర్తి", "value": "BVSatyamurty"},
+    {"label": "బి వి సత్యమూర్తి", "value": "BVSatyamurty"},
     {"label": "మల్లన్న", "value": "Mallanna"},
     {"label": "మల్లన్న (ఇటాలిక్)", "value": "Mallanna-Italic"},
     {"label": "పి వి నరసింహారావు", "value": "PVNR"},
@@ -296,7 +298,6 @@ def _call_svara_once(text: str, gender: str) -> tuple[bytes, str]:
 
 
 def handle_svara_tts(text: str, voice_choice: str) -> tuple[bytes, str]:
-   
     normalized = (voice_choice or "").strip().lower()
     gender = "Female" if normalized in ("female", "f", "woman") else "Male"
     log(f"[Svara TTS] received voice_choice={voice_choice!r} -> gender={gender}")
@@ -454,8 +455,26 @@ def extract_redbeenews_paragraphs(soup) -> list | None:
     return body_paragraphs or None
 
 
+def _check_news_url(url: str) -> None:
+    """Only public http(s) web pages — never localhost / internal addresses."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme not in ("http", "https") or not host:
+        raise ValueError("సరైన వెబ్ లింక్ ఇవ్వండి (http:// లేదా https:// తో మొదలయ్యేది).")
+    if (
+        host in ("localhost", "0.0.0.0")
+        or host.endswith(".local")
+        or host.endswith(".internal")
+        or re.match(r"^(127\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.)", host)
+        or host.startswith("[")
+    ):
+        raise ValueError("ఈ లింక్‌ను తెరవలేము. వార్తా వెబ్‌సైట్ లింక్ ఇవ్వండి.")
+
+
 def handle_extract_news(url: str) -> str:
     from bs4 import BeautifulSoup
+
+    _check_news_url(url)
 
     browser_headers = {
         "User-Agent": (
@@ -598,7 +617,7 @@ class Poems:
                 p.poem_id,
                 p.title,
                 p.content,
-                   p.special_line,
+                p.special_line,
                 p.poet_id,
                 pt.poet_name,
                 p.created_by,
@@ -644,7 +663,7 @@ class Poems:
                 p.title,
                 p.content,
                 pt.poet_name,
-                p.special_line,
+                p.special_line
             FROM poems p
             INNER JOIN poets pt
                 ON p.poet_id = pt.poet_id
@@ -801,7 +820,7 @@ async def call_baml(poem: dict, question: str) -> str:
     except ImportError as e:
         raise AIServiceError(
             503, AI_UNAVAILABLE_MSG,
-            f"BAML Python runtime is missing ({e}). Add baml-py to api/requirements.txt.",
+            f"BAML Python runtime is missing ({e}). Add baml-py to requirements.txt.",
         ) from e
 
     try:
@@ -891,6 +910,10 @@ class handler(BaseHTTPRequestHandler):
         return json.loads(body) if body else {}
 
     def do_GET(self):
+        # /api/aksharamala, /api/gita, ... → వాటి సొంత handler (api/_router.py)
+        if delegate(self, "do_GET"):
+            return
+
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         endpoint = query.get("endpoint", [""])[0]
@@ -909,8 +932,6 @@ class handler(BaseHTTPRequestHandler):
             # ====================================================
             # POEMS
             # ====================================================
-            # Generic endpoint.
-            #
             # PostgreSQL:
             #   /api/main?endpoint=poems&poet_id=2
             #
@@ -919,21 +940,21 @@ class handler(BaseHTTPRequestHandler):
             #
             # If poet_id is supplied, PostgreSQL is used.
             # Otherwise the existing Markdown collection logic is preserved.
-           
+
             if endpoint == "poems":
                 poet_id_value = query.get("poet_id", [""])[0].strip()
-            
+
                 if poet_id_value:
                     try:
                         poet_id = int(poet_id_value)
                     except ValueError:
                         raise ValueError("poet_id must be a valid integer.")
-            
+
                     if poet_id <= 0:
                         raise ValueError("poet_id must be greater than 0.")
-            
+
                     poems = Poems.get(poet_id)
-            
+
                     response = [
                         {
                             "poem_id": poem["poem_id"],
@@ -945,14 +966,14 @@ class handler(BaseHTTPRequestHandler):
                         }
                         for poem in poems
                     ]
-            
+
                     self._send_json(200, response)
                     return
-            
+
                 # Existing Markdown poems
                 collection = query.get("collection", [""])[0]
                 poems = get_poems(collection)
-            
+
                 self._send_json(200, {
                     "success": True,
                     "collection": collection,
@@ -960,7 +981,6 @@ class handler(BaseHTTPRequestHandler):
                     "poems": poems,
                 })
                 return
-
 
             if endpoint == "poem":
                 collection = query.get("collection", [""])[0]
@@ -978,10 +998,14 @@ class handler(BaseHTTPRequestHandler):
         except ValueError as e:
             self._send_json(400, {"success": False, "error": str(e)})
         except Exception as e:
-            log(f"GET error: {e}")
+            log(f"GET error ({endpoint}): {type(e).__name__}: {e}\n{traceback.format_exc()}")
             self._send_json(500, {"success": False, "error": "Failed to process request."})
 
     def do_POST(self):
+        # /api/aksharamala, /api/rag_chat, ... → వాటి సొంత handler (api/_router.py)
+        if delegate(self, "do_POST"):
+            return
+
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         endpoint = query.get("endpoint", [""])[0]
@@ -1049,7 +1073,14 @@ class handler(BaseHTTPRequestHandler):
             # ============================================================
             api_name = "poem-ai"
             api_endpoint = "/api/main?endpoint=poem-ai"
-            usage_id = reserve_api_call(api_name, api_endpoint, "POST", 100)
+
+            # Neon లేకపోయినా / నిద్రలో ఉన్నా — request వేలాడకుండా స్పష్టమైన జవాబు
+            try:
+                usage_id = reserve_api_call(api_name, api_endpoint, "POST", 100)
+            except Exception as e:
+                log(f"poem-ai usage log failed: {type(e).__name__}: {e}")
+                self._send_json(503, {"success": False, "error": AI_UNAVAILABLE_MSG})
+                return
 
             if usage_id is None:
                 self._send_json(429, {
@@ -1067,7 +1098,7 @@ class handler(BaseHTTPRequestHandler):
             # .md poems are found by collection + filename;
             # database poems (no file) are found by title.
             if not (collection and filename) and not title:
-                update_api_log(usage_id, 400)
+                safe_update_api_log(usage_id, 400)
                 self._send_json(400, {
                     "success": False,
                     "error": "Send 'collection' + 'filename', or 'title'.",
@@ -1075,7 +1106,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             if not question:
-                update_api_log(usage_id, 400)
+                safe_update_api_log(usage_id, 400)
                 self._send_json(400, {
                     "success": False,
                     "error": "Missing 'question'."
@@ -1088,19 +1119,19 @@ class handler(BaseHTTPRequestHandler):
                 )
 
                 # Record successful API completion in Neon.
-                update_api_log(usage_id, 200)
+                safe_update_api_log(usage_id, 200)
 
                 self._send_json(200, result)
 
             except FileNotFoundError as e:
-                update_api_log(usage_id, 404)
+                safe_update_api_log(usage_id, 404)
                 self._send_json(404, {
                     "success": False,
                     "error": str(e)
                 })
 
             except ValueError as e:
-                update_api_log(usage_id, 400)
+                safe_update_api_log(usage_id, 400)
                 self._send_json(400, {
                     "success": False,
                     "error": str(e)
@@ -1110,7 +1141,7 @@ class handler(BaseHTTPRequestHandler):
                 # Friendly message goes to the frontend.
                 # Technical error is written to the server log.
                 log(f"poem-ai AI error ({e.status}): {e}")
-                update_api_log(usage_id, e.status)
+                safe_update_api_log(usage_id, e.status)
                 self._send_json(e.status, {
                     "success": False,
                     "error": e.message
@@ -1118,7 +1149,7 @@ class handler(BaseHTTPRequestHandler):
 
             except httpx.HTTPStatusError as e:
                 log(f"poem-ai provider HTTP error: {e.response.status_code}")
-                update_api_log(usage_id, 502)
+                safe_update_api_log(usage_id, 502)
                 self._send_json(502, {
                     "success": False,
                     "error": AI_UNAVAILABLE_MSG
@@ -1129,7 +1160,7 @@ class handler(BaseHTTPRequestHandler):
                     f"poem-ai error: {type(e).__name__}: {e}\n"
                     f"{traceback.format_exc()}"
                 )
-                update_api_log(usage_id, 500)
+                safe_update_api_log(usage_id, 500)
                 self._send_json(500, {
                     "success": False,
                     "error": "Failed to process AI request."
@@ -1169,22 +1200,21 @@ def reserve_api_call(
     cannot both pass the 100-call check at the same time.
     """
 
+    if not RATNALABALA_DATABASE_URL:
+        raise RuntimeError("NEON_DATABASE_URL is not configured.")
+
     with psycopg.connect(RATNALABALA_DATABASE_URL) as conn:
         with conn.cursor() as cursor:
 
-            # --------------------------------------------------------
             # Prevent concurrent requests from bypassing the daily limit.
             # The lock exists only for this database transaction.
-            # --------------------------------------------------------
             cursor.execute(
                 "SELECT pg_advisory_xact_lock(hashtext(%s));",
                 (api_name,)
             )
 
-            # --------------------------------------------------------
             # Count today's API calls.
             # Every reserved request counts, including failed requests.
-            # --------------------------------------------------------
             cursor.execute(
                 """
                 SELECT COUNT(*) AS usage_count
@@ -1198,16 +1228,12 @@ def reserve_api_call(
             row = cursor.fetchone()
             usage_count = row[0]
 
-            # --------------------------------------------------------
-            # Stop the API after 100 calls for today.
-            # --------------------------------------------------------
+            # Stop the API after the daily limit.
             if usage_count >= daily_limit:
                 return None
 
-            # --------------------------------------------------------
             # Insert the API call BEFORE the actual AI request.
             # status_code is NULL until the request finishes.
-            # --------------------------------------------------------
             cursor.execute(
                 """
                 INSERT INTO api_usage_log (
@@ -1268,6 +1294,14 @@ def update_api_log(
             )
 
 
+def safe_update_api_log(usage_id: int, status_code: int):
+    """A logging failure must never stop the real answer reaching the person."""
+    try:
+        update_api_log(usage_id, status_code)
+    except Exception as e:
+        log(f"api_usage_log update failed (usage_id={usage_id}): {type(e).__name__}: {e}")
+
+
 # ── Local-only test runner ──
 if __name__ == "__main__":
     from http.server import HTTPServer
@@ -1282,6 +1316,11 @@ if __name__ == "__main__":
     # Existing Markdown-based poems endpoint (backward compatible)
     print(f"Try: http://localhost:{port}/api/main?endpoint=poems&collection=Sumati")
     print(f"Try: http://localhost:{port}/api/main?endpoint=poem&collection=Sumati&filename=001.md")
+
+    # Merged endpoints (served through api/_router.py)
+    print(f"Try: http://localhost:{port}/api/aksharamala?search=&type=all&page=1&page_size=4")
+    print(f"Try: http://localhost:{port}/api/gita")
+
     print(f"POST http://localhost:{port}/api/main?endpoint=svara        body: {{\"text\": \"...\", \"voice\": \"male\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=tts          body: {{\"text\": \"...\", \"voice\": \"te-IN-ShrutiNeural\", \"speed\": 1.0}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=extract-news body: {{\"url\": \"https://...\"}}")

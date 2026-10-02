@@ -1,4 +1,4 @@
-import json
+﻿import json
 import sys
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -12,7 +12,7 @@ API_DIR = str(Path(__file__).resolve().parent)
 if API_DIR not in sys.path:
     sys.path.insert(0, API_DIR)
 
-from rag_chat import call_groq, retrieve
+from _rag_chat import call_groq, retrieve
 
 
 class ReadingState(TypedDict, total=False):
