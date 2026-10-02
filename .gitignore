@@ -23,3 +23,12 @@ unused-report.txt
 *.apk
 *.aab
 
+
+.neon
+android.keystore
+.eve/
+.vercel/
+.gradle/
+*.apk
+*.aab
+

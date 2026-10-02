@@ -16,6 +16,7 @@ import {
   Paper,
   Slider,
   Tooltip,
+  Link,
 } from "@mui/material";
 import BoltIcon from "@mui/icons-material/Bolt";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
@@ -80,6 +81,57 @@ const FALLBACK_FONTS: FontOption[] = [
  * (Module-level, so it also survives this component re-mounting.)
  */
 let manualChoiceThisVisit = false;
+
+/* ================================================================== */
+/* FONT LIST — అన్ని పరికరాలకూ పూర్తి 59 fonts                          */
+/*                                                                    */
+/* ముందు ఒక్కసారే అడిగేది: ఫోన్‌లో నెట్‌వర్క్ నెమ్మదిగా ఉన్నా, server     */
+/* మొదలవడానికి సమయం పట్టినా ఆ ఒక్కటి విఫలమై visit అంతా 8 fonts మాత్రమే.  */
+/* ఇప్పుడు: సమయ పరిమితితో 3 ప్రయత్నాలు, నెట్ తిరిగి వస్తే మళ్ళీ, font    */
+/* agent జవాబులోని పూర్తి జాబితా కూడా, మరియు ఈ visit అంతా గుర్తుంచుకుంటుంది. */
+/* (Memory లో మాత్రమే — browser storage లో ఏమీ దాచము.)                  */
+/* ================================================================== */
+
+let fontsCache: FontOption[] | null = null;
+let fontsRequest: Promise<FontOption[] | null> | null = null;
+
+const FONT_ATTEMPTS = 3;
+
+async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** పూర్తి జాబితా; అన్ని ప్రయత్నాలు విఫలమైతే null (అప్పుడు FALLBACK_FONTS). */
+function loadServerFonts(): Promise<FontOption[] | null> {
+  if (fontsCache) return Promise.resolve(fontsCache);
+  fontsRequest ??= (async () => {
+    for (let attempt = 0; attempt < FONT_ATTEMPTS; attempt++) {
+      try {
+        // ప్రతి ప్రయత్నానికి ఇంకొంచెం ఎక్కువ సమయం: 8s, 12s, 16s
+        const res = await fetchWithTimeout("/api/main?endpoint=fonts", 8000 + attempt * 4000);
+        if (res.ok) {
+          const data: unknown = await res.json();
+          if (isFontList(data)) {
+            fontsCache = data;
+            return data;
+          }
+        }
+      } catch {
+        /* timeout / network — మళ్ళీ ప్రయత్నిస్తాం */
+      }
+      if (attempt < FONT_ATTEMPTS - 1) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
+    fontsRequest = null; // తర్వాత (నెట్ వచ్చాక / బటన్ నొక్కాక) మళ్ళీ ప్రయత్నించడానికి
+    return null;
+  })();
+  return fontsRequest;
+}
 
 /* ================================================================== */
 /* CONTENT TYPE FROM THE URL                                          */
@@ -224,12 +276,34 @@ export default function FontControlsTelugu({
   const defaultSize = clampSize(DEFAULT_SIZE);
 
   /* ---------- state ---------- */
-  const [fonts, setFonts] = useState<FontOption[]>(FALLBACK_FONTS);
-  const [fontsFromServer, setFontsFromServer] = useState(false);
+  // ఈ visit లో ఇప్పటికే వచ్చి ఉంటే (వేరే పేజీ నుండి), వెంటనే పూర్తి జాబితా
+  const [fonts, setFonts] = useState<FontOption[]>(fontsCache ?? FALLBACK_FONTS);
+  const [fontsFromServer, setFontsFromServer] = useState(Boolean(fontsCache));
+  const [fontsLoading, setFontsLoading] = useState(!fontsCache);
   const [device, setDevice] = useState<Device | null>(null);
   const [agentReason, setAgentReason] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [loadTime, setLoadTime] = useState<number | null>(null);
+
+  /** పూర్తి జాబితా వచ్చినప్పుడు — ఏ మూలం నుండైనా (fonts API / font agent) */
+  const applyServerFonts = useCallback((list: FontOption[]) => {
+    fontsCache = list;
+    setFonts(list);
+    setFontsFromServer(true);
+    setFontsLoading(false);
+  }, []);
+
+  const loadFonts = useCallback(() => {
+    if (fontsCache) {
+      applyServerFonts(fontsCache);
+      return;
+    }
+    setFontsLoading(true);
+    loadServerFonts().then((list) => {
+      if (list) applyServerFonts(list);
+      else setFontsLoading(false);
+    });
+  }, [applyServerFonts]);
 
   /* ---------- 1. Device class, known before the first paint ---------- */
   useIsomorphicLayoutEffect(() => {
@@ -247,22 +321,23 @@ export default function FontControlsTelugu({
     };
   }, []);
 
-  /* ---------- 3. Font list from the API (fallback list stays if it fails) ---------- */
+  /* ---------- 3. Font list: retries, and again when the network comes back ---------- */
   useEffect(() => {
-    const controller = new AbortController();
-    fetch("/api/main?endpoint=fonts", { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (isFontList(data)) {
-          setFonts(data);
-          setFontsFromServer(true);
-        }
-      })
-      .catch(() => {
-        // unreachable — keep FALLBACK_FONTS
-      });
-    return () => controller.abort();
-  }, []);
+    loadFonts();
+    const retry = () => {
+      if (!fontsCache) loadFonts();
+    };
+    window.addEventListener("online", retry);
+    // ఫోన్‌లో app మళ్ళీ తెరిచినప్పుడు (background నుండి)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") retry();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("online", retry);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadFonts]);
 
   /* ---------- 4. Agent: page type + device → font + size ---------- */
   // Runs on first load, on page change and when the device class changes
@@ -290,6 +365,9 @@ export default function FontControlsTelugu({
         if (res.ok) {
           const data: unknown = await res.json();
           if (isValidDecision(data)) decision = data;
+          // agent జవాబులో పూర్తి 59 జాబితా కూడా ఉంటుంది — fonts API విఫలమైనా ఇది చాలు
+          const list = (data as { fonts?: unknown } | null)?.fonts;
+          if (!fontsCache && isFontList(list)) applyServerFonts(list);
         }
       } catch {
         if (controller.signal.aborted) return;
@@ -445,6 +523,12 @@ export default function FontControlsTelugu({
                 markManual();
                 setFontFamily(newValue.value);
               }}
+              // జాబితా తెరిచినప్పుడు ఇంకా 8 మాత్రమే ఉంటే, వెంటనే మళ్ళీ ప్రయత్నించు
+              onOpen={() => {
+                if (!fontsCache && !fontsLoading) loadFonts();
+              }}
+              loading={fontsLoading && !fontsFromServer}
+              loadingText="ఫాంట్లు లోడ్ అవుతున్నాయి…"
               disableClearable
               sx={{ minWidth: 180, flex: 1, backgroundColor: "var(--surface-elevated, #fff)" }}
               renderOption={(props, option) => (
@@ -561,8 +645,15 @@ export default function FontControlsTelugu({
             <>
               ప్రస్తుతం <strong>{fonts.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
             </>
+          ) : fontsLoading ? (
+            <>అన్ని ఫాంట్లు లోడ్ అవుతున్నాయి… (ఇప్పటికి ముఖ్యమైన {fonts.length})</>
           ) : (
-            <>ముఖ్యమైన {fonts.length} ఫాంట్లు చూపిస్తున్నాం (పూర్తి జాబితా లోడ్ కాలేదు).</>
+            <>
+              ముఖ్యమైన {fonts.length} ఫాంట్లు చూపిస్తున్నాం (పూర్తి జాబితా లోడ్ కాలేదు).{" "}
+              <Link component="button" type="button" variant="caption" onClick={loadFonts} sx={{ fontWeight: 700, verticalAlign: "baseline" }}>
+                మళ్ళీ ప్రయత్నించండి
+              </Link>
+            </>
           )}
           {device && <> · {DEVICE_TE[device]}</>}
         </Typography>

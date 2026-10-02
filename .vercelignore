@@ -14,3 +14,10 @@ unused-report.txt
 *.apk
 *.aab
 
+
+.eve/
+.vercel/
+.gradle/
+*.apk
+*.aab
+

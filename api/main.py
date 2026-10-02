@@ -129,7 +129,16 @@ FONT_VALUES = {f["value"] for f in FONT_CATALOG}
 DEFAULT_FONT = "Dhurjati"
 
 
+# అన్ని పరికరాలకూ (ఫోన్, ట్యాబ్లెట్, కంప్యూటర్) ఒకే పూర్తి జాబితా — 59 fonts
+FONT_COUNT = len(FONT_CATALOG)
+
+# Fonts అరుదుగా మారతాయి: Vercel CDN దగ్గర దాచి ఉంచితే ప్రతి పరికరానికి వెంటనే వస్తాయి.
+# (Function cold start / నెమ్మది నెట్‌వర్క్ వల్ల ఫోన్‌లో "8 fonts మాత్రమే" fallback రాకుండా)
+FONTS_CACHE_HEADER = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+
+
 def handle_fonts():
+    """పూర్తి font జాబితా — పరికరం ఏదైనా, ఎప్పుడూ అన్నీ (FONT_COUNT)."""
     # A copy, so no request can ever change the shared list
     return 200, [dict(f) for f in FONT_CATALOG]
 
@@ -190,12 +199,21 @@ def decide_font(content_type: str, width: int) -> dict:
     size = SIZE_BY_DEVICE[content_type][device]
     reason = f"{CONTENT_TE[content_type]}, {DEVICE_TE[device]} స్క్రీన్‌కు తగిన సైజ్ ({round(size * 100)}%)."
 
+    # సూచించినవి ముందు, మిగతా అన్నీ తర్వాత — ఏ పరికరంలోనైనా 59 fonts ఎంచుకోవచ్చు
+    recommended = [f for f in PREFERRED_FONTS[content_type] if f in FONT_VALUES]
+    ordered = [f for f in FONT_CATALOG if f["value"] in recommended]
+    ordered.sort(key=lambda f: recommended.index(f["value"]))
+    ordered += [dict(f) for f in FONT_CATALOG if f["value"] not in recommended]
+
     return {
         "fontFamily": font,
         "fontSizeMultiplier": size,
         "device": device,
         "contentType": content_type,
         "reason": reason,
+        "recommended": recommended,
+        "fonts": ordered,
+        "fontCount": len(ordered),
     }
 
 
@@ -885,12 +903,16 @@ async def explain_poem(
 # ═══════════════════════════════════════════════════════════════
 
 class handler(BaseHTTPRequestHandler):
-    def _send_json(self, status: int, payload):
+    def _send_json(self, status: int, payload, cache: str | None = None, extra_headers: dict | None = None):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(body)))
+        if cache:
+            self.send_header("Cache-Control", cache)
+        for key, value in (extra_headers or {}).items():
+            self.send_header(key, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -921,12 +943,14 @@ class handler(BaseHTTPRequestHandler):
         try:
             if endpoint == "fonts":
                 status, payload = handle_fonts()
-                self._send_json(status, payload)
+                self._send_json(status, payload, cache=FONTS_CACHE_HEADER,
+                                extra_headers={"X-Font-Count": str(len(payload))})
                 return
 
             if endpoint == "font_agent":
                 status, payload = handle_font_agent(query)
-                self._send_json(status, payload)
+                # పరికరం వెడల్పు ప్రకారం జవాబు మారుతుంది — URL ఒక్కో వెడల్పుకు వేరు, కాబట్టి cache సురక్షితం
+                self._send_json(status, payload, cache=FONTS_CACHE_HEADER)
                 return
 
             # ====================================================
