@@ -17,8 +17,10 @@ from psycopg.rows import dict_row
 import httpx
 
 # 6 Python functions → 1: /api/aksharamala, /api/gita, ... ఈ main.py నుండే నడుస్తాయి
+from _router import delegate
+# వినియోగదారుల కార్యకలాపాల ఏజెంట్ (api/_activity.py)
+from _activity import activity_summary, save_activity
 
-from api._router import delegate
 # ═══════════════════════════════════════════════════════════════
 # CONFIG
 # ═══════════════════════════════════════════════════════════════
@@ -947,6 +949,11 @@ class handler(BaseHTTPRequestHandler):
                                 extra_headers={"X-Font-Count": str(len(payload))})
                 return
 
+            if endpoint == "activity_summary":
+                status, payload = activity_summary(query, self.headers.get("X-Admin-Key", ""))
+                self._send_json(status, payload)
+                return
+
             if endpoint == "font_agent":
                 status, payload = handle_font_agent(query)
                 # పరికరం వెడల్పు ప్రకారం జవాబు మారుతుంది — URL ఒక్కో వెడల్పుకు వేరు, కాబట్టి cache సురక్షితం
@@ -1033,6 +1040,14 @@ class handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         endpoint = query.get("endpoint", [""])[0]
+
+        # కార్యకలాపాల ఏజెంట్ — sendBeacon (text/plain) కూడా అంగీకరిస్తుంది
+        if endpoint == "track":
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            raw = self.rfile.read(min(length, 64_000)) if length > 0 else b""
+            status, result = save_activity(raw)
+            self._send_json(status, result)
+            return
 
         try:
             payload = self._read_json_body()
@@ -1344,6 +1359,8 @@ if __name__ == "__main__":
     # Merged endpoints (served through api/_router.py)
     print(f"Try: http://localhost:{port}/api/aksharamala?search=&type=all&page=1&page_size=4")
     print(f"Try: http://localhost:{port}/api/gita")
+    print(f"POST http://localhost:{port}/api/main?endpoint=track        body: {{\"session_id\": \"abc12345\", \"events\": [{{\"name\": \"page_view\", \"path\": \"/aksharamala\"}}]}}")
+    print(f"GET  http://localhost:{port}/api/main?endpoint=activity_summary&days=7   header: X-Admin-Key")
 
     print(f"POST http://localhost:{port}/api/main?endpoint=svara        body: {{\"text\": \"...\", \"voice\": \"male\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=tts          body: {{\"text\": \"...\", \"voice\": \"te-IN-ShrutiNeural\", \"speed\": 1.0}}")
