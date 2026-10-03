@@ -15,11 +15,34 @@ from urllib.parse import parse_qs, urlparse
 from psycopg.rows import dict_row
 
 import httpx
+import sys
+
+# ⚠️ Vercel లో api/ folder Python path లో ఉండకపోవచ్చు — పక్క files (_router, _activity,
+# _aksharamala …) దొరకాలంటే ముందు ఇది తప్పనిసరి. లేకపోతే మొత్తం API 500 తో ఆగిపోతుంది.
+_API_DIR = str(Path(__file__).resolve().parent)
+if _API_DIR not in sys.path:
+    sys.path.insert(0, _API_DIR)
 
 # 6 Python functions → 1: /api/aksharamala, /api/gita, ... ఈ main.py నుండే నడుస్తాయి
-from _router import delegate
-# వినియోగదారుల కార్యకలాపాల ఏజెంట్ (api/_activity.py)
-from _activity import activity_summary, save_activity
+try:
+    from _router import delegate
+except Exception as _router_error:  # router విఫలమైనా fonts, poems ఆగకూడదు
+    print(f"[Ratnalabala] router unavailable: {type(_router_error).__name__}: {_router_error}")
+
+    def delegate(handler_self, method: str) -> bool:
+        return False
+
+# వినియోగదారుల కార్యకలాపాల ఏజెంట్ (api/_activity.py) — విఫలమైనా మిగతా API నడుస్తుంది
+try:
+    from _activity import activity_summary, save_activity
+except Exception as _activity_error:
+    print(f"[Ratnalabala] activity agent unavailable: {type(_activity_error).__name__}: {_activity_error}")
+
+    def save_activity(raw: bytes):
+        return 503, {"saved": 0, "error": "activity agent unavailable"}
+
+    def activity_summary(query, admin_key):
+        return 503, {"error": "activity agent unavailable"}
 
 # ═══════════════════════════════════════════════════════════════
 # CONFIG
