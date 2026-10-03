@@ -138,6 +138,10 @@ FONT_COUNT = len(FONT_CATALOG)
 # (Function cold start / నెమ్మది నెట్‌వర్క్ వల్ల ఫోన్‌లో "8 fonts మాత్రమే" fallback రాకుండా)
 FONTS_CACHE_HEADER = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
 
+# అన్ని పద్యాలు ఒకే జవాబులో (జ్ఞానమాల) — Vercel CDN దగ్గర 1 గంట, తర్వాత నేపథ్యంలో తాజాపరచడం.
+# Database లో మార్పులు గరిష్ఠంగా 1 గంటలో కనిపిస్తాయి.
+POEMS_ALL_CACHE_HEADER = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400"
+
 
 def handle_fonts():
     """పూర్తి font జాబితా — పరికరం ఏదైనా, ఎప్పుడూ అన్నీ (FONT_COUNT)."""
@@ -666,6 +670,33 @@ class Poems:
         return [dict(row) for row in rows]
 
     @staticmethod
+    def get_all() -> list[dict]:
+        """అన్ని కవుల అన్ని పద్యాలు — ఒకే query, ఒకే connection (13 బదులు)."""
+        if not RATNALABALA_DATABASE_URL:
+            raise RuntimeError("NEON_DATABASE_URL is not configured.")
+
+        query = """
+            SELECT
+                p.poem_id,
+                p.title,
+                p.content,
+                p.special_line,
+                p.poet_id,
+                pt.poet_name
+            FROM poems p
+            INNER JOIN poets pt
+                ON p.poet_id = pt.poet_id
+            WHERE p.is_active = TRUE
+              AND pt.is_active = TRUE
+            ORDER BY p.poet_id, p.poem_id;
+        """
+
+        with psycopg.connect(RATNALABALA_DATABASE_URL, row_factory=dict_row) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                return [dict(row) for row in cursor.fetchall()]
+
+    @staticmethod
     def find_by_title(title: str, content: str = "") -> dict | None:
         """Used by poem-ai for poems that live in the database (no .md
         file). The answer is grounded in the DATABASE text, never in text
@@ -1011,6 +1042,10 @@ class handler(BaseHTTPRequestHandler):
                     "count": len(poems),
                     "poems": poems,
                 })
+                return
+
+            if endpoint == "poems_all":
+                self._send_json(200, Poems.get_all(), cache=POEMS_ALL_CACHE_HEADER)
                 return
 
             if endpoint == "poem":
