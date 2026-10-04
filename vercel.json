@@ -2,7 +2,7 @@
   "framework": "nextjs",
   "functions": {
     "api/main.py": {
-      "excludeFiles": "{public/**,node_modules/**,.next/**,app/**,lib/**,hooks/**,types/**,icons/**,data/**,e2e/**,scripts/**,rust/**,poems/**,mirapoems/**,Ugadi108/**,DatabaseScripts/**,featured-content-agent/**,agent/**,python_services/**,pylib/**,gradle/**,.github/**,.agents/**}"
+      "excludeFiles": "{public/**,node_modules/**,.next/**,app/**,lib/**,hooks/**,types/**,icons/**,data/**,e2e/**,scripts/**,rust/**,poems/**,mirapoems/**,Ugadi108/**,DatabaseScripts/**,featured-content-agent/**,agent/**,python_services/**,pylib/**}"
     }
   }
 }
