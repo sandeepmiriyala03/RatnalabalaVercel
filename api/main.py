@@ -80,6 +80,10 @@ BHAVALAMALA_MAX_QUESTION_LENGTH = 1000
 # దీనికంటే తక్కువ similarity ఉన్నవి "సంబంధం లేనివి" — Groq కి పంపము, మూలాలుగా చూపము
 BHAVALAMALA_MIN_SIMILARITY = float(os.environ.get("BHAVALAMALA_MIN_SIMILARITY", "0.45"))
 BHAVALAMALA_DAILY_LIMIT = 100
+# వైవిధ్యం: ముందు ఇన్ని దగ్గరివి తెచ్చి, ఒక్కో మాల నుండి గరిష్ఠం ఇన్ని ఎంచుకోవడం
+# (పొడవైన పద్యాలే top 5 ని ఆక్రమించకుండా — సామెతలు, గీత, కథలు కూడా రావాలి)
+BHAVALAMALA_CANDIDATES = 40
+BHAVALAMALA_MAX_PER_MALA = 2
 
 # Production (Vercel) లో BGE-M3 — అదే model, బయటి సేవ ద్వారా (ఏదీ లేకపోతే local మాత్రమే):
 #   1) EMBEDDINGS_API_URL + EMBEDDINGS_API_KEY → OpenAI-compatible (ఉదా: DeepInfra BAAI/bge-m3)
@@ -1161,13 +1165,33 @@ def call_bhavalamala_groq(question: str, context: str) -> str:
     return strip_markdown(answer)
 
 
+def diversify_by_mala(records: list[dict], top_k: int) -> list[dict]:
+    """similarity క్రమంలోనే, ఒక్కో మాల నుండి గరిష్ఠం BHAVALAMALA_MAX_PER_MALA.
+    స్థలం మిగిలితే మిగతా దగ్గరివాటితో నింపడం."""
+    picked, counts, leftovers = [], {}, []
+    for r in records:
+        mala = r.get("mala") or ""
+        if counts.get(mala, 0) < BHAVALAMALA_MAX_PER_MALA:
+            picked.append(r)
+            counts[mala] = counts.get(mala, 0) + 1
+        else:
+            leftovers.append(r)
+        if len(picked) == top_k:
+            break
+    picked += leftovers[: max(0, top_k - len(picked))]
+    return sorted(picked, key=lambda r: float(r["similarity"]), reverse=True)
+
+
 def answer_bhavalamala(question: str, top_k: int) -> dict:
-    """మొత్తం RAG pipeline — 1. embedding  2. search  3. హద్దు  4. Groq  5. జవాబు + మూలాలు."""
-    records = search_bhavalamala(create_bhavalamala_embedding(question), top_k)
-    relevant = [r for r in records if float(r["similarity"] or 0) >= BHAVALAMALA_MIN_SIMILARITY]
+    """మొత్తం RAG pipeline — 1. embedding  2. search  3. హద్దు  4. వైవిధ్యం  5. Groq  6. జవాబు + మూలాలు."""
+    candidates = search_bhavalamala(create_bhavalamala_embedding(question), max(top_k, BHAVALAMALA_CANDIDATES))
+    records = candidates
+    above = [r for r in candidates if float(r["similarity"] or 0) >= BHAVALAMALA_MIN_SIMILARITY]
+    relevant = diversify_by_mala(above, top_k)
 
     best = max((float(r["similarity"]) for r in records), default=0)
-    log(f"[Bhavalamala] mode={bhavalamala_embedding_mode()} top_k={top_k} found={len(records)} relevant={len(relevant)} best={best:.3f}")
+    malas = sorted({r.get("mala") or "" for r in relevant})
+    log(f"[Bhavalamala] mode={bhavalamala_embedding_mode()} top_k={top_k} candidates={len(records)} above={len(above)} picked={len(relevant)} best={best:.3f} malas={malas}")
 
     if not relevant:  # సంబంధం లేనివే వచ్చాయి — Groq ని పిలవకుండా నిజాయితీగా
         return {"success": True, "question": question, "answer": BHAVALAMALA_NOT_FOUND, "sources": []}
