@@ -1,9 +1,8 @@
-httpx==0.28.1                 # HTTP client
-langgraph==0.2.60             # Agent workflows
+httpx==0.28.1                 # HTTP client (Groq, Sarvam, Svara, news)
+langgraph==0.2.60             # Agent workflows (sametalu agent, reading recommendations)
 langchain-core==0.3.28        # LangChain core
-Pillow==10.4.0                # Image processing
+Pillow==10.4.0                # Image processing (aksharamala)
 edge-tts==7.0.2               # Text-to-speech
-beautifulsoup4==4.12.3        # HTML parsing
-psycopg[binary]>=3.3.6        # PostgreSQL connection
-pgvector==0.5.0                # Vector search with PostgreSQL
-baml-py==0.226.2              # Structured LLM outputs
+beautifulsoup4==4.12.3        # HTML parsing (news extraction)
+psycopg[binary]==3.3.6        # PostgreSQL (Neon) + pgvector queries via SQL
+baml-py==0.226.2              # Structured LLM outputs (poem-ai)
