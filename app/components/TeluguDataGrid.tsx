@@ -12,6 +12,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Collapse,
   IconButton,
@@ -680,6 +681,87 @@ export default function TeluguDataGrid({
   };
 
   const border = alpha(mui.palette.divider, 0.9);
+
+  /* ---------- మన సొంత సూచన చిప్స్ → grid chat లోకి నేరుగా ---------- */
+  // package లోని 3 చిప్స్ (ఎన్ని వరుసలు / శోధించండి / క్రమం) స్థిరం; ఇవి ప్రతి మాలకు సొంతం.
+  const gridBoxRef = useRef<HTMLDivElement>(null);
+  const [askNote, setAskNote] = useState<string | null>(null);
+  const [showAllAsks, setShowAllAsks] = useState(false);
+
+  /**
+   * అన్ని ప్రశ్నల రకాలు, వర్గాల వారీగా — ఉదాహరణలు ఈ మాల నిజమైన data నుండే,
+   * కాబట్టి ప్రతి చిప్ నొక్కితే నిజంగా జవాబు వస్తుంది.
+   * ఈ మాలలో లేని సామర్థ్యాలు (వర్గం / అర్థం / పరీక్ష) ఆటోమేటిక్‌గా దాగుతాయి.
+   */
+  const quickAskGroups = useMemo(() => {
+    // పొట్టి శీర్షిక ఉన్న వరుస (చిప్ చిన్నగా ఉండటానికి)
+    const sample = [...rows.slice(0, 60)].filter((r) => r[titleKey]).sort((a, b) => a[titleKey].length - b[titleKey].length)[0];
+    const t = sample?.[titleKey] ?? "";
+    const letter = t.charAt(0);
+    const word = (rows[1]?.[titleKey] ?? t).split(/\s+/)[0] ?? "";
+    const g = groupValues.find((v) => v.length > 2) ?? groupValues[0];
+
+    const groups: { title: string; items: (string | false | undefined)[] }[] = [
+      {
+        title: "🔍 కనుక్కోవడం",
+        items: [word && `${word} వెతుకు`, letter && `${letter} తో మొదలయ్యేవి`, g && `${g} మాత్రమే`, groupKey && word && `${word} ఎక్కడ ఉంది`],
+      },
+      {
+        title: "📖 చూడటం",
+        items: [t && `${t} తెరువు`, "తర్వాతది", "ముందుది", "మొదటిది", "చివరిది", rows.length >= 10 && "10వది", "ఏదైనా ఒకటి", "ఈరోజుది"],
+      },
+      {
+        title: "🔢 లెక్కించడం",
+        items: ["ఎన్ని", letter && `${letter} తో ఎన్ని`, groupKey && `${groupLabel} వారీగా ఎన్ని`, g && `${g} ఎన్ని`],
+      },
+      {
+        title: "🗂️ క్రమం, వడపోత",
+        items: ["అక్షర క్రమంలో", "పొడవైనది", "చిన్నది", "అన్నీ చూపించు"],
+      },
+      { title: "🧠 అర్థం", items: [meaningKey && t && `${t} ${meaningLabel}`] },
+      {
+        title: "🔊 వినడం",
+        items: [t && `${t} వినిపించు`, "అన్నీ వినిపించు", g && `${g} వినిపించు`, "ఆపు"],
+      },
+      {
+        title: "🎓 నేర్చుకోవడం",
+        items: [quizAsk && "పరీక్ష", quizAsk && g && `${g} పరీక్ష`, "ఏం అడగవచ్చు"],
+      },
+    ];
+    return groups
+      .map((x) => ({ title: x.title, items: [...new Set(x.items.filter((i): i is string => Boolean(i)))] }))
+      .filter((x) => x.items.length > 0);
+  }, [rows, titleKey, groupKey, groupLabel, groupValues, meaningKey, meaningLabel, quizAsk]);
+
+  /** మొదటి వరుసలో: ఈ మాల సొంత ప్రశ్నలు + ముఖ్యమైన సాధారణవి */
+  const quickAsks = useMemo(
+    () => [...new Set([...examples, "ఈరోజుది", "తర్వాతది", "ఎన్ని", ...(quizAsk ? ["పరీక్ష"] : [])])].slice(0, 8),
+    [examples, quizAsk]
+  );
+
+  /** grid chat పెట్టెలో ప్రశ్న పెట్టి పంపడం (పెట్టె మూసి ఉంటే ముందు తెరుస్తుంది) */
+  const askGrid = async (text: string) => {
+    setAskNote(null);
+    const root = gridBoxRef.current ?? document.body;
+    const INPUT = 'input[aria-label="అడగండి"], input[placeholder^="ప్రశ్న లేదా"], input[aria-label="Ask"]';
+    const OPEN = 'button[aria-label="AI సహాయకుడిని తెరవండి"], button[aria-label^="Open AI"]';
+    let input = root.querySelector<HTMLInputElement>(INPUT) ?? document.querySelector<HTMLInputElement>(INPUT);
+    if (!input) {
+      (root.querySelector<HTMLButtonElement>(OPEN) ?? document.querySelector<HTMLButtonElement>(OPEN))?.click();
+      await new Promise((r) => setTimeout(r, 200));
+      input = root.querySelector<HTMLInputElement>(INPUT) ?? document.querySelector<HTMLInputElement>(INPUT);
+    }
+    if (!input) {
+      setAskNote(`పట్టికలోని AI పెట్టె తెరిచి "${text}" అని అడగండి.`);
+      return;
+    }
+    // React controlled input: native setter + input event, తర్వాత Enter
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, text);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 60));
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true }));
+    input.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
   const buttonSx = { textTransform: "none" as const, fontWeight: 700, minHeight: 40, borderRadius: "10px", flex: { xs: 1, sm: "none" } };
 
   return (
@@ -698,7 +780,7 @@ export default function TeluguDataGrid({
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {rows.length} {unitLabel}
-            {examples.length > 0 && <> · AI ని అడగండి: {examples.join(" • ")}</>}
+
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center" useFlexGap flexWrap="wrap">
@@ -814,8 +896,75 @@ export default function TeluguDataGrid({
         </Alert>
       )}
 
+      {/* 💬 సూచన చిప్స్ — నొక్కితే AI కి అడుగుతుంది */}
+      <Box sx={{ px: 0.5 }}>
+        <Stack
+          direction="row"
+          spacing={0.75}
+          alignItems="center"
+          sx={{ overflowX: "auto", pb: 0.5, scrollbarWidth: "thin", "&::-webkit-scrollbar": { height: 4 } }}
+        >
+          <Typography variant="caption" sx={{ fontWeight: 800, whiteSpace: "nowrap", color: "text.secondary" }}>
+            💬 అడగండి:
+          </Typography>
+          {quickAsks.map((q) => (
+            <Chip
+              key={q}
+              label={q}
+              size="small"
+              clickable
+              variant="outlined"
+              color="secondary"
+              onClick={() => void askGrid(q)}
+              sx={{ fontWeight: 700, flexShrink: 0, height: 32 }}
+            />
+          ))}
+          <Chip
+            label={showAllAsks ? "▴ తక్కువ" : `▾ అన్ని ప్రశ్నలు (${quickAskGroups.reduce((n, x) => n + x.items.length, 0)})`}
+            size="small"
+            clickable
+            color="secondary"
+            onClick={() => setShowAllAsks((v) => !v)}
+            aria-expanded={showAllAsks}
+            sx={{ fontWeight: 800, flexShrink: 0, height: 32 }}
+          />
+        </Stack>
+
+        {/* అన్ని ప్రశ్నల రకాలు — వర్గాల వారీగా */}
+        <Collapse in={showAllAsks} timeout={200} unmountOnExit>
+          <Stack spacing={1} sx={{ mt: 1, p: 1.25, borderRadius: 2.5, border: `1px dashed ${border}`, bgcolor: "background.paper" }}>
+            {quickAskGroups.map((grp) => (
+              <Stack key={grp.title} direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ xs: "flex-start", sm: "center" }}>
+                <Typography variant="caption" sx={{ fontWeight: 800, minWidth: 130, color: "text.secondary" }}>
+                  {grp.title}
+                </Typography>
+                <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+                  {grp.items.map((q) => (
+                    <Chip
+                      key={q}
+                      label={q}
+                      size="small"
+                      clickable
+                      variant="outlined"
+                      onClick={() => void askGrid(q)}
+                      sx={{ fontWeight: 600, height: 32, maxWidth: 260 }}
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+            ))}
+          </Stack>
+        </Collapse>
+        {askNote && (
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+            {askNote}
+          </Typography>
+        )}
+      </Box>
+
       {/* GRID */}
       <Box
+        ref={gridBoxRef}
         sx={{
           width: "100%",
           minWidth: 0,
