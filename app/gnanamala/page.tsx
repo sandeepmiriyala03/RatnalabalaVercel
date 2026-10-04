@@ -340,6 +340,43 @@ const LOADERS: Record<UnitKey, () => Promise<Patch>> = {
 const KEYS_OF_UNIT = (unit: UnitKey) => ALL_KEYS.filter((k) => UNIT_OF[k] === unit);
 
 /* ================================================================== */
+/* జ్ఞానమాల ప్రశ్నలు — మాలల మధ్య                                          */
+/* ================================================================== */
+
+/** వినియోగదారులు మాలను పిలిచే ఇతర పేర్లు: "సామెతలు మాత్రమే", "గీత ఎన్ని" */
+const MALA_ALIASES: Record<string, string[]> = {
+  పద్యాలమాల: ["పద్యాల", "పద్యాలు"],
+  మిరా: ["మిరా పద్యాలు"],
+  శతకాలమాల: ["శతకాల", "శతకాలు", "శతకం"],
+  స్మృతిమాల: ["స్మృతి", "సీతమామ"],
+  కథామాల: ["కథలు", "కథ"],
+  అక్షరమాల: ["అక్షరాలు", "అక్షర"],
+  గుణింతమాల: ["గుణింతాలు", "గుణింతం", "గుణింత"],
+  పదాలమాల: ["పదాలు", "పదాల"],
+  సామెతలమాల: ["సామెతలు", "సామెత"],
+  సంధిమాల: ["సంధులు", "సంధి"],
+  సమాసముమాల: ["సమాసాలు", "సమాసం", "సమాస"],
+  భగవద్గీత: ["గీత", "శ్లోకాలు", "శ్లోకం"],
+};
+
+/** ఏ మాల నుండైనా పరీక్ష — ఆ మాలకు తగిన ప్రశ్న */
+function gnanaQuiz(r: RecordRow): string | null {
+  const m = r.vibhagam;
+  if (m === "గుణింతమాల") return `${r.mulam.replace(" గుణింతము", "")} + ${r.vishayam} = ?`;
+  if (m === "సంధిమాల") return `${r.vishayam.split(" → ")[0]} = ? (సంధి)`;
+  if (m === "సమాసముమాల") return `"${r.vishayam.replace(/^= /, "")}" — ఏ సమాసం?`;
+  if (m === "అక్షరమాల" && r.vishayam) return `"${r.vishayam}" పదం ఏ అక్షరంతో?`;
+  if (m === "కథామాల" && r.vivaralu) return `నీతి: "${r.vivaralu}" — ఏ కథ?`;
+  if (m === "భగవద్గీత" && r.vivaralu) return `"${r.vivaralu.slice(0, 70)}…" — ఏ శ్లోకం?`;
+  if ((m === "శతకాలమాల" || m === "మిరా" || m === "పద్యాలమాల") && r.vivaralu) return `"${r.vivaralu}" — ఏ పద్యం?`;
+  if (m === "సామెతలమాల") {
+    const w = r.sheershika.split(/\s+/);
+    return w.length >= 4 ? `"${w.slice(0, 2).join(" ")} …" — పూర్తి సామెత ఏది?` : null;
+  }
+  return null;
+}
+
+/* ================================================================== */
 /* వివరాల పెట్టె                                                         */
 /* ================================================================== */
 
@@ -558,7 +595,13 @@ export default function GnanamalaPage() {
         titleKey="sheershika"
         highlightKey="vivaralu"
         toolName="gnanamala"
-        examples={["కోతి వెతుకు", "కర్మ వెతుకు", "ఎన్ని"]}
+        examples={["కోతి ఎక్కడ ఉంది", "మాల వారీగా ఎన్ని", "సామెతలు మాత్రమే", "ఈరోజుది", "పరీక్ష"]}
+        groupKey="vibhagam"
+        groupLabel="మాల"
+        groupAliases={MALA_ALIASES}
+        meaningKey="vivaralu"
+        meaningLabel="వివరాలు"
+        quizAsk={gnanaQuiz}
         pdfLimit={500}
         renderDetail={(r) => <Detail key={r.id} r={r} />}
       />
