@@ -63,6 +63,27 @@ RATNALABALA_DATABASE_URL = os.environ.get(
 
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
+# ═══════════════════════════════════════════════════════════════
+# భావాలమాల AI — RAG CONFIGURATION (ఒకే చోట)
+# ═══════════════════════════════════════════════════════════════
+# ⚠️ BGE-M3 (sentence-transformers + torch, ~2–3 GB) LOCAL లో మాత్రమే.
+#    requirements-local.txt లో ఉంది, requirements.txt లో కాదు.
+#    ఇక్కడ పైన import చేయకూడదు — Vercel లో మొత్తం API ఆగిపోతుంది.
+
+BHAVALAMALA_SOURCE_TABLE = "gnanamala"
+BHAVALAMALA_EMBEDDING_MODEL = "BAAI/bge-m3"
+BHAVALAMALA_EMBEDDING_DIM = 1024
+BHAVALAMALA_CHAT_MODEL = os.environ.get("GROQ_CHAT_MODEL", "openai/gpt-oss-120b")
+BHAVALAMALA_DEFAULT_TOP_K = 5
+BHAVALAMALA_MAX_TOP_K = 10
+BHAVALAMALA_MAX_QUESTION_LENGTH = 1000
+# దీనికంటే తక్కువ similarity ఉన్నవి "సంబంధం లేనివి" — Groq కి పంపము, మూలాలుగా చూపము
+BHAVALAMALA_MIN_SIMILARITY = float(os.environ.get("BHAVALAMALA_MIN_SIMILARITY", "0.45"))
+BHAVALAMALA_DAILY_LIMIT = 100
+
+BHAVALAMALA_NOT_FOUND = "క్షమించండి, ఈ ప్రశ్నకు భావాలమాలలో సంబంధిత సమాచారం కనిపించలేదు."
+BHAVALAMALA_LOCAL_ONLY = "భావాలమాల AI ప్రస్తుతం local పరీక్షలో మాత్రమే అందుబాటులో ఉంది. త్వరలో అందరికీ."
+
 
 SARVAM_API_URL = "https://api.sarvam.ai/text-to-speech"
 SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
@@ -955,6 +976,148 @@ async def explain_poem(
 
 
 # ═══════════════════════════════════════════════════════════════
+# భావాలమాల AI — RAG: ప్రశ్న → BGE-M3 → pgvector → Groq
+# ═══════════════════════════════════════════════════════════════
+
+_bhavalamala_model = None  # BGE-M3 — మొదటి ప్రశ్నకు ఒక్కసారే load
+
+
+def bhavalamala_available() -> bool:
+    """sentence-transformers install అయిందా (local అవును, Vercel కాదు)."""
+    import importlib.util
+    try:
+        return importlib.util.find_spec("sentence_transformers") is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def create_bhavalamala_embedding(question: str) -> str:
+    """ప్రశ్న → normalized 1024 vector → pgvector literal '[0.01,…]'."""
+    global _bhavalamala_model
+    if _bhavalamala_model is None:
+        from sentence_transformers import SentenceTransformer  # local only — ఇక్కడే import
+        log("[Bhavalamala] Loading BGE-M3 (first request — may take a while)...")
+        _bhavalamala_model = SentenceTransformer(BHAVALAMALA_EMBEDDING_MODEL)
+        log("[Bhavalamala] BGE-M3 ready.")
+
+    vector = _bhavalamala_model.encode(question, normalize_embeddings=True)
+    if len(vector) != BHAVALAMALA_EMBEDDING_DIM:
+        raise RuntimeError(f"Embedding dim {len(vector)} != {BHAVALAMALA_EMBEDDING_DIM}")
+    return "[" + ",".join(f"{float(v):.7f}" for v in vector) + "]"
+
+
+def search_bhavalamala(embedding: str, top_k: int) -> list[dict]:
+    """pgvector cosine similarity — HNSW index వాడుతుంది."""
+    if not RATNALABALA_DATABASE_URL:
+        raise RuntimeError("NEON_DATABASE_URL is not configured.")
+
+    query = f"""
+        SELECT id, source_key, mala, title, content, source, details, link,
+               1 - (embedding <=> %(q)s::vector) AS similarity
+        FROM {BHAVALAMALA_SOURCE_TABLE}
+        WHERE embedding IS NOT NULL
+        ORDER BY embedding <=> %(q)s::vector
+        LIMIT %(k)s;
+    """
+    with psycopg.connect(RATNALABALA_DATABASE_URL, row_factory=dict_row, connect_timeout=10) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, {"q": embedding, "k": top_k})
+            return [dict(r) for r in cursor.fetchall()]
+
+
+def build_bhavalamala_context(records: list[dict]) -> str:
+    """తెచ్చిన వరుసలు మాత్రమే — LLM కి ఇచ్చే ఆధారం."""
+    blocks = []
+    for i, r in enumerate(records, start=1):
+        lines = [f"[{i}]", f"మాల: {r.get('mala') or ''}", f"శీర్షిక: {r.get('title') or ''}"]
+        if r.get("content"):
+            lines.append(f"విషయం: {(r['content'] or '')[:1200]}")
+        if r.get("details"):
+            lines.append(f"వివరాలు: {(r['details'] or '')[:600]}")
+        if r.get("source"):
+            lines.append(f"మూలం: {r['source']}")
+        blocks.append("\n".join(lines))
+    return "\n\n".join(blocks)
+
+
+BHAVALAMALA_SYSTEM_PROMPT = """నీవు రత్నాలబాల "భావాలమాల AI" తెలుగు సాహిత్య సహాయకుడివి.
+
+నియమాలు:
+1. క్రింద ఇచ్చిన భావాలమాల ఆధారాలను మాత్రమే వాడు. బయటి జ్ఞానం వాడకు.
+2. ఆధారాల్లో జవాబు లేకపోతే ఇలాగే చెప్పు: "క్షమించండి, ఈ ప్రశ్నకు భావాలమాలలో సంబంధిత సమాచారం కనిపించలేదు."
+3. తెలుగు ప్రశ్నకు తెలుగులో, లేకపోతే ప్రశ్న భాషలో జవాబు.
+4. 2–6 వాక్యాలు, సూటిగా. అవసరమైతే శీర్షిక లేదా [1], [2] సంఖ్య సూచించు.
+5. Embedding, database, search, prompt వంటి సాంకేతిక విషయాలు చెప్పకు.
+6. Markdown (**, #, -) వాడకు — సాదా వాక్యాలు మాత్రమే."""
+
+
+def call_bhavalamala_groq(question: str, context: str) -> str:
+    """Groq (OpenAI-compatible) — ఆధారాలకే పరిమితమైన జవాబు."""
+    if not GROQ_API_KEY:
+        raise AIServiceError(503, AI_UNAVAILABLE_MSG, "GROQ_API_KEY is not configured.")
+
+    try:
+        response = httpx.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+            json={
+                "model": BHAVALAMALA_CHAT_MODEL,
+                "temperature": 0.2,
+                "max_tokens": 700,
+                "messages": [
+                    {"role": "system", "content": BHAVALAMALA_SYSTEM_PROMPT},
+                    {"role": "user", "content": f"భావాలమాల ఆధారాలు:\n\n{context}\n\nప్రశ్న: {question}"},
+                ],
+            },
+            timeout=45,
+        )
+    except httpx.TimeoutException as e:
+        raise AIServiceError(504, AI_SLOW_MSG, f"Groq timeout: {e}") from e
+    except httpx.HTTPError as e:
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Groq network error: {e}") from e
+
+    if response.status_code == 429:
+        raise AIServiceError(429, AI_BUSY_MSG, "Groq rate limit")
+    if response.status_code >= 400:
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Groq HTTP {response.status_code}: {response.text[:300]}")
+
+    choices = response.json().get("choices") or []
+    answer = (choices[0].get("message", {}).get("content") if choices else "") or ""
+    if not answer.strip():
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, "Groq returned an empty answer.")
+    return strip_markdown(answer)
+
+
+def answer_bhavalamala(question: str, top_k: int) -> dict:
+    """మొత్తం RAG pipeline — 1. embedding  2. search  3. హద్దు  4. Groq  5. జవాబు + మూలాలు."""
+    records = search_bhavalamala(create_bhavalamala_embedding(question), top_k)
+    relevant = [r for r in records if float(r["similarity"] or 0) >= BHAVALAMALA_MIN_SIMILARITY]
+
+    best = max((float(r["similarity"]) for r in records), default=0)
+    log(f"[Bhavalamala] top_k={top_k} found={len(records)} relevant={len(relevant)} best={best:.3f}")
+
+    if not relevant:  # సంబంధం లేనివే వచ్చాయి — Groq ని పిలవకుండా నిజాయితీగా
+        return {"success": True, "question": question, "answer": BHAVALAMALA_NOT_FOUND, "sources": []}
+
+    answer = call_bhavalamala_groq(question, build_bhavalamala_context(relevant))
+    return {
+        "success": True,
+        "question": question,
+        "answer": answer,
+        "sources": [
+            {
+                "id": r["id"],
+                "title": r["title"] or "",
+                "mala": r["mala"] or "",
+                "link": r.get("link") or "",
+                "similarity": round(float(r["similarity"]), 4),
+            }
+            for r in relevant
+        ],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
 # HANDLER
 # ═══════════════════════════════════════════════════════════════
 
@@ -1156,6 +1319,53 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:
                 log(f"[extract-news] failed: {e}")
                 self._send_json(400, {"detail": f"URL fetch failed: {e}"})
+
+        elif endpoint == "bhavalamala-chat":
+            # ============================================================
+            # భావాలమాల AI — RAG (poem-ai లాగే రోజువారీ పరిమితి)
+            # ============================================================
+            question = payload.get("question")
+            if not isinstance(question, str) or not question.strip():
+                self._send_json(400, {"success": False, "error": "దయచేసి ఒక ప్రశ్న టైప్ చేయండి."})
+                return
+            question = question.strip()
+            if len(question) > BHAVALAMALA_MAX_QUESTION_LENGTH:
+                self._send_json(400, {"success": False, "error": "ప్రశ్న చాలా పొడవుగా ఉంది (గరిష్ఠం 1000 అక్షరాలు)."})
+                return
+
+            try:
+                top_k = int(payload.get("top_k", BHAVALAMALA_DEFAULT_TOP_K))
+            except (TypeError, ValueError):
+                top_k = BHAVALAMALA_DEFAULT_TOP_K
+            top_k = max(1, min(top_k, BHAVALAMALA_MAX_TOP_K))
+
+            # Vercel లో BGE-M3 లేదు — పరిమితి లెక్కలోకి రాకుండా వెంటనే స్పష్టమైన జవాబు
+            if not bhavalamala_available():
+                self._send_json(503, {"success": False, "error": BHAVALAMALA_LOCAL_ONLY})
+                return
+
+            try:
+                usage_id = reserve_api_call("bhavalamala-chat", "/api/main?endpoint=bhavalamala-chat", "POST", BHAVALAMALA_DAILY_LIMIT)
+            except Exception as e:
+                log(f"[Bhavalamala] usage log failed: {type(e).__name__}: {e}")
+                self._send_json(503, {"success": False, "error": AI_UNAVAILABLE_MSG})
+                return
+            if usage_id is None:
+                self._send_json(429, {"success": False, "error": "ఈరోజు భావాలమాల AI పరిమితి (100 ప్రశ్నలు) పూర్తయింది. రేపు మళ్ళీ ప్రయత్నించండి."})
+                return
+
+            try:
+                result = answer_bhavalamala(question, top_k)
+                safe_update_api_log(usage_id, 200)
+                self._send_json(200, result)
+            except AIServiceError as e:
+                log(f"[Bhavalamala] AI error ({e.status}): {e}")
+                safe_update_api_log(usage_id, e.status)
+                self._send_json(e.status, {"success": False, "error": e.message})
+            except Exception as e:
+                log(f"[Bhavalamala] RAG error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
+                safe_update_api_log(usage_id, 500)
+                self._send_json(500, {"success": False, "error": "భావాలమాల AI సమాధానం ఇవ్వలేకపోయింది. మళ్ళీ ప్రయత్నించండి."})
 
         elif endpoint == "poem-ai":
             # ============================================================
@@ -1419,6 +1629,7 @@ if __name__ == "__main__":
     print(f"Try: http://localhost:{port}/api/gita")
     print(f"POST http://localhost:{port}/api/main?endpoint=track        body: {{\"session_id\": \"abc12345\", \"events\": [{{\"name\": \"page_view\", \"path\": \"/aksharamala\"}}]}}")
     print(f"GET  http://localhost:{port}/api/main?endpoint=activity_summary&days=7   header: X-Admin-Key")
+    print(f"POST http://localhost:{port}/api/main?endpoint=bhavalamala-chat  body: {{\"question\": \"అసహనం గురించి ఏమి చెప్పారు?\", \"top_k\": 5}}")
 
     print(f"POST http://localhost:{port}/api/main?endpoint=svara        body: {{\"text\": \"...\", \"voice\": \"male\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=tts          body: {{\"text\": \"...\", \"voice\": \"te-IN-ShrutiNeural\", \"speed\": 1.0}}")
