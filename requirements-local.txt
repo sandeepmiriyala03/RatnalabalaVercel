@@ -1,0 +1,3 @@
+﻿# LOCAL DEVELOPMENT మాత్రమే — Vercel ఈ file చదవదు.
+# భావాలమాల AI: BGE-M3 ప్రశ్న embedding కోసం (~2-3 GB, torch తో).
+sentence-transformers>=3.0

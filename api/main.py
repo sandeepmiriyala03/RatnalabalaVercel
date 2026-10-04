@@ -81,6 +81,13 @@ BHAVALAMALA_MAX_QUESTION_LENGTH = 1000
 BHAVALAMALA_MIN_SIMILARITY = float(os.environ.get("BHAVALAMALA_MIN_SIMILARITY", "0.45"))
 BHAVALAMALA_DAILY_LIMIT = 100
 
+# Production (Vercel) లో BGE-M3 — అదే model, బయటి సేవ ద్వారా (ఏదీ లేకపోతే local మాత్రమే):
+#   1) EMBEDDINGS_API_URL + EMBEDDINGS_API_KEY → OpenAI-compatible (ఉదా: DeepInfra BAAI/bge-m3)
+#   2) HF_TOKEN → Hugging Face Inference (hf-inference, BAAI/bge-m3)
+EMBEDDINGS_API_URL = os.environ.get("EMBEDDINGS_API_URL", "")  # ఉదా: https://api.deepinfra.com/v1/openai/embeddings
+EMBEDDINGS_API_KEY = os.environ.get("EMBEDDINGS_API_KEY", "")
+HF_EMBEDDING_URL = f"https://router.huggingface.co/hf-inference/models/{BHAVALAMALA_EMBEDDING_MODEL}/pipeline/feature-extraction"
+
 BHAVALAMALA_NOT_FOUND = "క్షమించండి, ఈ ప్రశ్నకు భావాలమాలలో సంబంధిత సమాచారం కనిపించలేదు."
 BHAVALAMALA_LOCAL_ONLY = "భావాలమాల AI ప్రస్తుతం local పరీక్షలో మాత్రమే అందుబాటులో ఉంది. త్వరలో అందరికీ."
 
@@ -982,8 +989,7 @@ async def explain_poem(
 _bhavalamala_model = None  # BGE-M3 — మొదటి ప్రశ్నకు ఒక్కసారే load
 
 
-def bhavalamala_available() -> bool:
-    """sentence-transformers install అయిందా (local అవును, Vercel కాదు)."""
+def _local_model_installed() -> bool:
     import importlib.util
     try:
         return importlib.util.find_spec("sentence_transformers") is not None
@@ -991,19 +997,86 @@ def bhavalamala_available() -> bool:
         return False
 
 
-def create_bhavalamala_embedding(question: str) -> str:
-    """ప్రశ్న → normalized 1024 vector → pgvector literal '[0.01,…]'."""
-    global _bhavalamala_model
-    if _bhavalamala_model is None:
-        from sentence_transformers import SentenceTransformer  # local only — ఇక్కడే import
-        log("[Bhavalamala] Loading BGE-M3 (first request — may take a while)...")
-        _bhavalamala_model = SentenceTransformer(BHAVALAMALA_EMBEDDING_MODEL)
-        log("[Bhavalamala] BGE-M3 ready.")
+def bhavalamala_embedding_mode() -> str:
+    """'local' (computer) · 'api' (OpenAI-compatible) · 'hf' (Hugging Face) · '' (ఏదీ లేదు)."""
+    if _local_model_installed():
+        return "local"
+    if EMBEDDINGS_API_URL and EMBEDDINGS_API_KEY:
+        return "api"
+    if _HF_TOKEN:
+        return "hf"
+    return ""
 
-    vector = _bhavalamala_model.encode(question, normalize_embeddings=True)
-    if len(vector) != BHAVALAMALA_EMBEDDING_DIM:
-        raise RuntimeError(f"Embedding dim {len(vector)} != {BHAVALAMALA_EMBEDDING_DIM}")
-    return "[" + ",".join(f"{float(v):.7f}" for v in vector) + "]"
+
+def bhavalamala_available() -> bool:
+    return bool(bhavalamala_embedding_mode())
+
+
+def _to_pgvector(vector) -> str:
+    """BGE-M3 sentence vector → L2 normalize → '[0.01,…]' (database embeddings లాగే normalized)."""
+    values = [float(v) for v in vector]
+    if len(values) != BHAVALAMALA_EMBEDDING_DIM:
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Embedding dim {len(values)} != {BHAVALAMALA_EMBEDDING_DIM}")
+    norm = sum(v * v for v in values) ** 0.5 or 1.0
+    return "[" + ",".join(f"{v / norm:.7f}" for v in values) + "]"
+
+
+def _sentence_vector(data):
+    """Hugging Face జవాబు రూపం ఏదైనా: [1024] · [[1024]] · [[[token],…]] (అప్పుడు CLS = మొదటి token, BGE-M3 pooling)."""
+    while isinstance(data, list) and data and isinstance(data[0], list):
+        if len(data) == 1:
+            data = data[0]
+        elif isinstance(data[0][0], list):
+            data = data[0]
+        else:
+            data = data[0]  # token వారీ → CLS
+    return data
+
+
+def _remote_embedding(question: str, mode: str):
+    try:
+        if mode == "api":
+            res = httpx.post(
+                EMBEDDINGS_API_URL,
+                headers={"Authorization": f"Bearer {EMBEDDINGS_API_KEY}"},
+                json={"model": BHAVALAMALA_EMBEDDING_MODEL, "input": [question], "encoding_format": "float"},
+                timeout=30,
+            )
+        else:
+            res = httpx.post(
+                HF_EMBEDDING_URL,
+                headers={"Authorization": f"Bearer {_HF_TOKEN}", "X-Wait-For-Model": "true"},
+                json={"inputs": question, "normalize": True},
+                timeout=60,
+            )
+    except httpx.TimeoutException as e:
+        raise AIServiceError(504, AI_SLOW_MSG, f"Embedding timeout ({mode}): {e}") from e
+    except httpx.HTTPError as e:
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Embedding network error ({mode}): {e}") from e
+
+    if res.status_code == 429:
+        raise AIServiceError(429, AI_BUSY_MSG, f"Embedding rate limit ({mode})")
+    if res.status_code >= 400:
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Embedding HTTP {res.status_code} ({mode}): {res.text[:300]}")
+
+    data = res.json()
+    return data["data"][0]["embedding"] if mode == "api" else _sentence_vector(data)
+
+
+def create_bhavalamala_embedding(question: str) -> str:
+    """ప్రశ్న → BGE-M3 (local / బయటి సేవ) → normalized 1024 → pgvector literal."""
+    global _bhavalamala_model
+    mode = bhavalamala_embedding_mode()
+    if mode == "local":
+        if _bhavalamala_model is None:
+            from sentence_transformers import SentenceTransformer  # local only — ఇక్కడే import
+            log("[Bhavalamala] Loading BGE-M3 (first request — may take a while)...")
+            _bhavalamala_model = SentenceTransformer(BHAVALAMALA_EMBEDDING_MODEL)
+            log("[Bhavalamala] BGE-M3 ready.")
+        return _to_pgvector(_bhavalamala_model.encode(question, normalize_embeddings=True))
+    if mode in ("api", "hf"):
+        return _to_pgvector(_remote_embedding(question, mode))
+    raise AIServiceError(503, BHAVALAMALA_LOCAL_ONLY, "No embedding provider configured.")
 
 
 def search_bhavalamala(embedding: str, top_k: int) -> list[dict]:
@@ -1094,7 +1167,7 @@ def answer_bhavalamala(question: str, top_k: int) -> dict:
     relevant = [r for r in records if float(r["similarity"] or 0) >= BHAVALAMALA_MIN_SIMILARITY]
 
     best = max((float(r["similarity"]) for r in records), default=0)
-    log(f"[Bhavalamala] top_k={top_k} found={len(records)} relevant={len(relevant)} best={best:.3f}")
+    log(f"[Bhavalamala] mode={bhavalamala_embedding_mode()} top_k={top_k} found={len(records)} relevant={len(relevant)} best={best:.3f}")
 
     if not relevant:  # సంబంధం లేనివే వచ్చాయి — Groq ని పిలవకుండా నిజాయితీగా
         return {"success": True, "question": question, "answer": BHAVALAMALA_NOT_FOUND, "sources": []}
