@@ -38,3 +38,5 @@ public/sw.js.map
 
 public/sw.js
 public/sw.js.map
+.vercel
+.env*
