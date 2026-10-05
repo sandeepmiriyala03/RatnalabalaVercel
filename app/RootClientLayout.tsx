@@ -2,235 +2,176 @@
 
 import { useEffect, useState } from "react";
 import { initWebMCP } from "@/lib/webmcp";
-import ClientWrapper from "@/app/components/ClientWrapper";
-import Navbar from "@/app/components/Navbar";
-import PwaInstallPrompt from "@/app/components/PwaInstallPrompt";
-import CookieConsentBanner, {
-  getCookieConsent,
-} from "@/app/components/CookieConsentBanner";
-import FontControlsTelugu from "@/app/components/FontSelection";
-import type { TeluguFont } from "@/app/types/fonts";
-
-
-export type { TeluguFont };
-
-const DEFAULT_FONT: TeluguFont = "Dhurjati";
-const DEFAULT_SIZE = 1.0;
 
 export default function RootClientLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [fontFamily, setFontFamily] =
-    useState<TeluguFont>(DEFAULT_FONT);
-
-  const [fontSize, setFontSize] =
-    useState<number>(DEFAULT_SIZE);
-
-  const [webmcpStatus, setWebmcpStatus] =
-    useState("WebMCP initializing...");
-
-  // ==========================================================
-  // 🌐 WebMCP — Experiment 1
-  // ==========================================================
-  //
-  // 🧠 8-Word Memory
-  //
-  // ఎవరు       → Agent
-  // ఎక్కడ      → Browser
-  // ఏ పని      → Tool
-  // పేరు       → Name
-  // వివరాలు    → Description
-  // Input      → Input Schema
-  // తర్కం      → Execute
-  // Output     → Result
-  //
-  // ==========================================================
+  const [query, setQuery] = useState("");
+  const [result, setResult] = useState<unknown>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    try {
-      initWebMCP();
-
-      setWebmcpStatus(
-        "🌸 WebMCP initialized — searchTeluguLiterature ready"
-      );
-    } catch (error) {
-      console.error("WebMCP initialization failed:", error);
-      setWebmcpStatus("WebMCP initialization failed");
-    }
+    initWebMCP();
   }, []);
 
-  // ==========================================================
-  // 🔐 Cookie Consent
-  // ==========================================================
+  const executeSearch = async () => {
+    const question = query.trim();
 
-  useEffect(() => {
-    getCookieConsent();
-  }, []);
-
-  // ==========================================================
-  // 📱 Service Worker
-  // ==========================================================
-
-  useEffect(() => {
-    if (
-      process.env.NODE_ENV !== "production" ||
-      !("serviceWorker" in navigator)
-    ) {
-      return;
-    }
-
-    const register = () => {
-      navigator.serviceWorker.register("/sw.js").catch((error) => {
-        console.warn(
-          "Service worker registration failed:",
-          error
-        );
+    if (!question) {
+      setResult({
+        error: "Please enter a Telugu question or topic.",
       });
-    };
-
-    if (document.readyState === "complete") {
-      register();
       return;
     }
 
-    window.addEventListener("load", register, { once: true });
+    setLoading(true);
+    setResult(null);
 
-    return () => {
-      window.removeEventListener("load", register);
-    };
-  }, []);
+    try {
+      const modelContext = (document as any).modelContext;
+
+      if (!modelContext) {
+        throw new Error(
+          "WebMCP is not available in this browser."
+        );
+      }
+
+      const tools = await modelContext.getTools();
+
+      const tool = tools.find(
+        (t: { name: string }) =>
+          t.name === "searchBhavalamala"
+      );
+
+      if (!tool) {
+        throw new Error(
+          "searchBhavalamala WebMCP tool is not registered."
+        );
+      }
+
+      const toolResult = await modelContext.executeTool(
+        tool,
+        {
+          query: question,
+        }
+      );
+
+      setResult(toolResult);
+    } catch (error) {
+      setResult({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
-      {/* ======================================================
-          🧭 Main Menu
-          ====================================================== */}
+      {/* Your existing Navbar */}
+      
+      {/* Your existing FontControlsTelugu */}
 
-      <Navbar />
+      {/* WebMCP Experiment 1 */}
+      <section className="mx-auto max-w-3xl rounded-2xl border p-6 shadow-sm">
+        <h2 className="mb-2 text-2xl font-bold">
+          🌐 WebMCP Experiment 1
+        </h2>
 
-      {/* ======================================================
-          🎨 Telugu Font Controls
-          ====================================================== */}
+        <p className="mb-6 text-sm text-gray-600">
+          రత్నాలబాల భావాలమాలలో తెలుగు విషయాన్ని
+          WebMCP Tool ద్వారా వెతకండి.
+        </p>
 
-      <FontControlsTelugu
-        fontFamily={fontFamily}
-        setFontFamily={setFontFamily}
-        fontSize={fontSize}
-        setFontSize={setFontSize}
-      />
-
-      {/* ======================================================
-          🌐 WebMCP Experiment 1 UI
-          ====================================================== */}
-
-      <main
-        style={{
-          minHeight: "100vh",
-          padding: "20px",
-        }}
-      >
-        <section
-          style={{
-            maxWidth: "800px",
-            margin: "24px auto",
-            padding: "24px",
-            border: "1px solid var(--border-strong)",
-            borderRadius: "16px",
-            background: "var(--surface)",
-          }}
-        >
-          <h1>🌐 WebMCP Experiment 1</h1>
-
-          <p>{webmcpStatus}</p>
-
-          <hr />
-
-          <h2>🛠️ Available Tool</h2>
-
-          <h3>searchTeluguLiterature</h3>
-
-          <p>
-            రత్నాలబాలలో తెలుగు సాహిత్యాన్ని వెతికే WebMCP Tool.
-          </p>
-
-          <h3>📥 Input</h3>
-
-          <pre
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              overflowX: "auto",
-              background: "var(--surface-elevated)",
-            }}
+        <div className="mb-6">
+          <label
+            htmlFor="webmcp-query"
+            className="mb-2 block font-semibold"
           >
-{`{
-  "query": "అసహనం"
-}`}
-          </pre>
+            📥 Input
+          </label>
 
-          <h3>⚙️ Execute</h3>
+          <div className="flex gap-2">
+            <input
+              id="webmcp-query"
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  executeSearch();
+                }
+              }}
+              placeholder="ఉదా: అసహనం"
+              className="flex-1 rounded-lg border px-4 py-3"
+            />
 
-          <p>
-            Tool handler receives the query and executes the
-            search logic.
+            <button
+              type="button"
+              onClick={executeSearch}
+              disabled={loading}
+              className="rounded-lg border px-5 py-3 font-semibold disabled:opacity-50"
+            >
+              {loading ? "Searching..." : "Execute"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border p-4">
+          <h3 className="mb-2 font-bold">
+            🛠️ Available Tool
+          </h3>
+
+          <p className="font-mono text-sm">
+            searchBhavalamala
           </p>
+        </div>
 
-          <h3>📤 Result</h3>
+        <div className="mb-6 rounded-xl border p-4">
+          <h3 className="mb-2 font-bold">
+            ⚙️ Execute
+          </h3>
 
-          <pre
-            style={{
-              padding: "12px",
-              borderRadius: "8px",
-              overflowX: "auto",
-              background: "var(--surface-elevated)",
-            }}
-          >
-{`{
-  "query": "అసహనం",
-  "message": "అసహనం కోసం రత్నాలబాలలో వెతుకుతున్నాను."
-}`}
+          <pre className="overflow-x-auto rounded-lg p-3 text-sm">
+{JSON.stringify({ query }, null, 2)}
           </pre>
+        </div>
 
-          <h3>🔄 WebMCP Flow</h3>
+        <div className="mb-6 rounded-xl border p-4">
+          <h3 className="mb-2 font-bold">
+            📤 Result
+          </h3>
 
-          <p>
-            AI Agent → Browser → Tool → Input → Execute → Result
+          {result ? (
+            <pre className="max-h-96 overflow-auto whitespace-pre-wrap rounded-lg p-4 text-sm">
+              {JSON.stringify(result, null, 2)}
+            </pre>
+          ) : (
+            <p className="text-sm text-gray-500">
+              Enter a query and click Execute.
+            </p>
+          )}
+        </div>
+
+        <div className="rounded-xl border p-4">
+          <h3 className="mb-3 font-bold">
+            🔄 WebMCP Flow
+          </h3>
+
+          <p className="text-sm">
+            AI Agent → Browser → WebMCP Tool → Input →
+            Execute → Ratnalabala API → RAG → Result
           </p>
-        </section>
+        </div>
+      </section>
 
-        {/* ====================================================
-            Existing application pages
-            ==================================================== */}
-
-        <ClientWrapper>{children}</ClientWrapper>
-      </main>
-
-      {/* ======================================================
-          📱 PWA
-          ====================================================== */}
-
-      <PwaInstallPrompt />
-
-      {/* ======================================================
-          🍪 Cookie Consent
-          ====================================================== */}
-
-      <CookieConsentBanner />
-
-      {/*
-      ==========================================================
-      🚧 Temporarily disabled for WebMCP Experiment 1
-
-      <ReadingActivityTracker />
-      <FloatingAIButton />
-      <AudioPlayer />
-      <MusicPlayer />
-      <DownloadRingtones />
-      <cacheAllPoems />
-      ==========================================================
-      */}
+      {/* Your existing children */}
+      {children}
     </>
   );
 }

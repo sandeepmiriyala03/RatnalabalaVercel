@@ -1,137 +1,96 @@
+"use client";
 
-// Ratnalabala WebMCP - Experiment 1
-//
-// REAL WebMCP API
-// document.modelContext.registerTool()
-//
-// 🧠 8-Word Memory
-//
-// ఎవరు     → Agent
-// ఎక్కడ    → Browser
-// ఏ పని   → Tool
-// పేరు     → Name
-// వివరాలు  → Description
-// Input    → Input Schema
-// తర్కం    → Execute
-// Output   → Result
+type WebMCPTool = {
+  name: string;
+  inputSchema?: Record<string, unknown>;
+};
 
-export async function initWebMCP() {
-  // 1. ఎవరు → Agent
-  // AI Agent will discover and use this tool.
+type ModelContext = {
+  registerTool?: (
+    tool: {
+      name: string;
+      title?: string;
+      description: string;
+      inputSchema: Record<string, unknown>;
+      annotations?: {
+        readOnlyHint?: boolean;
+      };
+      execute: (input: Record<string, unknown>) => Promise<unknown>;
+    },
+    options?: { signal?: AbortSignal }
+  ) => Promise<void>;
+};
 
-  // 2. ఎక్కడ → Browser
-  // WebMCP is a browser API.
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  // Current REAL WebMCP API
-  if (!("modelContext" in document)) {
-    console.log("WebMCP is not available in this browser.");
-    return false;
-  }
-
-  const modelContext = (document as any).modelContext;
-
-  // 3. ఏ పని → Tool
-  // We expose ONE simple Ratnalabala tool.
-  try {
-    // Avoid duplicate registration during React development reloads.
-    const existingTools = await modelContext.getTools();
-
-    const alreadyRegistered = existingTools.some(
-      (tool: { name: string }) =>
-        tool.name === "searchBhavalamala"
-    );
-
-    if (alreadyRegistered) {
-      console.log(
-        "🌸 WebMCP tool already registered: searchBhavalamala"
-      );
-      return true;
+export function initWebMCP() {
+  const modelContext = (
+    document as Document & {
+      modelContext?: ModelContext & {
+        getTools?: () => Promise<WebMCPTool[]>;
+        executeTool?: (
+          tool: WebMCPTool,
+          input?: Record<string, unknown> | string
+        ) => Promise<unknown>;
+      };
     }
+  ).modelContext;
 
-    await modelContext.registerTool({
-      // 4. పేరు → Name
-      name: "searchBhavalamala",
+  if (!modelContext || typeof modelContext.registerTool !== "function") {
+    console.log("[WebMCP] WebMCP is not available.");
+    return false;
+  }
 
-      // 5. వివరాలు → Description
-      description:
-        "రత్నాలబాల భావాలమాలలో తెలుగు ప్రశ్న లేదా విషయాన్ని వెతికి సమాధానం ఇస్తుంది.",
+  const controller = new AbortController();
 
-      // 6. Input → Input Schema
-      inputSchema: {
-        type: "object",
-        properties: {
-          query: {
-            type: "string",
-            description:
-              "భావాలమాలలో వెతకాల్సిన తెలుగు ప్రశ్న లేదా విషయం",
+  void (async () => {
+    try {
+      await modelContext.registerTool(
+        {
+          name: "searchBhavalamala",
+          title: "Search Ratnalabala knowledge",
+          description:
+            "Searches Telugu literary content in the Ratnalabala knowledge base.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              query: {
+                type: "string",
+                description: "The Telugu question or topic to search for.",
+              },
+            },
+            required: ["query"],
+            additionalProperties: false,
+          },
+          annotations: {
+            readOnlyHint: true,
+          },
+          execute: async (input) => {
+            const query = String(input?.query ?? "").trim();
+
+            if (!query) {
+              throw new Error("A search query is required.");
+            }
+
+            const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+
+            if (!response.ok) {
+              throw new Error("Failed to search Ratnalabala content.");
+            }
+
+            return response.json();
           },
         },
-        required: ["query"],
-      },
+        { signal: controller.signal }
+      );
 
-      // 7. తర్కం → Execute
-      // AI Agent calls this function with:
-      // { query: "అసహనం" }
-      execute: async ({ query }: { query: string }) => {
-        const question = query?.trim();
+      console.log("[WebMCP] searchBhavalamala registered successfully.");
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        console.error("[WebMCP] Tool registration failed:", error);
+      }
+    }
+  })();
 
-        if (!question) {
-          throw new Error("query is required");
-        }
-
-        console.log(
-          "🌸 WebMCP → Bhavalamala:",
-          question
-        );
-
-        // Call YOUR REAL existing API.
-        const response = await fetch(
-          "/api/main?endpoint=bhavalamala-chat",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              question,
-              top_k: 5,
-            }),
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok || !data.success) {
-          throw new Error(
-            data.error ||
-              "భావాలమాల సమాధానం అందుబాటులో లేదు."
-          );
-        }
-
-        // 8. Output → Result
-        // Return the REAL API response to the AI Agent.
-        return {
-          query: question,
-          answer: data.answer,
-          sources: data.sources ?? [],
-        };
-      },
-    });
-
-    console.log(
-      "🌸 Real WebMCP initialized: searchBhavalamala"
-    );
-
-    return true;
-  } catch (error) {
-    console.error(
-      "WebMCP registration failed:",
-      error
-    );
-
-    return false;
-  }
+  return true;
 }
+
+export default initWebMCP;
