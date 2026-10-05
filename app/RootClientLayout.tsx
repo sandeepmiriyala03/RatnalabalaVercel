@@ -11,7 +11,8 @@ import PwaInstallPrompt from "@/app/components/PwaInstallPrompt"; // check path
 // Put your existing import back (check the path):
 // import FontControlsTelugu from "@/app/components/FontControlsTelugu";
 import { FAB_EDGE, FAB_GAP, FAB_HEIGHT, FAB_Z, fabSx } from "@/lib/floating";
-import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME } from "@/lib/webmcp";
+import NextLink from "next/link";
+import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME, type SearchResult } from "@/lib/webmcp";
 
 /* ═══════════════════════════════════════════
    Floating buttons on every page
@@ -141,7 +142,7 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
 function WebMCPPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>("idle");
-  const [result, setResult] = useState<unknown>(null);
+  const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState("");
   const [available, setAvailable] = useState<boolean | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -197,7 +198,9 @@ function WebMCPPanel({ open, onClose }: { open: boolean; onClose: () => void }) 
         borderRadius: { xs: "20px 20px 0 0", sm: "var(--radius)" },
         boxShadow: "0 12px 40px rgba(0,0,0,0.28)",
         pb: { xs: "env(safe-area-inset-bottom, 0px)", sm: 0 },
-        overflow: "hidden",
+        /* The whole panel scrolls, so on short screens the header
+           scrolls away and the search box stays reachable */
+        overflowY: "auto",
       }}
     >
       {/* Header */}
@@ -220,7 +223,7 @@ function WebMCPPanel({ open, onClose }: { open: boolean; onClose: () => void }) 
       </Box>
 
       {/* Body (scrolls) */}
-      <Box sx={{ p: 2, overflowY: "auto" }}>
+      <Box sx={{ p: 2 }}>
         <Box component="form" onSubmit={(e) => { e.preventDefault(); void run(); }}>
           <Stack direction="row" spacing={1} alignItems="stretch">
             <TextField
@@ -302,25 +305,68 @@ function WebMCPPanel({ open, onClose }: { open: boolean; onClose: () => void }) 
               {error}
             </Box>
           )}
-          {status === "done" && (
-            <Box
-              component="pre"
-              sx={{
-                m: 0,
-                p: 1.5,
-                borderRadius: "var(--radius-sm)",
-                border: "1px solid var(--border)",
-                bgcolor: SOFT,
-                fontFamily: "inherit",
-                fontSize: "0.9rem",
-                lineHeight: 1.7,
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                maxHeight: 340,
-                overflow: "auto",
-              }}
-            >
-              {JSON.stringify(result, null, 2)}
+          {status === "done" && result && (
+            <Box>
+              {result.results.length === 0 ? (
+                <Typography sx={{ fontSize: "0.95rem", color: "var(--muted-text)" }}>
+                  ఈ పదానికి సరిపోయే పద్యాలు దొరకలేదు. వేరే పదంతో ప్రయత్నించండి.
+                </Typography>
+              ) : (
+                <Stack component="ol" spacing={1} sx={{ listStyle: "none", p: 0, m: 0 }}>
+                  {result.results.map((src, i) => (
+                    <Box
+                      component="li"
+                      key={`${src.title}-${i}`}
+                      sx={{ p: 1.25, border: "1px solid var(--border-strong)", borderRadius: "var(--radius-sm)" }}
+                    >
+                      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                        <Box sx={{ minWidth: 0 }}>
+                          {src.link ? (
+                            <Typography
+                              component={NextLink}
+                              href={src.link}
+                              onClick={onClose}
+                              sx={{ fontWeight: 700, color: "var(--accent-text)", textDecoration: "underline", textUnderlineOffset: "3px" }}
+                            >
+                              {src.title}
+                            </Typography>
+                          ) : (
+                            <Typography sx={{ fontWeight: 700 }}>{src.title}</Typography>
+                          )}
+                          {src.mala && (
+                            <Typography sx={{ fontSize: "0.9rem", color: "var(--muted-text)" }}>{src.mala}</Typography>
+                          )}
+                        </Box>
+                        <Typography sx={{ fontWeight: 800, whiteSpace: "nowrap", color: src.matchPercent >= 85 ? "var(--success)" : "var(--muted-text)" }}>
+                          {src.matchPercent}%
+                        </Typography>
+                      </Stack>
+                      {src.snippet && (
+                        <Typography sx={{ mt: 0.75, fontSize: "0.95rem", lineHeight: 1.8, whiteSpace: "pre-line" }}>
+                          {src.snippet}
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </Stack>
+              )}
+
+              {/* What an AI agent receives from the same tool */}
+              <Box component="details" sx={{ mt: 1.5 }}>
+                <Box component="summary" sx={{ cursor: "pointer", fontSize: "0.9rem", color: "var(--muted-text)", py: 0.5 }}>
+                  AI ఏజెంట్‌కు వెళ్ళే డేటా (JSON)
+                </Box>
+                <Box
+                  component="pre"
+                  sx={{
+                    m: 0, mt: 1, p: 1.5, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", bgcolor: SOFT,
+                    fontFamily: "inherit", fontSize: "0.85rem", lineHeight: 1.7, whiteSpace: "pre-wrap", wordBreak: "break-word",
+                    maxHeight: 260, overflow: "auto",
+                  }}
+                >
+                  {JSON.stringify(result, null, 2)}
+                </Box>
+              </Box>
             </Box>
           )}
         </Box>

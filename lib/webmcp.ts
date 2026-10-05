@@ -28,23 +28,72 @@ type ModelContext = {
 
 export const TOOL_NAME = "searchBhavalamala";
 export const TOOL_DESCRIPTION =
-  "Searches Telugu literary content in the Ratnalabala knowledge base.";
+  "Searches the Ratnalabala Telugu literature collection (poems, satakams, proverbs, stories, Bhagavad Gita) by meaning, not just exact words. Input a Telugu word, topic or question. Returns the closest matching passages with title, collection (mala), a text snippet, a link to read the full text, and a match percentage. Read-only.";
 
-/** The real search. Used by the WebMCP tool AND by the on-page panel. */
-export async function searchBhavalamala(query: string): Promise<unknown> {
+export type SearchItem = {
+  title: string;
+  mala: string;
+  snippet: string;
+  /** Same-site path, for links inside the app */
+  link: string;
+  /** Full URL, so an AI agent can cite or open it */
+  url: string;
+  matchPercent: number;
+};
+
+export type SearchResult = {
+  query: string;
+  results: SearchItem[];
+};
+
+type SearchReply = {
+  success: boolean;
+  error?: string;
+  results?: { title: string; mala: string; link?: string; snippet?: string; similarity: number }[];
+};
+
+/**
+ * The real search. Used by the WebMCP tool AND by the on-page panel.
+ *
+ * GET /api/search  → (next.config.ts rewrite) → /api/main?endpoint=bhavalamala-search
+ * Retrieval only: no AI answer, so it's fast, has no Groq cost, and the
+ * same query is served from Vercel's CDN cache. The AI agent that calls
+ * this tool writes its own answer from these passages.
+ */
+export async function searchBhavalamala(query: string): Promise<SearchResult> {
   const q = query.trim();
 
   if (!q) {
     throw new Error("వెతకడానికి ఒక పదం లేదా ప్రశ్న రాయండి.");
   }
 
-  const response = await fetch(`/api/search?query=${encodeURIComponent(q)}`);
+  const response = await fetch(`/api/search?query=${encodeURIComponent(q)}&top_k=5`);
 
-  if (!response.ok) {
-    throw new Error(`శోధన పూర్తి కాలేదు (${response.status}). మళ్ళీ ప్రయత్నించండి.`);
+  let data: SearchReply | null = null;
+  try {
+    data = (await response.json()) as SearchReply;
+  } catch {
+    // server sent an HTML error page instead of JSON
   }
 
-  return response.json();
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.error || `శోధన పూర్తి కాలేదు (${response.status}). మళ్ళీ ప్రయత్నించండి.`);
+  }
+
+  return {
+    query: q,
+    results: (data.results ?? []).map((r) => {
+      const link = r.link || "";
+      return {
+        title: r.title,
+        mala: r.mala,
+        snippet: r.snippet ?? "",
+        link,
+        url: link ? new URL(link, window.location.origin).href : "",
+        matchPercent: Math.round(Math.max(0, Math.min(1, Number(r.similarity) || 0)) * 100),
+      };
+    }),
+  };
 }
 
 /** The spec has moved between navigator and document, so check both. */

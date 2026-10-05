@@ -85,6 +85,13 @@ BHAVALAMALA_DAILY_LIMIT = 100
 BHAVALAMALA_CANDIDATES = 40
 BHAVALAMALA_MAX_PER_MALA = 2
 
+# ── WebMCP శోధన (bhavalamala-search) — AI జవాబు లేకుండా, వెతకడం మాత్రమే ──
+# Groq లేదు కాబట్టి chat (100) కంటే ఎక్కువ; embedding సేవకు రోజువారీ రక్షణ
+BHAVALAMALA_SEARCH_DAILY_LIMIT = int(os.environ.get("BHAVALAMALA_SEARCH_DAILY_LIMIT", "300"))
+# ఒకే ప్రశ్నకు ఫలితాలు database మారే వరకు మారవు: Vercel CDN దగ్గర 1 రోజు
+BHAVALAMALA_SEARCH_CACHE_HEADER = "public, max-age=300, s-maxage=86400, stale-while-revalidate=604800"
+BHAVALAMALA_SNIPPET_CHARS = 280
+
 # Production (Vercel) లో BGE-M3 — అదే model, బయటి సేవ ద్వారా (ఏదీ లేకపోతే local మాత్రమే):
 #   1) EMBEDDINGS_API_URL + EMBEDDINGS_API_KEY → OpenAI-compatible (ఉదా: DeepInfra BAAI/bge-m3)
 #   2) HF_TOKEN → Hugging Face Inference (hf-inference, BAAI/bge-m3)
@@ -1215,6 +1222,52 @@ def answer_bhavalamala(question: str, top_k: int) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════
+# WebMCP శోధన — ప్రశ్న → BGE-M3 → pgvector (Groq లేదు)
+# ═══════════════════════════════════════════════════════════════
+#   GET /api/main?endpoint=bhavalamala-search&query=కోపం&top_k=5
+#   (next.config.ts rewrite వల్ల:  GET /api/search?query=కోపం)
+#
+# భావాలమాల AI లాగే వెతుకుతుంది, కానీ AI జవాబు రాయదు. కాబట్టి వేగంగా,
+# Groq ఖర్చు లేకుండా, CDN cache తో. పిలిచిన AI ఏజెంట్ ఈ ఫలితాలు చదివి
+# తానే జవాబు రాస్తుంది — అదే WebMCP పద్ధతి.
+
+def _snippet(text: str, limit: int = BHAVALAMALA_SNIPPET_CHARS) -> str:
+    text = (text or "").strip()
+    return text if len(text) <= limit else text[:limit].rstrip() + "…"
+
+
+def search_bhavalamala_only(query_text: str, top_k: int) -> dict:
+    """RAG లోని retrieval భాగం మాత్రమే — embedding, search, హద్దు, వైవిధ్యం."""
+    candidates = search_bhavalamala(
+        create_bhavalamala_embedding(query_text),
+        max(top_k, BHAVALAMALA_CANDIDATES),
+    )
+    above = [r for r in candidates if float(r["similarity"] or 0) >= BHAVALAMALA_MIN_SIMILARITY]
+    picked = diversify_by_mala(above, top_k)
+
+    best = max((float(r["similarity"]) for r in candidates), default=0)
+    log(f"[Bhavalamala search] top_k={top_k} candidates={len(candidates)} above={len(above)} picked={len(picked)} best={best:.3f}")
+
+    return {
+        "success": True,
+        "query": query_text,
+        "count": len(picked),
+        "results": [
+            {
+                "id": r["id"],
+                "title": r.get("title") or "",
+                "mala": r.get("mala") or "",
+                "link": r.get("link") or "",
+                "snippet": _snippet(r.get("content") or r.get("details") or ""),
+                "source": r.get("source") or "",
+                "similarity": round(float(r["similarity"]), 4),
+            }
+            for r in picked
+        ],
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
 # HANDLER
 # ═══════════════════════════════════════════════════════════════
 
@@ -1247,6 +1300,54 @@ class handler(BaseHTTPRequestHandler):
         body = self.rfile.read(content_length)
         return json.loads(body) if body else {}
 
+    def _handle_bhavalamala_search(self, query: dict):
+        """WebMCP శోధన — GET /api/main?endpoint=bhavalamala-search&query=..."""
+        q = _first(query, "query", "")
+        if not q:
+            self._send_json(400, {"success": False, "error": "వెతకడానికి ఒక పదం లేదా ప్రశ్న ఇవ్వండి."})
+            return
+        if len(q) > BHAVALAMALA_MAX_QUESTION_LENGTH:
+            self._send_json(400, {"success": False, "error": "ప్రశ్న చాలా పొడవుగా ఉంది (గరిష్ఠం 1000 అక్షరాలు)."})
+            return
+
+        try:
+            top_k = int(_first(query, "top_k", str(BHAVALAMALA_DEFAULT_TOP_K)))
+        except ValueError:
+            top_k = BHAVALAMALA_DEFAULT_TOP_K
+        top_k = max(1, min(top_k, BHAVALAMALA_MAX_TOP_K))
+
+        # embedding సేవ లేకపోతే — పరిమితి లెక్కలోకి రాకుండా వెంటనే స్పష్టమైన జవాబు
+        if not bhavalamala_available():
+            self._send_json(503, {"success": False, "error": BHAVALAMALA_LOCAL_ONLY})
+            return
+
+        try:
+            usage_id = reserve_api_call(
+                "bhavalamala-search", "/api/main?endpoint=bhavalamala-search", "GET",
+                BHAVALAMALA_SEARCH_DAILY_LIMIT,
+            )
+        except Exception as e:
+            log(f"[Bhavalamala search] usage log failed: {type(e).__name__}: {e}")
+            self._send_json(503, {"success": False, "error": AI_UNAVAILABLE_MSG})
+            return
+        if usage_id is None:
+            self._send_json(429, {"success": False, "error": "ఈరోజు శోధన పరిమితి పూర్తయింది. రేపు మళ్ళీ ప్రయత్నించండి."})
+            return
+
+        try:
+            result = search_bhavalamala_only(q, top_k)
+            safe_update_api_log(usage_id, 200)
+            # విజయవంతమైన జవాబు మాత్రమే cache — errors ఎప్పుడూ cache కావు
+            self._send_json(200, result, cache=BHAVALAMALA_SEARCH_CACHE_HEADER)
+        except AIServiceError as e:
+            log(f"[Bhavalamala search] AI error ({e.status}): {e}")
+            safe_update_api_log(usage_id, e.status)
+            self._send_json(e.status, {"success": False, "error": e.message})
+        except Exception as e:
+            log(f"[Bhavalamala search] error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
+            safe_update_api_log(usage_id, 500)
+            self._send_json(500, {"success": False, "error": "శోధన పూర్తి కాలేదు. మళ్ళీ ప్రయత్నించండి."})
+
     def do_GET(self):
         # /api/aksharamala, /api/gita, ... → వాటి సొంత handler (api/_router.py)
         if delegate(self, "do_GET"):
@@ -1257,6 +1358,10 @@ class handler(BaseHTTPRequestHandler):
         endpoint = query.get("endpoint", [""])[0]
 
         try:
+            if endpoint == "bhavalamala-search":
+                self._handle_bhavalamala_search(query)
+                return
+
             if endpoint == "fonts":
                 status, payload = handle_fonts()
                 self._send_json(status, payload, cache=FONTS_CACHE_HEADER,
@@ -1720,6 +1825,9 @@ if __name__ == "__main__":
     # Existing Markdown-based poems endpoint (backward compatible)
     print(f"Try: http://localhost:{port}/api/main?endpoint=poems&collection=Sumati")
     print(f"Try: http://localhost:{port}/api/main?endpoint=poem&collection=Sumati&filename=001.md")
+
+    # WebMCP search (retrieval only, no AI answer)
+    print(f"Try: http://localhost:{port}/api/main?endpoint=bhavalamala-search&query=కోపం&top_k=5")
 
     # Merged endpoints (served through api/_router.py)
     print(f"Try: http://localhost:{port}/api/aksharamala?search=&type=all&page=1&page_size=4")
