@@ -76,6 +76,20 @@ export default function RootLayout({
             } catch (e) {}`,
           }}
         />
+
+        {/* Catch Chrome's install event as early as possible. It often
+            fires before React has loaded, and a listener added later in
+            PwaInstallPrompt would miss it, so the button could never
+            install in one tap. Stored on window for the component. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.addEventListener('beforeinstallprompt', function (e) {
+              e.preventDefault();
+              window.__installPrompt = e;
+              window.dispatchEvent(new Event('installpromptready'));
+            });`,
+          }}
+        />
       </head>
 
       <body>

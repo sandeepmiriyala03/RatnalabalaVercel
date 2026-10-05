@@ -11,6 +11,9 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
+/* Set by the early script in layout.tsx */
+type InstallWindow = Window & { __installPrompt?: BeforeInstallPromptEvent | null };
+
 /* Which manual-steps message to show when there's no one-tap install */
 type StepsKind = 'ios' | 'macSafari' | 'chromeMenu' | 'unsupported' | null;
 
@@ -19,7 +22,8 @@ const STEP_TEXT: Record<Exclude<StepsKind, null>, string> = {
   macSafari: '1. మెనూ బార్‌లో File నొక్కండి\n2. "Add to Dock…" ఎంచుకోండి\n3. Add నొక్కండి',
   /* Chrome/Edge only allow the one-tap prompt once per visit; after
      that (or if it hasn't fired yet) the browser menu still works */
-  chromeMenu: '1. బ్రౌజర్ మెనూ (⋮ లేదా …) నొక్కండి\n2. "Install app" లేదా "Add to Home screen" ఎంచుకోండి',
+  chromeMenu:
+    'కంప్యూటర్‌లో: అడ్రస్ బార్ కుడివైపు ఉన్న ఇన్‌స్టాల్ గుర్తు (⊕) నొక్కండి.\n\nఫోన్‌లో:\n1. బ్రౌజర్ మెనూ (⋮) నొక్కండి\n2. "Install app" లేదా "Add to Home screen" ఎంచుకోండి',
   unsupported:
     'మీ బ్రౌజర్‌లో ప్రత్యక్ష యాప్ ఇన్‌స్టాల్ లభ్యం కాదు. ఈ పేజీని బుక్‌మార్క్ చేసుకోండి, లేదా Chrome / Edge బ్రౌజర్‌లో తెరిచి ఇన్‌స్టాల్ చేయండి.',
 };
@@ -68,21 +72,26 @@ export default function PwaInstallPrompt() {
         (navigator as Navigator & { standalone?: boolean }).standalone === true
     );
 
-    const onPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    /* The install event may already have fired before this component
+       mounted; the early script in layout.tsx keeps it for us. */
+    const w = window as InstallWindow;
+    if (w.__installPrompt) setDeferredPrompt(w.__installPrompt);
+
+    const onPrompt = () => {
+      if (w.__installPrompt) setDeferredPrompt(w.__installPrompt);
     };
     /* Installed from the browser menu too: hide the button right away */
     const onInstalled = () => {
+      w.__installPrompt = null;
       setIsInstalled(true);
       setDeferredPrompt(null);
       setSteps(null);
     };
 
-    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('installpromptready', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('installpromptready', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
@@ -110,6 +119,8 @@ export default function PwaInstallPrompt() {
     if (deferredPrompt) {
       await deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
+      // Chrome allows each install event to be used only once
+      (window as InstallWindow).__installPrompt = null;
       setDeferredPrompt(null);
       if (choice.outcome === 'accepted') {
         setShowWelcome(true);
