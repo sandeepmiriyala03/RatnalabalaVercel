@@ -47,9 +47,15 @@ type AgentDecision = { fontFamily: TeluguFont; fontSizeMultiplier: number; reaso
 /* ================================================================== */
 
 // What "డిఫాల్ట్" restores. Use the SAME values as the parent's initial
-// fontFamily / fontSize state, and DEFAULT_FONT in the Python API.
+// fontFamily / fontSize state (RootClientLayout), DEFAULT_FONT in the
+// Python API, and --telugu-font-family in globals.css.
 const DEFAULT_FONT: TeluguFont = "Dhurjati";
 const DEFAULT_SIZE = 1.0;
+
+// "100%" = this many rem (globals.css default). 1.125rem ≈ 18px, a
+// senior-friendly base. Writing plain `${size}rem` used to shrink the
+// whole site to 16px the moment this component loaded.
+const BASE_REM = 1.125;
 
 // true  → the agent picks a font + size for the page type and the device.
 // false → everyone sees DEFAULT_FONT / DEFAULT_SIZE until they choose.
@@ -393,7 +399,8 @@ export default function FontControlsTelugu({
 
   useIsomorphicLayoutEffect(() => {
     const safe = Number.isFinite(fontSize) ? fontSize : DEFAULT_SIZE;
-    document.documentElement.style.setProperty("--telugu-font-size", `${safe}rem`);
+    // 100% = BASE_REM (≈18px), matching globals.css
+    document.documentElement.style.setProperty("--telugu-font-size", `${round2(safe * BASE_REM)}rem`);
   }, [fontSize]);
 
   /* ---------- 6. Keep the size inside the device bounds ---------- */
@@ -462,11 +469,13 @@ export default function FontControlsTelugu({
 
   const getSpeedColor = (ms: number) => (ms < 800 ? "#22c55e" : ms < 2000 ? "#eab308" : "#ef4444");
 
+  // 44px: easy to tap for older readers (WCAG 2.5.5)
   const sizeButtonSx = {
-    border: "1px solid",
-    borderColor: "var(--border, #e4dacb)",
-    width: 40,
-    height: 40,
+    border: "1.5px solid",
+    borderColor: "var(--border-strong, #7a6650)",
+    width: 44,
+    height: 44,
+    color: "var(--foreground)",
     "&:hover": { borderColor: "var(--primary, #8b3a1f)" },
   };
 
@@ -475,10 +484,11 @@ export default function FontControlsTelugu({
       <Paper
         variant="outlined"
         sx={{
-          p: 2,
-          borderRadius: "12px",
+          p: { xs: 1.5, sm: 2 },
+          borderRadius: "var(--radius, 14px)",
           borderColor: "var(--border, #e4dacb)",
           backgroundColor: "var(--surface, #f7f2ea)",
+          color: "var(--foreground)",
         }}
       >
         {agentReason && (
@@ -491,11 +501,11 @@ export default function FontControlsTelugu({
               mb: 1.5,
               p: 1,
               borderRadius: "8px",
-              backgroundColor: "rgba(139, 58, 31, 0.06)",
+              backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
             }}
           >
-            <SmartToyIcon sx={{ fontSize: 16, color: "var(--primary, #8b3a1f)", mt: 0.2 }} />
-            <Typography variant="caption" sx={{ color: "var(--primary, #8b3a1f)", lineHeight: 1.5 }}>
+            <SmartToyIcon sx={{ fontSize: 18, color: "var(--primary, #8b3a1f)", mt: 0.3 }} />
+            <Typography sx={{ fontSize: "0.9rem", color: "var(--primary, #8b3a1f)", lineHeight: 1.6 }}>
               <strong>ఏజెంట్ ఎంచుకుంది:</strong> {agentReason}
             </Typography>
           </Box>
@@ -506,11 +516,11 @@ export default function FontControlsTelugu({
           flexDirection={{ xs: "column", md: "row" }}
           alignItems={{ xs: "stretch", md: "center" }}
           justifyContent="space-between"
-          gap={2.5}
+          gap={{ xs: 2, md: 2.5 }}
         >
           {/* 🔤 Font — searchable, Telugu A→Z */}
           <Box display="flex" alignItems="center" gap={1} flex={1.2} minWidth={0}>
-            <Typography sx={{ fontSize: "0.9rem", whiteSpace: "nowrap", fontWeight: 600 }}>తెలుగు ఫాంట్</Typography>
+            <Typography sx={{ fontSize: "0.95rem", whiteSpace: "nowrap", fontWeight: 700 }}>తెలుగు ఫాంట్</Typography>
 
             <Autocomplete
               size="small"
@@ -530,9 +540,9 @@ export default function FontControlsTelugu({
               loading={fontsLoading && !fontsFromServer}
               loadingText="ఫాంట్లు లోడ్ అవుతున్నాయి…"
               disableClearable
-              sx={{ minWidth: 180, flex: 1, backgroundColor: "var(--surface-elevated, #fff)" }}
+              sx={{ minWidth: 180, flex: 1, backgroundColor: "var(--surface-elevated, #fff)", borderRadius: "var(--radius-sm, 10px)" }}
               renderOption={(props, option) => (
-                <MenuItem {...props} key={option.value} sx={{ fontFamily: fontStack(option.value), minHeight: 44 }}>
+                <MenuItem {...props} key={option.value} sx={{ fontFamily: fontStack(option.value), minHeight: 48 }}>
                   {option.label}
                 </MenuItem>
               )}
@@ -545,18 +555,15 @@ export default function FontControlsTelugu({
                     ...params.InputProps,
                     startAdornment: (
                       <>
-                        <Box component="span" aria-hidden sx={{ display: "flex", ml: 0.5, color: "text.secondary" }}>
-                          <SearchIcon size={16} label="" />
+                        <Box component="span" aria-hidden sx={{ display: "flex", ml: 0.5, color: "var(--muted-text)" }}>
+                          <SearchIcon size={18} label="" />
                         </Box>
                         {params.InputProps.startAdornment}
                       </>
                     ),
                   }}
                   sx={{
-                    "& .MuiInputBase-root": { minHeight: 40, fontFamily: fontStack(fontFamily) },
-                    "& .MuiOutlinedInput-notchedOutline": { borderColor: "var(--border, #e4dacb)" },
-                    "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "var(--primary, #8b3a1f)" },
-                    "& .Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "var(--primary, #8b3a1f)" },
+                    "& .MuiInputBase-root": { minHeight: 44, fontFamily: fontStack(fontFamily), borderRadius: "var(--radius-sm, 10px)" },
                   }}
                 />
               )}
@@ -564,12 +571,12 @@ export default function FontControlsTelugu({
           </Box>
 
           {/* 🔠 Size */}
-          <Box display="flex" flexDirection="column" gap={0.5} flex={1} minWidth={{ xs: "100%", md: 220 }}>
+          <Box display="flex" flexDirection="column" gap={0.5} flex={1} minWidth={{ xs: "100%", md: 240 }}>
             <Box display="flex" alignItems="center" justifyContent="space-between">
-              <Typography sx={{ fontSize: "0.9rem", fontWeight: 600 }}>అక్షర సైజ్</Typography>
+              <Typography sx={{ fontSize: "0.95rem", fontWeight: 700 }}>అక్షర సైజ్</Typography>
               <Typography
                 aria-live="polite"
-                sx={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--primary, #8b3a1f)", minWidth: 42, textAlign: "right" }}
+                sx={{ fontSize: "0.95rem", fontWeight: 700, color: "var(--primary, #8b3a1f)", minWidth: 48, textAlign: "right" }}
               >
                 {sizePercent}%
               </Typography>
@@ -579,19 +586,18 @@ export default function FontControlsTelugu({
               <Tooltip title="చిన్నదిగా చేయండి">
                 <span>
                   <IconButton
-                    size="small"
                     onClick={() => changeSize(fontSize - STEP)}
                     disabled={isAtMin}
                     aria-label="అక్షరాలు చిన్నవి చేయండి"
-                    sx={{ ...sizeButtonSx, fontSize: "0.8rem" }}
+                    sx={{ ...sizeButtonSx, fontSize: "0.85rem" }}
                   >
                     అ
                   </IconButton>
                 </span>
               </Tooltip>
 
+              {/* Medium slider: a bigger handle is easier to grab */}
               <Slider
-                size="small"
                 value={Number.isFinite(fontSize) ? fontSize : defaultSize}
                 min={lo}
                 max={hi}
@@ -601,17 +607,17 @@ export default function FontControlsTelugu({
                   setFontSize(clampSize(v as number));
                 }}
                 aria-label="అక్షర సైజ్"
-                sx={{ color: "var(--primary, #8b3a1f)", mx: 0.5 }}
+                getAriaValueText={(v) => `${Math.round(v * 100)}%`}
+                sx={{ color: "var(--primary, #8b3a1f)", mx: 1 }}
               />
 
               <Tooltip title="పెద్దదిగా చేయండి">
                 <span>
                   <IconButton
-                    size="small"
                     onClick={() => changeSize(fontSize + STEP)}
                     disabled={isAtMax}
                     aria-label="అక్షరాలు పెద్దవి చేయండి"
-                    sx={{ ...sizeButtonSx, fontSize: "1.15rem" }}
+                    sx={{ ...sizeButtonSx, fontSize: "1.25rem" }}
                   >
                     అ
                   </IconButton>
@@ -623,69 +629,90 @@ export default function FontControlsTelugu({
           {/* ♻️ Default */}
           <Button
             variant="outlined"
-            size="small"
             onClick={restoreDefaults}
             disabled={isDefault}
             startIcon={<RestartAltIcon fontSize="small" />}
             sx={{
-              minHeight: 40,
+              minHeight: 44,
+              fontSize: "0.95rem",
+              fontWeight: 700,
               textTransform: "none",
               whiteSpace: "nowrap",
+              borderRadius: "var(--radius-sm, 10px)",
+              borderWidth: "1.5px",
               borderColor: "var(--primary, #8b3a1f)",
               color: "var(--primary, #8b3a1f)",
-              "&:hover": { borderColor: "var(--primary, #8b3a1f)", backgroundColor: "rgba(139, 58, 31, 0.08)" },
+              "&:hover": {
+                borderWidth: "1.5px",
+                borderColor: "var(--primary, #8b3a1f)",
+                backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+              },
             }}
           >
             డిఫాల్ట్
           </Button>
         </Box>
 
-        <Typography variant="caption" sx={{ opacity: 0.7, display: "block", mt: 1.5 }}>
-          {fontsFromServer ? (
-            <>
-              ప్రస్తుతం <strong>{fonts.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
-            </>
-          ) : fontsLoading ? (
-            <>అన్ని ఫాంట్లు లోడ్ అవుతున్నాయి… (ఇప్పటికి ముఖ్యమైన {fonts.length})</>
-          ) : (
-            <>
-              ముఖ్యమైన {fonts.length} ఫాంట్లు చూపిస్తున్నాం (పూర్తి జాబితా లోడ్ కాలేదు).{" "}
-              <Link component="button" type="button" variant="caption" onClick={loadFonts} sx={{ fontWeight: 700, verticalAlign: "baseline" }}>
-                మళ్ళీ ప్రయత్నించండి
-              </Link>
-            </>
-          )}
-          {device && <> · {DEVICE_TE[device]}</>}
-        </Typography>
-      </Paper>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+            mt: 1.5,
+          }}
+        >
+          <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-text)", lineHeight: 1.6 }}>
+            {fontsFromServer ? (
+              <>
+                ప్రస్తుతం <strong>{fonts.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
+              </>
+            ) : fontsLoading ? (
+              <>అన్ని ఫాంట్లు లోడ్ అవుతున్నాయి… (ఇప్పటికి ముఖ్యమైన {fonts.length})</>
+            ) : (
+              <>
+                ముఖ్యమైన {fonts.length} ఫాంట్లు చూపిస్తున్నాం (పూర్తి జాబితా లోడ్ కాలేదు).{" "}
+                <Link
+                  component="button"
+                  type="button"
+                  onClick={loadFonts}
+                  sx={{ fontSize: "inherit", fontWeight: 700, verticalAlign: "baseline", color: "var(--accent-text)" }}
+                >
+                  మళ్ళీ ప్రయత్నించండి
+                </Link>
+              </>
+            )}
+            {device && <> · {DEVICE_TE[device]}</>}
+          </Typography>
 
-      {/* ⚡ Load time */}
-      {loadTime !== null && (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 1 }}>
-          <Box
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 0.4,
-              px: 1,
-              py: 0.3,
-              borderRadius: "999px",
-              border: "1px solid",
-              borderColor: `${getSpeedColor(loadTime)}55`,
-              backgroundColor: `${getSpeedColor(loadTime)}14`,
-            }}
-          >
-            <BoltIcon sx={{ fontSize: 13, color: getSpeedColor(loadTime) }} />
-            <Typography variant="caption" sx={{ fontSize: "0.7rem", color: "text.secondary" }}>
-              పేజీ లోడ్ సమయం: {(loadTime / 1000).toFixed(2)}s
-            </Typography>
-          </Box>
+          {/* ⚡ Load time — small, on the same line, so it doesn't add height */}
+          {loadTime !== null && (
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 0.4,
+                px: 1,
+                py: 0.25,
+                borderRadius: "999px",
+                border: "1px solid",
+                borderColor: `${getSpeedColor(loadTime)}66`,
+                backgroundColor: `${getSpeedColor(loadTime)}14`,
+              }}
+            >
+              <BoltIcon sx={{ fontSize: 15, color: getSpeedColor(loadTime) }} />
+              <Typography sx={{ fontSize: "0.8rem", color: "var(--muted-text)" }}>
+                పేజీ లోడ్ సమయం: {(loadTime / 1000).toFixed(2)}s
+              </Typography>
+            </Box>
+          )}
         </Box>
-      )}
+      </Paper>
 
       <Snackbar
         open={snackbarOpen}
-        autoHideDuration={4000}
+        autoHideDuration={5000}
         onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
@@ -699,11 +726,14 @@ export default function FontControlsTelugu({
             </IconButton>
           }
           sx={{
-            backgroundColor: "var(--primary, #8b3a1f)",
-            color: "#fff",
-            fontWeight: 600,
+            // --secondary + --background: readable in light AND dark mode
+            // (white text on dark-mode --primary was only ~2.5:1)
+            backgroundColor: "var(--secondary, #1a3d2b)",
+            color: "var(--background, #fdfaf5)",
+            fontWeight: 700,
+            fontSize: "0.95rem",
             borderRadius: "10px",
-            "& .MuiAlert-icon": { color: "#fff" },
+            "& .MuiAlert-icon": { color: "inherit" },
           }}
         >
           <strong>{currentFontLabel}</strong> ఫాంట్ ({sizePercent}%) వర్తించబడింది!

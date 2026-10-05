@@ -8,8 +8,8 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import Navbar from "@/app/components/Navbar";
 import ChatbotWindow from "@/app/components/ChatbotWindow";       // check path
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt"; // check path
-// Put your existing import back (check the path):
-// import FontControlsTelugu from "@/app/components/FontControlsTelugu";
+import FontControlsTelugu from "@/app/components/FontControlsTelugu"; // check path
+import type { TeluguFont } from "@/app/types/fonts";
 import { FAB_EDGE, FAB_GAP, FAB_HEIGHT, FAB_Z, fabSx } from "@/lib/floating";
 import NextLink from "next/link";
 import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME, type SearchResult } from "@/lib/webmcp";
@@ -46,7 +46,16 @@ const STEPS = ["Agent", "Browser", "Tool", "Name", "Description", "Input", "Exec
 
 type Status = "idle" | "loading" | "done" | "error";
 
+/* Must match DEFAULT_FONT / DEFAULT_SIZE in FontControlsTelugu.tsx
+   (and the default --telugu-font-family in globals.css) */
+const DEFAULT_FONT: TeluguFont = "Dhurjati" as TeluguFont;
+const DEFAULT_SIZE = 1.0;
+
 export default function RootClientLayout({ children }: { children: React.ReactNode }) {
+  // Font + size live here, so the choice stays the same on every page
+  const [fontFamily, setFontFamily] = useState<TeluguFont>(DEFAULT_FONT);
+  const [fontSize, setFontSize] = useState<number>(DEFAULT_SIZE);
+
   const [chatOpen, setChatOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
@@ -64,7 +73,6 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
   return (
     <>
       <Navbar />
-      {/* <FontControlsTelugu /> */}
 
       {/* id="main-content" = Navbar skip-link target.
           Bottom padding keeps the last lines of every page
@@ -73,6 +81,28 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
         id="main-content"
         style={{ paddingBottom: `calc(${FAB_EDGE + FAB_HEIGHT * 2 + FAB_GAP * 2}px + env(safe-area-inset-bottom, 0px))` }}
       >
+        {/* Font + size controls: first thing under the menu on every page.
+            Inside <main>, so the skip link lands here and readers can fix
+            the text size before they start reading. */}
+        <Box
+          component="section"
+          aria-label="అక్షరాల సెట్టింగ్‌లు"
+          sx={{
+            maxWidth: 1200,
+            mx: "auto",
+            px: { xs: 1.5, sm: 2, md: 3 },
+            pt: { xs: 1.5, md: 2 },
+            pb: { xs: 1, md: 1.5 },
+          }}
+        >
+          <FontControlsTelugu
+            fontFamily={fontFamily}
+            setFontFamily={setFontFamily}
+            fontSize={fontSize}
+            setFontSize={setFontSize}
+          />
+        </Box>
+
         {children}
       </main>
 

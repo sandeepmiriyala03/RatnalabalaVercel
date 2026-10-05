@@ -74,8 +74,12 @@
   --app-header-height: 64px;    /* was only defined in dark mode */
 
   /* Typography */
-  --telugu-font-family: "Ramaneeya";
-  --telugu-font-size: 1.125rem; /* ~18px; your font controls still override this */
+  /* Same default as FontControlsTelugu (DEFAULT_FONT), so the font
+     doesn't visibly switch when the page finishes loading */
+  --telugu-font-family: "Dhurjati";
+  /* ~18px. FontControlsTelugu writes (size × 1.125)rem here, so its
+     "100%" means this same senior-friendly 18px */
+  --telugu-font-size: 1.125rem;
   --telugu-line-height: 1.8;    /* Telugu vowel signs + vattulu need extra room */
   --reading-width: 65ch;
 
