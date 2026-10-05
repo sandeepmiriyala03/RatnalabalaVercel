@@ -1,47 +1,56 @@
 import "./globals.css";
 import RootClientLayout from "./RootClientLayout";
+// Must match the real file name exactly (Vercel builds on Linux = case-sensitive)
 import OfflineBanner from "@/app/components/Offlinebanner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 
-// Browser chrome colour (Android address bar, iOS status bar)
-// follows the light/dark --primary in globals.css.
+const SITE_URL = "https://ratnalabala.vercel.app";
+
+const SITE_NAME = "రత్నాలబాల – జ్ఞానమాల";
+const SITE_DESCRIPTION =
+  "AI ఆధారిత తెలుగు జ్ఞానమాల | పద్యాలు, కథలు, అక్షరాలు, చిత్రాలు & సంస్కృతి";
+
+// Browser chrome colour (Android address bar, iOS status bar).
+// Matches the forest-green Navbar (--secondary in globals.css).
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#8B3A1F" },
-    { media: "(prefers-color-scheme: dark)", color: "#e2916a" },
+    { media: "(prefers-color-scheme: light)", color: "#1a3d2b" },
+    { media: "(prefers-color-scheme: dark)", color: "#6bbd93" },
   ],
 
-  // Lets the page use the full iPhone screen.
-  // env(safe-area-inset-*) keeps UI clear of the notch / home bar.
+  // Full iPhone screen; components add env(safe-area-inset-*) padding.
   viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
-  title: "రత్నాలబాల – జ్ఞానమాల",
-  description:
-    "AI ఆధారిత తెలుగు జ్ఞానమాల | పద్యాలు, కథలు, అక్షరాలు, చిత్రాలు & సంస్కృతి",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
   manifest: "/manifest.json",
 
+  // Link previews on WhatsApp, LinkedIn, Facebook, etc.
+  openGraph: {
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    url: "/",
+    siteName: SITE_NAME,
+    images: ["/icons/icon-512x512.png"],
+    locale: "te_IN",
+    type: "website",
+  },
+
+  // Installed iPhone app (no startupImage: iOS ignores ones that
+  // don't exactly match the screen size).
   appleWebApp: {
     capable: true,
-    title: "రత్నాలబాల – జ్ఞానమాల",
+    title: SITE_NAME,
     statusBarStyle: "black-translucent",
-    startupImage: [
-      {
-        url: "/icons/icon-192x192.png",
-        media:
-          "(device-width: 768px) and (device-height: 1024px)",
-      },
-      {
-        url: "/icons/icon-192x192.png",
-      },
-    ],
   },
 
   other: {
-    "msapplication-TileColor": "#8B3A1F",
+    "msapplication-TileColor": "#1a3d2b",
     "msapplication-TileImage": "/icons/icon-192x192.png",
   },
 };
@@ -52,13 +61,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    // suppressHydrationWarning: theme script below sets data-theme
-    // before React loads, avoiding hydration mismatch.
-    <html
-      lang="te"
-      suppressHydrationWarning
-      data-scroll-behavior="smooth"
-    >
+    // suppressHydrationWarning: the theme script below sets data-theme
+    // before React loads, avoiding a hydration mismatch.
+    <html lang="te" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         {/* Apply saved light/dark theme before first paint */}
         <script
@@ -74,9 +79,9 @@ export default function RootLayout({
       </head>
 
       <body>
-        <RootClientLayout>
-          {children}
-        </RootClientLayout>
+        {/* Navbar, page content, WebMCP registration and the floating
+            buttons (left: AI, right: install + search) */}
+        <RootClientLayout>{children}</RootClientLayout>
 
         {/* One offline banner for every page */}
         <OfflineBanner />

@@ -114,7 +114,8 @@ async function readJson<T>(response: Response): Promise<T | null> {
 }
 
 /* ================================================================
-   CHATBOT WINDOW
+   CHATBOT WINDOW  (opened by the left-side "భావాలమాల AI" button
+   in RootClientLayout)
 ================================================================ */
 
 export default function ChatbotWindow({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -149,7 +150,8 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
       setQuery(""); // విజయవంతమైతేనే ప్రశ్న తుడిచేయడం
     } catch (err) {
       setRagError(err instanceof Error ? err.message : "సమస్య ఏర్పడింది. మళ్లీ ప్రయత్నించండి.");
-      inputRef.current?.focus(); // ప్రశ్న అలాగే ఉంటుంది — సరిచేసి మళ్ళీ అడగవచ్చు
+      // disabled తీసేశాక focus చేయాలి — అందుకే తర్వాతి frame లో
+      requestAnimationFrame(() => inputRef.current?.focus());
     } finally {
       setAsking(false);
     }
@@ -172,19 +174,34 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
   };
 
   return (
-    <Drawer anchor="left" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: "100%", sm: 380 } } }}>
+    <Drawer
+      anchor="left"
+      open={open}
+      onClose={onClose}
+      aria-labelledby="bhavalamala-title"
+      PaperProps={{
+        sx: {
+          width: { xs: "100%", sm: 400 },
+          // clear of the iPhone notch and home bar
+          pt: "env(safe-area-inset-top, 0px)",
+          pb: "env(safe-area-inset-bottom, 0px)",
+          bgcolor: "var(--background)",
+          color: "var(--foreground)",
+        },
+      }}
+    >
       <Stack spacing={2.5} sx={{ height: "100%", p: 2.5, overflowY: "auto" }}>
         {/* HEADER */}
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Box>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Box sx={{ minWidth: 0 }}>
             <Typography id="bhavalamala-title" variant="h6" component="h2" fontWeight={800}>
               భావాలమాల AI
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "var(--muted-text)" }}>
               భావాలమాలలో అడగండి — అర్థవంతమైన సమాధానం పొందండి
             </Typography>
           </Box>
-          <IconButton onClick={onClose} aria-label="సహాయకుడిని మూసివేయండి" sx={{ width: 44, height: 44 }}>
+          <IconButton onClick={onClose} aria-label="సహాయకుడిని మూసివేయండి" sx={{ width: 48, height: 48, flexShrink: 0 }}>
             <CloseIcon />
           </IconButton>
         </Stack>
@@ -204,7 +221,6 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
           <Stack direction="row" spacing={1} alignItems="flex-start">
             <TextField
               fullWidth
-              size="small"
               label="మీ ప్రశ్న"
               placeholder="ఉదా: అసహనం గురించి ఏమి చెప్పారు?"
               value={query}
@@ -215,15 +231,23 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
             />
             <IconButton
               type="submit"
-              color="primary"
               disabled={asking || !query.trim()}
               aria-label="ప్రశ్న పంపండి"
-              sx={{ width: 44, height: 44, flexShrink: 0 }}
+              sx={{
+                width: 56,
+                height: 56,
+                flexShrink: 0,
+                borderRadius: "var(--radius-sm)",
+                bgcolor: "var(--secondary)",
+                color: "var(--background)",
+                "&:hover": { bgcolor: "var(--secondary)", filter: "brightness(1.08)" },
+                "&.Mui-disabled": { bgcolor: "var(--surface)", color: "var(--muted-text)" },
+              }}
             >
-              {asking ? <CircularProgress size={22} /> : <SendRoundedIcon />}
+              {asking ? <CircularProgress size={24} sx={{ color: "inherit" }} /> : <SendRoundedIcon />}
             </IconButton>
           </Stack>
-          <Typography role="status" aria-live="polite" variant="caption" color="text.secondary">
+          <Typography role="status" aria-live="polite" variant="body2" sx={{ color: "var(--muted-text)", minHeight: "1.6em" }}>
             {asking ? "భావాలమాలలో వెతికి, జవాబు సిద్ధం చేస్తున్నాం…" : ""}
           </Typography>
         </Stack>
@@ -238,23 +262,23 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
         {lastReply && (
           <Paper
             elevation={0}
-            sx={(t) => ({ p: 2, borderRadius: 2, border: "1px solid", borderColor: "secondary.light", bgcolor: alpha(t.palette.secondary.main, 0.06) })}
+            sx={(t) => ({ p: 2, borderRadius: 2, border: "1.5px solid", borderColor: "secondary.light", bgcolor: alpha(t.palette.secondary.main, 0.06) })}
           >
-            <Typography variant="body2" fontWeight={700} sx={{ mb: 1 }}>
+            <Typography variant="body1" fontWeight={700} sx={{ mb: 1 }}>
               ❓ {lastReply.question}
             </Typography>
-            <Typography variant="overline" color="secondary.main" fontWeight={700}>
-              భావాలమాల AI
+            <Typography variant="body2" fontWeight={700} sx={{ color: "var(--secondary)" }}>
+              భావాలమాల AI జవాబు
             </Typography>
-            <Typography sx={{ whiteSpace: "pre-wrap", mt: 0.5, lineHeight: 1.8 }}>{lastReply.answer}</Typography>
+            <Typography sx={{ whiteSpace: "pre-wrap", mt: 0.5, lineHeight: 1.9 }}>{lastReply.answer}</Typography>
 
             {lastReply.sources.length > 0 && (
               <>
                 <Divider sx={{ my: 1.5 }} />
-                <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                <Typography variant="body2" fontWeight={700}>
                   🔎 వెతికిన ఆధారాలు
                 </Typography>
-                <Typography variant="caption" display="block" color="text.secondary">
+                <Typography variant="body2" sx={{ color: "var(--muted-text)" }}>
                   స్కోర్: ప్రశ్నకు ఆ సమాచారం ఎంత దగ్గరగా ఉందో సూచిస్తుంది.
                 </Typography>
 
@@ -262,11 +286,18 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
                   {lastReply.sources.map((source) => {
                     const score = similarityPercent(source.similarity);
                     return (
-                      <Box component="li" key={source.id} sx={{ p: 1.25, border: "1px solid", borderColor: "divider", borderRadius: 1.5 }}>
+                      <Box component="li" key={source.id} sx={{ p: 1.25, border: "1px solid var(--border-strong)", borderRadius: 1.5 }}>
                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                           <Box sx={{ minWidth: 0 }}>
                             {source.link ? (
-                              <Typography component={NextLink} href={source.link} onClick={onClose} variant="body2" fontWeight={700} color="inherit">
+                              <Typography
+                                component={NextLink}
+                                href={source.link}
+                                onClick={onClose}
+                                variant="body2"
+                                fontWeight={700}
+                                sx={{ color: "var(--accent-text)", textDecoration: "underline", textUnderlineOffset: "3px" }}
+                              >
                                 {source.title}
                               </Typography>
                             ) : (
@@ -275,21 +306,23 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
                               </Typography>
                             )}
                             {source.mala && (
-                              <Typography variant="caption" color="text.secondary" display="block">
+                              <Typography variant="body2" sx={{ color: "var(--muted-text)" }}>
                                 {source.mala}
                               </Typography>
                             )}
                           </Box>
                           <Typography
-                            variant="caption"
+                            variant="body2"
                             fontWeight={800}
-                            color={score >= 85 ? "success.main" : score >= 70 ? "primary.main" : "text.secondary"}
-                            sx={{ whiteSpace: "nowrap" }}
+                            sx={{
+                              whiteSpace: "nowrap",
+                              color: score >= 85 ? "var(--success)" : score >= 70 ? "var(--primary)" : "var(--muted-text)",
+                            }}
                           >
                             {score}%
                           </Typography>
                         </Stack>
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                        <Typography variant="body2" sx={{ mt: 0.5, color: "var(--muted-text)" }}>
                           సంబంధితత: <strong>{similarityLabel(source.similarity)}</strong>
                         </Typography>
                       </Box>
@@ -304,7 +337,7 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
         <Divider>లేదా</Divider>
 
         {/* యాదృచ్ఛిక పద్యం */}
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" sx={{ color: "var(--muted-text)" }}>
           క్రింది బటన్ నొక్కితే సహాయకుడు సాహిత్య సేకరణల నుండి యాదృచ్ఛికంగా ఒక పద్యాన్ని ఎంచి చూపిస్తాడు.
         </Typography>
         <Button
@@ -313,7 +346,16 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
           onClick={askForPoem}
           disabled={picking}
           startIcon={picking ? <CircularProgress size={18} color="inherit" /> : undefined}
-          sx={{ minHeight: 48 }}
+          sx={{
+            minHeight: 56,
+            fontSize: "1rem",
+            fontWeight: 700,
+            textTransform: "none",
+            borderRadius: "var(--radius-sm)",
+            bgcolor: "var(--primary)",
+            color: "var(--background)",
+            "&:hover": { bgcolor: "var(--primary)", filter: "brightness(1.08)" },
+          }}
         >
           {picking ? "పద్యాన్ని వెతుకుతోంది…" : "నాకు యాదృచ్ఛికంగా ఒక పద్యం సూచించండి"}
         </Button>
@@ -325,20 +367,20 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
         )}
 
         {recommendation && (
-          <Paper sx={(t) => ({ p: 2, borderRadius: 2, border: "1px solid", borderColor: "primary.light", bgcolor: alpha(t.palette.primary.main, 0.06) })}>
-            <Typography variant="overline" color="primary.main">
+          <Paper sx={(t) => ({ p: 2, borderRadius: 2, border: "1.5px solid", borderColor: "primary.light", bgcolor: alpha(t.palette.primary.main, 0.06) })}>
+            <Typography variant="body2" fontWeight={700} sx={{ color: "var(--primary)" }}>
               సూచించిన సేకరణ: {recommendation.folder}
             </Typography>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography variant="h6" component="h3" fontWeight={700}>
               {recommendation.title}
             </Typography>
-            <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", mt: 1.5, maxHeight: 220, overflowY: "auto" }}>
+            <Typography sx={{ whiteSpace: "pre-wrap", mt: 1.5, maxHeight: 260, overflowY: "auto", lineHeight: 1.9 }}>
               {recommendation.content}
             </Typography>
             {recommendation.reason && (
               <>
                 <Divider sx={{ my: 1.5 }} />
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: "var(--muted-text)" }}>
                   <strong>ఎందుకు ఎంచింది:</strong> {recommendation.reason}
                 </Typography>
               </>
@@ -346,8 +388,8 @@ export default function ChatbotWindow({ open, onClose }: { open: boolean; onClos
           </Paper>
         )}
 
-        <Typography variant="caption" color="text.secondary" sx={{ mt: "auto" }}>
-          ఈ సహాయకుడు ఎడమ వైపున అన్ని పేజీలలో అందుబాటులో ఉంటుంది.
+        <Typography variant="body2" sx={{ color: "var(--muted-text)", mt: "auto" }}>
+          ఈ సహాయకుడు ఎడమ వైపు &ldquo;AI&rdquo; బటన్‌తో అన్ని పేజీలలో అందుబాటులో ఉంటుంది.
         </Typography>
       </Stack>
     </Drawer>
