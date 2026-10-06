@@ -1022,10 +1022,11 @@ class AIServiceError(Exception):
     message that is safe to show to the person. The technical cause goes to the
     server log only."""
 
-    def __init__(self, status: int, message: str, detail: str = ""):
+    def __init__(self, status: int, message: str, detail: str = "", reason: str = ""):
         super().__init__(detail or message)
         self.status = status
         self.message = message
+        self.reason = reason          # యంత్రం చదివే కారణం (pypdf_missing, db_failed …) — రహస్యాలు ఉండవు
 
 
 async def call_baml(poem: dict, question: str) -> str:
@@ -1423,6 +1424,7 @@ PDF_KEEP_HOURS = 24
 PDF_UPLOAD_DAILY_LIMIT = int(os.environ.get("PDF_RAG_UPLOAD_LIMIT", "30"))
 PDF_ASK_DAILY_LIMIT = int(os.environ.get("PDF_RAG_ASK_LIMIT", "300"))
 
+PDF_RAG_VERSION = "own-ngram-v2"        # pdf-health లో కనిపిస్తుంది — ఏ main.py deploy అయిందో తెలుస్తుంది
 VEC_DIM = 2048                          # vector కొలతలు
 NGRAM_SIZES = (3, 4)                    # అక్షర ముక్కల పొడవులు
 
@@ -1636,7 +1638,10 @@ def extract_pdf_pages(data: bytes) -> dict:
     try:
         from pypdf import PdfReader
     except ImportError as e:
-        raise AIServiceError(503, "PDF సేవ ఇప్పుడు అందుబాటులో లేదు.", f"pypdf missing ({e}). Add pypdf to requirements.txt.") from e
+        raise AIServiceError(
+            503, "PDF సేవ ఇప్పుడు అందుబాటులో లేదు (PDF చదివే భాగం సర్వర్‌లో లేదు).",
+            f"pypdf missing ({e}). Add pypdf to requirements.txt.", reason="pypdf_missing",
+        ) from e
 
     try:
         reader = PdfReader(io.BytesIO(data))
@@ -1967,6 +1972,19 @@ def ensure_rag_tables():
     _rag_tables_ready = True
 
 
+def rag_db_ready():
+    """టేబుళ్ళు సిద్ధం; విఫలమైతే కారణంతో 503 (500 కాదు) — pdf-health చూడమని."""
+    try:
+        ensure_rag_tables()
+    except Exception as e:
+        text = str(e).lower()
+        reason = "pgvector_old" if "sparsevec" in text else ("db_not_configured" if "not configured" in text else "db_failed")
+        raise AIServiceError(
+            503, "PDF సేవ ఇప్పుడు అందుబాటులో లేదు (డేటాబేస్). కొద్దిసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.",
+            f"rag tables: {type(e).__name__}: {e}", reason=reason,
+        ) from e
+
+
 def delete_expired_rag_docs():
     with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
         with conn.cursor() as cur:
@@ -2006,7 +2024,7 @@ def handle_pdf_upload(data: bytes, filename: str) -> dict:
     idf = build_idf(chunk_slots)
     vectors = [weigh(s, idf) for s in chunk_slots]
 
-    ensure_rag_tables()
+    rag_db_ready()
     delete_expired_rag_docs()
     doc_id = str(uuid.uuid4())
     with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
@@ -2122,7 +2140,7 @@ def _highlight(sentence: str, query_grams: set[str]) -> list[dict]:
 def handle_pdf_ask(doc_id: str, question: str) -> dict:
     started = time.time()
     doc_id = _valid_doc_id(doc_id)
-    ensure_rag_tables()
+    rag_db_ready()
 
     q_grams = text_grams(question, drop_stopwords=True)
     if not q_grams:
@@ -2215,9 +2233,56 @@ def answer_from_chunks(question, q_grams, q_vec, idf, rows, started) -> dict:
     }
 
 
+def pdf_health() -> dict:
+    """GET /api/main?endpoint=pdf-health — 503 కారణం కనుగొనడానికి. రహస్యాలు (URL, keys) చూపించం."""
+    checks: dict = {"version": PDF_RAG_VERSION}
+
+    def item(ok: bool, value=None, fix: str = "") -> dict:
+        out = {"ok": ok}
+        if value is not None:
+            out["value"] = value
+        if not ok and fix:
+            out["fix"] = fix
+        return out
+
+    try:
+        import pypdf
+        checks["pypdf"] = item(True, pypdf.__version__)
+    except Exception as e:
+        checks["pypdf"] = item(False, type(e).__name__, "requirements.txt లో pypdf చేర్చి మళ్ళీ deploy చేయండి")
+
+    checks["database_url"] = item(bool(RATNALABALA_DATABASE_URL), fix="Vercel లో NEON_DATABASE_URL environment variable పెట్టండి")
+    if RATNALABALA_DATABASE_URL:
+        try:
+            with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
+                with conn.cursor() as cur:
+                    checks["database"] = item(True)
+                    cur.execute("SELECT extversion FROM pg_extension WHERE extname = 'vector';")
+                    row = cur.fetchone()
+                    version = row[0] if row else None
+                    parts = [int(p) for p in re.findall(r"\d+", version or "")[:2]] + [0, 0]
+                    checks["pgvector"] = item(
+                        bool(version) and (parts[0], parts[1]) >= (0, 7), version or "not installed",
+                        "Neon SQL Editor లో: CREATE EXTENSION IF NOT EXISTS vector; ALTER EXTENSION vector UPDATE;",
+                    )
+                    cur.execute("SELECT to_regclass('public.api_usage_log') IS NOT NULL;")
+                    checks["api_usage_log_table"] = item(bool(cur.fetchone()[0]), fix="api_usage_log టేబుల్ లేదు — మిగతా APIs వాడే అదే టేబుల్ ఈ డేటాబేస్‌లో సృష్టించండి")
+        except Exception as e:
+            checks["database"] = item(False, type(e).__name__, "Neon డేటాబేస్ నిద్రలో ఉందా / URL సరైనదా చూడండి")
+        if checks.get("database", {}).get("ok"):
+            try:
+                rag_db_ready()
+                checks["rag_tables"] = item(True)
+            except AIServiceError as e:
+                checks["rag_tables"] = item(False, e.reason, "pgvector 0.7+ కావాలి (sparsevec)" if e.reason == "pgvector_old" else "server log లో [PDF RAG] చూడండి")
+
+    checks["ready"] = all(v.get("ok", True) for v in checks.values() if isinstance(v, dict))
+    return checks
+
+
 def handle_pdf_delete(doc_id: str) -> dict:
     doc_id = _valid_doc_id(doc_id)
-    ensure_rag_tables()
+    rag_db_ready()
     with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM rag_docs WHERE doc_id = %s;", (doc_id,))
@@ -2273,7 +2338,11 @@ class handler(BaseHTTPRequestHandler):
             usage_id = reserve_api_call("pdf-upload", "/api/main?endpoint=pdf-upload", "POST", PDF_UPLOAD_DAILY_LIMIT)
         except Exception as e:
             log(f"[PDF RAG] usage log failed: {type(e).__name__}: {e}")
-            self._send_json(503, {"success": False, "error": AI_UNAVAILABLE_MSG})
+            self._send_json(503, {
+                "success": False,
+                "reason": "usage_log_failed",
+                "error": "PDF సేవ ఇప్పుడు అందుబాటులో లేదు (డేటాబేస్). కొద్దిసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.",
+            })
             return
         if usage_id is None:
             self._send_json(429, {"success": False, "error": "ఈరోజు PDF అప్‌లోడ్ పరిమితి పూర్తయింది. రేపు మళ్ళీ ప్రయత్నించండి."})
@@ -2292,9 +2361,9 @@ class handler(BaseHTTPRequestHandler):
             safe_update_api_log(usage_id, 400)
             self._send_json(400, {"success": False, "error": str(e)})
         except AIServiceError as e:
-            log(f"[PDF RAG] AI error ({e.status}): {e}")
+            log(f"[PDF RAG] service error ({e.status}, {e.reason}): {e}")
             safe_update_api_log(usage_id, e.status)
-            self._send_json(e.status, {"success": False, "error": e.message})
+            self._send_json(e.status, {"success": False, "reason": e.reason, "error": e.message})
         except Exception as e:
             log(f"[PDF RAG] upload error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
             safe_update_api_log(usage_id, 500)
@@ -2327,9 +2396,9 @@ class handler(BaseHTTPRequestHandler):
                 safe_update_api_log(usage_id, 404)
                 self._send_json(404, {"success": False, "error": str(e)})
             except AIServiceError as e:
-                log(f"[PDF RAG] AI error ({e.status}): {e}")
+                log(f"[PDF RAG] service error ({e.status}, {e.reason}): {e}")
                 safe_update_api_log(usage_id, e.status)
-                self._send_json(e.status, {"success": False, "error": e.message})
+                self._send_json(e.status, {"success": False, "reason": e.reason, "error": e.message})
         except ValueError as e:
             self._send_json(400, {"success": False, "error": str(e)})
         except Exception as e:
@@ -2396,6 +2465,10 @@ class handler(BaseHTTPRequestHandler):
         try:
             if endpoint == "bhavalamala-search":
                 self._handle_bhavalamala_search(query)
+                return
+            if endpoint == "pdf-health":
+                result = pdf_health()
+                self._send_json(200 if result["ready"] else 503, result)
                 return
 
             if endpoint == "fonts":
