@@ -3,16 +3,17 @@
 import {
   AppBar, Toolbar, Typography, Box, IconButton,
   Drawer, List, ListItem, ListItemText, Divider,
-  Menu, MenuItem, Button, Collapse, ListItemButton,
+  Menu, MenuItem, Button, Collapse, ListItemButton, Tooltip,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
+import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import ModuleFavoriteButton from "@/app/components/ModuleFavoriteButton";
 
 /* ═══════════════════════════════════════════
@@ -52,15 +53,15 @@ const NAV_GROUPS = [
       { label: "స్వరమాల",      path: "/swaramala" },
       { label: "లిపిమాల",      path: "/lipimala" },
       { label: "ఖతిమాల",       path: "/khatiMala" },
-      { label: "విదురమాల", path: "/rahasyabhasha" },
-      { label: "శైలిమాల", path: "/shailimala" },
+      { label: "విదురమాల",     path: "/rahasyabhasha" },
+      { label: "శైలిమాల",      path: "/shailimala" },
     ],
   },
   {
     label: "వాచకమాల",
     icon: "📰",
     items: [
-      { label: "తెలుగు వాచకి", path: "/news" }
+      { label: "తెలుగు వాచకి", path: "/news" },
     ],
   },
   {
@@ -75,115 +76,65 @@ const NAV_GROUPS = [
     icon: "🪔",
     items: [
       { label: "అన్ని మాలలు ఒకే చోట", path: "/gnanamala" },
+      { label: "PDF ప్రశ్నోత్తరి",      path: "/pdf-prashnottari" },
     ],
   },
 ];
 
-const SINGLE_ITEMS = [
-  { label: "రత్నాలబాల", path: "/" },
-  {
-    label: "అభిప్రాయం",
-    path: "https://forms.gle/z4zugcnmZrW9d9cR9",
-    external: true,
-  },
-];
+type NavGroup = (typeof NAV_GROUPS)[number];
+
+const HOME_LABEL = "ముంగిలి"; // "home" in Telugu — replaces the 🏠 + repeated site name
+const FEEDBACK_URL = "https://forms.gle/z4zugcnmZrW9d9cR9";
 
 /* ═══════════════════════════════════════════
-   COLORS — reused from globals.css's brand tokens
-   (forest green / gold / ivory) instead of a
-   one-off blue-and-yellow scheme unrelated to the
-   rest of the site. Using the CSS variables means
-   this bar also adapts correctly in dark mode for
-   free, since --secondary/--background/--accent-light
-   are already redefined there.
+   COLORS — brand tokens from globals.css, so
+   dark mode works automatically.
 ═══════════════════════════════════════════ */
-const BG      = "var(--secondary)";     // forest green bar — matches the brand identity used everywhere else
-const TEXT    = "var(--background)";    // ivory (or dark-ivory in dark mode) — 11.6:1 / 8.2:1 against BG
-const ACCENT  = "var(--accent-light)";  // gold — same active-route highlight color used sitewide
+const BG      = "var(--secondary)";     // forest green bar
+const TEXT    = "var(--background)";    // ivory text on the bar
+const ACCENT  = "var(--accent-light)";  // gold active pill
 
-/* Text drawn ON TOP of the gold ACCENT pill needs its OWN fixed
-   color, not a mode-flipping variable. --accent-light is a similarly
-   bright/mid-tone gold in BOTH light mode (#e0a838) and dark mode
-   (#f0c675) — it's designed to read as a foreground accent against
-   the page background, not to host text on top of itself. Pairing it
-   with --foreground (which flips to a LIGHT ivory in dark mode) would
-   put light text on a light pill and fail badly (checked: ~1.4:1). A
-   constant dark ink stays readable against the gold pill either way
-   (7.7:1 in light-mode nav, 10.2:1 in dark-mode nav). */
+/* Text ON the gold pill stays a fixed dark ink in both modes —
+   --foreground flips to light ivory in dark mode (~1.4:1 on gold). */
 const ON_ACCENT = "#241f1a";
+
+/* The app uses viewportFit "cover": on iPhones the page draws under the
+   notch / status bar. This keeps the bar clear of it (0 elsewhere). */
+const SAFE_TOP = "env(safe-area-inset-top, 0px)";
 
 /* ═══════════════════════════════════════════
    SKIP LINK — "ప్రధాన కంటెంట్‌కు వెళ్ళండి"
-   Invisible until a keyboard user tabs to it (first Tab on any page),
-   then it appears top-left; Enter jumps past the menu to the page's
-   main content.
-
-   The target is the element with id="main-content" — put that id on the
-   <main> tag in layout.tsx. If it is missing, the first <main> on the
-   page is used instead, so the link still works.
 ═══════════════════════════════════════════ */
 const MAIN_CONTENT_ID = "main-content";
-
-// Height of the sticky top bar — keeps the content's first line from
-// hiding underneath it after the jump.
 const NAV_OFFSET_PX = 72;
 
 function skipToMainContent(e: React.MouseEvent<HTMLAnchorElement>) {
-  // Handle the jump ourselves: a plain "#hash" link silently does nothing
-  // when the target id does not exist, and gives no focus to the content.
   e.preventDefault();
-
   const target =
     document.getElementById(MAIN_CONTENT_ID) ??
     document.querySelector<HTMLElement>("main");
+  if (!target) return;
 
-  if (!target) {
-    console.warn(
-      `Skip link: no element with id="${MAIN_CONTENT_ID}" (and no <main>) found. ` +
-        `Add id="${MAIN_CONTENT_ID}" to the <main> tag in layout.tsx.`
-    );
-    return;
-  }
-
-  // <main> cannot receive focus by default. tabindex="-1" lets us move
-  // focus there (so the next Tab continues inside the content) without
-  // adding it to the normal Tab order.
   if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
   target.style.outline = "none";
-  target.style.scrollMarginTop = `${NAV_OFFSET_PX}px`;
-
+  target.style.scrollMarginTop = `calc(${NAV_OFFSET_PX}px + ${SAFE_TOP})`;
   target.focus({ preventScroll: true });
 
-  const reduceMotion =
-    window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-
-  target.scrollIntoView({
-    behavior: reduceMotion ? "auto" : "smooth",
-    block: "start",
-  });
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
 }
 
 /* ═══════════════════════════════════════════
    THEME TOGGLE
-   Reads whatever [data-theme] is already on <html> (set by the
-   blocking script in layout.tsx before paint, or left unset to follow
-   the OS setting), and lets the person override it either way. The
-   choice is saved to localStorage so it persists across visits.
 ═══════════════════════════════════════════ */
 function useThemeToggle() {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     const current = document.documentElement.getAttribute("data-theme");
-    if (current === "dark") {
-      setIsDark(true);
-    } else if (current === "light") {
-      setIsDark(false);
-    } else {
-      // No explicit choice saved yet — reflect the OS setting so the
-      // button's icon/label starts in sync with what's actually shown.
-      setIsDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
-    }
+    if (current === "dark") setIsDark(true);
+    else if (current === "light") setIsDark(false);
+    else setIsDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
   }, []);
 
   const toggle = () => {
@@ -192,8 +143,7 @@ function useThemeToggle() {
     try {
       localStorage.setItem("theme", next);
     } catch {
-      // Private browsing may block storage — the choice just won't
-      // persist across visits, which is a reasonable fallback.
+      /* private browsing: just won't persist */
     }
     setIsDark(!isDark);
   };
@@ -201,21 +151,28 @@ function useThemeToggle() {
   return { isDark, toggle };
 }
 
-/* Labeled, not icon-only — a plain sun/moon icon can be ambiguous
-   about what tapping it does; the Telugu label removes that doubt
-   before the first tap, same reasoning as the install FAB. */
-function ThemeToggleButton({ variant = "bar" }: { variant?: "bar" | "list" }) {
+function ThemeToggleButton({ variant = "bar" }: { variant?: "bar" | "icon" | "list" }) {
   const { isDark, toggle } = useThemeToggle();
+  const label = isDark ? "లైట్ మోడ్‌కు మార్చండి" : "డార్క్ మోడ్‌కు మార్చండి";
+  const icon = isDark ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />;
 
   if (variant === "list") {
     return (
       <ListItemButton onClick={toggle} sx={{ borderRadius: "8px", mb: 0.3 }}>
         {isDark ? <LightModeRoundedIcon fontSize="small" sx={{ mr: 1.5 }} /> : <DarkModeRoundedIcon fontSize="small" sx={{ mr: 1.5 }} />}
-        <ListItemText
-          primary={isDark ? "లైట్ మోడ్‌కు మార్చండి" : "డార్క్ మోడ్‌కు మార్చండి"}
-          primaryTypographyProps={{ fontSize: "0.95rem", fontFamily: "'Noto Serif Telugu', serif" }}
-        />
+        <ListItemText primary={label} primaryTypographyProps={{ fontSize: "0.95rem" }} />
       </ListItemButton>
+    );
+  }
+
+  // Compact bar: icon only, but the tooltip + aria-label still say what it does
+  if (variant === "icon") {
+    return (
+      <Tooltip title={label}>
+        <IconButton onClick={toggle} aria-label={label} sx={{ color: TEXT, border: "1px solid rgba(255,255,255,0.4)" }}>
+          {icon}
+        </IconButton>
+      </Tooltip>
     );
   }
 
@@ -230,6 +187,8 @@ function ThemeToggleButton({ variant = "bar" }: { variant?: "bar" | "list" }) {
         fontSize: "0.9rem",
         fontWeight: 500,
         textTransform: "none",
+        whiteSpace: "nowrap",
+        flexShrink: 0,
         border: "1px solid rgba(255,255,255,0.4)",
         "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
       }}
@@ -240,32 +199,42 @@ function ThemeToggleButton({ variant = "bar" }: { variant?: "bar" | "list" }) {
 }
 
 /* ═══════════════════════════════════════════
+   SHARED PILL STYLE
+═══════════════════════════════════════════ */
+const pillSx = (active: boolean, compact: boolean) => ({
+  color: active ? ON_ACCENT : TEXT,
+  bgcolor: active ? ACCENT : "transparent",
+  px: compact ? 1.1 : 1.6,
+  py: 0.8,
+  borderRadius: "999px",
+  fontSize: "0.9rem",
+  fontWeight: active ? 700 : 500,
+  textTransform: "none" as const,
+  whiteSpace: "nowrap" as const, // never break a label inside itself
+  flexShrink: 0,
+  minWidth: 0,
+  "&:hover": { bgcolor: active ? ACCENT : "rgba(255,255,255,0.18)" },
+});
+
+/* ═══════════════════════════════════════════
    DESKTOP DROPDOWN
 ═══════════════════════════════════════════ */
-function DesktopGroup({ group }: { group: typeof NAV_GROUPS[0] }) {
+function DesktopGroup({ group, compact }: { group: NavGroup; compact: boolean }) {
   const pathname = usePathname();
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
   const open = Boolean(anchor);
-  const isActive = group.items.some(i => i.path === pathname);
+  const isActive = group.items.some((i) => i.path === pathname);
 
   return (
     <>
       <Button
-        onClick={e => setAnchor(e.currentTarget)}
+        onClick={(e) => setAnchor(e.currentTarget)}
+        aria-haspopup="menu"
+        aria-expanded={open}
         endIcon={open ? <ExpandLessIcon sx={{ fontSize: 16 }} /> : <ExpandMoreIcon sx={{ fontSize: 16 }} />}
-        sx={{
-          color: isActive ? ON_ACCENT : TEXT,
-          bgcolor: isActive ? ACCENT : "transparent",
-          px: 1.6, py: 0.8,
-          borderRadius: "999px",
-          fontSize: "0.9rem",
-          fontWeight: isActive ? 700 : 500,
-          textTransform: "none",
-          minWidth: 0,
-          "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
-        }}
+        sx={{ ...pillSx(isActive, compact), "& .MuiButton-endIcon": { ml: 0.25 } }}
       >
-        {group.icon} {group.label}
+        {compact ? group.label : `${group.icon} ${group.label}`}
       </Button>
 
       <Menu
@@ -282,7 +251,7 @@ function DesktopGroup({ group }: { group: typeof NAV_GROUPS[0] }) {
         transformOrigin={{ horizontal: "left", vertical: "top" }}
         anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
       >
-        {group.items.map(item => {
+        {group.items.map((item) => {
           const active = pathname === item.path;
           return (
             <MenuItem
@@ -290,17 +259,14 @@ function DesktopGroup({ group }: { group: typeof NAV_GROUPS[0] }) {
               component={Link}
               href={item.path}
               onClick={() => setAnchor(null)}
+              aria-current={active ? "page" : undefined}
               sx={{
-                fontFamily: "'Noto Serif Telugu', serif",
                 fontSize: "0.95rem",
                 fontWeight: active ? 700 : 400,
-                /* Menu popovers render on a light Paper regardless of
-                   page theme, so the forest-green brand color (not
-                   ON_ACCENT) is the right high-contrast text here. */
                 color: active ? "var(--secondary)" : "text.primary",
-                bgcolor: active ? `${ACCENT}55` : "transparent",
+                bgcolor: active ? `color-mix(in srgb, ${ACCENT} 33%, transparent)` : "transparent",
                 borderRadius: "8px", mx: 0.5, my: 0.2,
-                "&:hover": { bgcolor: `${ACCENT}33` },
+                "&:hover": { bgcolor: `color-mix(in srgb, ${ACCENT} 20%, transparent)` },
               }}
             >
               {item.label}
@@ -313,33 +279,79 @@ function DesktopGroup({ group }: { group: typeof NAV_GROUPS[0] }) {
 }
 
 /* ═══════════════════════════════════════════
-   MOBILE GROUP
+   DESKTOP ROW — one line, never wraps.
+   compact = no emojis, theme + feedback as icons.
 ═══════════════════════════════════════════ */
-function MobileGroup({
-  group, onClose,
-}: {
-  group: typeof NAV_GROUPS[0];
-  onClose: () => void;
-}) {
+function DesktopNav({ compact }: { compact: boolean }) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
 
   return (
     <>
-      <ListItemButton
-        onClick={() => setOpen(v => !v)}
-        sx={{ borderRadius: "8px", mb: 0.3 }}
-      >
+      <Link href="/" style={{ textDecoration: "none", flexShrink: 0 }} aria-current={pathname === "/" ? "page" : undefined}>
+        <Typography component="span" sx={{ ...pillSx(pathname === "/", compact), display: "inline-block" }}>
+          {HOME_LABEL}
+        </Typography>
+      </Link>
+
+      {NAV_GROUPS.map((g) => (
+        <DesktopGroup key={g.label} group={g} compact={compact} />
+      ))}
+
+      <Link href="/test-lab" style={{ textDecoration: "none", flexShrink: 0 }} aria-current={pathname === "/test-lab" ? "page" : undefined}>
+        <Typography component="span" sx={{ ...pillSx(pathname === "/test-lab", compact), display: "inline-block" }}>
+          పరీక్షల కేంద్రం
+        </Typography>
+      </Link>
+
+      {compact ? (
+        <Tooltip title="అభిప్రాయం">
+          <IconButton
+            component="a"
+            href={FEEDBACK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="అభిప్రాయం (కొత్త ట్యాబ్‌లో)"
+            sx={{ color: TEXT, border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0 }}
+          >
+            <ChatBubbleOutlineRoundedIcon />
+          </IconButton>
+        </Tooltip>
+      ) : (
+        <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", flexShrink: 0 }}>
+          <Typography component="span" sx={{ ...pillSx(false, false), display: "inline-block", border: "1px solid rgba(255,255,255,0.4)" }}>
+            💬 అభిప్రాయం
+          </Typography>
+        </a>
+      )}
+
+      <Box sx={{ flexShrink: 0, display: "flex" }}>
+        <ModuleFavoriteButton />
+      </Box>
+      <ThemeToggleButton variant={compact ? "icon" : "bar"} />
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE GROUP (opens by itself if the current page is inside it)
+═══════════════════════════════════════════ */
+function MobileGroup({ group, onClose }: { group: NavGroup; onClose: () => void }) {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(group.items.some((i) => i.path === pathname));
+
+  return (
+    <>
+      <ListItemButton onClick={() => setOpen((v) => !v)} aria-expanded={open} sx={{ borderRadius: "8px", mb: 0.3 }}>
         <ListItemText
           primary={`${group.icon} ${group.label}`}
-          primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem", fontFamily: "'Noto Serif Telugu', serif" }}
+          primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem" }}
         />
         {open ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
       </ListItemButton>
 
       <Collapse in={open} timeout={200} unmountOnExit>
         <List disablePadding sx={{ pl: 2 }}>
-          {group.items.map(item => {
+          {group.items.map((item) => {
             const active = pathname === item.path;
             return (
               <ListItem
@@ -347,19 +359,16 @@ function MobileGroup({
                 component={Link}
                 href={item.path}
                 onClick={onClose}
+                aria-current={active ? "page" : undefined}
                 sx={{
-                  bgcolor: active ? `${ACCENT}88` : "transparent",
-                  borderRadius: "8px", mb: 0.3,
-                  py: 0.8,
+                  bgcolor: active ? `color-mix(in srgb, ${ACCENT} 53%, transparent)` : "transparent",
+                  borderRadius: "8px", mb: 0.3, py: 0.8,
+                  color: "inherit",
                 }}
               >
                 <ListItemText
                   primary={item.label}
-                  primaryTypographyProps={{
-                    fontSize: "0.9rem",
-                    fontWeight: active ? 700 : 400,
-                    fontFamily: "'Noto Serif Telugu', serif",
-                  }}
+                  primaryTypographyProps={{ fontSize: "0.9rem", fontWeight: active ? 700 : 400 }}
                 />
               </ListItem>
             );
@@ -371,11 +380,76 @@ function MobileGroup({
 }
 
 /* ═══════════════════════════════════════════
+   "DOES IT FIT ON ONE LINE?"
+   Screen width alone can't answer this: the reader's font-size control
+   (and Telugu fonts of different widths) change how wide the menu is.
+   So the menu is measured (hidden copies) against the space left next
+   to the brand, and the best layout that fits is used:
+     full → compact → drawer (☰)
+   Re-measured on resize, rotation, font load and font-size change.
+═══════════════════════════════════════════ */
+type NavMode = "full" | "compact" | "drawer";
+
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+function useNavMode() {
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const brandRef = useRef<HTMLAnchorElement>(null);
+  const fullRef = useRef<HTMLDivElement>(null);
+  const compactRef = useRef<HTMLDivElement>(null);
+  const [mode, setMode] = useState<NavMode | null>(null); // null = before first measure (CSS fallback)
+
+  const measure = useCallback(() => {
+    const bar = toolbarRef.current;
+    const brand = brandRef.current;
+    if (!bar || !brand) return;
+    const cs = getComputedStyle(bar);
+    const GAP = 24; // breathing room between brand and menu
+    const available =
+      bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - brand.offsetWidth - GAP;
+    const full = fullRef.current?.scrollWidth ?? Infinity;
+    const compact = compactRef.current?.scrollWidth ?? Infinity;
+    setMode(full <= available ? "full" : compact <= available ? "compact" : "drawer");
+  }, []);
+
+  useIsoLayoutEffect(() => {
+    measure();
+    const ro = new ResizeObserver(() => measure());
+    [toolbarRef, brandRef, fullRef, compactRef].forEach((r) => r.current && ro.observe(r.current));
+    // Telugu web fonts arriving later change widths too
+    document.fonts?.ready.then(measure).catch(() => {});
+    document.fonts?.addEventListener?.("loadingdone", measure);
+    return () => {
+      ro.disconnect();
+      document.fonts?.removeEventListener?.("loadingdone", measure);
+    };
+  }, [measure]);
+
+  return { mode, toolbarRef, brandRef, fullRef, compactRef };
+}
+
+/* Hidden, non-interactive copy used only for measuring */
+function MeasureCopy({ innerRef, compact }: { innerRef: React.RefObject<HTMLDivElement | null>; compact: boolean }) {
+  return (
+    <Box aria-hidden sx={{ position: "absolute", width: 0, height: 0, overflow: "hidden", visibility: "hidden", pointerEvents: "none" }}>
+      <Box ref={innerRef} {...{ inert: true }} sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, whiteSpace: "nowrap", width: "max-content" }}>
+        <DesktopNav compact={compact} />
+      </Box>
+    </Box>
+  );
+}
+
+/* ═══════════════════════════════════════════
    NAVBAR
 ═══════════════════════════════════════════ */
 export default function Navbar() {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { mode, toolbarRef, brandRef, fullRef, compactRef } = useNavMode();
+
+  // Before the first measure (server render): plain screen-size fallback
+  const showDesktop = mode === null ? { xs: "none", lg: "flex" } : mode === "drawer" ? "none" : "flex";
+  const showDrawerButton = mode === null ? { xs: "flex", lg: "none" } : mode === "drawer" ? "flex" : "none";
 
   return (
     <>
@@ -394,7 +468,7 @@ export default function Navbar() {
           "&:focus": {
             position: "fixed",
             left: 16,
-            top: 16,
+            top: `calc(16px + ${SAFE_TOP})`,
             width: "auto",
             height: "auto",
             overflow: "visible",
@@ -404,7 +478,6 @@ export default function Navbar() {
             borderRadius: "8px",
             bgcolor: ACCENT,
             color: ON_ACCENT,
-            fontFamily: "'Noto Serif Telugu', serif",
             fontSize: "0.95rem",
             fontWeight: 700,
             textDecoration: "none",
@@ -415,136 +488,134 @@ export default function Navbar() {
         ప్రధాన కంటెంట్‌కు వెళ్ళండి
       </Box>
 
-      <AppBar position="sticky" elevation={2} sx={{ bgcolor: BG }}>
-        <Toolbar sx={{ px: { xs: 2, md: 3 }, display: "flex", justifyContent: "space-between", minHeight: { xs: 56, md: 60 } }}>
-
+      <AppBar position="sticky" elevation={2} sx={{ bgcolor: BG, pt: SAFE_TOP }}>
+        <Toolbar
+          ref={toolbarRef}
+          sx={{
+            px: { xs: 1.5, sm: 2, md: 3 },
+            display: "flex",
+            flexWrap: "nowrap",            // ← the fix: the bar is ALWAYS one line
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1.5,
+            minHeight: { xs: 56, md: 60 },
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
           {/* Brand */}
-          <Link href="/" style={{ textDecoration: "none" }}>
-            <Typography sx={{ fontWeight: 800, fontSize: { xs: "1rem", md: "1.15rem" }, color: TEXT, whiteSpace: "nowrap" }}>
-              రత్నాలబాల–జ్ఞానమాల
+          <Link ref={brandRef} href="/" style={{ textDecoration: "none", flexShrink: 1, minWidth: 0 }}>
+            <Typography
+              component="span"
+              sx={{
+                display: "block",
+                fontWeight: 800,
+                fontSize: { xs: "1rem", md: "1.15rem" },
+                color: TEXT,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {/* Very narrow phones: short name; full name everywhere else */}
+              <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>రత్నాలబాల</Box>
+              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>రత్నాలబాల–జ్ఞానమాల</Box>
             </Typography>
           </Link>
 
-          {/* Desktop nav */}
-          <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
+          {/* Measuring copies (invisible) */}
+          <MeasureCopy innerRef={fullRef} compact={false} />
+          <MeasureCopy innerRef={compactRef} compact />
 
-            {/* Home */}
-            <Link href="/" style={{ textDecoration: "none" }}>
-              <Typography sx={{
-                color: pathname === "/" ? ON_ACCENT : TEXT,
-                bgcolor: pathname === "/" ? ACCENT : "transparent",
-                px: 1.6, py: 0.8, borderRadius: "999px",
-                fontSize: "0.9rem", fontWeight: pathname === "/" ? 700 : 500,
-                "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
-              }}>
-                🏠  రత్నాలబాల–జ్ఞానమాల
-              </Typography>
-            </Link>
-
-            {/* Groups */}
-            {NAV_GROUPS.map(g => <DesktopGroup key={g.label} group={g} />)}
-
-            <Link href="/test-lab" style={{ textDecoration: "none" }}>
-              <Typography sx={{
-                color: pathname === "/test-lab" ? ON_ACCENT : TEXT,
-                bgcolor: pathname === "/test-lab" ? ACCENT : "transparent",
-                px: 1.6, py: 0.8, borderRadius: "999px",
-                fontSize: "0.9rem", fontWeight: pathname === "/test-lab" ? 700 : 500,
-                "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
-              }}>
-                పరీక్షల కేంద్రం
-              </Typography>
-            </Link>
-
-            {/* Feedback */}
-            <a href="https://forms.gle/z4zugcnmZrW9d9cR9" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-              <Typography sx={{
-                px: 1.6, py: 0.8, borderRadius: "999px",
-                fontSize: "0.9rem", fontWeight: 500, color: TEXT,
-                border: `1px solid rgba(255,255,255,0.4)`,
-                "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
-              }}>
-                💬 అభిప్రాయం
-              </Typography>
-            </a>
-
-            <ModuleFavoriteButton />
-            <ThemeToggleButton variant="bar" />
-          </Box>
-
-          {/* Mobile menu button */}
-          <Box sx={{ display: { xs: "flex", md: "none" }, alignItems: "center" }}>
-            <ModuleFavoriteButton />
-          </Box>
-          <IconButton
-            sx={{ display: { xs: "flex", md: "none" }, color: TEXT }}
-            aria-label="Open menu"
-            onClick={() => setDrawerOpen(true)}
+          {/* Desktop menu: full or compact, whichever fits */}
+          <Box
+            component="nav"
+            aria-label="ప్రధాన మెనూ"
+            sx={{ display: showDesktop, alignItems: "center", gap: 0.5, flexWrap: "nowrap", flexShrink: 0 }}
           >
-            <MenuIcon />
-          </IconButton>
+            <DesktopNav compact={mode === "compact"} />
+          </Box>
+
+          {/* Narrow screens / big text: favourite + ☰ together on the right */}
+          <Box sx={{ display: showDrawerButton, alignItems: "center", gap: 0.5, flexShrink: 0 }}>
+            <ModuleFavoriteButton />
+            <IconButton
+              sx={{ color: TEXT }}
+              aria-label="మెనూ తెరవండి"
+              aria-expanded={drawerOpen}
+              onClick={() => setDrawerOpen(true)}
+            >
+              <MenuIcon />
+            </IconButton>
+          </Box>
         </Toolbar>
       </AppBar>
 
-      {/* Mobile Drawer */}
+      {/* Drawer (☰) */}
       <Drawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: 280, borderRadius: "0 16px 16px 0" } }}
+        PaperProps={{
+          sx: {
+            width: 300,
+            maxWidth: "85vw",
+            borderRadius: "0 16px 16px 0",
+            pt: SAFE_TOP,
+            pb: "env(safe-area-inset-bottom, 0px)",
+          },
+        }}
       >
-        <Box sx={{ p: 2 }}>
-
-          {/* Drawer header */}
+        <Box component="nav" aria-label="ప్రధాన మెనూ" sx={{ p: 2 }}>
           <Box sx={{ bgcolor: BG, borderRadius: "12px", px: 2, py: 1.5, mb: 2 }}>
-            <Typography sx={{ fontWeight: 800, color: TEXT, fontSize: "1rem", fontFamily: "'Noto Serif Telugu', serif" }}>
-              రత్నాలబాల–జ్ఞానమాల
-            </Typography>
+            <Typography sx={{ fontWeight: 800, color: TEXT, fontSize: "1rem" }}>రత్నాలబాల–జ్ఞానమాల</Typography>
           </Box>
 
           <List disablePadding>
-            {/* Home */}
             <ListItem
-              component={Link} href="/"
+              component={Link}
+              href="/"
               onClick={() => setDrawerOpen(false)}
-              sx={{ bgcolor: pathname === "/" ? `${ACCENT}88` : "transparent", borderRadius: "8px", mb: 0.5 }}
+              aria-current={pathname === "/" ? "page" : undefined}
+              sx={{
+                bgcolor: pathname === "/" ? `color-mix(in srgb, ${ACCENT} 53%, transparent)` : "transparent",
+                borderRadius: "8px", mb: 0.5, color: "inherit",
+              }}
             >
-              <ListItemText primary="🏠 రత్నాలబాల–జ్ఞానమాల"
-                primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem", fontFamily: "'Noto Serif Telugu', serif" }} />
+              <ListItemText primary={HOME_LABEL} primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem" }} />
             </ListItem>
 
             <Divider sx={{ my: 1 }} />
 
-            {/* Groups */}
-            {NAV_GROUPS.map(g => (
+            {NAV_GROUPS.map((g) => (
               <MobileGroup key={g.label} group={g} onClose={() => setDrawerOpen(false)} />
             ))}
 
             <ListItem
-              component={Link} href="/test-lab"
+              component={Link}
+              href="/test-lab"
               onClick={() => setDrawerOpen(false)}
-              sx={{ bgcolor: pathname === "/test-lab" ? `${ACCENT}88` : "transparent", borderRadius: "8px", mb: 0.5 }}
+              aria-current={pathname === "/test-lab" ? "page" : undefined}
+              sx={{
+                bgcolor: pathname === "/test-lab" ? `color-mix(in srgb, ${ACCENT} 53%, transparent)` : "transparent",
+                borderRadius: "8px", mb: 0.5, color: "inherit",
+              }}
             >
-              <ListItemText primary="పరీక్షల కేంద్రం"
-                primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem" }} />
+              <ListItemText primary="పరీక్షల కేంద్రం" primaryTypographyProps={{ fontWeight: 700, fontSize: "0.95rem" }} />
             </ListItem>
 
             <Divider sx={{ my: 1 }} />
-
             <ThemeToggleButton variant="list" />
-
             <Divider sx={{ my: 1 }} />
 
-            {/* Feedback */}
             <ListItem
               component="a"
-              href="https://forms.gle/z4zugcnmZrW9d9cR9"
+              href={FEEDBACK_URL}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setDrawerOpen(false)}
-              sx={{ borderRadius: "8px" }}
+              sx={{ borderRadius: "8px", color: "inherit" }}
             >
-              <ListItemText primary="💬 అభిప్రాయం"
-                primaryTypographyProps={{ fontSize: "0.95rem", fontFamily: "'Noto Serif Telugu', serif" }} />
+              <ListItemText primary="💬 అభిప్రాయం" primaryTypographyProps={{ fontSize: "0.95rem" }} />
             </ListItem>
           </List>
         </Box>

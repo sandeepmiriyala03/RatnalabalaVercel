@@ -12,6 +12,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, quote, urlparse
+from urllib.parse import unquote as urllib_unquote
 from psycopg.rows import dict_row
 
 import httpx
@@ -1242,8 +1243,14 @@ BHAVALAMALA_SYSTEM_PROMPT = """నీవు రత్నాలబాల "భా�
 6. Markdown (**, #, -) వాడకు — సాదా వాక్యాలు మాత్రమే."""
 
 
-def call_bhavalamala_groq(question: str, context: str) -> str:
-    """Groq (OpenAI-compatible) — ఆధారాలకే పరిమితమైన జవాబు."""
+def call_bhavalamala_groq(
+    question: str,
+    context: str,
+    system_prompt: str | None = None,
+    context_label: str = "భావాలమాల ఆధారాలు",
+) -> str:
+    """Groq (OpenAI-compatible) — ఆధారాలకే పరిమితమైన జవాబు.
+    PDF ప్రశ్నోత్తరి కూడా ఇదే వాడుతుంది (వేరే system prompt తో)."""
     if not GROQ_API_KEY:
         raise AIServiceError(503, AI_UNAVAILABLE_MSG, "GROQ_API_KEY is not configured.")
 
@@ -1256,8 +1263,8 @@ def call_bhavalamala_groq(question: str, context: str) -> str:
                 "temperature": 0.2,
                 "max_tokens": 700,
                 "messages": [
-                    {"role": "system", "content": BHAVALAMALA_SYSTEM_PROMPT},
-                    {"role": "user", "content": f"భావాలమాల ఆధారాలు:\n\n{context}\n\nప్రశ్న: {question}"},
+                    {"role": "system", "content": system_prompt or BHAVALAMALA_SYSTEM_PROMPT},
+                    {"role": "user", "content": f"{context_label}:\n\n{context}\n\nప్రశ్న: {question}"},
                 ],
             },
             timeout=45,
@@ -1375,6 +1382,401 @@ def search_bhavalamala_only(query_text: str, top_k: int) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════
+# PDF ప్రశ్నోత్తరి — పాఠకుడు అప్‌లోడ్ చేసిన PDF పై RAG
+#   1. PDF → పాఠ్యం (పేజీ వారీగా, చిత్రాలు వదిలేస్తాం)
+#   2. ముక్కలు (chunks), ప్రతిదానికి పేజీ సంఖ్య
+#   3. BGE-M3 embedding (భావాలమాల వాడేదే) → Neon pgvector
+#   4. ప్రశ్న → ఆ PDF ముక్కల్లో మాత్రమే వెతకడం → Groq జవాబు + పేజీ ఆధారాలు
+#
+#   POST /api/main?endpoint=pdf-upload   body: PDF bytes (application/pdf)
+#                                        header: X-Filename (URL-encoded)
+#   POST /api/main?endpoint=pdf-ask      {"doc_id": "...", "question": "..."}
+#   POST /api/main?endpoint=pdf-delete   {"doc_id": "..."}
+#
+# గోప్యత: doc_id (యాదృచ్ఛిక UUID) తెలిసినవాళ్ళే ప్రశ్నించగలరు.
+# 24 గంటల తర్వాత PDF పాఠ్యం, ముక్కలు ఆటోమేటిక్‌గా తొలగిపోతాయి.
+# PDF ఫైల్ ఎక్కడా సేవ్ కాదు — పాఠ్యం ముక్కలు మాత్రమే, అవీ 24 గంటలే.
+# ═══════════════════════════════════════════════════════════════
+
+import uuid
+import unicodedata
+
+PDF_MAX_BYTES = 4 * 1024 * 1024        # Vercel request limit ~4.5 MB
+PDF_MAX_PAGES = int(os.environ.get("PDF_RAG_MAX_PAGES", "120"))
+PDF_MAX_CHUNKS = int(os.environ.get("PDF_RAG_MAX_CHUNKS", "500"))
+PDF_CHUNK_CHARS = 700                  # ఒక ముక్క ≈ ఒక పేరా
+PDF_CHUNK_OVERLAP = 120                # అర్థం మధ్యలో తెగకుండా
+PDF_TOP_K = 5
+PDF_MIN_SIMILARITY = float(os.environ.get("PDF_RAG_MIN_SIMILARITY", "0.40"))
+PDF_KEEP_HOURS = 24
+PDF_UPLOAD_DAILY_LIMIT = int(os.environ.get("PDF_RAG_UPLOAD_LIMIT", "30"))
+PDF_ASK_DAILY_LIMIT = int(os.environ.get("PDF_RAG_ASK_LIMIT", "200"))
+EMBED_BATCH = 16
+
+PDF_NOT_FOUND = "క్షమించండి, ఈ ప్రశ్నకు మీ PDF లో సంబంధిత సమాచారం కనిపించలేదు."
+
+PDF_SYSTEM_PROMPT = """నీవు రత్నాలబాల "PDF ప్రశ్నోత్తరి" సహాయకుడివి. పాఠకుడు అప్‌లోడ్ చేసిన PDF నుండి తీసిన భాగాలు మాత్రమే నీకు ఇస్తాం.
+
+నియమాలు:
+1. ఇచ్చిన PDF భాగాలను మాత్రమే వాడు. బయటి జ్ఞానం వాడకు, ఊహించకు.
+2. జవాబు భాగాల్లో లేకపోతే ఇలాగే చెప్పు: "క్షమించండి, ఈ ప్రశ్నకు మీ PDF లో సంబంధిత సమాచారం కనిపించలేదు."
+3. ప్రతి ముఖ్య విషయం తర్వాత పేజీ సంఖ్య ఇవ్వు, ఇలా: (పేజీ 12).
+4. తెలుగు ప్రశ్నకు సరళమైన తెలుగులో, లేకపోతే ప్రశ్న భాషలో జవాబు. 2–8 వాక్యాలు.
+5. Embedding, database, chunk, prompt వంటి సాంకేతిక విషయాలు చెప్పకు.
+6. Markdown (**, #, -) వాడకు — సాదా వాక్యాలు మాత్రమే."""
+
+_pdf_tables_ready = False
+
+
+def ensure_pdf_tables():
+    """మొదటిసారి మాత్రమే పట్టికలు తయారవుతాయి (pgvector ఇప్పటికే ఉంది)."""
+    global _pdf_tables_ready
+    if _pdf_tables_ready:
+        return
+    if not RATNALABALA_DATABASE_URL:
+        raise RuntimeError("NEON_DATABASE_URL is not configured.")
+    with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+            cur.execute(f"""
+                CREATE TABLE IF NOT EXISTS pdf_docs (
+                    doc_id      UUID PRIMARY KEY,
+                    filename    TEXT NOT NULL,
+                    pages       INT  NOT NULL,
+                    chunks      INT  NOT NULL,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    expires_at  TIMESTAMPTZ NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS pdf_chunks (
+                    id          BIGSERIAL PRIMARY KEY,
+                    doc_id      UUID NOT NULL REFERENCES pdf_docs(doc_id) ON DELETE CASCADE,
+                    page        INT  NOT NULL,
+                    chunk_index INT  NOT NULL,
+                    content     TEXT NOT NULL,
+                    embedding   vector({BHAVALAMALA_EMBEDDING_DIM}) NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS pdf_chunks_doc_idx ON pdf_chunks (doc_id);
+                CREATE INDEX IF NOT EXISTS pdf_docs_expires_idx ON pdf_docs (expires_at);
+            """)
+    _pdf_tables_ready = True
+
+
+def delete_expired_pdfs():
+    """24 గంటలు దాటిన PDF లు — ముక్కలు CASCADE తో వాటంతటవే పోతాయి."""
+    with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM pdf_docs WHERE expires_at < now();")
+
+
+# ---------- 1. PDF → పాఠ్యం ----------
+
+_TELUGU_RE = re.compile(r"[ఀ-౿]")
+_LEGACY_RE = re.compile(r"[À-ɏ]")   # పాత (Unicode కాని) తెలుగు ఫాంట్లు ఇలా బయటకు వస్తాయి
+
+
+# Some PDF makers map parts of joined Telugu letters (ottulu) to stray
+# symbols, so extracted words look like "బద్దె1న" or "శ్రీ]రాముడు". A stray
+# non-Telugu character squeezed between two Telugu letters is never real
+# text; removing it gives back the exact word ("బద్దెన", "శ్రీరాముడు").
+_STRAY_IN_WORD_RE = re.compile(
+    r"(?<=[ఀ-౿])[^ఀ-౿\s‌‍.,!?;:'\"()\-–—।॥]{1,2}(?=[ఀ-౿])"
+)
+# Same kind of stray symbol stuck to the END of a Telugu word ("ఉన్నట్టి+ ఊరు")
+_STRAY_END_RE = re.compile(r"(?<=[ఀ-౿])[+\[\]{}|~^`\\]+(?=\s|$)")
+_CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+
+
+def _clean_text(text: str) -> str:
+    text = unicodedata.normalize("NFC", text or "")
+    text = _CONTROL_RE.sub("", text)          # invisible control characters
+    text = _STRAY_IN_WORD_RE.sub("", text)    # "బద్దె1న" → "బద్దెన"
+    text = _STRAY_END_RE.sub("", text)        # "ఉన్నట్టి+" → "ఉన్నట్టి"
+    text = text.replace("­", "")                      # soft hyphen
+    text = re.sub(r"[ \t ]+", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def extract_pdf_pages(data: bytes) -> tuple[list[tuple[int, str]], int]:
+    """[(పేజీ సంఖ్య, పాఠ్యం), ...] మరియు మొత్తం పేజీలు. చిత్రాలు వదిలేస్తాం."""
+    try:
+        from pypdf import PdfReader
+    except ImportError as e:
+        raise AIServiceError(503, "PDF సేవ ఇప్పుడు అందుబాటులో లేదు.", f"pypdf missing ({e}). Add pypdf to requirements.txt.") from e
+
+    try:
+        reader = PdfReader(io.BytesIO(data))
+        if reader.is_encrypted:
+            try:
+                reader.decrypt("")
+            except Exception:
+                raise ValueError("ఈ PDF కి పాస్‌వర్డ్ ఉంది. పాస్‌వర్డ్ లేని PDF అప్‌లోడ్ చేయండి.")
+        total = len(reader.pages)
+    except ValueError:
+        raise
+    except Exception as e:
+        raise ValueError("ఈ ఫైల్‌ను PDF గా తెరవలేకపోయాం. సరైన PDF అప్‌లోడ్ చేయండి.") from e
+
+    pages: list[tuple[int, str]] = []
+    for i, page in enumerate(reader.pages[:PDF_MAX_PAGES], start=1):
+        try:
+            text = _clean_text(page.extract_text() or "")
+        except Exception as e:   # ఒక పేజీ విఫలమైనా మిగతావి కొనసాగుతాయి
+            log(f"[PDF RAG] page {i} extract failed: {type(e).__name__}: {e}")
+            text = ""
+        if text:
+            pages.append((i, text))
+    return pages, total
+
+
+def text_quality(pages: list[tuple[int, str]]) -> dict:
+    """తెలుగు అక్షరాల శాతం, scan PDF / పాత ఫాంట్ గుర్తింపు."""
+    joined = "".join(t for _, t in pages)
+    # Telugu vowel signs are not "alpha" in Python, so count the Telugu block too
+    letters = sum(1 for ch in joined if ch.isalpha() or "\u0C00" <= ch <= "\u0C7F")
+    telugu = len(_TELUGU_RE.findall(joined))
+    legacy = len(_LEGACY_RE.findall(joined))
+    return {
+        "chars": len(joined),
+        "telugu_percent": round(100 * telugu / letters) if letters else 0,
+        "legacy_suspect": letters > 200 and telugu / max(letters, 1) < 0.05 and legacy / max(letters, 1) > 0.15,
+    }
+
+
+# ---------- 2. ముక్కలు ----------
+
+_SENTENCE_END_RE = re.compile(r"(?<=[.?!।॥\n])\s+")
+
+
+def chunk_pages(pages: list[tuple[int, str]]) -> list[dict]:
+    """ప్రతి పేజీని వాక్యాల సరిహద్దుల్లో ~700 అక్షరాల ముక్కలుగా, 120 overlap తో.
+    ముక్క పేజీ దాటదు — కాబట్టి జవాబులో పేజీ సంఖ్య ఖచ్చితంగా ఉంటుంది."""
+    chunks: list[dict] = []
+    for page_no, text in pages:
+        sentences = [s.strip() for s in _SENTENCE_END_RE.split(text) if s.strip()]
+        current = ""
+        for sentence in sentences:
+            # చాలా పొడవైన వాక్యం → బలవంతంగా విడదీయడం
+            while len(sentence) > PDF_CHUNK_CHARS:
+                if current:
+                    chunks.append({"page": page_no, "content": current})
+                    current = current[-PDF_CHUNK_OVERLAP:]
+                cut = PDF_CHUNK_CHARS - len(current)
+                chunks.append({"page": page_no, "content": (current + " " + sentence[:cut]).strip()})
+                current = sentence[max(0, cut - PDF_CHUNK_OVERLAP):cut]
+                sentence = sentence[cut:]
+            if len(current) + len(sentence) + 1 <= PDF_CHUNK_CHARS:
+                current = f"{current} {sentence}".strip()
+            else:
+                chunks.append({"page": page_no, "content": current})
+                current = f"{current[-PDF_CHUNK_OVERLAP:]} {sentence}".strip()
+        if current and (not chunks or chunks[-1]["content"] != current):
+            chunks.append({"page": page_no, "content": current})
+
+    # చాలా చిన్న ముక్కలు (పేజీ సంఖ్య, శీర్షిక మాత్రమే) వదిలేయడం
+    chunks = [c for c in chunks if len(c["content"]) >= 30]
+    for i, c in enumerate(chunks):
+        c["chunk_index"] = i
+    return chunks
+
+
+# ---------- 3. ఒకేసారి చాలా ముక్కలకు embedding ----------
+
+def _local_bge_model():
+    global _bhavalamala_model
+    if _bhavalamala_model is None:
+        from sentence_transformers import SentenceTransformer  # local only
+        log("[Bhavalamala] Loading BGE-M3 (first request — may take a while)...")
+        _bhavalamala_model = SentenceTransformer(BHAVALAMALA_EMBEDDING_MODEL)
+    return _bhavalamala_model
+
+
+def _remote_embeddings_batch(texts: list[str], mode: str) -> list:
+    try:
+        if mode == "api":
+            res = httpx.post(
+                EMBEDDINGS_API_URL,
+                headers={"Authorization": f"Bearer {EMBEDDINGS_API_KEY}"},
+                json={"model": BHAVALAMALA_EMBEDDING_MODEL, "input": texts, "encoding_format": "float"},
+                timeout=60,
+            )
+        else:
+            res = httpx.post(
+                HF_EMBEDDING_URL,
+                headers={"Authorization": f"Bearer {_HF_TOKEN}", "X-Wait-For-Model": "true"},
+                json={"inputs": texts, "normalize": True},
+                timeout=90,
+            )
+    except httpx.TimeoutException as e:
+        raise AIServiceError(504, AI_SLOW_MSG, f"Batch embedding timeout ({mode}): {e}") from e
+    except httpx.HTTPError as e:
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Batch embedding network error ({mode}): {e}") from e
+
+    if res.status_code == 429:
+        raise AIServiceError(429, AI_BUSY_MSG, f"Batch embedding rate limit ({mode})")
+    if res.status_code >= 400:
+        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Batch embedding HTTP {res.status_code} ({mode}): {res.text[:300]}")
+
+    data = res.json()
+    if mode == "api":
+        return [row["embedding"] for row in sorted(data["data"], key=lambda r: r.get("index", 0))]
+    return [_sentence_vector(item) for item in data]
+
+
+def create_embeddings_batch(texts: list[str]) -> list[str]:
+    """చాలా ముక్కలు → pgvector literals (భావాలమాల లాగే normalized BGE-M3)."""
+    mode = bhavalamala_embedding_mode()
+    if not mode:
+        raise AIServiceError(503, BHAVALAMALA_LOCAL_ONLY, "No embedding provider configured.")
+    out: list[str] = []
+    for start in range(0, len(texts), EMBED_BATCH):
+        batch = texts[start:start + EMBED_BATCH]
+        if mode == "local":
+            vectors = _local_bge_model().encode(batch, normalize_embeddings=True, batch_size=EMBED_BATCH)
+        else:
+            vectors = _remote_embeddings_batch(batch, mode)
+        if len(vectors) != len(batch):
+            raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Embedding count {len(vectors)} != {len(batch)}")
+        out.extend(_to_pgvector(v) for v in vectors)
+    return out
+
+
+# ---------- 4. అప్‌లోడ్ పూర్తి పని ----------
+
+def handle_pdf_upload(data: bytes, filename: str) -> dict:
+    if not data.startswith(b"%PDF"):
+        raise ValueError("ఇది PDF ఫైల్ కాదు. .pdf ఫైల్ ఎంచుకోండి.")
+
+    pages, total_pages = extract_pdf_pages(data)
+    quality = text_quality(pages)
+
+    if quality["chars"] < 100:
+        raise ValueError(
+            "ఈ PDF లో చదవగలిగే అక్షరాలు దొరకలేదు. ఇది scan చేసిన (ఫోటో) PDF లా ఉంది — "
+            "ఇప్పుడు అక్షరాలు ఉన్న PDF లు మాత్రమే సపోర్ట్ చేస్తాం."
+        )
+    if quality["legacy_suspect"]:
+        raise ValueError(
+            "ఈ PDF పాత (Unicode కాని) తెలుగు ఫాంట్‌లో ఉంది, అక్షరాలు సరిగ్గా చదవలేం. "
+            "Unicode తెలుగు PDF అప్‌లోడ్ చేయండి."
+        )
+
+    chunks = chunk_pages(pages)
+    warnings: list[str] = []
+    if total_pages > PDF_MAX_PAGES:
+        warnings.append(f"PDF లో {total_pages} పేజీలు ఉన్నాయి; మొదటి {PDF_MAX_PAGES} పేజీలు మాత్రమే చదివాం.")
+    if len(chunks) > PDF_MAX_CHUNKS:
+        last_page = chunks[PDF_MAX_CHUNKS - 1]["page"]
+        chunks = chunks[:PDF_MAX_CHUNKS]
+        warnings.append(f"PDF చాలా పెద్దది; పేజీ {last_page} వరకు మాత్రమే ప్రశ్నించవచ్చు.")
+    if quality["telugu_percent"] < 30:
+        warnings.append("ఈ PDF లో తెలుగు అక్షరాలు తక్కువ. జవాబులు ప్రశ్న భాషలో వస్తాయి.")
+    if not chunks:
+        raise ValueError("ఈ PDF నుండి ప్రశ్నించగలిగే పాఠ్యం దొరకలేదు.")
+
+    embeddings = create_embeddings_batch([c["content"] for c in chunks])
+
+    ensure_pdf_tables()
+    delete_expired_pdfs()
+    doc_id = str(uuid.uuid4())
+    with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO pdf_docs (doc_id, filename, pages, chunks, expires_at) "
+                "VALUES (%s, %s, %s, %s, now() + make_interval(hours => %s));",
+                (doc_id, filename[:200], len(pages), len(chunks), PDF_KEEP_HOURS),
+            )
+            cur.executemany(
+                "INSERT INTO pdf_chunks (doc_id, page, chunk_index, content, embedding) "
+                "VALUES (%s, %s, %s, %s, %s::vector);",
+                [(doc_id, c["page"], c["chunk_index"], c["content"], e) for c, e in zip(chunks, embeddings)],
+            )
+
+    log(f"[PDF RAG] upload doc={doc_id} pages={len(pages)}/{total_pages} chunks={len(chunks)} telugu={quality['telugu_percent']}%")
+    first_text = pages[0][1] if pages else ""
+    return {
+        "success": True,
+        "doc_id": doc_id,
+        "filename": filename,
+        "pages": len(pages),
+        "total_pages": total_pages,
+        "chunks": len(chunks),
+        "telugu_percent": quality["telugu_percent"],
+        # పాఠకుడు "అక్షరాలు సరిగ్గా వచ్చాయా?" అని చూసుకోవడానికి
+        "preview": first_text[:300],
+        "keep_hours": PDF_KEEP_HOURS,
+        "warnings": warnings,
+    }
+
+
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+
+
+def _valid_doc_id(doc_id) -> str:
+    doc_id = str(doc_id or "").strip().lower()
+    if not _UUID_RE.match(doc_id):
+        raise ValueError("PDF గుర్తింపు సరిగా లేదు. PDF మళ్ళీ అప్‌లోడ్ చేయండి.")
+    return doc_id
+
+
+def handle_pdf_ask(doc_id: str, question: str) -> dict:
+    doc_id = _valid_doc_id(doc_id)
+    ensure_pdf_tables()
+
+    with psycopg.connect(RATNALABALA_DATABASE_URL, row_factory=dict_row, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT filename FROM pdf_docs WHERE doc_id = %s AND expires_at > now();", (doc_id,))
+            if cur.fetchone() is None:
+                raise FileNotFoundError("ఈ PDF గడువు ముగిసింది లేదా తొలగించబడింది. మళ్ళీ అప్‌లోడ్ చేయండి.")
+
+    q_vec = create_bhavalamala_embedding(question)
+    with psycopg.connect(RATNALABALA_DATABASE_URL, row_factory=dict_row, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT page, chunk_index, content, 1 - (embedding <=> %(q)s::vector) AS similarity
+                FROM pdf_chunks
+                WHERE doc_id = %(d)s
+                ORDER BY embedding <=> %(q)s::vector
+                LIMIT %(k)s;
+                """,
+                {"q": q_vec, "d": doc_id, "k": PDF_TOP_K},
+            )
+            rows = [dict(r) for r in cur.fetchall()]
+
+    relevant = [r for r in rows if float(r["similarity"] or 0) >= PDF_MIN_SIMILARITY]
+    best = max((float(r["similarity"]) for r in rows), default=0)
+    log(f"[PDF RAG] ask doc={doc_id} found={len(rows)} relevant={len(relevant)} best={best:.3f}")
+
+    if not relevant:   # సంబంధం లేనివే — Groq ని పిలవకుండా నిజాయితీగా
+        return {"success": True, "question": question, "answer": PDF_NOT_FOUND, "sources": []}
+
+    # పేజీ క్రమంలో ఇస్తే AI కి సందర్భం బాగా అర్థమవుతుంది
+    ordered = sorted(relevant, key=lambda r: (r["page"], r["chunk_index"]))
+    context = "\n\n".join(f"[పేజీ {r['page']}]\n{r['content']}" for r in ordered)
+    answer = call_bhavalamala_groq(question, context, system_prompt=PDF_SYSTEM_PROMPT, context_label="PDF భాగాలు")
+
+    return {
+        "success": True,
+        "question": question,
+        "answer": answer,
+        "sources": [
+            {"page": r["page"], "snippet": _snippet(r["content"], 240), "similarity": round(float(r["similarity"]), 4)}
+            for r in relevant
+        ],
+    }
+
+
+def handle_pdf_delete(doc_id: str) -> dict:
+    doc_id = _valid_doc_id(doc_id)
+    ensure_pdf_tables()
+    with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM pdf_docs WHERE doc_id = %s;", (doc_id,))
+    return {"success": True}
+
+
+# ═══════════════════════════════════════════════════════════════
 # HANDLER
 # ═══════════════════════════════════════════════════════════════
 
@@ -1406,6 +1808,85 @@ class handler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(content_length)
         return json.loads(body) if body else {}
+
+    # ---------- PDF ప్రశ్నోత్తరి ----------
+
+    def _handle_pdf_upload(self):
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        if length <= 0:
+            self._send_json(400, {"success": False, "error": "PDF ఫైల్ రాలేదు. మళ్ళీ ప్రయత్నించండి."})
+            return
+        if length > PDF_MAX_BYTES:
+            self._send_json(413, {"success": False, "error": "PDF చాలా పెద్దది (గరిష్ఠం 4 MB)."})
+            return
+        filename = (urllib_unquote(self.headers.get("X-Filename", "") or "") or "document.pdf").strip()[:200]
+
+        if not bhavalamala_available():
+            self._send_json(503, {"success": False, "error": BHAVALAMALA_LOCAL_ONLY})
+            return
+
+        try:
+            usage_id = reserve_api_call("pdf-upload", "/api/main?endpoint=pdf-upload", "POST", PDF_UPLOAD_DAILY_LIMIT)
+        except Exception as e:
+            log(f"[PDF RAG] usage log failed: {type(e).__name__}: {e}")
+            self._send_json(503, {"success": False, "error": AI_UNAVAILABLE_MSG})
+            return
+        if usage_id is None:
+            self._send_json(429, {"success": False, "error": "ఈరోజు PDF అప్‌లోడ్ పరిమితి పూర్తయింది. రేపు మళ్ళీ ప్రయత్నించండి."})
+            return
+
+        try:
+            data = self.rfile.read(length)
+            result = handle_pdf_upload(data, filename)
+            safe_update_api_log(usage_id, 200)
+            self._send_json(200, result)
+        except ValueError as e:
+            safe_update_api_log(usage_id, 400)
+            self._send_json(400, {"success": False, "error": str(e)})
+        except AIServiceError as e:
+            log(f"[PDF RAG] AI error ({e.status}): {e}")
+            safe_update_api_log(usage_id, e.status)
+            self._send_json(e.status, {"success": False, "error": e.message})
+        except Exception as e:
+            log(f"[PDF RAG] upload error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
+            safe_update_api_log(usage_id, 500)
+            self._send_json(500, {"success": False, "error": "PDF సిద్ధం చేయలేకపోయాం. మళ్ళీ ప్రయత్నించండి."})
+
+    def _handle_pdf_json(self, endpoint: str, payload: dict):
+        try:
+            if endpoint == "pdf-delete":
+                self._send_json(200, handle_pdf_delete(payload.get("doc_id")))
+                return
+
+            question = payload.get("question")
+            if not isinstance(question, str) or not question.strip():
+                self._send_json(400, {"success": False, "error": "దయచేసి ఒక ప్రశ్న టైప్ చేయండి."})
+                return
+            question = question.strip()
+            if len(question) > BHAVALAMALA_MAX_QUESTION_LENGTH:
+                self._send_json(400, {"success": False, "error": "ప్రశ్న చాలా పొడవుగా ఉంది (గరిష్ఠం 1000 అక్షరాలు)."})
+                return
+
+            usage_id = reserve_api_call("pdf-ask", "/api/main?endpoint=pdf-ask", "POST", PDF_ASK_DAILY_LIMIT)
+            if usage_id is None:
+                self._send_json(429, {"success": False, "error": "ఈరోజు ప్రశ్నల పరిమితి పూర్తయింది. రేపు మళ్ళీ ప్రయత్నించండి."})
+                return
+            try:
+                result = handle_pdf_ask(payload.get("doc_id"), question)
+                safe_update_api_log(usage_id, 200)
+                self._send_json(200, result)
+            except FileNotFoundError as e:
+                safe_update_api_log(usage_id, 404)
+                self._send_json(404, {"success": False, "error": str(e)})
+            except AIServiceError as e:
+                log(f"[PDF RAG] AI error ({e.status}): {e}")
+                safe_update_api_log(usage_id, e.status)
+                self._send_json(e.status, {"success": False, "error": e.message})
+        except ValueError as e:
+            self._send_json(400, {"success": False, "error": str(e)})
+        except Exception as e:
+            log(f"[PDF RAG] {endpoint} error: {type(e).__name__}: {e}\n{traceback.format_exc()}")
+            self._send_json(500, {"success": False, "error": "సమస్య ఏర్పడింది. మళ్ళీ ప్రయత్నించండి."})
 
     def _handle_bhavalamala_search(self, query: dict):
         """WebMCP శోధన — GET /api/main?endpoint=bhavalamala-search&query=..."""
@@ -1579,10 +2060,19 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(status, result)
             return
 
+        # PDF ప్రశ్నోత్తరి: అప్‌లోడ్ JSON కాదు, PDF bytes నేరుగా
+        if endpoint == "pdf-upload":
+            self._handle_pdf_upload()
+            return
+
         try:
             payload = self._read_json_body()
         except (ValueError, json.JSONDecodeError):
             self._send_json(400, {"error": "Invalid JSON body."})
+            return
+
+        if endpoint in ("pdf-ask", "pdf-delete"):
+            self._handle_pdf_json(endpoint, payload)
             return
 
         if endpoint == "svara":
@@ -1791,7 +2281,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-Filename")
         self.end_headers()
 
 
@@ -1943,6 +2433,8 @@ if __name__ == "__main__":
     print(f"GET  http://localhost:{port}/api/main?endpoint=activity_summary&days=7   header: X-Admin-Key")
     print(f"POST http://localhost:{port}/api/main?endpoint=bhavalamala-chat  body: {{\"question\": \"అసహనం గురించి ఏమి చెప్పారు?\", \"top_k\": 5}}")
 
+    print(f"POST http://localhost:{port}/api/main?endpoint=pdf-upload   body: PDF bytes, header X-Filename")
+    print(f"POST http://localhost:{port}/api/main?endpoint=pdf-ask      body: {{\"doc_id\": \"...\", \"question\": \"...\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=svara        body: {{\"text\": \"...\", \"voice\": \"male\"}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=tts          body: {{\"text\": \"...\", \"voice\": \"te-IN-ShrutiNeural\", \"speed\": 1.0}}")
     print(f"POST http://localhost:{port}/api/main?endpoint=extract-news body: {{\"url\": \"https://...\"}}")
