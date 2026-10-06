@@ -1382,123 +1382,257 @@ def search_bhavalamala_only(query_text: str, top_k: int) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════
-# PDF ప్రశ్నోత్తరి — పాఠకుడు అప్‌లోడ్ చేసిన PDF పై RAG
-#   1. PDF → పాఠ్యం (పేజీ వారీగా, చిత్రాలు వదిలేస్తాం)
-#   2. ముక్కలు (chunks), ప్రతిదానికి పేజీ సంఖ్య
-#   3. BGE-M3 embedding (భావాలమాల వాడేదే) → Neon pgvector
-#   4. ప్రశ్న → ఆ PDF ముక్కల్లో మాత్రమే వెతకడం → Groq జవాబు + పేజీ ఆధారాలు
+# PDF ప్రశ్నోత్తరి — సొంత logic తో private RAG (బయటి AI మోడల్ లేదు)
 #
-#   POST /api/main?endpoint=pdf-upload   body: PDF bytes (application/pdf)
-#                                        header: X-Filename (URL-encoded)
+#   1. తనిఖీ  : తెలుగు, టైప్ చేసిన, మంచి నాణ్యత PDF మాత్రమే
+#   2. ముక్కలు : వాక్యాల సరిహద్దుల్లో ~700 అక్షరాలు, 120 overlap, పేజీ దాటదు
+#   3. Vector : మన సొంత "అక్షర n-gram TF-IDF" → 2048 కొలతల sparse vector
+#   4. నిల్వ   : Neon pgvector (sparsevec) — 24 గంటల తర్వాత తొలగింపు
+#   5. వెతకడం : ప్రశ్న vector ↔ ముక్కల vectors, cosine score
+#   6. జవాబు  : PDF లోని అసలు వాక్యాలే (extractive) + పేజీ సంఖ్య
+#
+#   ఏ బయటి సేవా పిలవదు (Groq / OpenAI / Hugging Face / DeepInfra లేవు).
+#   PDF పాఠ్యం ఈ function, మీ Neon డేటాబేస్ దాటి ఎక్కడికీ వెళ్ళదు.
+#
+#   POST /api/main?endpoint=pdf-upload   body: PDF bytes, header X-Filename
 #   POST /api/main?endpoint=pdf-ask      {"doc_id": "...", "question": "..."}
 #   POST /api/main?endpoint=pdf-delete   {"doc_id": "..."}
-#
-# గోప్యత: doc_id (యాదృచ్ఛిక UUID) తెలిసినవాళ్ళే ప్రశ్నించగలరు.
-# 24 గంటల తర్వాత PDF పాఠ్యం, ముక్కలు ఆటోమేటిక్‌గా తొలగిపోతాయి.
-# PDF ఫైల్ ఎక్కడా సేవ్ కాదు — పాఠ్యం ముక్కలు మాత్రమే, అవీ 24 గంటలే.
 # ═══════════════════════════════════════════════════════════════
 
+import math
 import uuid
 import unicodedata
+import zlib
+from collections import Counter
 
-PDF_MAX_BYTES = 4 * 1024 * 1024        # Vercel request limit ~4.5 MB
+# ---------- నియమాల సంఖ్యలు (environment తో మార్చుకోవచ్చు) ----------
+PDF_MAX_BYTES = 4 * 1024 * 1024                                          # Vercel request ~4.5 MB
 PDF_MAX_PAGES = int(os.environ.get("PDF_RAG_MAX_PAGES", "120"))
 PDF_MAX_CHUNKS = int(os.environ.get("PDF_RAG_MAX_CHUNKS", "500"))
-PDF_CHUNK_CHARS = 700                  # ఒక ముక్క ≈ ఒక పేరా
-PDF_CHUNK_OVERLAP = 120                # అర్థం మధ్యలో తెగకుండా
+PDF_MIN_TELUGU_PERCENT = int(os.environ.get("PDF_RAG_MIN_TELUGU", "40"))          # దీని లోపు → తెలుగు PDF కాదు
+PDF_MAX_IMAGE_PAGE_PERCENT = int(os.environ.get("PDF_RAG_MAX_IMAGE_PAGES", "10"))  # పాఠ్యం లేని పేజీలు
+PDF_MIN_QUALITY = int(os.environ.get("PDF_RAG_MIN_QUALITY", "95"))                # అక్షరాల నాణ్యత %
+PDF_MIN_PAGE_CHARS = 30                 # దీని లోపు అక్షరాలు ఉన్న పేజీ = image / ఖాళీ పేజీ
+PDF_CHUNK_CHARS = 700
+PDF_CHUNK_OVERLAP = 120
 PDF_TOP_K = 5
-PDF_MIN_SIMILARITY = float(os.environ.get("PDF_RAG_MIN_SIMILARITY", "0.40"))
+PDF_MIN_SCORE = float(os.environ.get("PDF_RAG_MIN_SCORE", "0.08"))   # cosine హద్దు (పరీక్ష: సంబంధం ఉన్నవి 0.11+, లేనివి ≤0.05)
+PDF_SENTENCE_RATIO = 0.3                # జవాబు వాక్యం ఉత్తమ వాక్యం score లో కనీసం 30%
+PDF_ANSWER_SENTENCES = 3
 PDF_KEEP_HOURS = 24
 PDF_UPLOAD_DAILY_LIMIT = int(os.environ.get("PDF_RAG_UPLOAD_LIMIT", "30"))
-PDF_ASK_DAILY_LIMIT = int(os.environ.get("PDF_RAG_ASK_LIMIT", "200"))
-EMBED_BATCH = 16
+PDF_ASK_DAILY_LIMIT = int(os.environ.get("PDF_RAG_ASK_LIMIT", "300"))
 
-PDF_NOT_FOUND = "క్షమించండి, ఈ ప్రశ్నకు మీ PDF లో సంబంధిత సమాచారం కనిపించలేదు."
+VEC_DIM = 2048                          # vector కొలతలు
+NGRAM_SIZES = (3, 4)                    # అక్షర ముక్కల పొడవులు
 
-PDF_SYSTEM_PROMPT = """నీవు రత్నాలబాల "PDF ప్రశ్నోత్తరి" సహాయకుడివి. పాఠకుడు అప్‌లోడ్ చేసిన PDF నుండి తీసిన భాగాలు మాత్రమే నీకు ఇస్తాం.
+PDF_NOT_FOUND = "క్షమించండి, ఈ ప్రశ్నకు మీ PDF లో సంబంధిత విషయం కనిపించలేదు. PDF లోని పదాలతో అడిగి చూడండి."
 
-నియమాలు:
-1. ఇచ్చిన PDF భాగాలను మాత్రమే వాడు. బయటి జ్ఞానం వాడకు, ఊహించకు.
-2. జవాబు భాగాల్లో లేకపోతే ఇలాగే చెప్పు: "క్షమించండి, ఈ ప్రశ్నకు మీ PDF లో సంబంధిత సమాచారం కనిపించలేదు."
-3. ప్రతి ముఖ్య విషయం తర్వాత పేజీ సంఖ్య ఇవ్వు, ఇలా: (పేజీ 12).
-4. తెలుగు ప్రశ్నకు సరళమైన తెలుగులో, లేకపోతే ప్రశ్న భాషలో జవాబు. 2–8 వాక్యాలు.
-5. Embedding, database, chunk, prompt వంటి సాంకేతిక విషయాలు చెప్పకు.
-6. Markdown (**, #, -) వాడకు — సాదా వాక్యాలు మాత్రమే."""
-
-_pdf_tables_ready = False
-
-
-def ensure_pdf_tables():
-    """మొదటిసారి మాత్రమే పట్టికలు తయారవుతాయి (pgvector ఇప్పటికే ఉంది)."""
-    global _pdf_tables_ready
-    if _pdf_tables_ready:
-        return
-    if not RATNALABALA_DATABASE_URL:
-        raise RuntimeError("NEON_DATABASE_URL is not configured.")
-    with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
-        with conn.cursor() as cur:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-            cur.execute(f"""
-                CREATE TABLE IF NOT EXISTS pdf_docs (
-                    doc_id      UUID PRIMARY KEY,
-                    filename    TEXT NOT NULL,
-                    pages       INT  NOT NULL,
-                    chunks      INT  NOT NULL,
-                    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-                    expires_at  TIMESTAMPTZ NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS pdf_chunks (
-                    id          BIGSERIAL PRIMARY KEY,
-                    doc_id      UUID NOT NULL REFERENCES pdf_docs(doc_id) ON DELETE CASCADE,
-                    page        INT  NOT NULL,
-                    chunk_index INT  NOT NULL,
-                    content     TEXT NOT NULL,
-                    embedding   vector({BHAVALAMALA_EMBEDDING_DIM}) NOT NULL
-                );
-                CREATE INDEX IF NOT EXISTS pdf_chunks_doc_idx ON pdf_chunks (doc_id);
-                CREATE INDEX IF NOT EXISTS pdf_docs_expires_idx ON pdf_docs (expires_at);
-            """)
-    _pdf_tables_ready = True
-
-
-def delete_expired_pdfs():
-    """24 గంటలు దాటిన PDF లు — ముక్కలు CASCADE తో వాటంతటవే పోతాయి."""
-    with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM pdf_docs WHERE expires_at < now();")
-
-
-# ---------- 1. PDF → పాఠ్యం ----------
+# ప్రశ్నలో మాత్రమే వచ్చే పదాలు — వెతకడానికి పనికిరావు, వదిలేస్తాం
+QUESTION_STOPWORDS = {
+    "ఏమి", "ఏమిటి", "ఏం", "ఏది", "ఏవి", "ఎవరు", "ఎవరి", "ఎక్కడ", "ఎప్పుడు", "ఎందుకు", "ఎలా", "ఎన్ని", "ఎంత",
+    "గురించి", "చెప్పారు", "చెప్పండి", "చెప్పు", "వివరించండి", "వివరించు", "తెలుపండి", "ఉంది", "ఉన్నాయి",
+    "ఈ", "ఆ", "లో", "కి", "కు", "అని", "మరియు", "పుస్తకం", "పుస్తకంలో", "పుస్తకము", "pdf", "లో?",
+}
 
 _TELUGU_RE = re.compile(r"[ఀ-౿]")
-_LEGACY_RE = re.compile(r"[À-ɏ]")   # పాత (Unicode కాని) తెలుగు ఫాంట్లు ఇలా బయటకు వస్తాయి
+_LEGACY_RE = re.compile(r"[À-ɏ]")    # పాత (Unicode కాని) తెలుగు ఫాంట్ల గుర్తు
+# గుణింతం / ఒత్తు గుర్తులు — ఇవి పదం మొదట్లో రాకూడదు (వస్తే అక్షరం విరిగినట్టు)
+_DEPENDENT_SIGNS = "ఀఁంఃఄ఼ాిీుూృౄెేైొోౌ్ౕౖౢౣ"
+_BROKEN_START_RE = re.compile(rf"(?:^|(?<=[^ఀ-౿‌‍]))[{_DEPENDENT_SIGNS}]")
 
-
-# Some PDF makers map parts of joined Telugu letters (ottulu) to stray
-# symbols, so extracted words look like "బద్దె1న" or "శ్రీ]రాముడు". A stray
-# non-Telugu character squeezed between two Telugu letters is never real
-# text; removing it gives back the exact word ("బద్దెన", "శ్రీరాముడు").
+# PDF తయారీదారులు ఒత్తుల దగ్గర పెట్టే చెత్త గుర్తులు: "బద్దె1న", "శ్రీ]రాముడు"
 _STRAY_IN_WORD_RE = re.compile(
-    r"(?<=[ఀ-౿])[^ఀ-౿\s‌‍.,!?;:'\"()\-–—।॥]{1,2}(?=[ఀ-౿])"
+    r"(?<=[ఀ-౿])[^ఀ-౿\s‌‍.,;:'\"()\-–—।॥]{1,2}(?=[ఀ-౿])"      # ? ! పదం మధ్యలో = చెత్త
 )
-# Same kind of stray symbol stuck to the END of a Telugu word ("ఉన్నట్టి+ ఊరు")
-_STRAY_END_RE = re.compile(r"(?<=[ఀ-౿])[+\[\]{}|~^`\\]+(?=\s|$)")
+# "బ్రాD హ్మణుడు", "శత్రుR వు" — తెలుగు మధ్యలో ఒక్క ఇంగ్లీష్ అక్షరం + ఖాళీ = విరిగిన పదం, అతికిస్తాం.
+# ("కాబట్టి+ ఇటాలియన్" లో + తర్వాత ఖాళీ నిజమైనది — అది _STRAY_END_RE తీసేస్తుంది, ఖాళీ ఉంటుంది)
+_STRAY_SPACE_RE = re.compile(r"(?<=[ఀ-౿])(?:[A-Za-z]|[\x00-\x08\x0b-\x1f\x7f]) (?=[ఀ-౿])")
+_STRAY_END_RE = re.compile(r"(?<=[ఀ-౿])(?:[+\[\]{}|~^`\\#@$%&*=<>]+|[A-Za-z](?![A-Za-z]))(?=[\s.,!?;:)]|$)")
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+_SENTENCE_END_RE = re.compile(r"(?<=[.?!।॥])\s+|\n+")
+_WORD_RE = re.compile(r"[ఀ-౿‌‍]+|[A-Za-z]+|[0-9]+")
 
 
-def _clean_text(text: str) -> str:
+class PdfRuleError(ValueError):
+    """వ్యాపార నియమం ఉల్లంఘన — పాఠకుడికి చూపించే సందేశం + ఏ నియమమో (rule)."""
+
+    def __init__(self, rule: str, message: str):
+        super().__init__(message)
+        self.rule = rule
+
+
+# ═══════════ 1. PDF → పాఠ్యం ═══════════
+
+def _clean_text(text: str) -> tuple[str, int]:
+    """శుభ్రం చేసిన పాఠ్యం + తీసేసిన చెత్త గుర్తుల సంఖ్య (నాణ్యత లెక్కకు)."""
     text = unicodedata.normalize("NFC", text or "")
-    text = _CONTROL_RE.sub("", text)          # invisible control characters
-    text = _STRAY_IN_WORD_RE.sub("", text)    # "బద్దె1న" → "బద్దెన"
-    text = _STRAY_END_RE.sub("", text)        # "ఉన్నట్టి+" → "ఉన్నట్టి"
-    text = text.replace("­", "")                      # soft hyphen
+    stray = (len(_CONTROL_RE.findall(text)) + len(_STRAY_SPACE_RE.findall(text))
+             + len(_STRAY_IN_WORD_RE.findall(text)) + len(_STRAY_END_RE.findall(text)))
+    text = _STRAY_SPACE_RE.sub("", text)        # ముందు: "శత్రు\x1b వు" → "శత్రువు"
+    text = _CONTROL_RE.sub("", text)
+    text = _STRAY_IN_WORD_RE.sub("", text)
+    text = _STRAY_END_RE.sub("", text)
+    text = text.replace("­", "")
     text = re.sub(r"[ \t ]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
+    return text.strip(), stray
 
 
-def extract_pdf_pages(data: bytes) -> tuple[list[tuple[int, str]], int]:
-    """[(పేజీ సంఖ్య, పాఠ్యం), ...] మరియు మొత్తం పేజీలు. చిత్రాలు వదిలేస్తాం."""
+# ---------- PDF లోని అనవసర భాగాలు ----------
+_INVISIBLE_TEXT_RE = re.compile(rb"(?<![\d.])3\s+Tr\b")      # OCR పొర: కనిపించని పాఠ్యం (render mode 3)
+_PAGE_NO_LINE_RE = re.compile(
+    r"^[\s\-–—|•.()\[\]]*(?:పేజీ|పుట|page|p\.)?\s*[0-9౦-౯]{1,4}\s*(?:/\s*[0-9౦-౯]{1,4})?[\s\-–—|•.()\[\]]*$", re.I
+)
+_LEADER_RE = re.compile(r"[.·…_\-–—=*]{5,}")                   # విషయసూచిక చుక్కలు "అధ్యాయం ....... 12"
+_HAS_LETTER_RE = re.compile(r"[ఀ-౿A-Za-z]")
+
+
+def _page_images(page) -> list[tuple[int, int]]:
+    """పేజీలోని చిత్రాల పరిమాణాలు (pixels) — చిత్రాన్ని decode చేయం, వేగంగా ఉంటుంది."""
+    found: list[tuple[int, int]] = []
+
+    def walk(resources, depth: int):
+        if depth > 3 or not resources:
+            return
+        resources = resources.get_object()
+        xobjects = resources.get("/XObject")
+        if not xobjects:
+            return
+        xobjects = xobjects.get_object()
+        for name in list(xobjects.keys())[:200]:
+            obj = xobjects[name].get_object()
+            subtype = obj.get("/Subtype")
+            if subtype == "/Image":
+                found.append((int(obj.get("/Width", 0) or 0), int(obj.get("/Height", 0) or 0)))
+            elif subtype == "/Form":                          # చిత్రం ఒక గుంపులో దాగి ఉండవచ్చు
+                walk(obj.get("/Resources"), depth + 1)
+
+    try:
+        walk(page.get("/Resources"), 0)
+    except Exception as e:
+        log(f"[PDF RAG] image scan failed: {type(e).__name__}: {e}")
+    return found
+
+
+def _is_full_page(img: tuple[int, int], page) -> bool:
+    """చిత్రం పేజీ అంత పెద్దదా? (scan పేజీ గుర్తు) — పేజీ నిష్పత్తి సరిపోయి, 1000px పైన."""
+    w, h = img
+    if max(w, h) < 1000 or not w or not h:
+        return False
+    try:
+        pw, ph = float(page.mediabox.width), float(page.mediabox.height)
+        if int(page.get("/Rotate", 0) or 0) % 180:
+            pw, ph = ph, pw
+    except Exception:
+        return False
+    return abs((w / h) - (pw / ph)) / (pw / ph) < 0.12
+
+
+def _has_invisible_text(page) -> bool:
+    try:
+        contents = page.get_contents()
+        return contents is not None and bool(_INVISIBLE_TEXT_RE.search(contents.get_data()[:2_000_000]))
+    except Exception:
+        return False
+
+
+def _page_has_js(page) -> bool:
+    try:
+        if "/AA" in page:
+            return True
+        for annot in (page.get("/Annots") or [])[:300]:
+            a = annot.get_object()
+            action = a.get("/A")
+            if action and action.get_object().get("/S") == "/JavaScript":
+                return True
+    except Exception:
+        pass
+    return False
+
+
+def _page_has_attachment(page) -> bool:
+    try:
+        return any(a.get_object().get("/Subtype") == "/FileAttachment" for a in (page.get("/Annots") or [])[:300])
+    except Exception:
+        return False
+
+
+def _inspect_document(reader) -> dict:
+    """పత్రం స్థాయి: JavaScript, జతపరిచిన ఫైళ్ళు, forms, portfolio."""
+    info = {"javascript": False, "attachments": 0, "form_fields": 0, "portfolio": False}
+    try:
+        root = reader.trailer["/Root"].get_object()
+        names = root.get("/Names")
+        names = names.get_object() if names else {}
+        open_action = root.get("/OpenAction")
+        open_action = open_action.get_object() if open_action is not None else None
+        info["javascript"] = (
+            "/JavaScript" in names
+            or "/AA" in root
+            or (hasattr(open_action, "get") and open_action.get("/S") == "/JavaScript")
+        )
+        info["portfolio"] = "/Collection" in root
+        if "/EmbeddedFiles" in names:
+            try:
+                info["attachments"] = len(reader.attachments)
+            except Exception:
+                info["attachments"] = 1
+        acro = root.get("/AcroForm")
+        if acro:
+            acro = acro.get_object()
+            info["form_fields"] = len(acro.get("/Fields") or []) + (1 if "/XFA" in acro else 0)
+    except Exception as e:
+        log(f"[PDF RAG] document inspect failed: {type(e).__name__}: {e}")
+    return info
+
+
+def _strip_noise_lines(text: str) -> tuple[str, dict]:
+    """పేజీ సంఖ్యల వరుసలు, గుర్తులు మాత్రమే ఉన్న వరుసలు, విషయసూచిక చుక్కలు తీసేస్తాం."""
+    kept, removed = [], {"page_numbers": 0, "symbol_lines": 0}
+    for line in text.split("\n"):
+        line = _LEADER_RE.sub(" ", line).strip()
+        if not line:
+            kept.append("")
+        elif _PAGE_NO_LINE_RE.match(line):
+            removed["page_numbers"] += 1
+        elif not _HAS_LETTER_RE.search(line):
+            removed["symbol_lines"] += 1                     # "* * *", "❖❖❖", "12 34"
+        else:
+            kept.append(line)
+    return "\n".join(kept).strip(), removed
+
+
+def _remove_headers_footers(pages: list[tuple[int, str]]) -> tuple[list[tuple[int, str]], int, list[str]]:
+    """ప్రతి పేజీ పైన / కింద మళ్ళీ మళ్ళీ వచ్చే వరుసలు (పుస్తకం పేరు, అధ్యాయం పేరు) తీసేస్తాం.
+    నియమం: మొదటి 2 / చివరి 2 వరుసల్లో, సగం పైగా పేజీల్లో (కనీసం 3) ఒకేలా ఉంటే."""
+    def key(line: str) -> str:
+        return re.sub(r"[0-9౦-౯]+", "#", line.strip())
+
+    def edges(lines: list[str]) -> list[int]:
+        idx = [i for i, ln in enumerate(lines) if ln.strip()]
+        return sorted(set(idx[:2] + idx[-2:]))
+
+    text_pages = [(n, t.split("\n")) for n, t in pages if t]
+    counts: Counter = Counter()
+    for _, lines in text_pages:
+        counts.update({key(lines[i]) for i in edges(lines) if len(lines[i]) <= 120})
+    need = max(3, (len(text_pages) + 1) // 2)
+    repeated = {k for k, c in counts.items() if c >= need}
+    if not repeated:
+        return pages, 0, []
+
+    removed, out = 0, []
+    for n, t in pages:
+        lines = t.split("\n") if t else []
+        drop = {i for i in edges(lines) if key(lines[i]) in repeated}
+        removed += len(drop)
+        out.append((n, "\n".join(ln for i, ln in enumerate(lines) if i not in drop).strip()))
+    return out, removed, sorted(repeated, key=lambda k: -counts[k])[:3]
+
+
+def extract_pdf_pages(data: bytes) -> dict:
+    """పేజీ వారీగా పాఠ్యం + PDF లో ఏమేమి ఉన్నాయో నివేదిక. చిత్రాలు చదవం, లెక్కిస్తాం."""
     try:
         from pypdf import PdfReader
     except ImportError as e:
@@ -1508,206 +1642,454 @@ def extract_pdf_pages(data: bytes) -> tuple[list[tuple[int, str]], int]:
         reader = PdfReader(io.BytesIO(data))
         if reader.is_encrypted:
             try:
-                reader.decrypt("")
+                if not reader.decrypt(""):
+                    raise ValueError("needs password")
             except Exception:
-                raise ValueError("ఈ PDF కి పాస్‌వర్డ్ ఉంది. పాస్‌వర్డ్ లేని PDF అప్‌లోడ్ చేయండి.")
+                raise PdfRuleError("password", "ఈ PDF కి పాస్‌వర్డ్ ఉంది. పాస్‌వర్డ్ లేని PDF అప్‌లోడ్ చేయండి.")
         total = len(reader.pages)
-    except ValueError:
+    except PdfRuleError:
         raise
     except Exception as e:
-        raise ValueError("ఈ ఫైల్‌ను PDF గా తెరవలేకపోయాం. సరైన PDF అప్‌లోడ్ చేయండి.") from e
+        raise PdfRuleError("not_pdf", "ఈ ఫైల్‌ను PDF గా తెరవలేకపోయాం. సరైన PDF అప్‌లోడ్ చేయండి.") from e
 
-    pages: list[tuple[int, str]] = []
+    document = _inspect_document(reader)
+    pages, page_info, stray_total = [], [], 0
+    removed = {"page_numbers": 0, "symbol_lines": 0, "header_lines": 0, "header_examples": []}
     for i, page in enumerate(reader.pages[:PDF_MAX_PAGES], start=1):
         try:
-            text = _clean_text(page.extract_text() or "")
-        except Exception as e:   # ఒక పేజీ విఫలమైనా మిగతావి కొనసాగుతాయి
+            text, stray = _clean_text(page.extract_text() or "")
+        except Exception as e:  # ఒక పేజీ విఫలమైనా మిగతావి కొనసాగుతాయి
             log(f"[PDF RAG] page {i} extract failed: {type(e).__name__}: {e}")
-            text = ""
-        if text:
-            pages.append((i, text))
-    return pages, total
+            text, stray = "", 0
+        text, noise = _strip_noise_lines(text)
+        removed["page_numbers"] += noise["page_numbers"]
+        removed["symbol_lines"] += noise["symbol_lines"]
+        stray_total += stray
+
+        images = _page_images(page)
+        full = any(_is_full_page(img, page) for img in images)
+        invisible = full and _has_invisible_text(page)
+        document["javascript"] = document["javascript"] or _page_has_js(page)
+        document["attachments"] += 1 if _page_has_attachment(page) else 0
+        pages.append((i, text))
+        page_info.append({"page": i, "images": len(images), "full_image": full, "invisible_text": invisible})
+
+    pages, header_lines, examples = _remove_headers_footers(pages)
+    removed["header_lines"], removed["header_examples"] = header_lines, examples
+
+    # పేజీ రకం: text | blank | image | scan_ocr | background
+    for info, (_, text) in zip(page_info, pages):
+        info["chars"] = len(text)
+        if info["invisible_text"]:
+            info["kind"] = "scan_ocr"            # scan చిత్రం + కనిపించని OCR పాఠ్యం = టైప్ చేసినది కాదు
+        elif len(text) < PDF_MIN_PAGE_CHARS:
+            info["kind"] = "image" if info["images"] else "blank"
+        elif info["full_image"]:
+            info["kind"] = "background"          # పేజీ అంత చిత్రం పైన నిజమైన టైప్ పాఠ్యం — అనుమతి
+        else:
+            info["kind"] = "text"
+
+    return {"pages": pages, "total_pages": total, "stray": stray_total,
+            "page_info": page_info, "document": document, "removed": removed}
 
 
-def text_quality(pages: list[tuple[int, str]]) -> dict:
-    """తెలుగు అక్షరాల శాతం, scan PDF / పాత ఫాంట్ గుర్తింపు."""
+# ═══════════ 2. వ్యాపార నియమాల తనిఖీ ═══════════
+
+def check_pdf_rules(extracted: dict) -> dict:
+    """అన్ని నియమాలు ఒకేచోట. ఏది ఉల్లంఘించినా PdfRuleError. పాస్ అయితే లెక్కలు."""
+    doc, info = extracted["document"], extracted["page_info"]
+
+    # R-SAFE: ఆటోమేటిక్‌గా నడిచే JavaScript / చర్యలు ఉన్న PDF వద్దు (మనం నడపం, కానీ శుభ్రమైన PDF మాత్రమే నియమం)
+    if doc["javascript"]:
+        raise PdfRuleError("unsafe_content", "ఈ PDF లో JavaScript / ఆటోమేటిక్ చర్యలు ఉన్నాయి. సాధారణ (Word / Google Docs నుండి చేసిన) PDF అప్‌లోడ్ చేయండి.")
+    # R-PORTFOLIO: PDF లోపల చాలా ఫైళ్ళ సంచి
+    if doc["portfolio"]:
+        raise PdfRuleError("portfolio", "ఇది PDF Portfolio (చాలా ఫైళ్ళ సంచి). ఒకే తెలుగు PDF అప్‌లోడ్ చేయండి.")
+
+    image_pages = [p["page"] for p in info if p["kind"] in ("image", "scan_ocr")]
+    scan_pages = [p["page"] for p in info if p["kind"] == "scan_ocr"]
+    blank_pages = [p["page"] for p in info if p["kind"] == "blank"]
+    text_page_set = {p["page"] for p in info if p["kind"] in ("text", "background")}
+    pages = [(n, t) for n, t in extracted["pages"] if n in text_page_set]
+    read_pages = len(info)
+    content_pages = read_pages - len(blank_pages)              # ఖాళీ పేజీలు లెక్కలోకి రావు
+
+    # R-SCAN: టైప్ చేసిన పాఠ్యం అసలే లేదు
+    if not pages:
+        if scan_pages:
+            raise PdfRuleError("scan_ocr", "ఇది scan చేసి OCR చేసిన PDF (పేజీలు ఫోటోలు, వాటి వెనుక కనిపించని పాఠ్యం). నేరుగా టైప్ చేసిన తెలుగు PDF మాత్రమే అప్‌లోడ్ చేయండి.")
+        if image_pages:
+            raise PdfRuleError("scanned", "ఈ PDF లో టైప్ చేసిన అక్షరాలు లేవు — ఇది scan / ఫోటో PDF. టైప్ చేసిన తెలుగు PDF మాత్రమే అప్‌లోడ్ చేయండి.")
+        raise PdfRuleError("no_text", "ఈ PDF లో పాఠ్యం దొరకలేదు (పేజీలు ఖాళీగా ఉన్నాయి).")
+
+    # R-IMAGE: చిత్రాల / scan పేజీలు 10% మించకూడదు
+    image_percent = round(100 * len(image_pages) / max(content_pages, 1))
+    if image_percent > PDF_MAX_IMAGE_PAGE_PERCENT:
+        shown = ", ".join(str(n) for n in image_pages[:10]) + (" …" if len(image_pages) > 10 else "")
+        what = "scan చేసి OCR చేసినవి" if len(scan_pages) * 2 >= len(image_pages) else "చిత్రాలు / scan లా ఉన్నాయి"
+        raise PdfRuleError(
+            "scan_ocr" if what.startswith("scan") else "image_pages",
+            f"ఈ PDF లో {len(image_pages)} పేజీలు ({image_percent}%) {what} (పేజీలు: {shown}). "
+            f"గరిష్ఠం {PDF_MAX_IMAGE_PAGE_PERCENT}% మాత్రమే అనుమతి. నేరుగా టైప్ చేసిన PDF అప్‌లోడ్ చేయండి.",
+        )
+
     joined = "".join(t for _, t in pages)
-    # Telugu vowel signs are not "alpha" in Python, so count the Telugu block too
-    letters = sum(1 for ch in joined if ch.isalpha() or "\u0C00" <= ch <= "\u0C7F")
     telugu = len(_TELUGU_RE.findall(joined))
+    # తెలుగు గుణింతాల గుర్తులు Python లో "alpha" కావు — తెలుగు పరిధిని కూడా లెక్కిస్తాం
+    letters = sum(1 for ch in joined if ch.isalpha() or "ఀ" <= ch <= "౿")
     legacy = len(_LEGACY_RE.findall(joined))
+
+    # R-LEGACY: పాత (Unicode కాని) ఫాంట్
+    if letters > 200 and telugu / letters < 0.05 and legacy / letters > 0.15:
+        raise PdfRuleError("legacy_font", "ఈ PDF పాత (Unicode కాని) తెలుగు ఫాంట్‌లో ఉంది; అక్షరాలు సరిగ్గా చదవలేం. Unicode తెలుగు PDF అప్‌లోడ్ చేయండి.")
+
+    # R-TELUGU: తెలుగు PDF మాత్రమే
+    telugu_percent = round(100 * telugu / letters) if letters else 0
+    if telugu_percent < PDF_MIN_TELUGU_PERCENT:
+        raise PdfRuleError(
+            "not_telugu",
+            f"ఇది తెలుగు PDF కాదు (తెలుగు అక్షరాలు {telugu_percent}% మాత్రమే; కనీసం {PDF_MIN_TELUGU_PERCENT}% కావాలి). తెలుగు PDF మాత్రమే అప్‌లోడ్ చేయండి.",
+        )
+
+    # R-QUALITY: శుభ్రం చేసిన తర్వాత కూడా విరిగి ఉన్న అక్షరాలు
+    # (మనం సరిచేసిన చెత్త గుర్తులు "fixed" గా విడిగా చూపిస్తాం — అవి PDF తప్పు కాదు, extractor వి)
+    broken = len(_BROKEN_START_RE.findall(joined)) + len(re.findall(r"[ఀ-౿][A-Za-z0-9]|[A-Za-z][ా-ౌ్]", joined))
+    quality = max(0, round(100 * (1 - broken / max(telugu, 1))))
+    if quality < PDF_MIN_QUALITY:
+        raise PdfRuleError(
+            "low_quality",
+            f"ఈ PDF అక్షరాల నాణ్యత {quality}% మాత్రమే (కనీసం {PDF_MIN_QUALITY}% కావాలి) — చాలా అక్షరాలు విరిగి వస్తున్నాయి. "
+            "Word / Google Docs నుండి నేరుగా తయారుచేసిన PDF ప్రయత్నించండి.",
+        )
+
+    pictures = [p for p in info if p["kind"] in ("text", "background") and p["images"]]
     return {
-        "chars": len(joined),
-        "telugu_percent": round(100 * telugu / letters) if letters else 0,
-        "legacy_suspect": letters > 200 and telugu / max(letters, 1) < 0.05 and legacy / max(letters, 1) > 0.15,
+        "read_pages": read_pages,
+        "text_pages": len(pages),
+        "image_pages": image_pages,
+        "scan_pages": scan_pages,
+        "blank_pages": blank_pages,
+        "picture_count": sum(p["images"] for p in pictures),
+        "picture_pages": [p["page"] for p in pictures],
+        "background_pages": [p["page"] for p in info if p["kind"] == "background"],
+        "telugu_percent": telugu_percent,
+        "quality_percent": quality,
+        "broken": broken,
+        "fixed": extracted["stray"],
+        "characters": len(joined),
     }
 
 
-# ---------- 2. ముక్కలు ----------
+# ═══════════ 3. ముక్కలు (chunking) ═══════════
 
-_SENTENCE_END_RE = re.compile(r"(?<=[.?!।॥\n])\s+")
+def _join_lines(text: str) -> str:
+    """PDF ప్రతి వరుసకు \n పెడుతుంది. వాక్యం మధ్యలో వచ్చిన \n ను ఖాళీగా మారుస్తాం;
+    వాక్యం ముగింపు (. ? ! ।) లేదా చిన్న శీర్షిక వరుస తర్వాత మాత్రమే \n ఉంచుతాం."""
+    lines = [ln.strip() for ln in text.split("\n")]
+    out = ""
+    for ln in lines:
+        if not ln:
+            out += "\n"
+            continue
+        prev = out.rstrip(" ").split("\n")[-1]
+        if not out or out.endswith("\n") or re.search(r"[.?!।॥:]$", prev) or len(prev) < 40:
+            out += ("" if not out or out.endswith("\n") else "\n") + ln
+        else:
+            out += " " + ln
+    return out
 
 
-def chunk_pages(pages: list[tuple[int, str]]) -> list[dict]:
-    """ప్రతి పేజీని వాక్యాల సరిహద్దుల్లో ~700 అక్షరాల ముక్కలుగా, 120 overlap తో.
-    ముక్క పేజీ దాటదు — కాబట్టి జవాబులో పేజీ సంఖ్య ఖచ్చితంగా ఉంటుంది."""
+def chunk_pages(pages: list[tuple[int, str]], skip: set[int] | None = None) -> list[dict]:
+    """ప్రతి పేజీని వాక్యాల సరిహద్దుల్లో ~700 అక్షరాల ముక్కలుగా.
+    overlap: ముందు ముక్క చివరి వాక్యాలు (~120 అక్షరాలు) తర్వాతి ముక్క మొదట్లో.
+    ముక్క పేజీ దాటదు — జవాబులో పేజీ సంఖ్య ఖచ్చితంగా ఉంటుంది."""
     chunks: list[dict] = []
     for page_no, text in pages:
-        sentences = [s.strip() for s in _SENTENCE_END_RE.split(text) if s.strip()]
-        current = ""
-        for sentence in sentences:
-            # చాలా పొడవైన వాక్యం → బలవంతంగా విడదీయడం
-            while len(sentence) > PDF_CHUNK_CHARS:
-                if current:
-                    chunks.append({"page": page_no, "content": current})
-                    current = current[-PDF_CHUNK_OVERLAP:]
-                cut = PDF_CHUNK_CHARS - len(current)
-                chunks.append({"page": page_no, "content": (current + " " + sentence[:cut]).strip()})
-                current = sentence[max(0, cut - PDF_CHUNK_OVERLAP):cut]
-                sentence = sentence[cut:]
-            if len(current) + len(sentence) + 1 <= PDF_CHUNK_CHARS:
-                current = f"{current} {sentence}".strip()
-            else:
-                chunks.append({"page": page_no, "content": current})
-                current = f"{current[-PDF_CHUNK_OVERLAP:]} {sentence}".strip()
-        if current and (not chunks or chunks[-1]["content"] != current):
-            chunks.append({"page": page_no, "content": current})
+        if len(text) < PDF_MIN_PAGE_CHARS or (skip and page_no in skip):
+            continue
+        sentences: list[str] = []
+        for s in _SENTENCE_END_RE.split(_join_lines(text)):
+            s = (s or "").strip()
+            while len(s) > PDF_CHUNK_CHARS:                     # చాలా పొడవైన వాక్యం → పదాల దగ్గర కోత
+                cut = s.rfind(" ", 0, PDF_CHUNK_CHARS)
+                cut = cut if cut > PDF_CHUNK_CHARS // 2 else PDF_CHUNK_CHARS
+                sentences.append(s[:cut].strip())
+                s = s[cut:].strip()
+            if s:
+                sentences.append(s)
 
-    # చాలా చిన్న ముక్కలు (పేజీ సంఖ్య, శీర్షిక మాత్రమే) వదిలేయడం
-    chunks = [c for c in chunks if len(c["content"]) >= 30]
+        current: list[str] = []
+        overlap_n = 0                                           # current మొదట్లో ఎన్ని వాక్యాలు overlap
+        fresh = False                                           # overlap కాకుండా కొత్త వాక్యం ఉందా
+
+        def emit():
+            chunks.append({
+                "page": page_no,
+                "content": "\n".join(current),
+                "overlap_chars": len("\n".join(current[:overlap_n])) + (1 if overlap_n else 0),
+                "sentences": len(current),
+            })
+
+        for s in sentences:
+            if current and sum(len(x) + 1 for x in current) + len(s) > PDF_CHUNK_CHARS:
+                emit()
+                tail: list[str] = []
+                for x in reversed(current):                     # overlap వాక్యాలు
+                    if sum(len(y) + 1 for y in tail) + len(x) > PDF_CHUNK_OVERLAP:
+                        break
+                    tail.insert(0, x)
+                current, overlap_n, fresh = tail, len(tail), False
+            current.append(s)
+            fresh = True
+        if current and fresh:
+            emit()
+
+    chunks = [c for c in chunks if len(c["content"]) >= 30]   # పేజీ సంఖ్య, శీర్షిక మాత్రమే ఉన్నవి వదిలేస్తాం
     for i, c in enumerate(chunks):
         c["chunk_index"] = i
     return chunks
 
 
-# ---------- 3. ఒకేసారి చాలా ముక్కలకు embedding ----------
+# ═══════════ 4. సొంత vector: అక్షర n-gram TF-IDF ═══════════
+# తెలుగు పదాలకు ప్రత్యయాలు అతుక్కుంటాయి (కోపం, కోపంతో, కోపాన్ని). పూర్తి పదం
+# వెతికితే దొరకవు; 3–4 అక్షరాల ముక్కలు ("కోప") అన్ని రూపాల్లోనూ ఉంటాయి.
+# ప్రతి ముక్కను స్థిర hash (crc32) తో 2048 కొలతల్లో ఒక స్థానానికి పంపుతాం.
 
-def _local_bge_model():
-    global _bhavalamala_model
-    if _bhavalamala_model is None:
-        from sentence_transformers import SentenceTransformer  # local only
-        log("[Bhavalamala] Loading BGE-M3 (first request — may take a while)...")
-        _bhavalamala_model = SentenceTransformer(BHAVALAMALA_EMBEDDING_MODEL)
-    return _bhavalamala_model
+def _words(text: str) -> list[str]:
+    return [w.replace("‌", "").replace("‍", "").lower() for w in _WORD_RE.findall(text)]
 
 
-def _remote_embeddings_batch(texts: list[str], mode: str) -> list:
-    try:
-        if mode == "api":
-            res = httpx.post(
-                EMBEDDINGS_API_URL,
-                headers={"Authorization": f"Bearer {EMBEDDINGS_API_KEY}"},
-                json={"model": BHAVALAMALA_EMBEDDING_MODEL, "input": texts, "encoding_format": "float"},
-                timeout=60,
-            )
-        else:
-            res = httpx.post(
-                HF_EMBEDDING_URL,
-                headers={"Authorization": f"Bearer {_HF_TOKEN}", "X-Wait-For-Model": "true"},
-                json={"inputs": texts, "normalize": True},
-                timeout=90,
-            )
-    except httpx.TimeoutException as e:
-        raise AIServiceError(504, AI_SLOW_MSG, f"Batch embedding timeout ({mode}): {e}") from e
-    except httpx.HTTPError as e:
-        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Batch embedding network error ({mode}): {e}") from e
-
-    if res.status_code == 429:
-        raise AIServiceError(429, AI_BUSY_MSG, f"Batch embedding rate limit ({mode})")
-    if res.status_code >= 400:
-        raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Batch embedding HTTP {res.status_code} ({mode}): {res.text[:300]}")
-
-    data = res.json()
-    if mode == "api":
-        return [row["embedding"] for row in sorted(data["data"], key=lambda r: r.get("index", 0))]
-    return [_sentence_vector(item) for item in data]
+def _grams_of_word(word: str) -> list[str]:
+    padded = f" {word} "
+    if len(word) <= 2:
+        return [padded]                                     # చిన్న పదం మొత్తం ఒక ముక్క
+    return [padded[i:i + n] for n in NGRAM_SIZES for i in range(len(padded) - n + 1)]
 
 
-def create_embeddings_batch(texts: list[str]) -> list[str]:
-    """చాలా ముక్కలు → pgvector literals (భావాలమాల లాగే normalized BGE-M3)."""
-    mode = bhavalamala_embedding_mode()
-    if not mode:
-        raise AIServiceError(503, BHAVALAMALA_LOCAL_ONLY, "No embedding provider configured.")
-    out: list[str] = []
-    for start in range(0, len(texts), EMBED_BATCH):
-        batch = texts[start:start + EMBED_BATCH]
-        if mode == "local":
-            vectors = _local_bge_model().encode(batch, normalize_embeddings=True, batch_size=EMBED_BATCH)
-        else:
-            vectors = _remote_embeddings_batch(batch, mode)
-        if len(vectors) != len(batch):
-            raise AIServiceError(502, AI_UNAVAILABLE_MSG, f"Embedding count {len(vectors)} != {len(batch)}")
-        out.extend(_to_pgvector(v) for v in vectors)
-    return out
+def text_grams(text: str, drop_stopwords: bool = False) -> Counter:
+    words = _words(text)
+    if drop_stopwords:
+        words = [w for w in words if w not in QUESTION_STOPWORDS]
+    return Counter(g for w in words for g in _grams_of_word(w))
 
 
-# ---------- 4. అప్‌లోడ్ పూర్తి పని ----------
+def _slot(gram: str) -> tuple[int, float]:
+    """స్థిర hash: ఏ సర్వర్‌లోనైనా, ఎప్పుడైనా ఒకే ముక్క → ఒకే స్థానం (Python hash() లా మారదు)."""
+    h = zlib.crc32(gram.encode("utf-8"))
+    return h % VEC_DIM, (1.0 if (h >> 20) & 1 else -1.0)
+
+
+def _tf_slots(grams: Counter) -> dict[int, float]:
+    """ముక్కల తరచుదనం (1 + log) → vector స్థానాలు (ఢీకొన్నవి కలుస్తాయి)."""
+    slots: dict[int, float] = {}
+    for g, count in grams.items():
+        i, sign = _slot(g)
+        slots[i] = slots.get(i, 0.0) + sign * (1.0 + math.log(count))
+    return slots
+
+
+def build_idf(chunk_slots: list[dict[int, float]]) -> list[float]:
+    """అరుదైన ముక్కకు ఎక్కువ బరువు: idf = log((1+N)/(1+df)) + 1 — ఈ PDF ఒక్కదానికే."""
+    n = len(chunk_slots)
+    df = [0] * VEC_DIM
+    for slots in chunk_slots:
+        for i in slots:
+            df[i] += 1
+    return [math.log((1 + n) / (1 + d)) + 1.0 for d in df]
+
+
+def weigh(slots: dict[int, float], idf: list[float]) -> dict[int, float]:
+    """TF × IDF, తర్వాత పొడవు 1 (cosine కోసం)."""
+    vec = {i: v * idf[i] for i, v in slots.items() if v}
+    norm = math.sqrt(sum(v * v for v in vec.values())) or 1.0
+    return {i: v / norm for i, v in vec.items()}
+
+
+def cosine(a: dict[int, float], b: dict[int, float]) -> float:
+    if len(a) > len(b):
+        a, b = b, a
+    return sum(v * b.get(i, 0.0) for i, v in a.items())
+
+
+def to_sparsevec(vec: dict[int, float]) -> str:
+    """pgvector sparsevec రూపం: '{1:0.12,57:-0.3}/2048' (స్థానాలు 1 నుండి)."""
+    body = ",".join(f"{i + 1}:{v:.6f}" for i, v in sorted(vec.items()) if abs(v) >= 1e-6)
+    return "{" + body + "}/" + str(VEC_DIM)
+
+
+def top_words(text: str, idf: list[float], k: int = 4) -> list[str]:
+    """ఈ ముక్కను ప్రత్యేకం చేసే పదాలు (అరుదైన అక్షర ముక్కలు ఎక్కువ ఉన్నవి) — తెరపై చూపించడానికి."""
+    counts = Counter(w for w in _words(text) if len(w) >= 3 and _TELUGU_RE.search(w) and w not in QUESTION_STOPWORDS)
+
+    def score(w: str) -> float:
+        grams = _grams_of_word(w)
+        return (1 + math.log(counts[w])) * sum(idf[_slot(g)[0]] for g in grams) / len(grams)
+
+    return sorted(counts, key=score, reverse=True)[:k]
+
+
+# ═══════════ 5. నిల్వ (Neon pgvector) ═══════════
+
+_rag_tables_ready = False
+
+
+def ensure_rag_tables():
+    """మొదటిసారి మాత్రమే. sparsevec కి pgvector 0.7+ కావాలి (Neon లో ఉంది)."""
+    global _rag_tables_ready
+    if _rag_tables_ready:
+        return
+    if not RATNALABALA_DATABASE_URL:
+        raise RuntimeError("NEON_DATABASE_URL is not configured.")
+    with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+            cur.execute(f"""
+                CREATE TABLE IF NOT EXISTS rag_docs (
+                    doc_id      UUID PRIMARY KEY,
+                    filename    TEXT NOT NULL,
+                    pages       INT  NOT NULL,
+                    chunks      INT  NOT NULL,
+                    idf         REAL[] NOT NULL,
+                    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    expires_at  TIMESTAMPTZ NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS rag_chunks (
+                    id          BIGSERIAL PRIMARY KEY,
+                    doc_id      UUID NOT NULL REFERENCES rag_docs(doc_id) ON DELETE CASCADE,
+                    page        INT  NOT NULL,
+                    chunk_index INT  NOT NULL,
+                    content     TEXT NOT NULL,
+                    embedding   sparsevec({VEC_DIM}) NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS rag_chunks_doc_idx ON rag_chunks (doc_id);
+                CREATE INDEX IF NOT EXISTS rag_docs_expires_idx ON rag_docs (expires_at);
+            """)
+    _rag_tables_ready = True
+
+
+def delete_expired_rag_docs():
+    with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM rag_docs WHERE expires_at < now();")   # ముక్కలు CASCADE తో
+
+
+# ═══════════ 6. అప్‌లోడ్ ═══════════
 
 def handle_pdf_upload(data: bytes, filename: str) -> dict:
-    if not data.startswith(b"%PDF"):
-        raise ValueError("ఇది PDF ఫైల్ కాదు. .pdf ఫైల్ ఎంచుకోండి.")
+    started = time.time()
+    if b"%PDF-" not in data[:1024]:
+        raise PdfRuleError("not_pdf", "ఇది PDF ఫైల్ కాదు. .pdf ఫైల్ ఎంచుకోండి.")
 
-    pages, total_pages = extract_pdf_pages(data)
-    quality = text_quality(pages)
+    extracted = extract_pdf_pages(data)
+    stats = check_pdf_rules(extracted)                      # ఏ నియమం తప్పినా ఇక్కడే ఆగుతుంది
 
-    if quality["chars"] < 100:
-        raise ValueError(
-            "ఈ PDF లో చదవగలిగే అక్షరాలు దొరకలేదు. ఇది scan చేసిన (ఫోటో) PDF లా ఉంది — "
-            "ఇప్పుడు అక్షరాలు ఉన్న PDF లు మాత్రమే సపోర్ట్ చేస్తాం."
-        )
-    if quality["legacy_suspect"]:
-        raise ValueError(
-            "ఈ PDF పాత (Unicode కాని) తెలుగు ఫాంట్‌లో ఉంది, అక్షరాలు సరిగ్గా చదవలేం. "
-            "Unicode తెలుగు PDF అప్‌లోడ్ చేయండి."
-        )
-
-    chunks = chunk_pages(pages)
+    chunks = chunk_pages(extracted["pages"], skip=set(stats["image_pages"]))
     warnings: list[str] = []
-    if total_pages > PDF_MAX_PAGES:
-        warnings.append(f"PDF లో {total_pages} పేజీలు ఉన్నాయి; మొదటి {PDF_MAX_PAGES} పేజీలు మాత్రమే చదివాం.")
+    if extracted["total_pages"] > PDF_MAX_PAGES:
+        warnings.append(f"PDF లో {extracted['total_pages']} పేజీలు; మొదటి {PDF_MAX_PAGES} పేజీలు మాత్రమే చదివాం.")
     if len(chunks) > PDF_MAX_CHUNKS:
         last_page = chunks[PDF_MAX_CHUNKS - 1]["page"]
         chunks = chunks[:PDF_MAX_CHUNKS]
         warnings.append(f"PDF చాలా పెద్దది; పేజీ {last_page} వరకు మాత్రమే ప్రశ్నించవచ్చు.")
-    if quality["telugu_percent"] < 30:
-        warnings.append("ఈ PDF లో తెలుగు అక్షరాలు తక్కువ. జవాబులు ప్రశ్న భాషలో వస్తాయి.")
+    if stats["image_pages"]:
+        warnings.append(f"చిత్రాల / scan పేజీలు వదిలేశాం: {', '.join(map(str, stats['image_pages'][:10]))}.")
+    if extracted["document"]["attachments"]:
+        warnings.append(f"PDF లో జతపరిచిన ఫైళ్ళు {extracted['document']['attachments']} ఉన్నాయి — వాటిని చదవం.")
+    if extracted["document"]["form_fields"]:
+        warnings.append("ఈ PDF లో form ఉంది — form లో నింపిన విలువలు చదవం, పేజీ పాఠ్యం మాత్రమే.")
     if not chunks:
-        raise ValueError("ఈ PDF నుండి ప్రశ్నించగలిగే పాఠ్యం దొరకలేదు.")
+        raise PdfRuleError("no_text", "ఈ PDF నుండి ప్రశ్నించగలిగే పాఠ్యం దొరకలేదు.")
 
-    embeddings = create_embeddings_batch([c["content"] for c in chunks])
+    # సొంత vectors
+    chunk_grams = [text_grams(c["content"]) for c in chunks]
+    chunk_slots = [_tf_slots(g) for g in chunk_grams]
+    idf = build_idf(chunk_slots)
+    vectors = [weigh(s, idf) for s in chunk_slots]
 
-    ensure_pdf_tables()
-    delete_expired_pdfs()
+    ensure_rag_tables()
+    delete_expired_rag_docs()
     doc_id = str(uuid.uuid4())
     with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO pdf_docs (doc_id, filename, pages, chunks, expires_at) "
-                "VALUES (%s, %s, %s, %s, now() + make_interval(hours => %s));",
-                (doc_id, filename[:200], len(pages), len(chunks), PDF_KEEP_HOURS),
+                "INSERT INTO rag_docs (doc_id, filename, pages, chunks, idf, expires_at) "
+                "VALUES (%s, %s, %s, %s, %s, now() + make_interval(hours => %s));",
+                (doc_id, filename[:200], stats["text_pages"], len(chunks), [round(x, 5) for x in idf], PDF_KEEP_HOURS),
             )
             cur.executemany(
-                "INSERT INTO pdf_chunks (doc_id, page, chunk_index, content, embedding) "
-                "VALUES (%s, %s, %s, %s, %s::vector);",
-                [(doc_id, c["page"], c["chunk_index"], c["content"], e) for c, e in zip(chunks, embeddings)],
+                "INSERT INTO rag_chunks (doc_id, page, chunk_index, content, embedding) VALUES (%s, %s, %s, %s, %s::sparsevec);",
+                [(doc_id, c["page"], c["chunk_index"], c["content"], to_sparsevec(v)) for c, v in zip(chunks, vectors)],
             )
 
-    log(f"[PDF RAG] upload doc={doc_id} pages={len(pages)}/{total_pages} chunks={len(chunks)} telugu={quality['telugu_percent']}%")
-    first_text = pages[0][1] if pages else ""
+    nonzero = [len(v) for v in vectors]
+    log(f"[PDF RAG] upload doc={doc_id} pages={stats['text_pages']} chunks={len(chunks)} telugu={stats['telugu_percent']}% quality={stats['quality_percent']}%")
     return {
         "success": True,
         "doc_id": doc_id,
         "filename": filename,
-        "pages": len(pages),
-        "total_pages": total_pages,
-        "chunks": len(chunks),
-        "telugu_percent": quality["telugu_percent"],
-        # పాఠకుడు "అక్షరాలు సరిగ్గా వచ్చాయా?" అని చూసుకోవడానికి
-        "preview": first_text[:300],
         "keep_hours": PDF_KEEP_HOURS,
+        "checks": {                     # ఏ నియమాలు పాస్ అయ్యాయో తెరపై చూపించడానికి
+            "total_pages": extracted["total_pages"],
+            "text_pages": stats["text_pages"],
+            "image_pages": stats["image_pages"],
+            "telugu_percent": stats["telugu_percent"],
+            "min_telugu_percent": PDF_MIN_TELUGU_PERCENT,
+            "quality_percent": stats["quality_percent"],
+            "min_quality_percent": PDF_MIN_QUALITY,
+            "fixed_symbols": stats["fixed"],
+            "blank_pages": stats["blank_pages"],
+            "scan_pages": stats["scan_pages"],
+            "characters": stats["characters"],
+        },
+        "content": {                    # PDF లో ఏమేమి ఉన్నాయి, ఏమి వదిలేశాం
+            "pictures": stats["picture_count"],
+            "picture_pages": stats["picture_pages"][:30],
+            "background_pages": stats["background_pages"][:30],
+            "header_lines": extracted["removed"]["header_lines"],
+            "header_examples": extracted["removed"]["header_examples"],
+            "page_number_lines": extracted["removed"]["page_numbers"],
+            "symbol_lines": extracted["removed"]["symbol_lines"],
+            "attachments": extracted["document"]["attachments"],
+            "form_fields": extracted["document"]["form_fields"],
+        },
+        "page_map": [                   # పేజీ → రకం, అక్షరాలు, ముక్కలు
+            {
+                "page": p["page"],
+                "kind": p["kind"],
+                "chars": p["chars"],
+                "images": p["images"],
+                "chunks": [c["chunk_index"] for c in chunks if c["page"] == p["page"]],
+            }
+            for p in extracted["page_info"]
+        ],
+        "chunking": {"target_chars": PDF_CHUNK_CHARS, "overlap_chars": PDF_CHUNK_OVERLAP, "rule": "వాక్యాల సరిహద్దుల్లో, పేజీ దాటకుండా"},
+        "vector": {
+            "method": "అక్షర 3–4 n-gram TF-IDF (సొంత logic, AI మోడల్ లేదు)",
+            "dimensions": VEC_DIM,
+            "store": "Neon PostgreSQL · pgvector (sparsevec)",
+            "similarity": "cosine",
+            "avg_nonzero": round(sum(nonzero) / len(nonzero)),
+        },
+        "chunks": [
+            {
+                "index": c["chunk_index"],
+                "page": c["page"],
+                "chars": len(c["content"]),
+                "sentences": c["sentences"],
+                "overlap_chars": c["overlap_chars"],
+                "text": c["content"],
+                "keywords": top_words(c["content"], idf),
+                "nonzero": len(v),
+            }
+            for c, g, v in zip(chunks, chunk_grams, vectors)
+        ],
+        "preview": next((t for _, t in extracted["pages"] if len(t) >= PDF_MIN_PAGE_CHARS), "")[:300],
         "warnings": warnings,
+        "took_ms": round((time.time() - started) * 1000),
     }
 
+
+# ═══════════ 7. ప్రశ్న → వెతకడం → జవాబు (PDF వాక్యాలే) ═══════════
 
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
@@ -1715,64 +2097,130 @@ _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 def _valid_doc_id(doc_id) -> str:
     doc_id = str(doc_id or "").strip().lower()
     if not _UUID_RE.match(doc_id):
-        raise ValueError("PDF గుర్తింపు సరిగా లేదు. PDF మళ్ళీ అప్‌లోడ్ చేయండి.")
+        raise PdfRuleError("bad_doc", "PDF గుర్తింపు సరిగా లేదు. PDF మళ్ళీ అప్‌లోడ్ చేయండి.")
     return doc_id
 
 
+def _word_matches(word: str, query_grams: set[str]) -> bool:
+    """ఈ పదం ప్రశ్నలోని ఏదైనా పదానికి దగ్గరా? (2+ అక్షర ముక్కలు కలిస్తే)"""
+    grams = set(_grams_of_word(word.lower()))
+    shared = grams & query_grams
+    return len(shared) >= 2 or (len(word) <= 2 and bool(shared))
+
+
+def _highlight(sentence: str, query_grams: set[str]) -> list[dict]:
+    """వాక్యాన్ని ముక్కలుగా: ప్రశ్న పదాలకు సరిపోయినవి m=True (తెరపై హైలైట్)."""
+    parts = []
+    for piece in re.split(r"(\s+)", sentence):
+        if not piece:
+            continue
+        core = "".join(_words(piece))
+        parts.append({"t": piece, "m": bool(core) and _word_matches(core, query_grams)})
+    return parts
+
+
 def handle_pdf_ask(doc_id: str, question: str) -> dict:
+    started = time.time()
     doc_id = _valid_doc_id(doc_id)
-    ensure_pdf_tables()
+    ensure_rag_tables()
+
+    q_grams = text_grams(question, drop_stopwords=True)
+    if not q_grams:
+        raise PdfRuleError("empty_question", "ప్రశ్నలో వెతకడానికి పదాలు లేవు. PDF లోని ఒక పదం లేదా విషయం పేరుతో అడగండి.")
 
     with psycopg.connect(RATNALABALA_DATABASE_URL, row_factory=dict_row, connect_timeout=10) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT filename FROM pdf_docs WHERE doc_id = %s AND expires_at > now();", (doc_id,))
-            if cur.fetchone() is None:
+            cur.execute("SELECT idf FROM rag_docs WHERE doc_id = %s AND expires_at > now();", (doc_id,))
+            row = cur.fetchone()
+            if row is None:
                 raise FileNotFoundError("ఈ PDF గడువు ముగిసింది లేదా తొలగించబడింది. మళ్ళీ అప్‌లోడ్ చేయండి.")
+            idf = [float(x) for x in row["idf"]]
 
-    q_vec = create_bhavalamala_embedding(question)
-    with psycopg.connect(RATNALABALA_DATABASE_URL, row_factory=dict_row, connect_timeout=10) as conn:
-        with conn.cursor() as cur:
+            q_vec = weigh(_tf_slots(q_grams), idf)
             cur.execute(
                 """
-                SELECT page, chunk_index, content, 1 - (embedding <=> %(q)s::vector) AS similarity
-                FROM pdf_chunks
+                SELECT page, chunk_index, content, 1 - (embedding <=> %(q)s::sparsevec) AS score
+                FROM rag_chunks
                 WHERE doc_id = %(d)s
-                ORDER BY embedding <=> %(q)s::vector
+                ORDER BY embedding <=> %(q)s::sparsevec
                 LIMIT %(k)s;
                 """,
-                {"q": q_vec, "d": doc_id, "k": PDF_TOP_K},
+                {"q": to_sparsevec(q_vec), "d": doc_id, "k": PDF_TOP_K},
             )
             rows = [dict(r) for r in cur.fetchall()]
 
-    relevant = [r for r in rows if float(r["similarity"] or 0) >= PDF_MIN_SIMILARITY]
-    best = max((float(r["similarity"]) for r in rows), default=0)
-    log(f"[PDF RAG] ask doc={doc_id} found={len(rows)} relevant={len(relevant)} best={best:.3f}")
+    return answer_from_chunks(question, q_grams, q_vec, idf, rows, started)
 
-    if not relevant:   # సంబంధం లేనివే — Groq ని పిలవకుండా నిజాయితీగా
-        return {"success": True, "question": question, "answer": PDF_NOT_FOUND, "sources": []}
 
-    # పేజీ క్రమంలో ఇస్తే AI కి సందర్భం బాగా అర్థమవుతుంది
-    ordered = sorted(relevant, key=lambda r: (r["page"], r["chunk_index"]))
-    context = "\n\n".join(f"[పేజీ {r['page']}]\n{r['content']}" for r in ordered)
-    answer = call_bhavalamala_groq(question, context, system_prompt=PDF_SYSTEM_PROMPT, context_label="PDF భాగాలు")
+def answer_from_chunks(question, q_grams, q_vec, idf, rows, started) -> dict:
+    """DB నుండి వచ్చిన ముక్కల నుండి జవాబు వాక్యాలు ఎంచుకోవడం (DB లేకుండా పరీక్షించవచ్చు)."""
+    retrieved = [
+        {
+            "page": r["page"],
+            "index": r["chunk_index"],
+            "score": round(float(r["score"] or 0), 4),
+            "used": float(r["score"] or 0) >= PDF_MIN_SCORE,
+            "preview": r["content"].replace("\n", " ")[:160],
+        }
+        for r in rows
+    ]
+    used = [r for r in rows if float(r["score"] or 0) >= PDF_MIN_SCORE]
 
+    answer: list[dict] = []
+    if used:
+        query_gram_set = set(q_grams)
+        candidates, order = [], {}
+        for r in used:
+            for pos, s in enumerate(x.strip() for x in _SENTENCE_END_RE.split(r["content"])):
+                key = re.sub(r"\s+", " ", s)
+                if len(key) < 15 or key in order:               # overlap వల్ల వచ్చే పునరావృతం వదిలేస్తాం
+                    continue
+                order[key] = (r["page"], r["chunk_index"], pos)
+                candidates.append((cosine(q_vec, weigh(_tf_slots(text_grams(key)), idf)), key))
+        candidates.sort(reverse=True)
+
+        picked: list[tuple[float, str]] = []
+        best = candidates[0][0] if candidates else 0.0
+        for sc, s in candidates:
+            if sc <= 0 or sc < best * PDF_SENTENCE_RATIO or len(picked) == PDF_ANSWER_SENTENCES:
+                break
+            if any(s in p or p in s for _, p in picked):         # ఒకదానిలో ఒకటి ఉంటే మళ్ళీ వద్దు
+                continue
+            picked.append((sc, s))
+
+        # ఒక్క వాక్యమే దొరికితే — దాని తర్వాతి వాక్యం సందర్భం కోసం (అదే ముక్కలో)
+        if len(picked) == 1:
+            page, ci, pos = order[picked[0][1]]
+            nxt = next((k for k, v in order.items() if v == (page, ci, pos + 1)), None)
+            if nxt and not any(nxt in p for _, p in picked):
+                picked.append((cosine(q_vec, weigh(_tf_slots(text_grams(nxt)), idf)), nxt))
+
+        picked.sort(key=lambda p: order[p[1]])                  # PDF లో వచ్చే క్రమంలోనే చూపిస్తాం
+        answer = [
+            {"page": order[s][0], "score": round(sc, 4), "parts": _highlight(s, query_gram_set)}
+            for sc, s in picked
+        ]
+
+    log(f"[PDF RAG] ask found={len(rows)} used={len(used)} best={max((x['score'] for x in retrieved), default=0):.3f}")
     return {
         "success": True,
         "question": question,
-        "answer": answer,
-        "sources": [
-            {"page": r["page"], "snippet": _snippet(r["content"], 240), "similarity": round(float(r["similarity"]), 4)}
-            for r in relevant
-        ],
+        "found": bool(answer),
+        "message": None if answer else PDF_NOT_FOUND,
+        "answer": answer,                       # PDF లోని అసలు వాక్యాలు, పేజీతో
+        "retrieved": retrieved,                 # వెతికిన 5 ముక్కలు, scores తో
+        "threshold": PDF_MIN_SCORE,
+        "query_terms": sorted({w for w in _words(question) if w not in QUESTION_STOPWORDS}),
+        "took_ms": round((time.time() - started) * 1000),
     }
 
 
 def handle_pdf_delete(doc_id: str) -> dict:
     doc_id = _valid_doc_id(doc_id)
-    ensure_pdf_tables()
+    ensure_rag_tables()
     with psycopg.connect(RATNALABALA_DATABASE_URL, connect_timeout=10) as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM pdf_docs WHERE doc_id = %s;", (doc_id,))
+            cur.execute("DELETE FROM rag_docs WHERE doc_id = %s;", (doc_id,))
     return {"success": True}
 
 
@@ -1821,10 +2269,6 @@ class handler(BaseHTTPRequestHandler):
             return
         filename = (urllib_unquote(self.headers.get("X-Filename", "") or "") or "document.pdf").strip()[:200]
 
-        if not bhavalamala_available():
-            self._send_json(503, {"success": False, "error": BHAVALAMALA_LOCAL_ONLY})
-            return
-
         try:
             usage_id = reserve_api_call("pdf-upload", "/api/main?endpoint=pdf-upload", "POST", PDF_UPLOAD_DAILY_LIMIT)
         except Exception as e:
@@ -1840,6 +2284,10 @@ class handler(BaseHTTPRequestHandler):
             result = handle_pdf_upload(data, filename)
             safe_update_api_log(usage_id, 200)
             self._send_json(200, result)
+        except PdfRuleError as e:
+            log(f"[PDF RAG] rejected rule={e.rule}")
+            safe_update_api_log(usage_id, 422)
+            self._send_json(422, {"success": False, "rule": e.rule, "error": str(e)})
         except ValueError as e:
             safe_update_api_log(usage_id, 400)
             self._send_json(400, {"success": False, "error": str(e)})
