@@ -21,10 +21,14 @@ import {
 import BoltIcon from "@mui/icons-material/Bolt";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import MyFontsDialog from "./MyFontsDialog";
 // YuktAI icons wherever one fits; MUI only where YuktAI has no matching icon
 import { SearchIcon, CheckIcon, CloseIcon } from "@yuktishaalaa/yuktai";
 import type { TeluguFont } from "@/app/types/fonts";
 import { useDeviceFontBounds } from "./useDeviceFontBounds";
+// Fonts come only from main.py; a font's file loads only when it's chosen
+import { DEFAULT_FONT as API_DEFAULT_FONT, fontStack, loadTeluguFont, setFontListFromApi, useTeluguFonts } from "@/lib/teluguFonts";
 
 type ContentType = "sloka" | "ui" | "heading";
 type Device = "phone" | "tablet" | "desktop";
@@ -38,7 +42,10 @@ type Props = {
   contentType?: ContentType;
 };
 
-type FontOption = { label: string; value: TeluguFont };
+type FontOption = { label: string; value: TeluguFont; group?: string };
+
+const GROUP_MINE = "నా ఫాంట్లు";
+const GROUP_SITE = "రత్నాలబాల ఫాంట్లు";
 
 type AgentDecision = { fontFamily: TeluguFont; fontSizeMultiplier: number; reason: string };
 
@@ -49,7 +56,7 @@ type AgentDecision = { fontFamily: TeluguFont; fontSizeMultiplier: number; reaso
 // What "డిఫాల్ట్" restores. Use the SAME values as the parent's initial
 // fontFamily / fontSize state (RootClientLayout), DEFAULT_FONT in the
 // Python API, and --telugu-font-family in globals.css.
-const DEFAULT_FONT: TeluguFont = "Dhurjati";
+const DEFAULT_FONT: TeluguFont = API_DEFAULT_FONT as TeluguFont;
 const DEFAULT_SIZE = 1.0;
 
 // "100%" = this many rem (globals.css default). 1.125rem ≈ 18px, a
@@ -63,23 +70,6 @@ const USE_FONT_AGENT = true;
 
 const STEP = 0.1;
 
-// Used after every font name, so text still renders in Telugu if a font fails
-const FALLBACK_STACK = '"Noto Sans Telugu", "Nirmala UI", "Gautami", "Vani", sans-serif';
-const fontStack = (font: string) => `"${font}", ${FALLBACK_STACK}`;
-
-// Shown until (or if never) the font list arrives from the API — so the
-// picker is never empty, even in `next dev` where Python isn't running.
-const FALLBACK_FONTS: FontOption[] = [
-  { label: "ధూర్జటి", value: "Dhurjati" as TeluguFont },
-  { label: "మండలి (Regular)", value: "Mandali-Regular" as TeluguFont },
-  { label: "ఎన్‌టిఆర్", value: "NTR" as TeluguFont },
-  { label: "అన్నమయ్య", value: "Annamayya" as TeluguFont },
-  { label: "గురజాడ", value: "Gurajada" as TeluguFont },
-  { label: "శ్రీ కృష్ణదేవరాయ", value: "SreeKrushnadevaraya" as TeluguFont },
-  { label: "సురన్న (Bold)", value: "Suranna-Bold" as TeluguFont },
-  { label: "చతుర (ExtraBold)", value: "Chathura-ExtraBold" as TeluguFont },
-];
-
 /**
  * Nothing is stored in the browser. Once the person picks a font or size
  * (or presses "డిఫాల్ట్"), the agent stops changing it for the rest of this
@@ -87,57 +77,6 @@ const FALLBACK_FONTS: FontOption[] = [
  * (Module-level, so it also survives this component re-mounting.)
  */
 let manualChoiceThisVisit = false;
-
-/* ================================================================== */
-/* FONT LIST — అన్ని పరికరాలకూ పూర్తి 59 fonts                          */
-/*                                                                    */
-/* ముందు ఒక్కసారే అడిగేది: ఫోన్‌లో నెట్‌వర్క్ నెమ్మదిగా ఉన్నా, server     */
-/* మొదలవడానికి సమయం పట్టినా ఆ ఒక్కటి విఫలమై visit అంతా 8 fonts మాత్రమే.  */
-/* ఇప్పుడు: సమయ పరిమితితో 3 ప్రయత్నాలు, నెట్ తిరిగి వస్తే మళ్ళీ, font    */
-/* agent జవాబులోని పూర్తి జాబితా కూడా, మరియు ఈ visit అంతా గుర్తుంచుకుంటుంది. */
-/* (Memory లో మాత్రమే — browser storage లో ఏమీ దాచము.)                  */
-/* ================================================================== */
-
-let fontsCache: FontOption[] | null = null;
-let fontsRequest: Promise<FontOption[] | null> | null = null;
-
-const FONT_ATTEMPTS = 3;
-
-async function fetchWithTimeout(url: string, ms: number): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await fetch(url, { signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/** పూర్తి జాబితా; అన్ని ప్రయత్నాలు విఫలమైతే null (అప్పుడు FALLBACK_FONTS). */
-function loadServerFonts(): Promise<FontOption[] | null> {
-  if (fontsCache) return Promise.resolve(fontsCache);
-  fontsRequest ??= (async () => {
-    for (let attempt = 0; attempt < FONT_ATTEMPTS; attempt++) {
-      try {
-        // ప్రతి ప్రయత్నానికి ఇంకొంచెం ఎక్కువ సమయం: 8s, 12s, 16s
-        const res = await fetchWithTimeout("/api/main?endpoint=fonts", 8000 + attempt * 4000);
-        if (res.ok) {
-          const data: unknown = await res.json();
-          if (isFontList(data)) {
-            fontsCache = data;
-            return data;
-          }
-        }
-      } catch {
-        /* timeout / network — మళ్ళీ ప్రయత్నిస్తాం */
-      }
-      if (attempt < FONT_ATTEMPTS - 1) await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
-    }
-    fontsRequest = null; // తర్వాత (నెట్ వచ్చాక / బటన్ నొక్కాక) మళ్ళీ ప్రయత్నించడానికి
-    return null;
-  })();
-  return fontsRequest;
-}
 
 /* ================================================================== */
 /* CONTENT TYPE FROM THE URL                                          */
@@ -215,33 +154,6 @@ function isValidDecision(d: unknown): d is AgentDecision {
   );
 }
 
-function isFontList(d: unknown): d is FontOption[] {
-  return (
-    Array.isArray(d) &&
-    d.length > 0 &&
-    d.every((f) => f && typeof f.label === "string" && typeof f.value === "string" && f.value)
-  );
-}
-
-/**
- * Can the browser actually draw this font? An empty result from
- * document.fonts.load means no @font-face exists for that name, so
- * applying it would silently show some other font.
- */
-async function fontIsUsable(font: string): Promise<boolean> {
-  if (typeof document === "undefined" || !document.fonts?.load) return true; // can't check → trust
-  try {
-    const faces = await Promise.race([
-      document.fonts.load(`1em "${font}"`, "అ"),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
-    ]);
-    if (faces === null) return true; // slow network — don't block on it
-    return faces.length > 0;
-  } catch {
-    return false;
-  }
-}
-
 // useLayoutEffect on the client (runs before paint → no flash), useEffect on the server
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
@@ -282,34 +194,29 @@ export default function FontControlsTelugu({
   const defaultSize = clampSize(DEFAULT_SIZE);
 
   /* ---------- state ---------- */
-  // ఈ visit లో ఇప్పటికే వచ్చి ఉంటే (వేరే పేజీ నుండి), వెంటనే పూర్తి జాబితా
-  const [fonts, setFonts] = useState<FontOption[]>(fontsCache ?? FALLBACK_FONTS);
-  const [fontsFromServer, setFontsFromServer] = useState(Boolean(fontsCache));
-  const [fontsLoading, setFontsLoading] = useState(!fontsCache);
+  // జాబితా main.py నుండి (visit అంతా ఒక్కసారే)
+  const { fonts: fontList, loading: fontsLoading, failed: fontsFailed, retry: retryFonts } = useTeluguFonts();
+  const fonts = useMemo<FontOption[]>(
+    () =>
+      fontList.map((f) => ({
+        label: f.label,
+        value: f.value as TeluguFont,
+        group: f.kind === "upload" || f.kind === "device" ? GROUP_MINE : GROUP_SITE,
+      })),
+    [fontList]
+  );
+  const [myFontsOpen, setMyFontsOpen] = useState(false);
+
+  // A removed "my font" that was in use → back to the default
+  useEffect(() => {
+    const siteLoaded = fontList.some((f) => f.kind === "site");
+    if (siteLoaded && !fontList.some((f) => f.value === fontFamily)) setFontFamily(DEFAULT_FONT);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fontList]);
   const [device, setDevice] = useState<Device | null>(null);
   const [agentReason, setAgentReason] = useState<string | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [loadTime, setLoadTime] = useState<number | null>(null);
-
-  /** పూర్తి జాబితా వచ్చినప్పుడు — ఏ మూలం నుండైనా (fonts API / font agent) */
-  const applyServerFonts = useCallback((list: FontOption[]) => {
-    fontsCache = list;
-    setFonts(list);
-    setFontsFromServer(true);
-    setFontsLoading(false);
-  }, []);
-
-  const loadFonts = useCallback(() => {
-    if (fontsCache) {
-      applyServerFonts(fontsCache);
-      return;
-    }
-    setFontsLoading(true);
-    loadServerFonts().then((list) => {
-      if (list) applyServerFonts(list);
-      else setFontsLoading(false);
-    });
-  }, [applyServerFonts]);
 
   /* ---------- 1. Device class, known before the first paint ---------- */
   useIsomorphicLayoutEffect(() => {
@@ -326,24 +233,6 @@ export default function FontControlsTelugu({
       window.removeEventListener("orientationchange", update);
     };
   }, []);
-
-  /* ---------- 3. Font list: retries, and again when the network comes back ---------- */
-  useEffect(() => {
-    loadFonts();
-    const retry = () => {
-      if (!fontsCache) loadFonts();
-    };
-    window.addEventListener("online", retry);
-    // ఫోన్‌లో app మళ్ళీ తెరిచినప్పుడు (background నుండి)
-    const onVisible = () => {
-      if (document.visibilityState === "visible") retry();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      window.removeEventListener("online", retry);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [loadFonts]);
 
   /* ---------- 4. Agent: page type + device → font + size ---------- */
   // Runs on first load, on page change and when the device class changes
@@ -371,15 +260,14 @@ export default function FontControlsTelugu({
         if (res.ok) {
           const data: unknown = await res.json();
           if (isValidDecision(data)) decision = data;
-          // agent జవాబులో పూర్తి 59 జాబితా కూడా ఉంటుంది — fonts API విఫలమైనా ఇది చాలు
-          const list = (data as { fonts?: unknown } | null)?.fonts;
-          if (!fontsCache && isFontList(list)) applyServerFonts(list);
+          // agent జవాబులో పూర్తి జాబితా కూడా ఉంటుంది — fonts API ఆలస్యమైనా ఇది చాలు
+          setFontListFromApi((data as { fonts?: unknown } | null)?.fonts);
         }
       } catch {
         if (controller.signal.aborted) return;
       }
 
-      const usable = await fontIsUsable(decision.fontFamily);
+      const usable = await loadTeluguFont(decision.fontFamily);
       if (controller.signal.aborted || manualChoiceThisVisit) return;
 
       const font = usable ? decision.fontFamily : DEFAULT_FONT;
@@ -393,9 +281,15 @@ export default function FontControlsTelugu({
   }, [contentType, device]);
 
   /* ---------- 5. CSS variables (before paint, with Telugu fallbacks) ---------- */
+  // The variable is set at once (a Telugu system font shows meanwhile);
+  // the chosen font's file loads now and swaps in when it arrives.
   useIsomorphicLayoutEffect(() => {
     document.documentElement.style.setProperty("--telugu-font-family", fontStack(fontFamily));
   }, [fontFamily]);
+
+  useEffect(() => {
+    void loadTeluguFont(fontFamily);
+  }, [fontFamily, fontList]);
 
   useIsomorphicLayoutEffect(() => {
     const safe = Number.isFinite(fontSize) ? fontSize : DEFAULT_SIZE;
@@ -460,8 +354,12 @@ export default function FontControlsTelugu({
   // Telugu A→Z; the current font is always an option (so the box is never blank)
   const options = useMemo(() => {
     const list = [...fonts];
-    if (!list.some((f) => f.value === fontFamily)) list.push({ label: fontFamily, value: fontFamily });
-    return list.sort((a, b) => a.label.localeCompare(b.label, "te"));
+    if (!list.some((f) => f.value === fontFamily)) list.push({ label: fontFamily, value: fontFamily, group: GROUP_SITE });
+    // "నా ఫాంట్లు" first, then the site's; Telugu A→Z inside each group
+    return list.sort(
+      (a, b) =>
+        Number(a.group !== GROUP_MINE) - Number(b.group !== GROUP_MINE) || a.label.localeCompare(b.label, "te")
+    );
   }, [fonts, fontFamily]);
 
   const selectedOption = options.find((f) => f.value === fontFamily)!;
@@ -519,7 +417,7 @@ export default function FontControlsTelugu({
           gap={{ xs: 2, md: 2.5 }}
         >
           {/* 🔤 Font — searchable, Telugu A→Z */}
-          <Box display="flex" alignItems="center" gap={1} flex={1.2} minWidth={0}>
+          <Box display="flex" alignItems="center" flexWrap="wrap" gap={1} flex={1.2} minWidth={0}>
             <Typography sx={{ fontSize: "0.95rem", whiteSpace: "nowrap", fontWeight: 700 }}>తెలుగు ఫాంట్</Typography>
 
             <Autocomplete
@@ -527,6 +425,7 @@ export default function FontControlsTelugu({
               options={options}
               value={selectedOption}
               getOptionLabel={(option) => option.label}
+              groupBy={(option) => option.group ?? GROUP_SITE}
               isOptionEqualToValue={(option, value) => option.value === value.value}
               onChange={(_, newValue) => {
                 if (!newValue) return;
@@ -535,16 +434,14 @@ export default function FontControlsTelugu({
               }}
               // జాబితా తెరిచినప్పుడు ఇంకా 8 మాత్రమే ఉంటే, వెంటనే మళ్ళీ ప్రయత్నించు
               onOpen={() => {
-                if (!fontsCache && !fontsLoading) loadFonts();
+                if (fontsFailed) retryFonts();
               }}
-              loading={fontsLoading && !fontsFromServer}
+              loading={fontsLoading}
               loadingText="ఫాంట్లు లోడ్ అవుతున్నాయి…"
               disableClearable
               sx={{ minWidth: 180, flex: 1, backgroundColor: "var(--surface-elevated, #fff)", borderRadius: "var(--radius-sm, 10px)" }}
               renderOption={(props, option) => (
-                <MenuItem {...props} key={option.value} sx={{ fontFamily: fontStack(option.value), minHeight: 48 }}>
-                  {option.label}
-                </MenuItem>
+                <FontOptionItem {...props} key={option.value} option={option} />
               )}
               renderInput={(params) => (
                 <TextField
@@ -562,12 +459,36 @@ export default function FontControlsTelugu({
                       </>
                     ),
                   }}
+                  data-telugu-font=""
                   sx={{
                     "& .MuiInputBase-root": { minHeight: 44, fontFamily: fontStack(fontFamily), borderRadius: "var(--radius-sm, 10px)" },
                   }}
                 />
               )}
             />
+
+            {/* ➕ Reader's own font: upload (any device) or computer fonts */}
+            <Tooltip title="మీ సొంత ఫాంట్ జోడించండి">
+              <Button
+                onClick={() => setMyFontsOpen(true)}
+                startIcon={<AddRoundedIcon />}
+                aria-haspopup="dialog"
+                sx={{
+                  minHeight: 44,
+                  flexShrink: 0,
+                  px: 1.5,
+                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  whiteSpace: "nowrap",
+                  borderRadius: "var(--radius-sm, 10px)",
+                  border: "1.5px solid var(--secondary)",
+                  color: "var(--secondary)",
+                }}
+              >
+                నా ఫాంట్
+              </Button>
+            </Tooltip>
           </Box>
 
           {/* 🔠 Size */}
@@ -664,19 +585,19 @@ export default function FontControlsTelugu({
           }}
         >
           <Typography sx={{ fontSize: "0.85rem", color: "var(--muted-text)", lineHeight: 1.6 }}>
-            {fontsFromServer ? (
+            {fonts.length > 0 ? (
               <>
                 ప్రస్తుతం <strong>{fonts.length}</strong> తెలుగు ఫాంట్లు సపోర్ట్ చేయబడుతున్నాయి.
               </>
             ) : fontsLoading ? (
-              <>అన్ని ఫాంట్లు లోడ్ అవుతున్నాయి… (ఇప్పటికి ముఖ్యమైన {fonts.length})</>
+              <>ఫాంట్ల జాబితా లోడ్ అవుతోంది…</>
             ) : (
               <>
-                ముఖ్యమైన {fonts.length} ఫాంట్లు చూపిస్తున్నాం (పూర్తి జాబితా లోడ్ కాలేదు).{" "}
+                ఫాంట్ల జాబితా లోడ్ కాలేదు.{" "}
                 <Link
                   component="button"
                   type="button"
-                  onClick={loadFonts}
+                  onClick={retryFonts}
                   sx={{ fontSize: "inherit", fontWeight: 700, verticalAlign: "baseline", color: "var(--accent-text)" }}
                 >
                   మళ్ళీ ప్రయత్నించండి
@@ -710,6 +631,16 @@ export default function FontControlsTelugu({
         </Box>
       </Paper>
 
+      <MyFontsDialog
+        open={myFontsOpen}
+        onClose={() => setMyFontsOpen(false)}
+        current={fontFamily}
+        onPick={(value) => {
+          markManual();
+          setFontFamily(value as TeluguFont);
+        }}
+      />
+
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={5000}
@@ -740,5 +671,40 @@ export default function FontControlsTelugu({
         </Alert>
       </Snackbar>
     </>
+  );
+}
+
+/* ================================================================== */
+/* ONE OPTION — shows its name in its own font. The font's file loads   */
+/* only when the option scrolls into view, so opening the list never   */
+/* downloads all fonts at once.                                         */
+/* ================================================================== */
+
+function FontOptionItem({
+  option,
+  ...props
+}: React.HTMLAttributes<HTMLLIElement> & { option: FontOption }) {
+  const ref = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      void loadTeluguFont(option.value);
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        void loadTeluguFont(option.value);
+        io.disconnect();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [option.value]);
+
+  return (
+    <MenuItem {...props} ref={ref} data-telugu-font="" sx={{ fontFamily: fontStack(option.value), minHeight: 48 }}>
+      {option.label}
+    </MenuItem>
   );
 }

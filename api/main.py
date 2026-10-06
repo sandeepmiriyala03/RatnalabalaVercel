@@ -11,7 +11,7 @@ import psycopg
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 from psycopg.rows import dict_row
 
 import httpx
@@ -189,6 +189,112 @@ FONT_CATALOG = [
 
 FONT_VALUES = {f["value"] for f in FONT_CATALOG}
 
+# ── Font files (public/Fonts/) ─────────────────────────────────────
+# ఈ ఒక్క జాబితా నుండే బ్రౌజర్ ఫాంట్‌ను లోడ్ చేస్తుంది (globals.css / ఏ
+# ఇతర ఫైల్‌లోనూ ఫాంట్లు లేవు). ఎంచుకున్న ఫాంట్ మాత్రమే డౌన్‌లోడ్ అవుతుంది.
+#   value: (files, weight, italic)   — files: ఒకటి లేదా రెండు ఫార్మాట్లు
+# కొత్త ఫాంట్: ఫైల్‌ను public/Fonts/ లో పెట్టి, FONT_CATALOG లో ఒక లైన్,
+# ఇక్కడ ఒక లైన్ జోడించండి. అంతే.
+FONT_FILES: dict[str, tuple[tuple[str, ...], int, bool]] = {
+    "Gurajada": (("Gurajada-Regular.ttf",), 400, False),
+    "NTR": (("NTR-Regular.ttf",), 400, False),
+    "Ramaneeya": (("RamaneeyaWin.ttf",), 400, False),
+    "Veturi": (("Veturi.ttf",), 400, False),
+    "Sirivennela": (("Sirivennela.ttf",), 400, False),
+    "Chathura-Thin": (("Chathura-Thin.ttf",), 200, False),
+    "Chathura-Light": (("Chathura-Light.ttf",), 300, False),
+    "Chathura-Regular": (("Chathura-Regular.ttf",), 400, False),
+    "Chathura-Bold": (("Chathura-Bold.ttf",), 700, False),
+    "Chathura-ExtraBold": (("Chathura-ExtraBold.ttf",), 800, False),
+    "Ramaraja": (("Ramaraja-Regular.ttf",), 400, False),
+    "RaviPrakash": (("RaviPrakash.ttf",), 400, False),
+    "TenaliRamakrishna": (("TenaliRamakrishna-Regular.ttf",), 400, False),
+    "Timmana": (("TimmanaRegular.ttf",), 400, False),
+    "TANA": (("TANA.ttf",), 400, False),
+    "Gidugu": (("Gidugu.otf",), 400, False),
+    "Gidugu-Italic": (("Gidugu-Italic.otf",), 400, True),
+    "LakkiReddy": (("LakkiReddy.ttf",), 400, False),
+    "Nandakam": (("Nandakam.otf",), 400, False),
+    "Nandakam-Italic": (("Nandakam-Italic.otf",), 400, True),
+    "Peddana": (("Peddana-Regular.ttf",), 400, False),
+    "Purushothamaa": (("Purushothamaa.otf",), 400, False),
+    "Purushothamaa-Italic": (("Purushothamaa-Italic.otf",), 400, True),
+    "Ramabhadra": (("Ramabhadra.otf",), 400, False),
+    "Ramabhadra-Italic": (("Ramabhadra-Italic.otf",), 400, True),
+    "SreeKrushnadevaraya": (("Sree Krushnadevaraya.otf",), 400, False),
+    "SreeKrushnadevaraya-Italic": (("Sree Krushnadevaraya-Italic.otf",), 400, True),
+    "Suranna-Regular": (("Suranna Regular.otf",), 400, False),
+    "Suranna-Bold": (("Suranna Bold.otf",), 700, False),
+    "Suranna-Italic": (("Suranna-Italic.otf",), 400, True),
+    "Suranna-BoldItalic": (("Suranna Bold Italic.otf",), 700, True),
+    "Suravaram": (("Suravaram.otf",), 400, False),
+    "Suravaram-Italic": (("Suravaram-Italic.otf",), 400, True),
+    "Ponnala-Regular": (("Ponnala-Regular.ttf",), 400, False),
+    "Annamayya": (("Annamayya.otf",), 400, False),
+    "Annamayya-Bold": (("AnnamayyaBold.otf",), 700, False),
+    "Annamayya-Italic": (("AnnamayyaItalic.otf",), 400, True),
+    "Annamayya-BoldItalic": (("AnnamayyaBoldItalic.otf",), 700, True),
+    "Dhurjati": (("Dhurjati.otf",), 400, False),
+    "Dhurjati-Italic": (("Dhurjati-Italic.otf",), 400, True),
+    "JIMS": (("JIMS.otf",), 400, False),
+    "JIMS-Italic": (("JIMSItalic.otf",), 400, True),
+    "KanakaDurga": (("KanakaDurga.otf",), 400, False),
+    "KanakaDurga-Italic": (("KanakaDurga-Italic.otf",), 400, True),
+    "Mandali-Regular": (("Mandali-Regular.otf",), 400, False),
+    "Mandali-Bold": (("Mandali-Bold.otf",), 700, False),
+    "Mandali-Italic": (("Mandali-Italic.otf",), 400, True),
+    "Mandali-BoldItalic": (("Mandali-Bold Italic.otf",), 700, True),
+    "PottiSreeramulu": (("Potti Sreeramulu.otf",), 400, False),
+    "TiroSundaraTelugu-Regular": (("TiroSundaraTelugu-Regular.ttf",), 400, False),
+    "NATS": (("NATS.otf",), 400, False),
+    "NATS-Italic": (("NATS-Italic.otf",), 400, True),
+    "BVSatyamurty": (("BVSatyamurty.otf", "BVSatyamurty.ttf"), 400, False),
+    "Mallanna": (("Mallanna.otf",), 400, False),
+    "Mallanna-Italic": (("Mallanna-Italic.otf",), 400, True),
+    "PVNR": (("PVNR.otf",), 400, False),
+    "SeelaVeerraju": (("SeelaVeerraju.otf", "SeelaVeerraju.ttf"), 400, False),
+    "SPBalasubrahmanyam": (("SPBalasubrahmanyam.otf", "SPBalasubrahmanyam.ttf"), 400, False),
+    "Syamala Ramana": (("Syamala Ramana.otf",), 400, False),
+}
+
+# ప్రత్యేక OpenType సెట్టింగ్‌లు (అరుదు)
+FONT_FEATURES = {"SPBalasubrahmanyam": '"liga" 1, "calt" 1'}
+
+_FONT_FORMATS = {"otf": "opentype", "ttf": "truetype", "woff": "woff", "woff2": "woff2"}
+
+# Startup check: a catalog font without a file would silently never load
+_missing_files = FONT_VALUES - set(FONT_FILES)
+if _missing_files:
+    print(f"[Ratnalabala] fonts without files in FONT_FILES: {sorted(_missing_files)}")
+
+
+def _font_id(value: str) -> str:
+    """'Mandali-Regular' → 'mandali-regular' (stable id for saved choices)."""
+    return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+
+
+def font_payload(f: dict) -> dict:
+    """One font as the browser needs it: name + where its file is."""
+    files, weight, italic = FONT_FILES.get(f["value"], ((), 400, False))
+    payload = {
+        "id": _font_id(f["value"]),
+        "label": f["label"],
+        "value": f["value"],
+        "src": [
+            {
+                # ఖాళీలు ఉన్న ఫైల్ పేర్లు (%20) ఏ server/CDN లోనైనా పనిచేస్తాయి
+                "url": "/Fonts/" + "/".join(quote(part) for part in name.split("/")),
+                "format": _FONT_FORMATS.get(name.rsplit(".", 1)[-1].lower(), "truetype"),
+            }
+            for name in files
+        ],
+        "weight": weight,
+        "style": "italic" if italic else "normal",
+    }
+    if f["value"] in FONT_FEATURES:
+        payload["features"] = FONT_FEATURES[f["value"]]
+    return payload
+
 # Must match DEFAULT_FONT in FontControlsTelugu.tsx
 DEFAULT_FONT = "Dhurjati"
 
@@ -207,8 +313,8 @@ POEMS_ALL_CACHE_HEADER = "public, max-age=300, s-maxage=3600, stale-while-revali
 
 def handle_fonts():
     """పూర్తి font జాబితా — పరికరం ఏదైనా, ఎప్పుడూ అన్నీ (FONT_COUNT)."""
-    # A copy, so no request can ever change the shared list
-    return 200, [dict(f) for f in FONT_CATALOG]
+    # New dicts, so no request can ever change the shared list
+    return 200, [font_payload(f) for f in FONT_CATALOG]
 
 
 # ── FONT AGENT ──────────────────────────────────────────────────
@@ -271,7 +377,8 @@ def decide_font(content_type: str, width: int) -> dict:
     recommended = [f for f in PREFERRED_FONTS[content_type] if f in FONT_VALUES]
     ordered = [f for f in FONT_CATALOG if f["value"] in recommended]
     ordered.sort(key=lambda f: recommended.index(f["value"]))
-    ordered += [dict(f) for f in FONT_CATALOG if f["value"] not in recommended]
+    ordered += [f for f in FONT_CATALOG if f["value"] not in recommended]
+    ordered = [font_payload(f) for f in ordered]
 
     return {
         "fontFamily": font,

@@ -1,234 +1,375 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Box, Card, CardContent, TextField, Select, MenuItem,
-  Slider, Button, Typography, Stack,
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  LinearProgress,
+  MenuItem,
+  Select,
+  Slider,
+  Stack,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
 } from "@mui/material";
+import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
+import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
+import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
 import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
-import { Document, Packer, Paragraph } from "docx";
+import { Document, Packer, Paragraph, TextRun } from "docx";
 import { saveAs } from "file-saver";
 
-/* ========================= TYPES ========================= */
-type FontKey =
-  | "spbalasubrahmanyam"
-  | "bvsatyamurty"
-  | "mallanna"
-  | "mallanna-italic"
-  | "pvnr"
-  | "seelaveerraju"
-  | "syamalaramana"
-  | "gurajada" | "ntr" | "ramaneeya" | "veturi" | "sirivennela"
-  | "chathura-thin" | "chathura-light" | "chathura-regular" | "chathura-bold" | "chathura-extrabold"
-  | "ramaraja" | "raviprakash" | "tenaliramakrishna" | "timmana" | "tana" | "ponnala-regular"
-  | "gidugu" | "gidugu-italic" | "lakkireddy" | "nandakam" | "nandakam-italic"
-  | "peddana" | "purushothamaa" | "purushothamaa-italic" | "ramabhadra" | "ramabhadra-italic"
-  | "sreekrushnadevaraya" | "sreekrushnadevaraya-italic" | "suranna-regular" | "suranna-bold"
-  | "suranna-italic" | "suranna-bolditalic" | "suravaram" | "suravaram-italic"
-  | "annamayya" | "annamayya-bold" | "annamayya-italic" | "annamayya-bolditalic"
-  | "dhurjati" | "dhurjati-italic" | "jims" | "jims-italic" | "kanakadurga"
-  | "kanakadurga-italic" | "mandali-regular" | "mandali-bold" | "mandali-italic"
-  | "mandali-bolditalic" | "pottisreeramulu" | "tirosundaratelugu-regular";
+import { loadPref, savePref } from "@/app/components/exportPoems";
+// Fonts come only from main.py; a font's file loads only when it's chosen
+import { fontStack, loadTeluguFont, useTeluguFonts } from "@/lib/teluguFonts";
 
-type CanvasSize = "a4" | "square";
+/* "సైట్ ఫాంట్" = whatever font the reader picked for the whole site */
+type FontChoice = { id: string; label: string; value: string; kind?: string };
+const SITE_FONT: FontChoice = { id: "site", label: "సైట్ ఫాంట్ (మీరు ఎంచుకున్నది)", value: "" };
+const choiceStack = (f: FontChoice) =>
+  f.id === SITE_FONT.id ? "var(--telugu-font-family)" : fontStack(f.value);
 
-/* ========================= FONT METADATA ========================= */
-const FONTS: { key: FontKey; label: string; className: string; fontFamily: string }[] = [
-  { key: "spbalasubrahmanyam",      label: "ఎస్ పి బాలసుబ్రహ్మణ్యం", className: "chitramala-font-spbalasubrahmanyam", fontFamily: "SPBalasubrahmanyam" },
-  { key: "bvsatyamurty",            label: "బి వి సత్యమూర్తి",         className: "chitramala-font-bvsatyamurty",         fontFamily: "BVSatyamurty" },
-  { key: "mallanna",                label: "మల్లన్న",                 className: "chitramala-font-mallanna",             fontFamily: "Mallanna" },
-  { key: "mallanna-italic",         label: "మల్లన్న (ఇటాలిక్)",      className: "chitramala-font-mallanna-italic",      fontFamily: "MallannaItalic" },
-  { key: "pvnr",                    label: "పి వి నరసింహారావు",       className: "chitramala-font-pvnr",                 fontFamily: "PVNR" },
-  { key: "seelaveerraju",           label: "శీల వీర్రాజు",             className: "chitramala-font-seelaveerraju",        fontFamily: "SeelaVeerraju" },
-  { key: "syamalaramana",           label: "శ్యామల రమణ",              className: "chitramala-font-syamalaramana",        fontFamily: "SyamalaRamana" },
-  { key: "gurajada",               label: "గురజాడ",                  className: "chitramala-font-gurajada",             fontFamily: "Gurajada" },
-  { key: "ntr",                    label: "ఎన్‌టిఆర్",               className: "chitramala-font-ntr",                  fontFamily: "NTR" },
-  { key: "ramaneeya",              label: "రమణీయ",                   className: "chitramala-font-ramaneeya",            fontFamily: "Ramaneeya" },
-  { key: "veturi",                 label: "వేటూరి",                  className: "chitramala-font-veturi",               fontFamily: "Veturi" },
-  { key: "sirivennela",            label: "సిరివెన్నెల",              className: "chitramala-font-sirivennela",          fontFamily: "Sirivennela" },
-  { key: "chathura-thin",          label: "చతుర (Thin)",             className: "chitramala-font-chathura-thin",        fontFamily: "ChathuraThin" },
-  { key: "chathura-light",         label: "చతుర (Light)",            className: "chitramala-font-chathura-light",       fontFamily: "ChathuraLight" },
-  { key: "chathura-regular",       label: "చతుర (Regular)",          className: "chitramala-font-chathura-regular",     fontFamily: "ChathuraRegular" },
-  { key: "chathura-bold",          label: "చతుర (Bold)",             className: "chitramala-font-chathura-bold",        fontFamily: "ChathuraBold" },
-  { key: "chathura-extrabold",     label: "చతుర (ExtraBold)",        className: "chitramala-font-chathura-extrabold",   fontFamily: "ChathuraExtraBold" },
-  { key: "ramaraja",               label: "రామరాజ",                  className: "chitramala-font-ramaraja",             fontFamily: "Ramaraja" },
-  { key: "raviprakash",            label: "రవి ప్రకాష్",             className: "chitramala-font-raviprakash",          fontFamily: "RaviPrakash" },
-  { key: "tenaliramakrishna",      label: "తెనాలి రామకృష్ణ",        className: "chitramala-font-tenali",               fontFamily: "TenaliRamakrishna" },
-  { key: "timmana",                label: "తిమ్మన",                  className: "chitramala-font-timmana",              fontFamily: "Timmana" },
-  { key: "tirosundaratelugu-regular",label: "తిరొ సుందర తెలుగు",      className: "chitramala-font-TiroSundaraTelugu-Regular", fontFamily: "TiroSundaraTelugu-Regular" },
-  { key: "tana",                   label: "టానా",                    className: "chitramala-font-tana",                 fontFamily: "TANA" },
-  { key: "ponnala-regular",        label: "పొన్నల",                  className: "chitramala-font-ponnala",              fontFamily: "Ponnala" },
-  { key: "gidugu",                 label: "గిడుగు",                  className: "chitramala-font-gidugu",               fontFamily: "Gidugu" },
-  { key: "gidugu-italic",          label: "గిడుగు (ఇటాలిక్)",       className: "chitramala-font-gidugu-italic",        fontFamily: "GiduguItalic" },
-  { key: "lakkireddy",             label: "లక్కిరెడ్డి",             className: "chitramala-font-lakkireddy",           fontFamily: "LakkiReddy" },
-  { key: "nandakam",               label: "నందకం",                   className: "chitramala-font-nandakam",             fontFamily: "Nandakam" },
-  { key: "nandakam-italic",        label: "నందకం (ఇటాలిక్)",        className: "chitramala-font-nandakam-italic",      fontFamily: "NandakamItalic" },
-  { key: "peddana",                label: "పెద్దన",                  className: "chitramala-font-peddana",              fontFamily: "Peddana" },
-  { key: "purushothamaa",          label: "పురుషోత్తమ",              className: "chitramala-font-purushothamaa",        fontFamily: "Purushothamaa" },
-  { key: "purushothamaa-italic",   label: "పురుషోత్తమ (ఇటాలిక్)",  className: "chitramala-font-purushothamaa-italic", fontFamily: "PurushothamaaItalic" },
-  { key: "ramabhadra",             label: "రామభద్ర",                 className: "chitramala-font-ramabhadra",           fontFamily: "Ramabhadra" },
-  { key: "ramabhadra-italic",      label: "రామభద్ర (ఇటాలిక్)",     className: "chitramala-font-ramabhadra-italic",    fontFamily: "RamabhadraItalic" },
-  { key: "sreekrushnadevaraya",    label: "శ్రీ కృష్ణదేవరాయ",      className: "chitramala-font-sreekrushnadevaraya",  fontFamily: "SreeKrushnadevaraya" },
-  { key: "sreekrushnadevaraya-italic", label: "శ్రీ కృష్ణదేవరాయ (ఇటాలిక్)", className: "chitramala-font-sreekrushnadevaraya-italic", fontFamily: "SreeKrushnadevarayaItalic" },
-  { key: "suranna-regular",        label: "సురన్న (Regular)",        className: "chitramala-font-suranna",              fontFamily: "Suranna" },
-  { key: "suranna-bold",           label: "సురన్న (Bold)",           className: "chitramala-font-suranna-bold",         fontFamily: "SurannaBold" },
-  { key: "suranna-italic",         label: "సురన్న (Italic)",         className: "chitramala-font-suranna-italic",       fontFamily: "SurannaItalic" },
-  { key: "suranna-bolditalic",     label: "సురన్న (Bold Italic)",    className: "chitramala-font-suranna-bolditalic",   fontFamily: "SurannaBoldItalic" },
-  { key: "suravaram",              label: "సురవరం",                  className: "chitramala-font-suravaram",            fontFamily: "Suravaram" },
-  { key: "suravaram-italic",       label: "సురవరం (ఇటాలిక్)",      className: "chitramala-font-suravaram-italic",     fontFamily: "SuravaramItalic" },
-  { key: "annamayya",              label: "అన్నమయ్య",                className: "chitramala-font-annamayya",            fontFamily: "Annamayya" },
-  { key: "annamayya-bold",         label: "అన్నమయ్య (Bold)",        className: "chitramala-font-annamayya-bold",       fontFamily: "Annamayya-Bold" },
-  { key: "annamayya-italic",       label: "అన్నమయ్య (ఇటాలిక్)",   className: "chitramala-font-annamayya-italic",     fontFamily: "Annamayya-Italic" },
-  { key: "annamayya-bolditalic",   label: "అన్నమయ్య (Bold Italic)", className: "chitramala-font-annamayya-bolditalic", fontFamily: "Annamayya-BoldItalic" },
-  { key: "dhurjati",               label: "ధూర్జటి",                className: "chitramala-font-dhurjati",             fontFamily: "Dhurjati" },
-  { key: "dhurjati-italic",        label: "ధూర్జటి (ఇటాలిక్)",    className: "chitramala-font-dhurjati-italic",      fontFamily: "Dhurjati-Italic" },
-  { key: "jims",                   label: "జిమ్స్",                  className: "chitramala-font-jims",                 fontFamily: "JIMS" },
-  { key: "jims-italic",            label: "జిమ్స్ (ఇటాలిక్)",      className: "chitramala-font-jims-italic",          fontFamily: "JIMS-Italic" },
-  { key: "kanakadurga",            label: "కనకదుర్గ",               className: "chitramala-font-kanakadurgA",          fontFamily: "KanakaDurga" },
-  { key: "kanakadurga-italic",     label: "కనకదుర్గ (ఇటాలిక్)",   className: "chitramala-font-kanakadurgA-italic",   fontFamily: "KanakaDurga-Italic" },
-  { key: "mandali-regular",        label: "మండలి (Regular)",        className: "chitramala-font-mandali",              fontFamily: "Mandali-Regular" },
-  { key: "mandali-bold",           label: "మండలి (Bold)",           className: "chitramala-font-mandali-bold",         fontFamily: "Mandali-Bold" },
-  { key: "mandali-italic",         label: "మండలి (Italic)",         className: "chitramala-font-mandali-italic",       fontFamily: "Mandali-Italic" },
-  { key: "mandali-bolditalic",     label: "మండలి (Bold Italic)",    className: "chitramala-font-mandali-bolditalic",   fontFamily: "Mandali-BoldItalic" },
-  { key: "pottisreeramulu",        label: "పొట్టి శ్రీరాములు",     className: "chitramala-font-pottisreeramulu",      fontFamily: "PottiSreeramulu" }
-];
+/* ================================================================== */
+/* సైజులు — ప్రింట్ + సోషల్ మీడియా                                       */
+/* ================================================================== */
 
-const CANVAS = {
-  a4:     { label: "A4 (Print)",      aspect: "210 / 297" },
-  square: { label: "Square (Social)", aspect: "1 / 1" },
+type CanvasSize = "a4" | "square" | "story";
+
+const CANVAS: Record<CanvasSize, { label: string; hint: string; aspect: number; posterWidth: number; pdf: [number, number] }> = {
+  a4: { label: "A4", hint: "ప్రింట్", aspect: 210 / 297, posterWidth: 1240, pdf: [210, 297] },
+  square: { label: "చతురస్రం", hint: "Instagram / Facebook", aspect: 1, posterWidth: 1080, pdf: [150, 150] },
+  story: { label: "స్టోరీ", hint: "WhatsApp / Instagram స్టేటస్", aspect: 9 / 16, posterWidth: 1080, pdf: [108, 192] },
 };
+
+const DEFAULT_FONT_ID = "spbalasubrahmanyam";
+const SAVE_KEY = "ratnalabala-khatimala";
+
+type Saved = { title: string; text: string; fontId: string; fontSize: number; canvasSize: CanvasSize };
+const DEFAULTS: Saved = { title: "", text: "#spb", fontId: DEFAULT_FONT_ID, fontSize: 22, canvasSize: "a4" };
+
+type Job = { percent: number; message: string } | null;
+
+const today = () => new Date().toISOString().slice(0, 10);
+const fileBase = (title: string) =>
+  `${(title.trim() || "ఖతి_మాల").replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "_")}_${today()}`;
 
 export default function KhatiMala() {
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const [title,     setTitle]     = useState("");
-  const [text,      setText]      = useState("#spb");
-  const [fontKey,   setFontKey]   = useState<FontKey>("spbalasubrahmanyam");
-  const [fontSize,  setFontSize]  = useState(22);
-  const [canvasSize,setCanvasSize]= useState<CanvasSize>("a4");
+  const [title, setTitle] = useState(DEFAULTS.title);
+  const [text, setText] = useState(DEFAULTS.text);
+  const [fontId, setFontId] = useState(DEFAULTS.fontId);
+  const [fontSize, setFontSize] = useState(DEFAULTS.fontSize);
+  const [canvasSize, setCanvasSize] = useState<CanvasSize>(DEFAULTS.canvasSize);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
-  const sortedFonts = [...FONTS].sort((a, b) =>
-    sortOrder === "asc"
-      ? a.label.localeCompare(b.label, "te-IN")
-      : b.label.localeCompare(a.label, "te-IN")
+  const { fonts: apiFonts } = useTeluguFonts();
+  const fonts = useMemo<FontChoice[]>(
+    () => [SITE_FONT, ...apiFonts.map(({ id, label, value, kind }) => ({ id, label, value, kind }))],
+    [apiFonts]
   );
+  const [job, setJob] = useState<Job>(null);
+  const [error, setError] = useState<string | null>(null);
+  const busy = job !== null && job.percent < 100;
 
-  const currentFontObj = FONTS.find(f => f.key === fontKey) || FONTS[0];
+  /* 💾 Auto Save (Offline) — ఈ పరికరంలోనే, సర్వర్‌కి వెళ్ళదు */
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const s = loadPref<Saved>(SAVE_KEY, DEFAULTS);
+    setTitle(s.title);
+    setText(s.text);
+    setFontId(s.fontId);
+    setFontSize(s.fontSize);
+    setCanvasSize(CANVAS[s.canvasSize] ? s.canvasSize : "a4");
+    setRestored(true);
+  }, []);
+  useEffect(() => {
+    if (!restored) return;
+    const id = setTimeout(() => savePref(SAVE_KEY, { title, text, fontId, fontSize, canvasSize }), 500);
+    return () => clearTimeout(id);
+  }, [restored, title, text, fontId, fontSize, canvasSize]);
+
+  const font = useMemo(() => fonts.find((f) => f.id === fontId) ?? SITE_FONT, [fonts, fontId]);
+  useEffect(() => {
+    if (font.id !== SITE_FONT.id) void loadTeluguFont(font.value);
+  }, [font]);
+
+  const sortedFonts = useMemo(() => {
+    const [site, ...rest] = fonts;
+    rest.sort((a, b) => (sortOrder === "asc" ? 1 : -1) * a.label.localeCompare(b.label, "te-IN"));
+    return [site, ...rest];
+  }, [fonts, sortOrder]);
+
+  const canvas = CANVAS[canvasSize];
+  const hasContent = Boolean(title.trim() || text.trim());
+
+  /* ---------------- ఎగుమతి సహాయకులు ---------------- */
+
+  /** Preview ను చిత్రంగా — ఫాంట్లు పూర్తిగా వచ్చాక */
+  const capture = async (targetWidth: number) => {
+    const node = previewRef.current;
+    if (!node) throw new Error("Preview not ready");
+    if (font.id !== SITE_FONT.id) await loadTeluguFont(font.value); // full font before the picture
+    await document.fonts.ready;
+    const options = { pixelRatio: targetWidth / node.offsetWidth, backgroundColor: "#ffffff", cacheBust: true };
+    // html-to-image మొదటిసారి కొన్నిసార్లు ఫాంట్ లేకుండా గీస్తుంది — ఒకసారి ముందుగా వేడి చేస్తాం
+    await toPng(node, { ...options, pixelRatio: 0.2 });
+    return toPng(node, options);
+  };
+
+  const run = async (kind: string, work: () => Promise<void>) => {
+    if (busy) return;
+    setError(null);
+    try {
+      await work();
+      setTimeout(() => setJob(null), 2500);
+    } catch (err) {
+      console.error(`${kind} failed:`, err);
+      setJob(null);
+      setError(`${kind} తయారు కాలేదు. మళ్ళీ ప్రయత్నించండి.`);
+    }
+  };
+
+  const downloadPdf = () =>
+    run("PDF", async () => {
+      setJob({ percent: 10, message: "పేజీ సిద్ధం చేస్తున్నాం…" });
+      const png = await capture(canvas.posterWidth * 2);
+      setJob({ percent: 70, message: "PDF తయారవుతోంది…" });
+      const [w, h] = canvas.pdf;
+      const pdf = new jsPDF({ orientation: w > h ? "landscape" : "portrait", unit: "mm", format: [w, h] });
+      pdf.addImage(png, "PNG", 0, 0, w, h);
+      pdf.save(`${fileBase(title)}.pdf`);
+      setJob({ percent: 100, message: "PDF డౌన్‌లోడ్ అయింది ✓" });
+    });
+
+  const downloadPoster = () =>
+    run("పోస్టర్", async () => {
+      setJob({ percent: 10, message: "పోస్టర్ సిద్ధం చేస్తున్నాం…" });
+      const png = await capture(canvas.posterWidth);
+      setJob({ percent: 80, message: "చిత్రం సేవ్ అవుతోంది…" });
+      saveAs(png, `${fileBase(title)}_${canvasSize}.png`);
+      setJob({ percent: 100, message: "పోస్టర్ డౌన్‌లోడ్ అయింది ✓ ఇప్పుడు WhatsApp / Instagram లో పంచుకోండి." });
+    });
+
+  const downloadWord = () =>
+    run("Word", async () => {
+      setJob({ percent: 20, message: "Word ఫైల్ తయారవుతోంది…" });
+      // Word లో ఈ ఫాంట్ కంప్యూటర్‌లో install అయి ఉంటేనే అదే రూపం; లేకపోతే Word తన తెలుగు ఫాంట్ వాడుతుంది
+      // An uploaded font only exists inside this website, so Word gets a
+      // standard Telugu font for it; site and computer fonts keep their name
+      const family = font.id === SITE_FONT.id || font.kind === "upload" ? "Nirmala UI" : font.value;
+      const size = Math.round(fontSize * 1.5); // docx size = half-points
+      const doc = new Document({
+        sections: [
+          {
+            children: [
+              ...(title.trim()
+                ? [new Paragraph({ alignment: "center", spacing: { after: 240 }, children: [new TextRun({ text: title, bold: true, font: family, size: size + 6 })] })]
+                : []),
+              ...text.split(/\r?\n/).map((line) => new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: line, font: family, size })] })),
+            ],
+          },
+        ],
+      });
+      const blob = await Packer.toBlob(doc);
+      saveAs(blob, `${fileBase(title)}.docx`);
+      setJob({ percent: 100, message: "Word డౌన్‌లోడ్ అయింది ✓" });
+    });
+
+  const previewFont = choiceStack(font);
 
   return (
     <Card>
       <CardContent>
-        <Typography variant="h6" mb={2}>ఖతి మాల</Typography>
+        <Typography variant="h6" mb={2}>
+          ఖతి మాల
+        </Typography>
 
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-          {/* LEFT: Controls */}
+          {/* ---------- ఎడమ: నియంత్రణలు ---------- */}
           <Box>
-            <TextField fullWidth label="శీర్షిక" value={title}
-              onChange={e => setTitle(e.target.value)} sx={{ mb: 2 }} />
+            <TextField fullWidth label="శీర్షిక" value={title} onChange={(e) => setTitle(e.target.value)} sx={{ mb: 2 }} />
 
-            <TextField fullWidth multiline rows={8} label="తెలుగు పాఠ్యం (#spb అని టైప్ చేయండి)"
-              value={text} onChange={e => setText(e.target.value)} />
+            <TextField
+              fullWidth
+              multiline
+              rows={8}
+              label="తెలుగు పాఠ్యం"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
 
-            {/* Font Picker */}
+            {/* ఫాంట్ — main.py నుండి */}
             <Box sx={{ mt: 2 }}>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
-                <Typography>ఫాంట్</Typography>
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                <Typography>
+                  ఫాంట్ <Typography component="span" variant="caption" color="text.secondary">({fonts.length - 1})</Typography>
+                </Typography>
                 <Button
-                  size="small" variant="outlined"
-                  onClick={() => setSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => setSortOrder((p) => (p === "asc" ? "desc" : "asc"))}
                   sx={{ minWidth: 0, px: 1.5, fontSize: 12, textTransform: "none" }}
                 >
-                  {sortOrder === "asc" ? "A → Z" : "Z → A"}
+                  {sortOrder === "asc" ? "అ → ఱ" : "ఱ → అ"}
                 </Button>
-              </Box>
+              </Stack>
 
               <Select
                 fullWidth
-                value={fontKey}
-                onChange={e => setFontKey(e.target.value as FontKey)}
+                value={fonts.some((f) => f.id === fontId) ? fontId : SITE_FONT.id}
+                onChange={(e) => setFontId(e.target.value)}
+                inputProps={{ "aria-label": "ఫాంట్" }}
+                MenuProps={{ PaperProps: { sx: { maxHeight: 420 } } }}
               >
-                {sortedFonts.map(f => (
-                  <MenuItem key={f.key} value={f.key}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%" }}>
-                      <Typography variant="caption" sx={{
-                        bgcolor: fontKey === f.key ? "primary.main" : "action.hover",
-                        color:   fontKey === f.key ? "primary.contrastText" : "text.secondary",
-                        borderRadius: 1, px: 0.8, py: 0.2, fontSize: 10,
-                        whiteSpace: "nowrap", minWidth: 90, textAlign: "center",
-                      }}>
-                        {f.key}
-                      </Typography>
-                      <span className={f.className} style={{
-                        fontSize: 18,
-                        lineHeight: 1.6,
-                        fontFamily: f.fontFamily,
-                        fontFeatureSettings: '"liga" 1, "calt" 1',
-                      }}>
-                        {f.label}
-                      </span>
-                    </Box>
+                {sortedFonts.map((f) => (
+                  <MenuItem
+                    key={f.id}
+                    value={f.id}
+                    data-telugu-font=""
+                    onMouseEnter={() => f.id !== SITE_FONT.id && void loadTeluguFont(f.value)}
+                    onFocus={() => f.id !== SITE_FONT.id && void loadTeluguFont(f.value)}
+                  >
+                    {/* ప్రతి పేరు ఆ ఫాంట్‌లోనే — ఎంచుకునే ముందే రూపం కనిపిస్తుంది */}
+                    <span style={{ fontSize: 18, lineHeight: 1.6, fontFamily: choiceStack(f) }}>{f.label}</span>
                   </MenuItem>
                 ))}
               </Select>
             </Box>
 
-            {/* Font Size */}
+            {/* అక్షర సైజ్ */}
             <Box sx={{ mt: 2 }}>
-              <Typography>ఫాంట్ సైజ్</Typography>
-              <Slider min={16} max={80} value={fontSize}
-                onChange={(_, v) => setFontSize(v as number)} />
+              <Stack direction="row" justifyContent="space-between">
+                <Typography>అక్షర సైజ్</Typography>
+                <Typography color="text.secondary">{fontSize}px</Typography>
+              </Stack>
+              <Slider min={16} max={80} value={fontSize} onChange={(_, v) => setFontSize(v as number)} aria-label="అక్షర సైజ్" />
             </Box>
 
-            {/* Canvas Size */}
-            <Box sx={{ mt: 2 }}>
-              <Typography>పరిమాణం</Typography>
-              <Select fullWidth value={canvasSize}
-                onChange={e => setCanvasSize(e.target.value as CanvasSize)}>
-                {Object.entries(CANVAS).map(([k, v]) => (
-                  <MenuItem key={k} value={k}>{v.label}</MenuItem>
+            {/* పరిమాణం */}
+            <Box sx={{ mt: 1 }}>
+              <Typography sx={{ mb: 0.5 }}>పరిమాణం</Typography>
+              <ToggleButtonGroup
+                exclusive
+                fullWidth
+                size="small"
+                value={canvasSize}
+                onChange={(_, v: CanvasSize | null) => v && setCanvasSize(v)}
+                aria-label="పరిమాణం"
+              >
+                {(Object.keys(CANVAS) as CanvasSize[]).map((k) => (
+                  <ToggleButton key={k} value={k} sx={{ textTransform: "none", flexDirection: "column", lineHeight: 1.3, py: 0.75 }}>
+                    <b>{CANVAS[k].label}</b>
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      {CANVAS[k].hint}
+                    </Typography>
+                  </ToggleButton>
                 ))}
-              </Select>
+              </ToggleButtonGroup>
             </Box>
+
+            {/* డౌన్‌లోడ్లు */}
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2.5 }}>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<PictureAsPdfRoundedIcon />}
+                onClick={downloadPdf}
+                disabled={busy || !hasContent}
+                sx={{ flex: 1, textTransform: "none", fontWeight: 700 }}
+              >
+                PDF
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<ImageRoundedIcon />}
+                onClick={downloadPoster}
+                disabled={busy || !hasContent}
+                sx={{ flex: 1, textTransform: "none", fontWeight: 700 }}
+              >
+                సోషల్ మీడియా పోస్టర్
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DescriptionRoundedIcon />}
+                onClick={downloadWord}
+                disabled={busy || !hasContent}
+                sx={{ flex: 1, textTransform: "none", fontWeight: 700 }}
+              >
+                Word
+              </Button>
+            </Stack>
+
+            {job && (
+              <Box sx={{ mt: 1.5 }} role="status" aria-live="polite">
+                <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                  <Typography variant="body2" fontWeight={600}>
+                    {job.message}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {job.percent}%
+                  </Typography>
+                </Stack>
+                <LinearProgress
+                  variant="determinate"
+                  value={job.percent}
+                  color={job.percent >= 100 ? "success" : "primary"}
+                  sx={{ height: 6, borderRadius: 3 }}
+                />
+              </Box>
+            )}
+
+            {error && (
+              <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setError(null)}>
+                {error}
+              </Alert>
+            )}
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
+              💾 మీ పాఠ్యం ఈ పరికరంలోనే ఆటోమేటిక్‌గా సేవ్ అవుతుంది.
+            </Typography>
           </Box>
 
-          {/* RIGHT: Preview */}
+          {/* ---------- కుడి: నమూనా (ఇదే PDF / పోస్టర్ అవుతుంది) ---------- */}
           <Box
             ref={previewRef}
-            className={currentFontObj.className}
+            data-telugu-font=""
             sx={{
-              aspectRatio: CANVAS[canvasSize].aspect,
-              border: "1px solid #ddd", borderRadius: 2, p: 3,
-              fontSize: `${fontSize}px`, lineHeight: 1.8,
-              display: "flex", flexDirection: "column", justifyContent: "flex-start",
+              aspectRatio: String(canvas.aspect),
+              maxHeight: { md: canvasSize === "story" ? 720 : "none" },
+              mx: "auto",
+              width: "100%",
+              maxWidth: canvasSize === "story" ? 405 : "none",
+              border: "1px solid #ddd",
+              borderRadius: 2,
+              p: 3,
+              overflow: "hidden",
+              fontSize: `${fontSize}px`,
+              lineHeight: 1.8,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
               bgcolor: "#fff",
-              fontFamily: `${currentFontObj.fontFamily}, system-ui`,
+              color: "#0f172a",
+              fontFamily: previewFont,
               fontFeatureSettings: '"liga" 1, "calt" 1',
-              WebkitFontFeatureSettings: '"liga" 1, "calt" 1',
             }}
           >
-            <Typography sx={{
-              textAlign: "center",
-              fontWeight: 600,
-              mb: 1,
-              fontFamily: "inherit",
-              fontSize: "inherit",
-              fontFeatureSettings: '"liga" 1, "calt" 1',
-            }}>
+            <Typography
+              sx={{ textAlign: "center", fontWeight: 600, mb: 1, fontFamily: "inherit", fontSize: "inherit", lineHeight: 1.5 }}
+            >
               {title || "శీర్షిక"}
             </Typography>
-            <Box sx={{
-              whiteSpace: "pre-wrap",
-              textAlign: "justify",
-              wordBreak: "break-word",
-              lineHeight: 1.9,
-              fontFamily: "inherit",
-              fontSize: "inherit",
-              fontFeatureSettings: '"liga" 1, "calt" 1',
-            }}>
-              {text ? text : (
-                <Typography component="span" sx={{ opacity: 0.4 }}>
+            <Box sx={{ whiteSpace: "pre-wrap", textAlign: "justify", wordBreak: "break-word", lineHeight: 1.9 }}>
+              {text || (
+                <Typography component="span" sx={{ opacity: 0.4, fontFamily: "inherit", fontSize: "inherit" }}>
                   ఇక్కడ మీ పాఠ్యం ప్రదర్శించబడుతుంది
                 </Typography>
               )}

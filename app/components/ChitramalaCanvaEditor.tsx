@@ -49,6 +49,8 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AddIcon from "@mui/icons-material/Add";
 import { toPng } from "html-to-image";
+// Fonts come only from main.py; each loads when it's chosen
+import { DEFAULT_FONT, fontStack, loadTeluguFont, useTeluguFonts } from "@/lib/teluguFonts";
 
 /* ============================================================
    TYPES
@@ -65,7 +67,7 @@ type PosterElement = {
   fontSize: number; // px baseline before canvas scale
   color: string;
   align: "left" | "center" | "right";
-  fontFamily: string;
+  fontFamily: string; // font name from main.py, e.g. "Dhurjati"
   bold: boolean;
   italic: boolean;
   visible: boolean;
@@ -133,12 +135,8 @@ const ASPECTS: { key: CanvasState["aspect"]; label: string }[] = [
   { key: "16/9", label: "ల్యాండ్‌స్కేప్" },
 ];
 
-const FONT_CHOICES = [
-  "'Noto Serif Telugu', serif",
-  "'Noto Sans Telugu', sans-serif",
-  "'Ramabhadra', serif",
-  "'Mallanna', sans-serif",
-];
+/* Poster default font. The full list comes from main.py (useTeluguFonts). */
+const POSTER_FONT = DEFAULT_FONT;
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -163,7 +161,7 @@ function makeDefaultState(title: string, poet: string, poemLines: string[]): Can
         fontSize: 28,
         color: "#111111",
         align: "center",
-        fontFamily: FONT_CHOICES[0],
+        fontFamily: POSTER_FONT,
         bold: true,
         italic: false,
         visible: !!title,
@@ -178,7 +176,7 @@ function makeDefaultState(title: string, poet: string, poemLines: string[]): Can
         fontSize: 20,
         color: "#1a1a1a",
         align: "center",
-        fontFamily: FONT_CHOICES[0],
+        fontFamily: POSTER_FONT,
         bold: false,
         italic: false,
         visible: true,
@@ -193,7 +191,7 @@ function makeDefaultState(title: string, poet: string, poemLines: string[]): Can
         fontSize: 16,
         color: "#444444",
         align: "right",
-        fontFamily: FONT_CHOICES[0],
+        fontFamily: POSTER_FONT,
         bold: false,
         italic: true,
         visible: !!poet,
@@ -208,7 +206,7 @@ function makeDefaultState(title: string, poet: string, poemLines: string[]): Can
         fontSize: 12,
         color: "#888888",
         align: "center",
-        fontFamily: FONT_CHOICES[0],
+        fontFamily: POSTER_FONT,
         bold: false,
         italic: false,
         visible: false,
@@ -240,6 +238,18 @@ export default function ChitramalaCanvaEditor({ title, poet, lines }: Props) {
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /* ---------- fonts (main.py) ---------- */
+  const { fonts } = useTeluguFonts();
+
+  // Load every font the poster uses (only those files download)
+  const usedFonts = useMemo(
+    () => [...new Set(state.elements.map((el) => el.fontFamily))],
+    [state.elements]
+  );
+  useEffect(() => {
+    usedFonts.forEach((f) => void loadTeluguFont(f));
+  }, [usedFonts, fonts]);
 
   const dragInfo = useRef<{ id: ElementId; startX: number; startY: number; origX: number; origY: number } | null>(null);
 
@@ -326,7 +336,7 @@ export default function ChitramalaCanvaEditor({ title, poet, lines }: Props) {
           fontSize: 18,
           color: "#222222",
           align: "center",
-          fontFamily: FONT_CHOICES[0],
+          fontFamily: POSTER_FONT,
           bold: false,
           italic: false,
           visible: true,
@@ -346,6 +356,8 @@ export default function ChitramalaCanvaEditor({ title, poet, lines }: Props) {
     if (!canvasRef.current) return;
     setSelectedId(null); // hide selection outline for clean export
     await new Promise((r) => setTimeout(r, 50));
+    // Every poster font must be fully loaded, or the PNG falls back to a system font
+    await Promise.all(usedFonts.map((f) => loadTeluguFont(f)));
     await document.fonts.ready;
     const url = await toPng(canvasRef.current, { pixelRatio: 3, cacheBust: true });
     const a = document.createElement("a");
@@ -436,7 +448,7 @@ export default function ChitramalaCanvaEditor({ title, poet, lines }: Props) {
                   userSelect: "none",
                   whiteSpace: "pre-line",
                   textAlign: el.align,
-                  fontFamily: el.fontFamily,
+                  fontFamily: fontStack(el.fontFamily),
                   fontSize: el.fontSize,
                   color: el.color,
                   fontWeight: el.bold ? 700 : 400,
@@ -546,9 +558,34 @@ export default function ChitramalaCanvaEditor({ title, poet, lines }: Props) {
                   value={selected.text}
                   onChange={(e) => updateElement(selected.id, { text: e.target.value })}
                 />
-                <Select size="small" value={selected.fontFamily} onChange={(e) => updateElement(selected.id, { fontFamily: e.target.value })}>
-                  {FONT_CHOICES.map((f) => (
-                    <MenuItem key={f} value={f} style={{ fontFamily: f }}>{f.split(",")[0]}</MenuItem>
+                <Select
+                  size="small"
+                  value={selected.fontFamily}
+                  onChange={(e) => {
+                    void loadTeluguFont(e.target.value);
+                    updateElement(selected.id, { fontFamily: e.target.value });
+                  }}
+                  inputProps={{ "aria-label": "ఫాంట్" }}
+                  MenuProps={{ PaperProps: { sx: { maxHeight: 420 } } }}
+                  data-telugu-font=""
+                  sx={{ fontFamily: fontStack(selected.fontFamily) }}
+                  renderValue={(v) => fonts.find((f) => f.value === v)?.label ?? v}
+                >
+                  {/* The current font is always an option, even before the list arrives */}
+                  {(fonts.some((f) => f.value === selected.fontFamily)
+                    ? fonts
+                    : [{ value: selected.fontFamily, label: selected.fontFamily }, ...fonts]
+                  ).map((f) => (
+                    <MenuItem
+                      key={f.value}
+                      value={f.value}
+                      data-telugu-font=""
+                      onMouseEnter={() => void loadTeluguFont(f.value)}
+                      onFocus={() => void loadTeluguFont(f.value)}
+                      sx={{ fontFamily: fontStack(f.value), minHeight: 44 }}
+                    >
+                      {f.label}
+                    </MenuItem>
                   ))}
                 </Select>
 

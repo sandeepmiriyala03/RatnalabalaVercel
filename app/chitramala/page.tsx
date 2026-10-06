@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Box, Typography } from "@mui/material";
 import PoemInput from "@/app/components/PoemInput";
 import ChitramalaCanvaEditor from "@/app/components/ChitramalaCanvaEditor";
+import { useTeluguFonts } from "@/lib/teluguFonts";
 
 /* =========================
    📦 TYPES
@@ -20,6 +21,9 @@ export default function ChitramalaPage() {
 
   /* 🔄 Used to fully reset PoemInput */
   const [resetKey, setResetKey] = useState(0);
+
+  /* ఫాంట్ల సంఖ్య main.py నుండి — ఇక్కడ పేర్లు రాసి ఉంచము */
+  const { fonts } = useTeluguFonts();
 
   return (
     <>
@@ -62,9 +66,8 @@ export default function ChitramalaPage() {
           </li>
           <li>
             🔤 <b>తెలుగు ఫాంట్లు & ఫాంట్ సైజ్:</b> చిత్రమాలలో
-            <b> గురజాడ, ఎన్‌టిఆర్, వేటూరి, సిరివెన్నెల, చతుర,
-            రమణీయ, రామరాజ, రవి ప్రకాష్, టానా, తెనాలి రామకృష్ణ,
-            తిమ్మన, పొన్నల</b> వంటి తెలుగు ఫాంట్లు అందుబాటులో ఉన్నాయి.
+            <b> {fonts.length > 0 ? `${fonts.length} ` : ""}తెలుగు ఫాంట్లు</b> అందుబాటులో ఉన్నాయి
+            (ఎంపిక జాబితాలో ప్రతి పేరు ఆ ఫాంట్‌లోనే కనిపిస్తుంది).
             అవసరానికి అనుగుణంగా <b>ఫాంట్ సైజ్‌ను కూడా మార్చుకోవచ్చు</b>.
           </li>
           <li>
