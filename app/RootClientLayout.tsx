@@ -8,7 +8,7 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import Navbar from "@/app/components/Navbar";
 import ChatbotWindow from "@/app/components/ChatbotWindow";       // check path
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt"; // check path
-import FontControlsTelugu from "@/app/components/FontControlsTelugu"; // check path
+import FontControlsTelugu from "@/app/components/FontSelection";
 import Footer from "@/app/components/Footer";
 import GoToTopButton from "@/app/components/GoToTopButton";
 import type { TeluguFont } from "@/app/types/fonts";

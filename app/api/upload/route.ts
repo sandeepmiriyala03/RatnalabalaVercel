@@ -4,7 +4,6 @@ import path from "path";
 import os from "os";
 import { processFile } from "@/lib/processFile";
 
-export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {

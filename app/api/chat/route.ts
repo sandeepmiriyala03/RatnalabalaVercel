@@ -5,7 +5,6 @@ import {
 } from "ai";
 import { groq } from "@ai-sdk/groq";
 
-export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {

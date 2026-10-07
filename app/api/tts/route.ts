@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { EdgeTTS } from "@andresaya/edge-tts";
 import * as googleTTS from "google-tts-api";
 
-export const runtime = "nodejs"; // needs real Node APIs, not Edge runtime
+/* No `export const runtime = "nodejs"`: with cacheComponents it fails the build
+   ("Route segment config runtime is not compatible"). Node.js is already the
+   default and the only runtime Cache Components supports, so nothing changes. */
 
 const MAX_TEXT_LENGTH = 5000; // sanity cap against abuse via giant payloads
 
@@ -23,10 +25,9 @@ async function generateGoogle(text: string): Promise<Buffer> {
   return Buffer.concat(buffers);
 }
 
-// ── Svara: now handled entirely in Python (api/main/index.py), which
-// calls kenpath/svara-tts-v1's free Hugging Face Space via
-// gradio_client. This route just forwards the request — no more
-// @gradio/client npm dependency needed here at all.
+// ── Svara: handled entirely in Python (api/main), which calls
+// kenpath/svara-tts-v1's free Hugging Face Space via gradio_client.
+// This route just forwards the request.
 async function generateSvara(text: string, voiceChoice: string, origin: string): Promise<Buffer> {
   const res = await fetch(`${origin}/api/main?endpoint=svara`, {
     method: "POST",
