@@ -8,7 +8,9 @@ import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
 import Navbar from "@/app/components/Navbar";
 import ChatbotWindow from "@/app/components/ChatbotWindow";       // check path
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt"; // check path
-import FontControlsTelugu from "@/app/components/FontSelection"; // check path
+import FontControlsTelugu from "@/app/components/FontControlsTelugu"; // check path
+import Footer from "@/app/components/Footer";
+import GoToTopButton from "@/app/components/GoToTopButton";
 import type { TeluguFont } from "@/app/types/fonts";
 import { FAB_EDGE, FAB_GAP, FAB_HEIGHT, FAB_Z, fabSx } from "@/lib/floating";
 import NextLink from "next/link";
@@ -18,7 +20,8 @@ import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME, type Searc
    Floating buttons on every page
 
    LEFT  : 🤖 భావాలమాల AI   (opens the chatbot drawer)
-   RIGHT : 📲 ఇన్‌స్టాల్      (PWA, hidden once installed)
+   RIGHT : ⬆ పైకి          (only after scrolling down)
+           📲 ఇన్‌స్టాల్      (PWA, hidden once installed)
            🔍 జ్ఞానశోధన     (WebMCP search panel)
 
    All buttons share one size, one offset and one z-index,
@@ -31,6 +34,11 @@ const PANEL_Z = 1150;
 const EDGE_LEFT = `calc(${FAB_EDGE}px + env(safe-area-inset-left, 0px))`;
 const EDGE_RIGHT = `calc(${FAB_EDGE}px + env(safe-area-inset-right, 0px))`;
 const EDGE_BOTTOM = `calc(${FAB_EDGE}px + env(safe-area-inset-bottom, 0px))`;
+
+/* Space at the bottom of the page for the floating buttons: the right column can
+   hold 3 (top, install, search). The footer adds it so its last line is never
+   covered by a button. */
+const FAB_SPACE = `calc(${FAB_EDGE + FAB_HEIGHT * 3 + FAB_GAP * 3}px + env(safe-area-inset-bottom, 0px))`;
 
 /* Brand tokens from globals.css */
 const GREEN = "var(--secondary)";
@@ -74,13 +82,8 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
     <>
       <Navbar />
 
-      {/* id="main-content" = Navbar skip-link target.
-          Bottom padding keeps the last lines of every page
-          clear of the floating buttons. */}
-      <main
-        id="main-content"
-        style={{ paddingBottom: `calc(${FAB_EDGE + FAB_HEIGHT * 2 + FAB_GAP * 2}px + env(safe-area-inset-bottom, 0px))` }}
-      >
+      {/* id="main-content" = Navbar skip-link target (and where the "పైకి" button sends focus) */}
+      <main id="main-content">
         {/* Font + size controls: first thing under the menu on every page.
             Inside <main>, so the skip link lands here and readers can fix
             the text size before they start reading. */}
@@ -105,6 +108,9 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
 
         {children}
       </main>
+
+      {/* Footer on every page; its bottom padding keeps the last line clear of the floating buttons */}
+      <Footer bottomSpace={FAB_SPACE} />
 
       {/* ── LEFT: భావాలమాల AI ── */}
       <Fab
@@ -131,12 +137,13 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
       </Fab>
       <ChatbotWindow open={chatOpen} onClose={() => setChatOpen(false)} />
 
-      {/* ── RIGHT: install (top) + search (bottom), stacked ── */}
+      {/* ── RIGHT: top (only after scrolling) + install + search (bottom), stacked ── */}
       <Stack
         spacing={`${FAB_GAP}px`}
         alignItems="flex-end"
         sx={{ position: "fixed", right: EDGE_RIGHT, bottom: EDGE_BOTTOM, zIndex: FAB_Z }}
       >
+        <GoToTopButton />
         <PwaInstallPrompt />
 
         <Fab

@@ -1,16 +1,18 @@
 "use client";
 
-import {
-  Box,
-  Container,
-  Typography,
-  Divider,
-  Chip,
-  Tooltip,
-  useTheme,
-} from "@mui/material";
+/* ═══════════════════════════════════════════════════════════════
+   FOOTER — ప్రతి పేజీలో (RootClientLayout)
+
+   • Next.js 16.4 Cache Components: render లో new Date() / performance.now() వాడితే
+     prerender error (next-prerender-current-time-client). తేదీ, సంవత్సరం, లోడ్ సమయం
+     అన్నీ effect లోనే — మొదటి HTML లో "…", browser లో నిజమైన విలువ
+   • అక్షరాలు కనీసం 0.95rem, రంగులు site tokens (AAA, dark mode ఆటోమేటిక్)
+   • కింద తేలే బటన్లకు చోటు: bottomSpace prop
+   ═══════════════════════════════════════════════════════════════ */
+
+import { Box, Chip, Container, Divider, Tooltip, Typography } from "@mui/material";
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface BuildInfo {
   version: string;
@@ -19,63 +21,61 @@ interface BuildInfo {
   buildTime: string;
 }
 
-export default function Footer() {
-  const theme = useTheme();
-  const [dateTime, setDateTime] = useState(new Date());
+const MALAS = [
+  "రత్నాలబాల", "పద్యాలమాల", "భావాలమాల", "అక్షరమాల", "శతకాలమాల", "చిత్రమాల", "కథామాల",
+  "సామెతలమాల", "లిపిమాల", "ఖతిమాల", "స్వరమాల", "ధ్వనిమాల", "దర్శనమాల", "కళామాల",
+];
+const VERBS = ["చదవండి", "వినండి", "రాయండి", "చిత్రీకరించండి", "చూడండి", "సృష్టించండి", "పంచుకోండి", "నేర్చుకోండి", "అన్వేషించండి", "భద్రపరచండి"];
+
+const muted = { color: "var(--muted-text)", fontSize: "0.95rem", lineHeight: 1.8 } as const;
+
+export default function Footer({ bottomSpace = "0px" }: { bottomSpace?: string }) {
+  const [now, setNow] = useState<Date | null>(null);
   const [views, setViews] = useState<number | null>(null);
   const [loadTime, setLoadTime] = useState<number | null>(null);
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
 
-  const navStart = useRef<number>(
-    typeof performance !== "undefined" ? performance.now() : 0
-  );
-
-  /* 📊 Increment + Fetch analytics */
+  /* తేదీ: browser లో మాత్రమే, నిమిషానికి ఒకసారి */
   useEffect(() => {
-    const loadViews = async () => {
+    setNow(new Date());
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  /* 📊 సందర్శనలు: ఒకటి పెంచి, మొత్తం తెచ్చుకో */
+  useEffect(() => {
+    let alive = true;
+    (async () => {
       try {
         await fetch("/api/pageview", { method: "POST" });
         const res = await fetch("/api/pageview");
         const data = await res.json();
-        setViews(typeof data.views === "number" ? data.views : null);
+        if (alive) setViews(typeof data.views === "number" ? data.views : null);
       } catch {
-        setViews(null);
+        if (alive) setViews(null);
       }
+    })();
+    return () => {
+      alive = false;
     };
-    loadViews();
   }, []);
 
-  /* ⏱ Date update */
+  /* ⚡ పేజీ లోడ్ సమయం (Navigation Timing) */
   useEffect(() => {
-    const timer = setInterval(() => setDateTime(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  /* 🚀 Route load time (Navigation Timing API, falls back to a manual mark) */
-  useEffect(() => {
+    const mountedAt = performance.now();
     const measure = () => {
-      const nav = performance.getEntriesByType(
-        "navigation"
-      )[0] as PerformanceNavigationTiming | undefined;
-
-      if (nav) {
-        // Time from navigation start to the browser's "load" event
-        setLoadTime(Math.round(nav.loadEventEnd - nav.startTime));
-      } else {
-        // Fallback: time from component mount ref to now (client route change)
-        setLoadTime(Math.round(performance.now() - navStart.current));
-      }
+      const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+      setLoadTime(Math.round(nav && nav.loadEventEnd > 0 ? nav.loadEventEnd - nav.startTime : performance.now() - mountedAt));
     };
-
     if (document.readyState === "complete") {
       measure();
-    } else {
-      window.addEventListener("load", measure);
-      return () => window.removeEventListener("load", measure);
+      return;
     }
+    window.addEventListener("load", measure);
+    return () => window.removeEventListener("load", measure);
   }, []);
 
-  /* 🏗️ Build info (version + last commit) */
+  /* 🏗️ version, చివరి commit */
   useEffect(() => {
     fetch("/build-info.json")
       .then((res) => (res.ok ? res.json() : null))
@@ -83,91 +83,73 @@ export default function Footer() {
       .catch(() => setBuildInfo(null));
   }, []);
 
-  const formattedDate = dateTime.toLocaleDateString("te-IN", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
+  const formattedDate = now?.toLocaleDateString("te-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const formattedCommitDate = buildInfo?.commitDate
-    ? new Date(buildInfo.commitDate).toLocaleDateString("te-IN", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
+    ? new Date(buildInfo.commitDate).toLocaleDateString("te-IN", { year: "numeric", month: "short", day: "numeric" })
     : null;
 
   return (
     <Box
       component="footer"
       sx={{
-        mt: 4,
-        py: 1.5,
-        px: 1,
-        backgroundColor:
-          theme.palette.mode === "light"
-            ? theme.palette.grey[50]
-            : theme.palette.grey[900],
-        borderTop: "1px solid",
-        borderColor: "divider",
+        mt: 6,
+        pt: 3,
+        pb: `calc(24px + ${bottomSpace})`,
+        px: 2,
+        bgcolor: "var(--surface)",
+        color: "var(--foreground)",
+        borderTop: "2px solid var(--border-strong)",
         textAlign: "center",
-        fontSize: "0.8rem",
       }}
     >
-      <Container maxWidth="md">
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-         రత్నాలబాల · పద్యాలవాల · భావాలమాల · అక్షరమాల · శతకాలమాల · చిత్రమాల · కథామాల · సామెతలమాల · లిపిమాల · ఖతిమాల · స్వరమాల · ధ్వనిమాల · దర్శనమాల · కళామాల
-        </Typography>
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ fontStyle: "italic", display: "block", mt: 0.3 }}
+      <Container maxWidth="md" disableGutters>
+        {/* మాలల పేర్లు — చుక్కల వరుస కాకుండా, విడివిడిగా చదవగలిగేలా */}
+        <Box
+          component="ul"
+          aria-label="రత్నాలబాల మాలలు"
+          sx={{ listStyle: "none", p: 0, m: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", columnGap: 2, rowGap: 0.5, fontSize: "1rem", fontWeight: 700 }}
         >
-         చదవండి - వినండి - రాయండి - చిత్రీకరించండి - చూడండి - సృష్టించండి - పంచుకోండి - నేర్చుకోండి - అన్వేషించండి - భద్రపరచండి
+          {MALAS.map((m) => (
+            <li key={m}>{m}</li>
+          ))}
+        </Box>
+
+        <Typography sx={{ ...muted, mt: 1 }}>{VERBS.join(" · ")}</Typography>
+
+        <Divider sx={{ my: 2, borderColor: "var(--border)" }} />
+
+        <Typography sx={{ fontSize: "1rem", fontWeight: 700 }}>© {now ? now.getFullYear() : ""} యుక్తిశాల AI</Typography>
+
+        <Typography sx={{ ...muted, mt: 0.5 }}>
+          👁️ మొత్తం సందర్శనలు: {views !== null ? views.toLocaleString("te-IN") : "…"}
         </Typography>
+        <Typography sx={muted}>🔒 గోప్యత మొదటి ప్రాధాన్యత</Typography>
+        {formattedDate && <Typography sx={muted}>📅 {formattedDate}</Typography>}
 
-        <Divider sx={{ my: 0.8 }} />
-
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
-          © {new Date().getFullYear()} యుక్తిశాల AI
-        </Typography>
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", mt: 0.2 }}
-        >
-          👁️ మొత్తం సందర్శనలు:{" "}
-          {views !== null ? views.toLocaleString("te-IN") : "…"}
-          {" • "}
-          🔒 గోప్యత మొదటి ప్రాధాన్యత • {formattedDate}
-        </Typography>
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", mt: 0.2, opacity: 0.7 }}
-        >
+        <Typography sx={{ ...muted, fontSize: "0.92rem", mt: 0.5 }}>
           ⚡ లోడ్ సమయం: {loadTime !== null ? `${loadTime} ms` : "…"}
           {buildInfo && (
             <>
-              {" • "}📦 v{buildInfo.version}
-              {" ("}{buildInfo.commitHash}{") "}
-              {formattedCommitDate && `• 🕓 ${formattedCommitDate}`}
+              {" · "}📦 v{buildInfo.version} ({buildInfo.commitHash})
+              {formattedCommitDate && ` · 🕓 ${formattedCommitDate}`}
             </>
           )}
         </Typography>
 
-        <Tooltip title="తెలుగు అక్షర విశ్లేషణ Rust/WebAssemblyతో నడుస్తుంది. సైట్ UI Next.jsపై నడుస్తుంది.">
+        <Tooltip title="తెలుగు అక్షర విశ్లేషణ Rust/WebAssembly తో నడుస్తుంది. సైట్ UI Next.js పై నడుస్తుంది.">
           <Chip
-            size="small"
             icon={<CodeRoundedIcon />}
             label="Rust · WebAssembly"
             variant="outlined"
-            color="secondary"
-            sx={{ mt: 1, fontSize: "0.7rem" }}
+            sx={{
+              mt: 1.5,
+              height: 36,
+              fontSize: "0.92rem",
+              fontWeight: 600,
+              color: "var(--foreground)",
+              borderColor: "var(--border-strong)",
+              "& .MuiChip-icon": { color: "var(--secondary)" },
+            }}
           />
         </Tooltip>
       </Container>

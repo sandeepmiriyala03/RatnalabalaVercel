@@ -92,6 +92,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // don't advertise "X-Powered-By: Next.js"
 
+  /* Next.js 16.4: Cache Components + Partial Prefetching.
+     • Pages are prerendered as a static shell, so tapping a menu shows the page at once
+     • Going to another menu and back keeps the page's state (<Activity hidden>):
+       a PDF Q&A, a half-made poster, a story stay where they were
+     • Nothing is cached unless marked "use cache"; segment configs like
+       dynamic / revalidate / fetchCache / dynamicParams / runtime="edge" fail the build
+     • No Math.random() / Date.now() / new Date() during render (only in effects / handlers)
+     • A "use client" page cannot export ensureStatic; put it in a server page.tsx
+     • Check that the build still passes with `next build --webpack` (Serwist) */
+  cacheComponents: true,
+  partialPrefetching: true, // set it explicitly; leaving it out logs a warning
+
   transpilePackages: ["@yuktishaalaa/yuktai"],
 
   async headers() {
