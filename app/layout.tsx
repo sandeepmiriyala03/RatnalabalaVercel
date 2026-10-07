@@ -4,9 +4,13 @@ import RootClientLayout from "./RootClientLayout";
 import OfflineBanner from "@/app/components/Offlinebanner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Script from "next/script";
 import type { Metadata, Viewport } from "next";
 
 const SITE_URL = "https://ratnalabala.vercel.app";
+
+/* Google Analytics 4 — Measurement ID (stream: ratnalabala) */
+const GA_ID = "G-WB8WHN3KRC";
 
 const SITE_NAME = "రత్నాలబాల – జ్ఞానమాల";
 const SITE_DESCRIPTION =
@@ -102,6 +106,15 @@ export default function RootLayout({
 
         <Analytics />
         <SpeedInsights />
+
+        {/* Google Analytics — loads after the page is ready, so the site doesn't slow down */}
+        <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GA_ID}');`}
+        </Script>
       </body>
     </html>
   );
