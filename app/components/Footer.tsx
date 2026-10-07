@@ -1,48 +1,36 @@
 "use client";
 
 /* ═══════════════════════════════════════════════════════════════
-   FOOTER — ప్రతి పేజీలో (RootClientLayout)
+   FOOTER — one fixed line at the bottom of every page, like the header
 
-   • Next.js 16.4 Cache Components: render లో new Date() / performance.now() వాడితే
-     prerender error (next-prerender-current-time-client). తేదీ, సంవత్సరం, లోడ్ సమయం
-     అన్నీ effect లోనే — మొదటి HTML లో "…", browser లో నిజమైన విలువ
-   • అక్షరాలు కనీసం 0.95rem, రంగులు site tokens (AAA, dark mode ఆటోమేటిక్)
-   • కింద తేలే బటన్లకు చోటు: bottomSpace prop
+   © year యుక్తిశాల AI · total visits. Nothing else.
+
+   Everything lives in this one file:
+   • Fixed green bar (same colour as the Navbar), 44px + iPhone home-bar space
+   • A spacer in the page flow, so the last lines of a page are never hidden
+     behind the bar (plus `bottomSpace`, if the layout passes it)
+   • Lifts the floating buttons (AI / పైకి / ఇన్‌స్టాల్ / శోధన) above the bar
+     with a small global style, so no other file has to change
+   • Slides away while the phone keyboard is open (it would cover typing)
+   • Year and visits are set in effects — no new Date() during render
+     (Next.js 16.4 Cache Components prerender rule)
    ═══════════════════════════════════════════════════════════════ */
 
-import { Box, Chip, Container, Divider, Tooltip, Typography } from "@mui/material";
-import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
 import { useEffect, useState } from "react";
+import { Box, GlobalStyles } from "@mui/material";
 
-interface BuildInfo {
-  version: string;
-  commitHash: string;
-  commitDate: string;
-  buildTime: string;
-}
-
-const MALAS = [
-  "రత్నాలబాల", "పద్యాలమాల", "భావాలమాల", "అక్షరమాల", "శతకాలమాల", "చిత్రమాల", "కథామాల",
-  "సామెతలమాల", "లిపిమాల", "ఖతిమాల", "స్వరమాల", "ధ్వనిమాల", "దర్శనమాల", "కళామాల",
-];
-const VERBS = ["చదవండి", "వినండి", "రాయండి", "చిత్రీకరించండి", "చూడండి", "సృష్టించండి", "పంచుకోండి", "నేర్చుకోండి", "అన్వేషించండి", "భద్రపరచండి"];
-
-const muted = { color: "var(--muted-text)", fontSize: "0.95rem", lineHeight: 1.8 } as const;
+const BAR = 44; // px
+const SAFE_BOTTOM = "env(safe-area-inset-bottom, 0px)";
 
 export default function Footer({ bottomSpace = "0px" }: { bottomSpace?: string }) {
-  const [now, setNow] = useState<Date | null>(null);
+  const [year, setYear] = useState<number | null>(null);
   const [views, setViews] = useState<number | null>(null);
-  const [loadTime, setLoadTime] = useState<number | null>(null);
-  const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
-  /* తేదీ: browser లో మాత్రమే, నిమిషానికి ఒకసారి */
-  useEffect(() => {
-    setNow(new Date());
-    const timer = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
+  /* Year — in the browser only */
+  useEffect(() => setYear(new Date().getFullYear()), []);
 
-  /* 📊 సందర్శనలు: ఒకటి పెంచి, మొత్తం తెచ్చుకో */
+  /* Visits: count this visit, then read the total */
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -50,9 +38,9 @@ export default function Footer({ bottomSpace = "0px" }: { bottomSpace?: string }
         await fetch("/api/pageview", { method: "POST" });
         const res = await fetch("/api/pageview");
         const data = await res.json();
-        if (alive) setViews(typeof data.views === "number" ? data.views : null);
+        if (alive && typeof data.views === "number") setViews(data.views);
       } catch {
-        if (alive) setViews(null);
+        /* the line just shows without the count */
       }
     })();
     return () => {
@@ -60,99 +48,77 @@ export default function Footer({ bottomSpace = "0px" }: { bottomSpace?: string }
     };
   }, []);
 
-  /* ⚡ పేజీ లోడ్ సమయం (Navigation Timing) */
+  /* Phone keyboard open = visible area shrinks a lot */
   useEffect(() => {
-    const mountedAt = performance.now();
-    const measure = () => {
-      const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-      setLoadTime(Math.round(nav && nav.loadEventEnd > 0 ? nav.loadEventEnd - nav.startTime : performance.now() - mountedAt));
-    };
-    if (document.readyState === "complete") {
-      measure();
-      return;
-    }
-    window.addEventListener("load", measure);
-    return () => window.removeEventListener("load", measure);
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const check = () => setKeyboardOpen(window.innerHeight - vv.height > 150);
+    vv.addEventListener("resize", check);
+    return () => vv.removeEventListener("resize", check);
   }, []);
 
-  /* 🏗️ version, చివరి commit */
-  useEffect(() => {
-    fetch("/build-info.json")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setBuildInfo(data))
-      .catch(() => setBuildInfo(null));
-  }, []);
-
-  const formattedDate = now?.toLocaleDateString("te-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const formattedCommitDate = buildInfo?.commitDate
-    ? new Date(buildInfo.commitDate).toLocaleDateString("te-IN", { year: "numeric", month: "short", day: "numeric" })
-    : null;
+  const lift = keyboardOpen ? "0px" : `${BAR}px`;
 
   return (
-    <Box
-      component="footer"
-      sx={{
-        mt: 6,
-        pt: 3,
-        pb: `calc(24px + ${bottomSpace})`,
-        px: 2,
-        bgcolor: "var(--surface)",
-        color: "var(--foreground)",
-        borderTop: "2px solid var(--border-strong)",
-        textAlign: "center",
-      }}
-    >
-      <Container maxWidth="md" disableGutters>
-        {/* మాలల పేర్లు — చుక్కల వరుస కాకుండా, విడివిడిగా చదవగలిగేలా */}
-        <Box
-          component="ul"
-          aria-label="రత్నాలబాల మాలలు"
-          sx={{ listStyle: "none", p: 0, m: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", columnGap: 2, rowGap: 0.5, fontSize: "1rem", fontWeight: 700 }}
-        >
-          {MALAS.map((m) => (
-            <li key={m}>{m}</li>
-          ))}
+    <>
+      {/* Floating buttons (fixed, direct children of <body>) move up by the bar height.
+          Left: the AI button itself. Right: the bottom button of the stack, so the
+          whole stack moves up together. */}
+      <GlobalStyles
+        styles={{
+          "body > .MuiFab-root, body > .MuiStack-root > .MuiFab-root:not(:has(~ .MuiFab-root))": {
+            marginBottom: lift,
+            transition: "margin-bottom 0.2s ease",
+          },
+          "@media (prefers-reduced-motion: reduce)": {
+            "body > .MuiFab-root, body > .MuiStack-root > .MuiFab-root": { transition: "none" },
+          },
+        }}
+      />
+
+      {/* Spacer in the page flow: page end stays clear of the bar and the buttons */}
+      <Box aria-hidden sx={{ height: `calc(${BAR}px + ${bottomSpace} + ${SAFE_BOTTOM})` }} />
+
+      <Box
+        component="footer"
+        sx={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 1040, // below the floating buttons (1050), header (1100) and dialogs
+          height: `calc(${BAR}px + ${SAFE_BOTTOM})`,
+          pb: SAFE_BOTTOM,
+          px: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: { xs: 1, sm: 2 },
+          bgcolor: "var(--secondary)",
+          color: "var(--background)",
+          boxShadow: "0 -2px 8px rgba(0,0,0,0.15)",
+          fontSize: { xs: "0.88rem", sm: "0.95rem" },
+          lineHeight: 1,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          transform: keyboardOpen ? "translateY(100%)" : "none",
+          transition: "transform 0.2s ease",
+          "@media (prefers-reduced-motion: reduce)": { transition: "none" },
+          "@media (max-width: 359.98px)": { fontSize: "0.8rem", gap: 0.5, px: 1 }, // very small phones
+        }}
+      >
+        <Box component="span" sx={{ fontWeight: 700 }}>
+          © {year ?? ""} యుక్తిశాల AI
         </Box>
-
-        <Typography sx={{ ...muted, mt: 1 }}>{VERBS.join(" · ")}</Typography>
-
-        <Divider sx={{ my: 2, borderColor: "var(--border)" }} />
-
-        <Typography sx={{ fontSize: "1rem", fontWeight: 700 }}>© {now ? now.getFullYear() : ""} యుక్తిశాల AI</Typography>
-
-        <Typography sx={{ ...muted, mt: 0.5 }}>
-          👁️ మొత్తం సందర్శనలు: {views !== null ? views.toLocaleString("te-IN") : "…"}
-        </Typography>
-        <Typography sx={muted}>🔒 గోప్యత మొదటి ప్రాధాన్యత</Typography>
-        {formattedDate && <Typography sx={muted}>📅 {formattedDate}</Typography>}
-
-        <Typography sx={{ ...muted, fontSize: "0.92rem", mt: 0.5 }}>
-          ⚡ లోడ్ సమయం: {loadTime !== null ? `${loadTime} ms` : "…"}
-          {buildInfo && (
-            <>
-              {" · "}📦 v{buildInfo.version} ({buildInfo.commitHash})
-              {formattedCommitDate && ` · 🕓 ${formattedCommitDate}`}
-            </>
-          )}
-        </Typography>
-
-        <Tooltip title="తెలుగు అక్షర విశ్లేషణ Rust/WebAssembly తో నడుస్తుంది. సైట్ UI Next.js పై నడుస్తుంది.">
-          <Chip
-            icon={<CodeRoundedIcon />}
-            label="Rust · WebAssembly"
-            variant="outlined"
-            sx={{
-              mt: 1.5,
-              height: 36,
-              fontSize: "0.92rem",
-              fontWeight: 600,
-              color: "var(--foreground)",
-              borderColor: "var(--border-strong)",
-              "& .MuiChip-icon": { color: "var(--secondary)" },
-            }}
-          />
-        </Tooltip>
-      </Container>
-    </Box>
+        {views !== null && (
+          <>
+            <Box component="span" aria-hidden sx={{ opacity: 0.6 }}>
+              ·
+            </Box>
+            <Box component="span">{views.toLocaleString("en-IN")} సందర్శనలు</Box>
+          </>
+        )}
+      </Box>
+    </>
   );
 }
