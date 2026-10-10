@@ -171,6 +171,7 @@ const nextConfig: NextConfig = {
        instead of failing. Also enables useOffline() from "next/offline".
        Experimental: Next.js doesn't yet recommend it for production. */
     useOffline: true,
+
   },
 
   turbopack: {},
