@@ -38,19 +38,6 @@ type NavGroup = { label: string; icon: string; items: NavItem[] };
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "సాహిత్యం",
-    icon: "📚",
-    items: [
-      { label: "పద్యాలమాల", path: "/poems" },
-      { label: "మిరా", path: "/mirapoems" },
-      { label: "శతకాలమాల", path: "/shatakamu" },
-      { label: "స్మృతిమాల", path: "/smruthimala" },
-      { label: "కథామాల", path: "/kathamala" },
-      { label: "పరాభవమాల", path: "/parabhava" },
-      { label: "నా చదువు", path: "/my-reading" },
-    ],
-  },
-  {
     label: "వ్యాకరణం",
     icon: "📖",
     items: [
@@ -63,31 +50,37 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: "సాహిత్యం",
+    icon: "📚",
+    items: [
+      { label: "పద్యాలమాల", path: "/poems" },
+      { label: "మిరా", path: "/mirapoems" },
+      { label: "శతకాలమాల", path: "/shatakamu" },
+      { label: "స్మృతిమాల", path: "/smruthimala" },
+      { label: "కథామాల", path: "/kathamala" },
+      { label: "పరాభవమాల", path: "/parabhava" },
+      { label: "గీతామాల", path: "/geeta" },
+      { label: "PDF ప్రశ్నోత్తరి", path: "/prashnottari" },
+      { label: "నా చదువు", path: "/my-reading" },
+      { label: "జ్ఞానమాల — అన్ని మాలలు ఒకే చోట", path: "/gnanamala" },
+    ],
+  },
+  {
     label: "కళలు",
     icon: "🎨",
     items: [
+      { label: "ఖతిమాల", path: "/khatiMala" },
       { label: "చిత్రమాల", path: "/chitramala" },
       { label: "స్వరమాల", path: "/swaramala" },
       { label: "లిపిమాల", path: "/lipimala" },
-      { label: "ఖతిమాల", path: "/khatiMala" },
       { label: "విదురమాల", path: "/rahasyabhasha" },
       { label: "శైలిమాల", path: "/shailimala" },
-    ],
-  },
-  { label: "వాచకమాల", icon: "📰", items: [{ label: "తెలుగు వాచకి", path: "/news" }] },
-  { label: "గీతామాల", icon: "🕉️", items: [{ label: "భగవద్గీత", path: "/geeta" }] },
-  {
-    label: "జ్ఞానమాల",
-    icon: "🪔",
-    items: [
-      { label: "అన్ని మాలలు ఒకే చోట", path: "/gnanamala" },
-      { label: "PDF ప్రశ్నోత్తరి", path: "/prashnottari" },
+      { label: "వాచకమాల", path: "/news" },
     ],
   },
 ];
-
 const HOME_LABEL = "ముంగిలి"; // "home"
-const TEST_LAB = { label: "పరీక్షల కేంద్రం", path: "/test-lab" };
+
 const FEEDBACK_URL = "https://forms.gle/z4zugcnmZrW9d9cR9";
 
 /* ఉప-పేజీలూ లెక్కే: /poems/12 లో ఉంటే "పద్యాలమాల" హైలైట్ */
