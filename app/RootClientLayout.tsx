@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Box, Button, CircularProgress, Fab, IconButton, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, ClickAwayListener, Fab, IconButton, Stack, TextField, Typography } from "@mui/material";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
+import AppsRoundedIcon from "@mui/icons-material/AppsRounded";
+import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import Navbar from "@/app/components/Navbar";
 import ChatbotWindow from "@/app/components/ChatbotWindow";       // check path
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt"; // check path
@@ -17,16 +19,24 @@ import NextLink from "next/link";
 import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME, type SearchResult } from "@/lib/webmcp";
 
 /* ═══════════════════════════════════════════
-   Floating buttons on every page
+   Floating buttons on every page — ONE button, one group
 
-   LEFT  : 🤖 భావాలమాల AI   (opens the chatbot drawer)
-   RIGHT : ⬆ పైకి          (only after scrolling down)
-           📲 ఇన్‌స్టాల్      (PWA, hidden once installed)
-           🔍 జ్ఞానశోధన     (WebMCP search panel)
+   Before: AI on the left, పైకి / ఇన్‌స్టాల్ / శోధన stacked on the right —
+   up to 4 buttons covering the text on a phone.
+   Now   : a single "సహాయం" button. Tap → the group opens above it:
+             🤖 భావాలమాల AI
+             🔍 జ్ఞానశోధన
+             📲 ఇన్‌స్టాల్      (only until the app is installed)
+             ⬆ పైకి          (only after scrolling down)
+             ⇆ ఎడమ / కుడి వైపుకి   (moves the button; remembered on this device)
+           Tap again, Esc, or tap anywhere outside → the group hides.
 
-   All buttons share one size, one offset and one z-index,
-   so they line up and never cover menus or drawers.
+   The group stays mounted while hidden (inert + invisible), so the
+   install prompt keeps its state and nothing re-downloads.
 ═══════════════════════════════════════════ */
+
+type Side = "left" | "right";
+const SIDE_KEY = "rb-fab-side";
 
 /* WebMCP panel: above the floating buttons, below drawers */
 const PANEL_Z = 1150;
@@ -35,10 +45,9 @@ const EDGE_LEFT = `calc(${FAB_EDGE}px + env(safe-area-inset-left, 0px))`;
 const EDGE_RIGHT = `calc(${FAB_EDGE}px + env(safe-area-inset-right, 0px))`;
 const EDGE_BOTTOM = `calc(${FAB_EDGE}px + env(safe-area-inset-bottom, 0px))`;
 
-/* Space at the bottom of the page for the floating buttons: the right column can
-   hold 3 (top, install, search). The footer adds it so its last line is never
-   covered by a button. */
-const FAB_SPACE = `calc(${FAB_EDGE + FAB_HEIGHT * 3 + FAB_GAP * 3}px + env(safe-area-inset-bottom, 0px))`;
+/* Space at the bottom of the page for the ONE launcher button. The footer adds it
+   so its last line is never covered (the open group floats over the page on purpose). */
+const FAB_SPACE = `calc(${FAB_EDGE + FAB_HEIGHT + FAB_GAP}px + env(safe-area-inset-bottom, 0px))`;
 
 /* Brand tokens from globals.css */
 const GREEN = "var(--secondary)";
@@ -66,7 +75,45 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
 
   const [chatOpen, setChatOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const searchTriggerRef = useRef<HTMLButtonElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [side, setSide] = useState<Side>("right");
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const firstItemRef = useRef<HTMLButtonElement>(null);
+
+  // Left or right — the reader's choice, kept on this device (read after mount: no SSR mismatch)
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(SIDE_KEY) === "left") setSide("left");
+    } catch {
+      /* storage blocked: stays on the right */
+    }
+  }, []);
+  const switchSide = () => {
+    const next: Side = side === "right" ? "left" : "right";
+    setSide(next);
+    try {
+      localStorage.setItem(SIDE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const closeMenu = useCallback((returnFocus = true) => {
+    setMenuOpen(false);
+    if (returnFocus) requestAnimationFrame(() => launcherRef.current?.focus());
+  }, []);
+
+  // Open: focus the first item. Esc closes and returns focus to the button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    requestAnimationFrame(() => firstItemRef.current?.focus());
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && closeMenu();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen, closeMenu]);
+
+  const edge = side === "right" ? { right: EDGE_RIGHT } : { left: EDGE_LEFT };
+  const align = side === "right" ? "flex-end" : "flex-start";
 
   // Register the WebMCP tool once, for every page. Cleanup unregisters it.
   useEffect(() => initWebMCP(), []);
@@ -74,8 +121,8 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
   // Stable function, so the panel's Esc listener isn't re-added on every keystroke
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
-    // Return focus to the button that opened the panel
-    requestAnimationFrame(() => searchTriggerRef.current?.focus());
+    // Return focus to the one floating button
+    requestAnimationFrame(() => launcherRef.current?.focus());
   }, []);
 
   return (
@@ -112,71 +159,123 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
       {/* Footer on every page; its bottom padding keeps the last line clear of the floating buttons */}
       <Footer bottomSpace={FAB_SPACE} />
 
-      {/* ── LEFT: భావాలమాల AI ── */}
-      <Fab
-        variant="extended"
-        onClick={() => setChatOpen(true)}
-        aria-label="భావాలమాల AI సహాయకుడు"
-        aria-haspopup="dialog"
-        aria-expanded={chatOpen}
-        sx={{
-          ...fabSx,
-          position: "fixed",
-          left: EDGE_LEFT,
-          bottom: EDGE_BOTTOM,
-          zIndex: FAB_Z,
-          bgcolor: GOLD,
-          color: ON_GOLD,
-          "&:hover": { bgcolor: GOLD, filter: "brightness(1.05)" },
-        }}
-      >
-        <AutoAwesomeRoundedIcon />
-        {/* Shorter label on phones so left and right buttons never touch */}
-        <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>భావాలమాల AI</Box>
-        <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>AI</Box>
-      </Fab>
+      {/* ── ONE floating button + its group ── */}
+      <ClickAwayListener onClickAway={() => menuOpen && closeMenu(false)}>
+        <Stack
+          spacing={`${FAB_GAP}px`}
+          alignItems={align}
+          sx={{ position: "fixed", ...edge, bottom: EDGE_BOTTOM, zIndex: FAB_Z }}
+        >
+          {/* The group (stays mounted; hidden = invisible + inert) */}
+          <Box
+            id="floating-group"
+            role="group"
+            aria-label="సహాయ బటన్లు"
+            inert={!menuOpen}
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: align,
+              gap: `${FAB_GAP}px`,
+              opacity: menuOpen ? 1 : 0,
+              visibility: menuOpen ? "visible" : "hidden",
+              transform: menuOpen ? "none" : "translateY(12px) scale(0.96)",
+              transformOrigin: side === "right" ? "bottom right" : "bottom left",
+              transition: "opacity .18s ease, transform .18s ease, visibility 0s linear " + (menuOpen ? "0s" : ".18s"),
+              "@media (prefers-reduced-motion: reduce)": { transition: "none", transform: "none" },
+              // leave room for the search/install cards that open from this corner
+              maxHeight: "calc(100dvh - 160px)",
+            }}
+          >
+            <Fab
+              ref={firstItemRef}
+              variant="extended"
+              onClick={() => {
+                closeMenu(false);
+                setChatOpen(true);
+              }}
+              aria-haspopup="dialog"
+              aria-expanded={chatOpen}
+              sx={{ ...fabSx, bgcolor: GOLD, color: ON_GOLD, "&:hover": { bgcolor: GOLD, filter: "brightness(1.05)" } }}
+            >
+              <AutoAwesomeRoundedIcon />
+              భావాలమాల AI
+            </Fab>
+
+            <Fab
+              variant="extended"
+              onClick={() => {
+                closeMenu(false);
+                setSearchOpen(true);
+              }}
+              aria-haspopup="dialog"
+              aria-expanded={searchOpen}
+              sx={{ ...fabSx, bgcolor: GREEN, color: PAPER, "&:hover": { bgcolor: GREEN, filter: "brightness(1.08)" } }}
+            >
+              <TravelExploreRoundedIcon />
+              జ్ఞానశోధన
+            </Fab>
+
+            {/* Shows itself only until the app is installed */}
+            <PwaInstallPrompt />
+
+            {/* Shows itself only after scrolling down */}
+            <GoToTopButton />
+
+            <Fab
+              variant="extended"
+              size="medium"
+              onClick={switchSide}
+              aria-label={side === "right" ? "బటన్‌ను ఎడమ వైపుకి జరపండి" : "బటన్‌ను కుడి వైపుకి జరపండి"}
+              sx={{
+                ...fabSx,
+                bgcolor: "var(--surface-elevated)",
+                color: INK,
+                border: `2px solid ${LINE}`,
+                boxShadow: "0 3px 10px rgba(0,0,0,0.15)",
+                "&:hover": { bgcolor: "var(--surface)" },
+              }}
+            >
+              <SwapHorizRoundedIcon />
+              {side === "right" ? "ఎడమ వైపుకి" : "కుడి వైపుకి"}
+            </Fab>
+          </Box>
+
+          {/* The one button: opens / hides the group */}
+          <Fab
+            ref={launcherRef}
+            variant="extended"
+            onClick={() => (menuOpen ? closeMenu(false) : setMenuOpen(true))}
+            aria-expanded={menuOpen}
+            aria-controls="floating-group"
+            aria-label={menuOpen ? "సహాయ బటన్లు దాచండి" : "సహాయ బటన్లు చూపించండి: AI, శోధన, ఇన్‌స్టాల్, పైకి"}
+            sx={{
+              ...fabSx,
+              bgcolor: menuOpen ? INK : GREEN,
+              color: PAPER,
+              visibility: searchOpen ? "hidden" : "visible",
+              "&:hover": { bgcolor: menuOpen ? INK : GREEN, filter: "brightness(1.08)" },
+              "&:focus-visible": { outline: `3px solid ${GOLD}`, outlineOffset: 3 },
+            }}
+          >
+            {menuOpen ? <CloseRoundedIcon /> : <AppsRoundedIcon />}
+            {menuOpen ? "దాచు" : "సహాయం"}
+          </Fab>
+        </Stack>
+      </ClickAwayListener>
+
       <ChatbotWindow open={chatOpen} onClose={() => setChatOpen(false)} />
 
-      {/* ── RIGHT: top (only after scrolling) + install + search (bottom), stacked ── */}
-      <Stack
-        spacing={`${FAB_GAP}px`}
-        alignItems="flex-end"
-        sx={{ position: "fixed", right: EDGE_RIGHT, bottom: EDGE_BOTTOM, zIndex: FAB_Z }}
-      >
-        <GoToTopButton />
-        <PwaInstallPrompt />
-
-        <Fab
-          variant="extended"
-          ref={searchTriggerRef}
-          onClick={() => setSearchOpen(true)}
-          aria-label="జ్ఞానశోధన"
-          aria-haspopup="dialog"
-          aria-expanded={searchOpen}
-          sx={{
-            ...fabSx,
-            bgcolor: GREEN,
-            color: PAPER,
-            visibility: searchOpen ? "hidden" : "visible",
-            "&:hover": { bgcolor: GREEN, filter: "brightness(1.08)" },
-          }}
-        >
-          <TravelExploreRoundedIcon />
-          <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>జ్ఞానశోధన</Box>
-          <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>శోధన</Box>
-        </Fab>
-      </Stack>
-
-      <WebMCPPanel open={searchOpen} onClose={closeSearch} />
+      <WebMCPPanel open={searchOpen} onClose={closeSearch} side={side} />
     </>
   );
 }
 
 /* ═══════════════════════════════════════════
    WebMCP search panel
-   Phone: bottom sheet. Desktop: card above the right buttons.
+   Phone: bottom sheet. Desktop: card in the floating button's corner.
 ═══════════════════════════════════════════ */
-function WebMCPPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+function WebMCPPanel({ open, onClose, side }: { open: boolean; onClose: () => void; side: Side }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<SearchResult | null>(null);
@@ -222,8 +321,9 @@ function WebMCPPanel({ open, onClose }: { open: boolean; onClose: () => void }) 
       sx={{
         position: "fixed",
         zIndex: PANEL_Z,
-        left: { xs: 0, sm: "auto" },
-        right: { xs: 0, sm: EDGE_RIGHT },
+        /* Desktop: opens in the same corner as the floating button */
+        left: { xs: 0, sm: side === "left" ? EDGE_LEFT : "auto" },
+        right: { xs: 0, sm: side === "right" ? EDGE_RIGHT : "auto" },
         bottom: { xs: 0, sm: EDGE_BOTTOM },
         width: { xs: "100%", sm: 420 },
         maxHeight: { xs: "85dvh", sm: "min(640px, calc(100dvh - 120px))" },
