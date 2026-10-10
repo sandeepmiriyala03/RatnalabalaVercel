@@ -81,7 +81,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: "🪔",
     items: [
       { label: "అన్ని మాలలు ఒకే చోట", path: "/gnanamala" },
-      { label: "PDF ప్రశ్నోత్తరి", path: "/pdf-prashnottari" },
+      { label: "PDF ప్రశ్నోత్తరి", path: "/prashnottari" },
     ],
   },
 ];

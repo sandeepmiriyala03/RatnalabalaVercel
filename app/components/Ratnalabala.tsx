@@ -130,7 +130,7 @@ const GROUPS: Group[] = [
     items: [
       { label: "వాచకమాల", path: "/news", intro: "తెలుగు వాచకి — వార్తలు చదవండి, వినండి", Icon: NewspaperTwoToneIcon },
       { label: "గీతామాల", path: "/geeta", intro: "భగవద్గీత శ్లోకాలు", Icon: TempleHinduTwoToneIcon },
-      { label: "PDF ప్రశ్నోత్తరి", path: "/pdf-prashnottari", intro: "మీ తెలుగు PDF అప్‌లోడ్ చేసి ప్రశ్నలు అడగండి", Icon: QuizTwoToneIcon },
+      { label: "PDF ప్రశ్నోత్తరి", path: "/prashnottari", intro: "మీ తెలుగు PDF అప్‌లోడ్ చేసి ప్రశ్నలు అడగండి", Icon: QuizTwoToneIcon },
     ],
   },
 ];
@@ -143,7 +143,7 @@ const DO_HERE: { title: string; text: string; path: string; Icon: SvgIconCompone
   { title: "వినండి", text: "మగ, స్త్రీ స్వరాల్లో — స్వరమాల రేడియోతో వరుసగా", path: "/swaramala", Icon: HeadphonesTwoToneIcon },
   { title: "నేర్చుకోండి", text: "అక్షరాలు, గుణింతాలు, సంధులు, సమాసాలు, సామెతలు", path: "/aksharamala", Icon: SchoolTwoToneIcon },
   { title: "సృష్టించండి", text: "పద్యాలను పోస్టర్లు, వీడియోలుగా; 50+ తెలుగు ఫాంట్లతో", path: "/chitramala", Icon: BrushTwoToneIcon },
-  { title: "అడగండి", text: "మీ తెలుగు PDF పై ప్రశ్నలు — జవాబు పేజీ సంఖ్యతో", path: "/pdf-prashnottari", Icon: ForumTwoToneIcon },
+  { title: "అడగండి", text: "మీ తెలుగు PDF పై ప్రశ్నలు — జవాబు పేజీ సంఖ్యతో", path: "/prashnottari", Icon: ForumTwoToneIcon },
 ];
 
 const STATS: [string, string][] = [
