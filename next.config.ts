@@ -175,6 +175,21 @@ const nextConfig: NextConfig = {
   },
 
   turbopack: {},
+
+  /* ఖతి మాల → PowerPoint (pptxgenjs): its code mentions node:fs / node:https
+     for Node.js only; in the browser they are never used. Without this,
+     webpack stops with "UnhandledSchemeError: node:https". */
+  webpack: (config, { isServer, webpack }) => {
+    if (!isServer) {
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(/^node:(fs|https)$/, (r: { request: string }) => {
+          r.request = r.request.replace(/^node:/, "");
+        })
+      );
+      config.resolve.fallback = { ...config.resolve.fallback, fs: false, https: false };
+    }
+    return config;
+  },
 };
 
 // Serwist wrapper

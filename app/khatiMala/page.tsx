@@ -1,377 +1,524 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+/* ═══════════════════════════════════════════════════════════════
+   ఖతి మాల — తెలుగు పత్రాలు, పోస్టర్లు, స్లైడ్ షోలు (MS Office లాగా, సులభంగా)
+
+   • పెట్టెలు: శీర్షిక, పేరా, పద్యం, జాబితా, పట్టిక, చిత్రం, గీత, కొత్త పేజీ
+   • ప్రతి పెట్టెకు: ఫాంట్, సైజు, B/I/U, ఎడమ/మధ్య/కుడి/సమం, రంగు, పంక్తి దూరం
+   • 10 రూపాలు (themes) · నేపథ్య చిత్రం · పేజీ సంఖ్యలు
+   • స్లైడ్ షో: ఎన్ని స్లైడ్లైనా, 5 అమరికలు, పూర్తి తెర, మీ సంగీతంతో
+   • ఎగుమతి: PDF · పోస్టర్ PNG · Word (ఫాంట్ లోపలే) · PowerPoint
+   • మీ సొంత ఫాంట్లు (ఫైల్ / కంప్యూటర్) · వెనక్కి/ముందుకు · కొత్తది (reset)
+   • ఈ పరికరంలోనే ఆటో సేవ్ (చిత్రాలతో సహా) — ఏదీ సర్వర్‌కి వెళ్ళదు
+
+   Preview, PDF, poster, PPT అన్నీ ఒకే canvas engine (khatimala/engine.ts)
+   తో గీస్తాం → ఫోన్‌లో చేసినా కంప్యూటర్‌లో చేసినా అదే ఫలితం.
+   ═══════════════════════════════════════════════════════════════ */
+
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
-  LinearProgress,
-  MenuItem,
-  Select,
-  Slider,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Snackbar,
   Stack,
+  Tab,
+  Tabs,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
+  Tooltip,
   Typography,
+  useMediaQuery,
 } from "@mui/material";
-import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
-import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
-import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
-import { toPng } from "html-to-image";
-import jsPDF from "jspdf";
-import { Document, Packer, Paragraph, TextRun } from "docx";
-import { saveAs } from "file-saver";
+import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
+import RedoRoundedIcon from "@mui/icons-material/RedoRounded";
+import NoteAddRoundedIcon from "@mui/icons-material/NoteAddRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import PlayCircleFilledRoundedIcon from "@mui/icons-material/PlayCircleFilledRounded";
+import FullscreenRoundedIcon from "@mui/icons-material/FullscreenRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 
+import { loadPref } from "@/app/components/exportPoems";
+import { findFont, loadTeluguFont, useTeluguFonts } from "@/lib/teluguFonts";
+import { clearMeasureCache, fontsUsed, layoutProject, onImageLoad } from "@/app/components/khatimala/engine";
 import {
-  ensureFontLoaded,
-  fetchTeluguFonts,
-  findFont,
-  fontStack,
-  loadPref,
-  resolveFontFamily,
-  savePref,
-  SITE_FONT,
-  type TeluguFont,
-} from "@/app/components/exportPoems";
+  cloneBlock,
+  DEFAULT_PROJECT,
+  defaultStyle,
+  newBlock,
+  sanitizeProject,
+  TEMPLATES,
+  type Block,
+  type BlockType,
+  type Project,
+} from "@/app/components/khatimala/model";
+import { getTheme } from "@/app/components/khatimala/themes";
+import { AddBar, BlockCard } from "@/app/components/khatimala/BlockEditor";
+import DesignPanel from "@/app/components/khatimala/DesignPanel";
+import Preview from "@/app/components/khatimala/Preview";
+import SlidesBar from "@/app/components/khatimala/SlidesBar";
+import Slideshow from "@/app/components/khatimala/Slideshow";
+import ExportDialog from "@/app/components/khatimala/ExportDialog";
+import { loadMusic, loadProject, saveMusic, saveProject, type Music } from "@/app/components/khatimala/storage";
 
-/* ================================================================== */
-/* సైజులు — ప్రింట్ + సోషల్ మీడియా                                       */
-/* ================================================================== */
+type History = { past: Project[]; present: Project; future: Project[] };
+const MAX_HISTORY = 60;
 
-type CanvasSize = "a4" | "square" | "story";
-
-const CANVAS: Record<CanvasSize, { label: string; hint: string; aspect: number; posterWidth: number; pdf: [number, number] }> = {
-  a4: { label: "A4", hint: "ప్రింట్", aspect: 210 / 297, posterWidth: 1240, pdf: [210, 297] },
-  square: { label: "చతురస్రం", hint: "Instagram / Facebook", aspect: 1, posterWidth: 1080, pdf: [150, 150] },
-  story: { label: "స్టోరీ", hint: "WhatsApp / Instagram స్టేటస్", aspect: 9 / 16, posterWidth: 1080, pdf: [108, 192] },
-};
-
-const DEFAULT_FONT_ID = "spbalasubrahmanyam";
-const SAVE_KEY = "ratnalabala-khatimala";
-
-type Saved = { title: string; text: string; fontId: string; fontSize: number; canvasSize: CanvasSize };
-const DEFAULTS: Saved = { title: "", text: "#spb", fontId: DEFAULT_FONT_ID, fontSize: 22, canvasSize: "a4" };
-
-type Job = { percent: number; message: string } | null;
-
-const today = () => new Date().toISOString().slice(0, 10);
-const fileBase = (title: string) =>
-  `${(title.trim() || "ఖతి_మాల").replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "_")}_${today()}`;
+/* old version (title + text only) — kept so nobody loses what they wrote */
+const OLD_KEY = "ratnalabala-khatimala";
+type OldSaved = { title: string; text: string; fontId: string; fontSize: number; canvasSize: string };
 
 export default function KhatiMala() {
-  const previewRef = useRef<HTMLDivElement>(null);
-
-  const [title, setTitle] = useState(DEFAULTS.title);
-  const [text, setText] = useState(DEFAULTS.text);
-  const [fontId, setFontId] = useState(DEFAULTS.fontId);
-  const [fontSize, setFontSize] = useState(DEFAULTS.fontSize);
-  const [canvasSize, setCanvasSize] = useState<CanvasSize>(DEFAULTS.canvasSize);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-
-  const [fonts, setFonts] = useState<TeluguFont[]>([SITE_FONT]);
-  const [job, setJob] = useState<Job>(null);
+  const desktop = useMediaQuery("(min-width:900px)");
+  const [mounted, setMounted] = useState(false);
+  const [hist, setHist] = useState<History>({ past: [], present: DEFAULT_PROJECT, future: [] });
+  const p = hist.present;
+  const [selected, setSelected] = useState<string | null>(null);
+  const [slide, setSlide] = useState(0);
+  const [tab, setTab] = useState<"edit" | "design" | "preview">("edit");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [show, setShow] = useState<null | { start: number; autoplay: boolean }>(null);
+  const [newOpen, setNewOpen] = useState(false);
+  const [toast, setToast] = useState<{ text: string; undo?: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const busy = job !== null && job.percent < 100;
+  const [music, setMusic] = useState<Music | null>(null);
+  const [musicUrl, setMusicUrl] = useState<string | null>(null);
+  const [saved, setSaved] = useState<"idle" | "ok" | "fail">("idle");
+  const [tick, setTick] = useState(0);
+  const restored = useRef(false);
+  const last = useRef<{ key: string; at: number } | null>(null);
+  const { fonts } = useTeluguFonts();
 
-  /* ఫాంట్లు — main.py నుండే (/api/main?endpoint=fonts) */
+  const bump = useCallback(() => {
+    clearMeasureCache();
+    setTick((t) => t + 1);
+  }, []);
+
+  /* ---------- history ---------- */
+  const commit = useCallback((fn: (p: Project) => Project, key?: string) => {
+    setHist((h) => {
+      const next = fn(h.present);
+      if (next === h.present) return h;
+      const now = Date.now();
+      const merge = key && last.current?.key === key && now - last.current.at < 1200;
+      last.current = key ? { key, at: now } : null;
+      if (merge) return { ...h, present: next };
+      return { past: [...h.past, h.present].slice(-MAX_HISTORY), present: next, future: [] };
+    });
+  }, []);
+  const undo = useCallback(() => {
+    last.current = null;
+    setHist((h) => (h.past.length ? { past: h.past.slice(0, -1), present: h.past[h.past.length - 1], future: [h.present, ...h.future] } : h));
+  }, []);
+  const redo = useCallback(() => {
+    last.current = null;
+    setHist((h) => (h.future.length ? { past: [...h.past, h.present], present: h.future[0], future: h.future.slice(1) } : h));
+  }, []);
+
+  /* ---------- restore + auto save (this device only) ---------- */
   useEffect(() => {
+    setMounted(true);
     let alive = true;
-    fetchTeluguFonts().then((list) => alive && setFonts(list));
+    (async () => {
+      const savedProject = sanitizeProject(await loadProject());
+      let start = savedProject;
+      if (!start) {
+               const old = loadPref<Partial<OldSaved>>(OLD_KEY, {});
+        if (old.title?.trim() || (old.text?.trim() && old.text.trim() !== "#spb")) {
+          start = {
+            ...DEFAULT_PROJECT,
+            title: old.title || DEFAULT_PROJECT.title,
+            font: old.fontId && old.fontId !== "site" ? old.fontId : "",
+            docSize: old.canvasSize === "square" || old.canvasSize === "story" ? old.canvasSize : "a4",
+            blocks: [
+              { ...(newBlock("heading", "doc") as Block & { type: "heading" }), text: old.title || "" },
+              { ...(newBlock("text", "doc") as Block & { type: "text" }), text: old.text || "", style: { ...defaultStyle("text", "doc"), size: Math.round((old.fontSize || 22) * 0.75) } },
+            ],
+          };
+        }
+      }
+      if (alive && start) setHist({ past: [], present: start, future: [] });
+      const m = await loadMusic();
+      if (alive && m?.blob) setMusic(m);
+      restored.current = true;
+    })();
     return () => {
       alive = false;
     };
   }, []);
 
-  /* 💾 Auto Save (Offline) — ఈ పరికరంలోనే, సర్వర్‌కి వెళ్ళదు */
-  const [restored, setRestored] = useState(false);
   useEffect(() => {
-    const s = loadPref<Saved>(SAVE_KEY, DEFAULTS);
-    setTitle(s.title);
-    setText(s.text);
-    setFontId(s.fontId);
-    setFontSize(s.fontSize);
-    setCanvasSize(CANVAS[s.canvasSize] ? s.canvasSize : "a4");
-    setRestored(true);
-  }, []);
-  useEffect(() => {
-    if (!restored) return;
-    const id = setTimeout(() => savePref(SAVE_KEY, { title, text, fontId, fontSize, canvasSize }), 500);
+    if (!restored.current) return;
+    const id = setTimeout(async () => setSaved((await saveProject(p)) ? "ok" : "fail"), 800);
     return () => clearTimeout(id);
-  }, [restored, title, text, fontId, fontSize, canvasSize]);
+  }, [p]);
 
-  const font = useMemo(() => findFont(fonts, fontId), [fonts, fontId]);
-  useEffect(() => ensureFontLoaded(font), [font]);
+  /* old saves kept a font id ("mandali-regular") — turn it into the font name */
+  useEffect(() => {
+    if (!fonts.length || !p.font || fonts.some((f) => f.value === p.font)) return;
+    const f = findFont(p.font);
+    if (f) setHist((h) => ({ ...h, present: { ...h.present, font: f.value } }));
+  }, [fonts, p.font]);
 
-  const sortedFonts = useMemo(() => {
-    const [site, ...rest] = fonts;
-    rest.sort((a, b) => (sortOrder === "asc" ? 1 : -1) * a.label.localeCompare(b.label, "te-IN"));
-    return [site, ...rest];
-  }, [fonts, sortOrder]);
+  /* ---------- fonts + pictures: redraw when they arrive ---------- */
+  const usedKey = mounted ? fontsUsed(p).join("|") : "";
+  useEffect(() => {
+    if (!mounted) return;
+    let alive = true;
+    for (const v of usedKey.split("|").filter(Boolean)) void loadTeluguFont(v).then(() => alive && bump());
+    return () => {
+      alive = false;
+    };
+  }, [usedKey, mounted, bump]);
+  useEffect(() => {
+    if (!mounted) return;
+    const fontsSet = document.fonts;
+    fontsSet.addEventListener?.("loadingdone", bump);
+    const off = onImageLoad(bump);
+    return () => {
+      fontsSet.removeEventListener?.("loadingdone", bump);
+      off();
+    };
+  }, [mounted, bump]);
 
-  const canvas = CANVAS[canvasSize];
-  const hasContent = Boolean(title.trim() || text.trim());
-
-  /* ---------------- ఎగుమతి సహాయకులు ---------------- */
-
-  /** Preview ను చిత్రంగా — ఫాంట్లు పూర్తిగా వచ్చాక */
-  const capture = async (targetWidth: number) => {
-    const node = previewRef.current;
-    if (!node) throw new Error("Preview not ready");
-    await document.fonts.ready;
-    const options = { pixelRatio: targetWidth / node.offsetWidth, backgroundColor: "#ffffff", cacheBust: true };
-    // html-to-image మొదటిసారి కొన్నిసార్లు ఫాంట్ లేకుండా గీస్తుంది — ఒకసారి ముందుగా వేడి చేస్తాం
-    await toPng(node, { ...options, pixelRatio: 0.2 });
-    return toPng(node, options);
+  /* music file → playable URL */
+  useEffect(() => {
+    if (!music) return setMusicUrl(null);
+    const u = URL.createObjectURL(music.blob);
+    setMusicUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [music]);
+  const changeMusic = (m: Music | null) => {
+    setMusic(m);
+    void saveMusic(m);
   };
 
-  const run = async (kind: string, work: () => Promise<void>) => {
-    if (busy) return;
-    setError(null);
-    try {
-      await work();
-      setTimeout(() => setJob(null), 2500);
-    } catch (err) {
-      console.error(`${kind} failed:`, err);
-      setJob(null);
-      setError(`${kind} తయారు కాలేదు. మళ్ళీ ప్రయత్నించండి.`);
-    }
+  /* ---------- layout (same engine as the files) ---------- */
+  const deferred = useDeferredValue(p);
+  const layout = useMemo(() => (mounted ? layoutProject(deferred) : null), [deferred, mounted, tick]); // eslint-disable-line react-hooks/exhaustive-deps
+  const theme = getTheme(p.theme);
+
+  const slideIdx = Math.min(slide, Math.max(0, p.slides.length - 1));
+  const blocks = p.mode === "doc" ? p.blocks : p.slides[slideIdx]?.blocks ?? [];
+
+  const setBlocks = useCallback(
+    (fn: (b: Block[]) => Block[], key?: string) =>
+      commit((x) => (x.mode === "doc" ? { ...x, blocks: fn(x.blocks) } : { ...x, slides: x.slides.map((s, i) => (i === slideIdx ? { ...s, blocks: fn(s.blocks) } : s)) }), key),
+    [commit, slideIdx]
+  );
+
+  const change = (id: string, part: Partial<Block>) =>
+    setBlocks((bs) => bs.map((b) => (b.id === id ? ({ ...b, ...part } as Block) : b)), "text" in part || "rows" in part || "caption" in part ? `type-${id}` : undefined);
+
+  const move = (id: string, d: -1 | 1) =>
+    setBlocks((bs) => {
+      const i = bs.findIndex((b) => b.id === id);
+      const j = i + d;
+      if (i < 0 || j < 0 || j >= bs.length) return bs;
+      const c = [...bs];
+      [c[i], c[j]] = [c[j], c[i]];
+      return c;
+    });
+
+  /* scroll to a block and put the cursor in its writing box (waits until it is on screen) */
+  const focusBlock = (id: string, tries = 8) =>
+    setTimeout(() => {
+      const el = document.getElementById(`blk-${id}`);
+      if (!el) return tries > 0 && focusBlock(id, tries - 1);
+      el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      // writing box first, then a field, then a button (e.g. "చిత్రం ఎంచుకోండి")
+      const target = ["textarea:not([aria-hidden])", "input:not([hidden]):not([type=hidden]):not([aria-hidden])", "button"]
+        .map((q) => el.querySelector<HTMLElement>(`[data-block-input] ${q}`))
+        .find(Boolean);
+      target?.focus({ preventScroll: true });
+    }, 60);
+
+  const add = (t: BlockType) => {
+    const b = newBlock(t, p.mode);
+    setBlocks((bs) => {
+      const i = selected ? bs.findIndex((x) => x.id === selected) : -1;
+      return i < 0 ? [...bs, b] : [...bs.slice(0, i + 1), b, ...bs.slice(i + 1)];
+    });
+    setSelected(b.id);
+    focusBlock(b.id);
   };
 
-  const downloadPdf = () =>
-    run("PDF", async () => {
-      setJob({ percent: 10, message: "పేజీ సిద్ధం చేస్తున్నాం…" });
-      const png = await capture(canvas.posterWidth * 2);
-      setJob({ percent: 70, message: "PDF తయారవుతోంది…" });
-      const [w, h] = canvas.pdf;
-      const pdf = new jsPDF({ orientation: w > h ? "landscape" : "portrait", unit: "mm", format: [w, h] });
-      pdf.addImage(png, "PNG", 0, 0, w, h);
-      pdf.save(`${fileBase(title)}.pdf`);
-      setJob({ percent: 100, message: "PDF డౌన్‌లోడ్ అయింది ✓" });
-    });
+  const remove = (id: string) => {
+    const i = blocks.findIndex((b) => b.id === id);
+    setBlocks((bs) => bs.filter((b) => b.id !== id));
+    setSelected(blocks[i + 1]?.id ?? blocks[i - 1]?.id ?? null);
+    setToast({ text: "తీసివేశాం.", undo: true });
+  };
 
-  const downloadPoster = () =>
-    run("పోస్టర్", async () => {
-      setJob({ percent: 10, message: "పోస్టర్ సిద్ధం చేస్తున్నాం…" });
-      const png = await capture(canvas.posterWidth);
-      setJob({ percent: 80, message: "చిత్రం సేవ్ అవుతోంది…" });
-      saveAs(png, `${fileBase(title)}_${canvasSize}.png`);
-      setJob({ percent: 100, message: "పోస్టర్ డౌన్‌లోడ్ అయింది ✓ ఇప్పుడు WhatsApp / Instagram లో పంచుకోండి." });
+  const duplicate = (id: string) => {
+    const src = blocks.find((b) => b.id === id);
+    if (!src) return;
+    const copy = cloneBlock(src);
+    setBlocks((bs) => {
+      const i = bs.findIndex((b) => b.id === id);
+      return [...bs.slice(0, i + 1), copy, ...bs.slice(i + 1)];
     });
+    setSelected(copy.id);
+  };
 
-  const downloadWord = () =>
-    run("Word", async () => {
-      setJob({ percent: 20, message: "Word ఫైల్ తయారవుతోంది…" });
-      // Word లో ఈ ఫాంట్ కంప్యూటర్‌లో install అయి ఉంటేనే అదే రూపం; లేకపోతే Word తన తెలుగు ఫాంట్ వాడుతుంది
-      const family = font.id === SITE_FONT.id ? "Nirmala UI" : resolveFontFamily(font.family);
-      const size = Math.round(fontSize * 1.5); // docx size = half-points
-      const doc = new Document({
-        sections: [
-          {
-            children: [
-              ...(title.trim()
-                ? [new Paragraph({ alignment: "center", spacing: { after: 240 }, children: [new TextRun({ text: title, bold: true, font: family, size: size + 6 })] })]
-                : []),
-              ...text.split(/\r?\n/).map((line) => new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: line, font: family, size })] })),
-            ],
-          },
-        ],
-      });
-      const blob = await Packer.toBlob(doc);
-      saveAs(blob, `${fileBase(title)}.docx`);
-      setJob({ percent: 100, message: "Word డౌన్‌లోడ్ అయింది ✓" });
-    });
+  const pick = (id: string) => {
+    setSelected(id);
+    if (!desktop) setTab("edit");
+    focusBlock(id);
+  };
 
-  const previewFont = fontStack(font);
+  /* Ctrl+Z / Ctrl+Y outside text boxes (inside them the browser's own undo works) */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (t.closest("textarea, input, [contenteditable=true]")) return;
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key.toLowerCase() === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (e.key.toLowerCase() === "y" || (e.key.toLowerCase() === "z" && e.shiftKey)) {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [undo, redo]);
+
+  const closeShow = useCallback(() => setShow(null), []);
+  const pageCount = layout?.pages.length ?? 1;
+
+  /* ---------- pieces ---------- */
+
+  const editor = (
+    <Stack spacing={1.5}>
+      {p.mode === "slides" && layout && (
+        <Box sx={{ p: 1.5, borderRadius: "14px", bgcolor: "var(--surface)", border: "1px solid var(--border-strong)" }}>
+          <SlidesBar p={p} layout={layout} current={slideIdx} tick={tick} onCurrent={(i) => (setSlide(i), setSelected(null))} set={commit} />
+        </Box>
+      )}
+      {blocks.length === 0 && (
+        <Typography sx={{ p: 2, textAlign: "center", color: "var(--muted-text)", border: "2px dashed var(--border-strong)", borderRadius: "12px" }}>
+          ఇంకా ఏమీ లేదు — కింద "శీర్షిక" లేదా "పేరా" నొక్కండి.
+        </Typography>
+      )}
+      {blocks.map((b, i) => (
+        <BlockCard
+          key={b.id}
+          b={b}
+          index={i}
+          count={blocks.length}
+          selected={selected === b.id}
+          theme={theme}
+          docFont={p.font}
+          onSelect={() => selected !== b.id && setSelected(b.id)}
+          onChange={(part) => change(b.id, part)}
+          onMove={(d) => move(b.id, d)}
+          onDuplicate={() => duplicate(b.id)}
+          onDelete={() => remove(b.id)}
+          onError={setError}
+        />
+      ))}
+      <Box sx={{ pt: 1 }}>
+        <AddBar mode={p.mode} onAdd={add} />
+      </Box>
+    </Stack>
+  );
+
+  const design = <DesignPanel p={p} set={commit} music={music} onMusic={changeMusic} onError={setError} tick={tick} />;
+
+  const preview = layout ? (
+    <Box>
+      <Stack direction="row" spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
+        {p.mode === "slides" ? (
+          <Button variant="contained" startIcon={<PlayCircleFilledRoundedIcon />} onClick={() => setShow({ start: slideIdx, autoplay: true })} sx={{ minHeight: 52, fontWeight: 800, textTransform: "none", bgcolor: "#b4470c", "&:hover": { bgcolor: "#913908" } }}>
+            స్లైడ్ షో చూడండి{music ? " 🎵" : ""}
+          </Button>
+        ) : (
+          <Button variant="outlined" startIcon={<FullscreenRoundedIcon />} onClick={() => setShow({ start: 0, autoplay: false })} sx={{ minHeight: 52, fontWeight: 700, textTransform: "none" }}>
+            పూర్తి తెరలో చూడండి
+          </Button>
+        )}
+        <Button variant="contained" startIcon={<DownloadRoundedIcon />} onClick={() => setExportOpen(true)} sx={{ minHeight: 52, fontWeight: 800, textTransform: "none", bgcolor: "var(--secondary)" }}>
+          డౌన్‌లోడ్
+        </Button>
+      </Stack>
+      <Preview layout={layout} project={deferred} tick={tick} selected={selected} onPick={pick} only={p.mode === "slides" ? slideIdx : undefined} />
+      {p.mode === "slides" && (
+        <Stack direction="row" justifyContent="center" alignItems="center" spacing={2} sx={{ mt: 1.5 }}>
+          <Button variant="outlined" disabled={slideIdx === 0} onClick={() => (setSlide(slideIdx - 1), setSelected(null))} sx={{ minHeight: 48, minWidth: 96, textTransform: "none", fontWeight: 700 }}>
+            ◀ వెనుక
+          </Button>
+          <Typography sx={{ fontWeight: 800 }}>
+            {slideIdx + 1} / {p.slides.length}
+          </Typography>
+          <Button variant="outlined" disabled={slideIdx >= p.slides.length - 1} onClick={() => (setSlide(slideIdx + 1), setSelected(null))} sx={{ minHeight: 48, minWidth: 96, textTransform: "none", fontWeight: 700 }}>
+            తర్వాత ▶
+          </Button>
+        </Stack>
+      )}
+      <Typography variant="body2" sx={{ mt: 1.5, color: "var(--muted-text)", textAlign: "center" }}>
+        👆 పేజీలో ఏ భాగాన్ని నొక్కినా, దాన్ని మార్చే పెట్టె తెరుచుకుంటుంది.
+      </Typography>
+    </Box>
+  ) : (
+    <Box sx={{ aspectRatio: "210/297", bgcolor: "var(--surface)", borderRadius: "6px" }} aria-label="ముందు చూపు సిద్ధమవుతోంది" />
+  );
+
+  const tabBtn = { minHeight: 56, textTransform: "none" as const, fontWeight: 800, fontSize: "1.02rem" };
 
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" mb={2}>
-          ఖతి మాల
-        </Typography>
+    <Card sx={{ overflow: "visible" }}>
+      <CardContent sx={{ px: { xs: 1.5, sm: 2.5 } }}>
+        {/* ---------- top bar ---------- */}
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} alignItems={{ sm: "center" }} sx={{ mb: 2 }}>
+          <Typography component="h2" sx={{ fontWeight: 800, fontSize: "1.5rem", flexShrink: 0 }}>
+            ఖతి మాల
+          </Typography>
+          <TextField
+            size="small"
+            label="ఫైల్ పేరు"
+            value={p.title}
+            onChange={(e) => commit((x) => ({ ...x, title: e.target.value }), "title")}
+            sx={{ flex: 1, minWidth: 160, "& .MuiInputBase-root": { minHeight: 48 } }}
+          />
+          <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Tooltip title="కొత్తది / మళ్ళీ మొదలు">
+              <Button variant="outlined" startIcon={<NoteAddRoundedIcon />} onClick={() => setNewOpen(true)} sx={{ minHeight: 48, textTransform: "none", fontWeight: 700 }}>
+                కొత్తది
+              </Button>
+            </Tooltip>
+            <Tooltip title="వెనక్కి (Ctrl+Z)">
+              <span>
+                <IconButton aria-label="వెనక్కి (undo)" disabled={!hist.past.length} onClick={undo} sx={{ width: 48, height: 48, border: "1px solid var(--border-strong)" }}>
+                  <UndoRoundedIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="ముందుకు (Ctrl+Y)">
+              <span>
+                <IconButton aria-label="ముందుకు (redo)" disabled={!hist.future.length} onClick={redo} sx={{ width: 48, height: 48, border: "1px solid var(--border-strong)" }}>
+                  <RedoRoundedIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Button variant="contained" startIcon={<DownloadRoundedIcon />} onClick={() => setExportOpen(true)} disabled={!layout} sx={{ minHeight: 48, fontWeight: 800, textTransform: "none", bgcolor: "var(--secondary)" }}>
+              డౌన్‌లోడ్
+            </Button>
+          </Stack>
+        </Stack>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
-          {/* ---------- ఎడమ: నియంత్రణలు ---------- */}
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2, fontSize: "1rem" }}>
+            {error}
+          </Alert>
+        )}
+
+        {/* ---------- body ---------- */}
+        {desktop ? (
+          <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: 3, alignItems: "start" }}>
+            <Box>
+              <Tabs value={tab === "preview" ? "edit" : tab} onChange={(_, v) => setTab(v)} variant="fullWidth" sx={{ mb: 2, borderBottom: "1px solid var(--border-strong)" }}>
+                <Tab value="edit" icon={<EditRoundedIcon />} iconPosition="start" label="వ్రాయండి" sx={tabBtn} />
+                <Tab value="design" icon={<PaletteRoundedIcon />} iconPosition="start" label="రూపం · ఫాంట్ · సైజు" sx={tabBtn} />
+              </Tabs>
+              {tab === "design" ? design : editor}
+            </Box>
+            <Box sx={{ position: "sticky", top: 84, maxHeight: "calc(100dvh - 100px)", overflowY: "auto", pr: 0.5, pb: 2 }}>{preview}</Box>
+          </Box>
+        ) : (
           <Box>
-            <TextField fullWidth label="శీర్షిక" value={title} onChange={(e) => setTitle(e.target.value)} sx={{ mb: 2 }} />
-
-            <TextField
-              fullWidth
-              multiline
-              rows={8}
-              label="తెలుగు పాఠ్యం"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-
-            {/* ఫాంట్ — main.py నుండి */}
-            <Box sx={{ mt: 2 }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                <Typography>
-                  ఫాంట్ <Typography component="span" variant="caption" color="text.secondary">({fonts.length - 1})</Typography>
-                </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() => setSortOrder((p) => (p === "asc" ? "desc" : "asc"))}
-                  sx={{ minWidth: 0, px: 1.5, fontSize: 12, textTransform: "none" }}
-                >
-                  {sortOrder === "asc" ? "అ → ఱ" : "ఱ → అ"}
-                </Button>
-              </Stack>
-
-              <Select
-                fullWidth
-                value={fonts.some((f) => f.id === fontId) ? fontId : SITE_FONT.id}
-                onChange={(e) => setFontId(e.target.value)}
-                inputProps={{ "aria-label": "ఫాంట్" }}
-                MenuProps={{ PaperProps: { sx: { maxHeight: 420 } } }}
-              >
-                {sortedFonts.map((f) => (
-                  <MenuItem key={f.id} value={f.id}>
-                    {/* ప్రతి పేరు ఆ ఫాంట్‌లోనే — ఎంచుకునే ముందే రూపం కనిపిస్తుంది */}
-                    <span style={{ fontSize: 18, lineHeight: 1.6, fontFamily: fontStack(f) }}>{f.label}</span>
-                  </MenuItem>
-                ))}
-              </Select>
-            </Box>
-
-            {/* అక్షర సైజ్ */}
-            <Box sx={{ mt: 2 }}>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography>అక్షర సైజ్</Typography>
-                <Typography color="text.secondary">{fontSize}px</Typography>
-              </Stack>
-              <Slider min={16} max={80} value={fontSize} onChange={(_, v) => setFontSize(v as number)} aria-label="అక్షర సైజ్" />
-            </Box>
-
-            {/* పరిమాణం */}
-            <Box sx={{ mt: 1 }}>
-              <Typography sx={{ mb: 0.5 }}>పరిమాణం</Typography>
-              <ToggleButtonGroup
-                exclusive
-                fullWidth
-                size="small"
-                value={canvasSize}
-                onChange={(_, v: CanvasSize | null) => v && setCanvasSize(v)}
-                aria-label="పరిమాణం"
-              >
-                {(Object.keys(CANVAS) as CanvasSize[]).map((k) => (
-                  <ToggleButton key={k} value={k} sx={{ textTransform: "none", flexDirection: "column", lineHeight: 1.3, py: 0.75 }}>
-                    <b>{CANVAS[k].label}</b>
-                    <Typography component="span" variant="caption" color="text.secondary">
-                      {CANVAS[k].hint}
-                    </Typography>
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            </Box>
-
-            {/* డౌన్‌లోడ్లు */}
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2.5 }}>
-              <Button
-                variant="contained"
-                color="error"
-                startIcon={<PictureAsPdfRoundedIcon />}
-                onClick={downloadPdf}
-                disabled={busy || !hasContent}
-                sx={{ flex: 1, textTransform: "none", fontWeight: 700 }}
-              >
-                PDF
+            <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth" sx={{ mb: 2, borderBottom: "1px solid var(--border-strong)" }}>
+              <Tab value="edit" icon={<EditRoundedIcon />} label="వ్రాయండి" sx={tabBtn} />
+              <Tab value="design" icon={<PaletteRoundedIcon />} label="రూపం" sx={tabBtn} />
+              <Tab value="preview" icon={<VisibilityRoundedIcon />} label="చూడండి" sx={tabBtn} />
+            </Tabs>
+            {tab === "edit" && editor}
+            {tab === "design" && design}
+            {tab === "preview" && preview}
+            {tab !== "preview" && (
+              <Button fullWidth variant="contained" startIcon={<VisibilityRoundedIcon />} onClick={() => setTab("preview")} sx={{ mt: 2.5, minHeight: 56, fontWeight: 800, fontSize: "1.05rem", textTransform: "none", bgcolor: "var(--secondary)" }}>
+                ఎలా వచ్చిందో చూడండి / డౌన్‌లోడ్
               </Button>
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<ImageRoundedIcon />}
-                onClick={downloadPoster}
-                disabled={busy || !hasContent}
-                sx={{ flex: 1, textTransform: "none", fontWeight: 700 }}
-              >
-                సోషల్ మీడియా పోస్టర్
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<DescriptionRoundedIcon />}
-                onClick={downloadWord}
-                disabled={busy || !hasContent}
-                sx={{ flex: 1, textTransform: "none", fontWeight: 700 }}
-              >
-                Word
-              </Button>
-            </Stack>
-
-            {job && (
-              <Box sx={{ mt: 1.5 }} role="status" aria-live="polite">
-                <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-                  <Typography variant="body2" fontWeight={600}>
-                    {job.message}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {job.percent}%
-                  </Typography>
-                </Stack>
-                <LinearProgress
-                  variant="determinate"
-                  value={job.percent}
-                  color={job.percent >= 100 ? "success" : "primary"}
-                  sx={{ height: 6, borderRadius: 3 }}
-                />
-              </Box>
             )}
-
-            {error && (
-              <Alert severity="error" sx={{ mt: 1.5 }} onClose={() => setError(null)}>
-                {error}
-              </Alert>
-            )}
-
-            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
-              💾 మీ పాఠ్యం ఈ పరికరంలోనే ఆటోమేటిక్‌గా సేవ్ అవుతుంది.
-            </Typography>
           </Box>
+        )}
 
-          {/* ---------- కుడి: నమూనా (ఇదే PDF / పోస్టర్ అవుతుంది) ---------- */}
-          <Box
-            ref={previewRef}
-            sx={{
-              aspectRatio: String(canvas.aspect),
-              maxHeight: { md: canvasSize === "story" ? 720 : "none" },
-              mx: "auto",
-              width: "100%",
-              maxWidth: canvasSize === "story" ? 405 : "none",
-              border: "1px solid #ddd",
-              borderRadius: 2,
-              p: 3,
-              overflow: "hidden",
-              fontSize: `${fontSize}px`,
-              lineHeight: 1.8,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "flex-start",
-              bgcolor: "#fff",
-              color: "#0f172a",
-              fontFamily: previewFont,
-              fontFeatureSettings: '"liga" 1, "calt" 1',
-            }}
-          >
-            <Typography
-              sx={{ textAlign: "center", fontWeight: 600, mb: 1, fontFamily: "inherit", fontSize: "inherit", lineHeight: 1.5 }}
-            >
-              {title || "శీర్షిక"}
-            </Typography>
-            <Box sx={{ whiteSpace: "pre-wrap", textAlign: "justify", wordBreak: "break-word", lineHeight: 1.9 }}>
-              {text || (
-                <Typography component="span" sx={{ opacity: 0.4, fontFamily: "inherit", fontSize: "inherit" }}>
-                  ఇక్కడ మీ పాఠ్యం ప్రదర్శించబడుతుంది
-                </Typography>
-              )}
-            </Box>
-          </Box>
-        </Box>
+        <Typography variant="body2" sx={{ display: "block", mt: 2, color: "var(--muted-text)" }}>
+          {saved === "fail" ? "⚠️ ఈ బ్రౌజర్‌లో సేవ్ కావడం లేదు (private mode?). డౌన్‌లోడ్ చేసి ఉంచుకోండి." : "💾 మీ పని (చిత్రాలతో సహా) ఈ పరికరంలోనే ఆటోమేటిక్‌గా సేవ్ అవుతుంది — ఎక్కడికీ పంపము."}
+        </Typography>
       </CardContent>
+
+      {/* ---------- dialogs ---------- */}
+      <Dialog open={newOpen} onClose={() => setNewOpen(false)} fullWidth maxWidth="sm" aria-labelledby="new-title">
+        <DialogTitle id="new-title" sx={{ fontWeight: 800, pr: 7 }}>
+          కొత్తగా మొదలుపెట్టండి
+          <IconButton aria-label="మూసివేయండి" onClick={() => setNewOpen(false)} sx={{ position: "absolute", right: 8, top: 8, width: 48, height: 48 }}>
+            <CloseRoundedIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ mb: 1.5, color: "var(--muted-text)" }}>ఇప్పుడున్నది పోదు — "వెనక్కి ↶" నొక్కితే తిరిగి వస్తుంది.</Typography>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.25 }}>
+            {TEMPLATES.map((t) => (
+              <Box
+                key={t.id}
+                component="button"
+                type="button"
+                onClick={() => {
+                  commit(() => t.make());
+                  setSelected(null);
+                  setSlide(0);
+                  setNewOpen(false);
+                  setTab("edit");
+                  setToast({ text: `"${t.label}" తో కొత్తగా మొదలైంది.`, undo: true });
+                }}
+                sx={{ textAlign: "left", p: 1.75, minHeight: 72, borderRadius: "12px", cursor: "pointer", font: "inherit", color: "var(--foreground)", bgcolor: "var(--surface-elevated)", border: "1px solid var(--border-strong)", "&:hover": { borderColor: "var(--secondary)" }, "&:focus-visible": { outline: "3px solid var(--focus-ring)", outlineOffset: 2 } }}
+              >
+                <Typography sx={{ fontWeight: 800, fontSize: "1.1rem" }}>{t.label}</Typography>
+                <Typography variant="body2" sx={{ color: "var(--muted-text)" }}>
+                  {t.hint}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {layout && <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} project={p} pageCount={pageCount} />}
+
+      {show && layout && <Slideshow layout={layout} project={deferred} start={show.start} autoplay={show.autoplay} musicUrl={show.autoplay ? musicUrl : null} onClose={closeShow} />}
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={6000}
+        onClose={(_, r) => r !== "clickaway" && setToast(null)}
+        message={toast?.text}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ bottom: { xs: 96, sm: 72 } }}
+        ContentProps={{ sx: { fontSize: "1.05rem" } }}
+        action={
+          toast?.undo ? (
+            <Button
+              onClick={() => {
+                undo();
+                setToast(null);
+              }}
+              sx={{ color: "var(--accent-light)", fontWeight: 800, minHeight: 44, textTransform: "none" }}
+            >
+              ↶ వెనక్కి
+            </Button>
+          ) : undefined
+        }
+      />
     </Card>
   );
 }
