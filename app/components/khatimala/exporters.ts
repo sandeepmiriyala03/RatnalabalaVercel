@@ -714,3 +714,308 @@ export const sizeLabel = (bytes: number) => (bytes > 1024 * 1024 ? `${(bytes / 1
 
 export const pagesIn = (p: Project) => (p.mode === "doc" ? null : p.slides.length);
 export const sizeOf = (p: Project) => SIZES[p.mode === "doc" ? p.docSize : p.slideSize];
+
+/* ─────────────────────────────────────────────────────────────── */
+/* 8. OFFLINE SLIDESHOW FILE (.html) — slides + music inside one file */
+/* ─────────────────────────────────────────────────────────────── */
+
+/*
+   PowerPoint files cannot reliably carry "play this song across all slides"
+   (it needs PowerPoint-only timing XML that other apps ignore). So for a
+   slideshow WITH music that works on any computer without internet, we make
+   one .html file: every slide as a picture + the song, all inside the file.
+   Double-click → opens in the browser → "▶ మొదలుపెట్టండి" → full screen + music.
+*/
+
+const blobToDataUrl = (b: Blob) =>
+  new Promise<string>((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(b);
+  });
+
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+export async function exportShowHtml(p: Project, music: Blob | null, progress: Progress) {
+  progress(0, 5);
+  const { failed, layout } = await prepare(p);
+  progress(1, 10);
+  const size = p.mode === "doc" ? p.docSize : p.slideSize;
+  const width = POSTER_PX[size];
+  const slides: string[] = [];
+  const n = layout.pages.length;
+  for (let i = 0; i < n; i++) {
+    progress(1, 10 + Math.round((65 * i) / n), `${i + 1} / ${n}`);
+    await nextFrame();
+    const c = renderPage(layout, i, width, { project: p });
+    slides.push(c.toDataURL("image/jpeg", 0.9));
+    c.width = c.height = 0;
+  }
+  progress(2, 80, music ? "సంగీతం" : "");
+  const song = music ? await blobToDataUrl(music) : "";
+  // the start screen's words in the chosen Telugu font (inside the file → no internet needed)
+  const fontValue = p.font || findFont(siteFontName())?.value || "";
+  const ff = fontValue ? await fontFile(fontValue) : null;
+  const fontFace = ff && ff.embeddable ? `@font-face{font-family:"RBShow";src:url(${await blobToDataUrl(new Blob([ff.data as BlobPart], { type: "font/ttf" }))})}` : "";
+  const title = esc(p.title || "స్లైడ్ షో");
+  const cfg = JSON.stringify({ seconds: p.show.seconds, loop: p.show.loop, transition: p.show.transition, ratio: layout.w / layout.h });
+  const html = `<!doctype html>
+<html lang="te"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<style>
+${fontFace}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:#000;color:#fff;font-family:"RBShow","Nirmala UI","Noto Sans Telugu","Kohinoor Telugu","Telugu Sangam MN","Gautami",system-ui,sans-serif}
+#start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;text-align:center;background:#101820;z-index:5}
+#start h1{margin:0;font-size:clamp(26px,5vw,44px);line-height:1.5}#start p{margin:0;font-size:18px;line-height:1.7;color:#d9d2c3;max-width:560px}
+#go{font:inherit;font-size:24px;font-weight:800;padding:18px 36px;min-height:64px;border:0;border-radius:40px;background:#f6c453;color:#241f1a;cursor:pointer}
+#go:focus-visible,.b:focus-visible{outline:3px solid #fff;outline-offset:3px}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#slide{max-width:100vw;max-height:100vh;object-fit:contain;display:block}
+.fade{animation:f .7s ease both}.slide{animation:s .7s ease both}.zoom{animation:z .7s ease both}
+@keyframes f{from{opacity:0}}@keyframes s{from{transform:translateX(12%);opacity:0}}@keyframes z{from{transform:scale(.88);opacity:0}}
+@media (prefers-reduced-motion:reduce){#slide{animation:none!important}}
+#bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.72);border-radius:40px;padding:8px 12px;transition:opacity .3s;z-index:4}
+#bar.hide{opacity:0;pointer-events:none}
+.b{font:inherit;font-size:22px;width:56px;height:56px;border:0;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;cursor:pointer}
+#n{min-width:64px;text-align:center;font-weight:800;font-size:18px}
+</style></head><body>
+<div id="start"><h1>${title}</h1>
+<button id="go" type="button">▶ స్లైడ్ షో మొదలుపెట్టండి</button>
+<p>${n} స్లైడ్లు${song ? " · 🎵 సంగీతంతో" : ""}. Internet అవసరం లేదు.<br>← → బాణాలతో మార్చవచ్చు · Space తో ఆపవచ్చు · Esc తో బయటికి</p></div>
+<div id="stage"><img id="slide" alt=""></div>
+<div id="bar" hidden>
+<button class="b" id="prev" type="button" aria-label="వెనుక స్లైడ్">◀</button>
+<button class="b" id="play" type="button" aria-label="ఆపండి / నడపండి">⏸</button>
+<span id="n" aria-live="polite"></span>
+<button class="b" id="next" type="button" aria-label="తర్వాతి స్లైడ్">▶</button>
+<button class="b" id="mus" type="button" aria-label="సంగీతం">🎵</button>
+<button class="b" id="fs" type="button" aria-label="పూర్తి తెర">⛶</button>
+</div>
+${song ? `<audio id="music" loop preload="auto" src="${song}"></audio>` : ""}
+<script>
+var S=${JSON.stringify(slides)},C=${cfg},i=0,playing=C.seconds>0,t=null,h=null;
+var img=document.getElementById("slide"),bar=document.getElementById("bar"),nEl=document.getElementById("n"),au=document.getElementById("music");
+function show(k){if(k>=S.length){if(!C.loop){playing=false;upd();return}k=0}if(k<0)k=C.loop?S.length-1:0;i=k;img.className="";void img.offsetWidth;img.src=S[i];img.alt="స్లైడ్ "+(i+1);if(C.transition!=="none")img.className=C.transition;nEl.textContent=(i+1)+" / "+S.length;sched()}
+function sched(){clearTimeout(t);if(playing&&C.seconds>0)t=setTimeout(function(){show(i+1)},C.seconds*1000)}
+function upd(){document.getElementById("play").textContent=playing?"⏸":"▶";document.getElementById("play").style.display=C.seconds>0?"":"none";var m=document.getElementById("mus");m.style.display=au?"":"none";if(au)m.textContent=au.paused?"🔇":"🎵";sched()}
+function poke(){bar.classList.remove("hide");clearTimeout(h);h=setTimeout(function(){bar.classList.add("hide")},4000)}
+function fs(){var d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen().catch(function(){});else if(document.exitFullscreen)document.exitFullscreen().catch(function(){})}
+document.getElementById("go").onclick=function(){document.getElementById("start").remove();bar.hidden=false;if(au){au.currentTime=0;au.play().catch(function(){})}if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(function(){});show(0);upd();poke()};
+document.getElementById("prev").onclick=function(){show(i-1);poke()};
+document.getElementById("next").onclick=function(){show(i+1);poke()};
+document.getElementById("play").onclick=function(){playing=!playing;upd();poke()};
+document.getElementById("mus").onclick=function(){if(!au)return;if(au.paused)au.play().catch(function(){});else au.pause();setTimeout(upd,50);poke()};
+document.getElementById("fs").onclick=function(){fs();poke()};
+if(au){au.addEventListener("play",upd);au.addEventListener("pause",upd)}
+document.addEventListener("keydown",function(e){if(document.getElementById("start"))return;if(e.key==="ArrowRight"||e.key==="PageDown")show(i+1);else if(e.key==="ArrowLeft"||e.key==="PageUp")show(i-1);else if(e.key===" "){e.preventDefault();playing=!playing;upd()}else return;poke()});
+document.addEventListener("mousemove",poke);
+var x0=null;document.addEventListener("touchstart",function(e){x0=e.touches[0].clientX},{passive:true});
+document.addEventListener("touchend",function(e){if(x0===null)return;var dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>50)show(i+(dx<0?1:-1));poke()});
+<\/script></body></html>`;
+  progress(2, 95);
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  progress(3, 100);
+  return { blob, name: `${fileBase(p.title)}_స్లైడ్_షో.html`, failed };
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/* 9. VIDEO (MP4) — slides + your song, for WhatsApp status          */
+/* ─────────────────────────────────────────────────────────────── */
+
+/*
+   Made entirely in the browser: slides are drawn on a canvas (gentle zoom,
+   fade / slide / zoom between slides), the song is mixed in through Web Audio
+   (silently — nothing plays on the speakers), and MediaRecorder records it.
+   Recording happens in real time: a 30-second video takes ~30 seconds.
+   Nothing is uploaded anywhere.
+*/
+
+const VIDEO_TYPES = [
+  'video/mp4;codecs="avc1.42E01E,mp4a.40.2"', // H.264 + AAC — what WhatsApp likes best
+  "video/mp4;codecs=avc1,mp4a.40.2",
+  "video/mp4;codecs=avc1,opus",
+  "video/mp4",
+  "video/webm;codecs=vp9,opus",
+  "video/webm;codecs=vp8,opus",
+  "video/webm",
+];
+
+export function pickVideoType(): string | null {
+  if (typeof window === "undefined" || typeof MediaRecorder === "undefined") return null;
+  if (typeof HTMLCanvasElement.prototype.captureStream !== "function") return null;
+  return VIDEO_TYPES.find((t) => MediaRecorder.isTypeSupported(t)) ?? null;
+}
+
+export type VideoShape = "status" | "same";
+
+export const videoSeconds = (p: Project, pages: number) => Math.max(3, p.show.seconds || 5) * Math.max(1, pages);
+
+/** Created inside the user's tap (browsers only start audio there) */
+export function makeAudioContext(): AudioContext | null {
+  try {
+    const Ctx = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return null;
+    const ctx = new Ctx();
+    void ctx.resume().catch(() => {});
+    return ctx;
+  } catch {
+    return null;
+  }
+}
+
+export async function exportVideo(
+  p: Project,
+  music: Blob | null,
+  shape: VideoShape,
+  audioCtx: AudioContext | null,
+  progress: Progress
+): Promise<{ blob: Blob; name: string; failed: string[]; whatsappReady: boolean; seconds: number }> {
+  const type = pickVideoType();
+  if (!type) throw new Error("NO_RECORDER");
+  progress(0, 3);
+  // WhatsApp status: lay the slides out again in the tall 9:16 "story" size, so the
+  // words fill the phone screen (instead of a small wide slide with empty bands)
+  const tall = shape === "status" ? { ...p, docSize: "story" as const, slideSize: "story" as const } : p;
+  const { failed, layout } = await prepare(tall);
+  p = tall;
+
+  // output frame: WhatsApp status = 720×1280 (9:16); otherwise the slide's own shape, long side 1280
+  const r = layout.w / layout.h;
+  const [W, H] = shape === "status" ? [720, 1280] : r >= 1 ? [1280, Math.round(1280 / r / 2) * 2] : [Math.round((1280 * r) / 2) * 2, 1280];
+  const bg = layout.theme.bg[0];
+
+  // every slide pre-drawn once at the right size
+  const n = layout.pages.length;
+  const frames: HTMLCanvasElement[] = [];
+  const k = Math.min(W / layout.w, H / layout.h);
+  for (let i = 0; i < n; i++) {
+    progress(1, 3 + Math.round((12 * i) / n), `${i + 1} / ${n}`);
+    await nextFrame();
+    frames.push(renderPage(layout, i, layout.w * k * 1.08, { project: p })); // a little extra for the zoom
+  }
+
+  const per = Math.max(3, p.show.seconds || 5);
+  const total = per * n;
+  const T = p.show.transition === "none" ? 0 : 0.7;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  // some browsers only capture frames from a canvas that is in the page
+  Object.assign(canvas.style, { position: "fixed", left: "-99999px", top: "0", width: "2px", height: "2px" });
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext("2d")!;
+
+  const draw = (img: HTMLCanvasElement, local: number, alpha = 1, dx = 0) => {
+    // gentle "Ken Burns" zoom: 1.00 → 1.06 across the slide's time
+    const z = 1 + 0.06 * Math.min(1, local / per);
+    const w = (layout.w * k * z);
+    const h = (layout.h * k * z);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(img, (W - w) / 2 + dx, (H - h) / 2, w, h);
+    ctx.globalAlpha = 1;
+  };
+
+  const paint = (t: number) => {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+    const i = Math.min(n - 1, Math.floor(t / per));
+    const local = t - i * per;
+    if (i > 0 && local < T) {
+      const a = local / T;
+      draw(frames[i - 1], per + local, 1);
+      if (p.show.transition === "slide") draw(frames[i], local, a, (1 - a) * W * 0.25);
+      else if (p.show.transition === "zoom") {
+        ctx.save();
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(0.9 + 0.1 * a, 0.9 + 0.1 * a);
+        ctx.translate(-W / 2, -H / 2);
+        draw(frames[i], local, a);
+        ctx.restore();
+      } else draw(frames[i], local, a);
+    } else draw(frames[i], local);
+    // fade in at the start, fade out at the end
+    const edge = t < 0.6 ? 1 - t / 0.6 : t > total - 0.8 ? (t - (total - 0.8)) / 0.8 : 0;
+    if (edge > 0) {
+      ctx.fillStyle = `rgba(0,0,0,${Math.min(1, edge)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+  };
+
+  // ── sound: the song, looped to the video's length, fading out at the end ──
+  const stream = canvas.captureStream(30);
+  let src: AudioBufferSourceNode | null = null;
+  if (music && audioCtx) {
+    progress(1, 17, "సంగీతం");
+    try {
+      const buf = await audioCtx.decodeAudioData(await music.arrayBuffer());
+      const dest = audioCtx.createMediaStreamDestination();
+      const gain = audioCtx.createGain();
+      src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      src.connect(gain).connect(dest); // not to the speakers: recording stays silent
+      await audioCtx.resume().catch(() => {});
+      const now = audioCtx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.9, now + 0.8);
+      gain.gain.setValueAtTime(0.9, now + Math.max(1, total - 1.5));
+      gain.gain.linearRampToValueAtTime(0, now + total);
+      dest.stream.getAudioTracks().forEach((tr) => stream.addTrack(tr));
+    } catch {
+      failed.push("సంగీతం (ఈ పాట ఫైల్ చదవలేకపోయాం — వీడియో పాట లేకుండా)");
+      src = null;
+    }
+  }
+
+  const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 5_000_000, audioBitsPerSecond: 128_000 });
+  const chunks: Blob[] = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  const done = new Promise<void>((res) => (rec.onstop = () => res()));
+
+  // keep the phone screen on while recording (where the browser allows it)
+  type Lock = { release: () => Promise<void> };
+  const lock: Lock | null = await (navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<Lock> } }).wakeLock
+    ?.request("screen")
+    .catch(() => null) ?? null;
+
+  paint(0);
+  rec.start(500);
+  src?.start();
+  const start = performance.now();
+
+  await new Promise<void>((resolve) => {
+    const tick = () => {
+      const t = (performance.now() - start) / 1000;
+      if (t >= total) {
+        paint(total);
+        return resolve();
+      }
+      paint(t);
+      progress(2, 20 + Math.round((75 * t) / total), `${Math.floor(t)} / ${Math.round(total)} సెకన్లు`);
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+
+  await new Promise((r) => setTimeout(r, 250));
+  rec.stop();
+  try {
+    src?.stop();
+  } catch {
+    /* already stopped */
+  }
+  await done;
+  stream.getTracks().forEach((t) => t.stop());
+  canvas.remove();
+  frames.forEach((c) => (c.width = c.height = 0));
+  void audioCtx?.close().catch(() => {});
+  void lock?.release().catch(() => {});
+
+  const mime = type.split(";")[0];
+  const blob = new Blob(chunks, { type: mime });
+  const ext = mime === "video/mp4" ? "mp4" : "webm";
+  progress(3, 100);
+  return { blob, name: `${fileBase(p.title)}_వీడియో.${ext}`, failed, whatsappReady: type.startsWith("video/mp4"), seconds: total };
+}

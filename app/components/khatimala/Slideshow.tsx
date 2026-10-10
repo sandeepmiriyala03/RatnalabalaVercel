@@ -24,7 +24,8 @@ type Props = {
   layout: Layout;
   project: Project;
   start: number;
-  musicUrl: string | null;
+  /** Already playing (started inside the user's tap, see KhatiMala) — or null */
+  audio: HTMLAudioElement | null;
   /** false = just look at pages (no timer) */
   autoplay: boolean;
   onClose: () => void;
@@ -32,13 +33,15 @@ type Props = {
 
 type WakeLock = { release: () => Promise<void> };
 
-export default function Slideshow({ layout, project, start, musicUrl, autoplay, onClose }: Props) {
+export default function Slideshow({ layout, project, start, audio, autoplay, onClose }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
-  const audio = useRef<HTMLAudioElement | null>(null);
   const [index, setIndex] = useState(Math.min(start, layout.pages.length - 1));
   const [playing, setPlaying] = useState(autoplay && project.show.seconds > 0);
-  const [musicOn, setMusicOn] = useState(!!musicUrl);
+  // true = music is really playing (kept in sync with the <audio> element's own events)
+  const [musicOn, setMusicOn] = useState(!!audio && !audio.paused);
+  // the browser refused to start it (strict autoplay rules) → show a big "start music" button
+  const [musicBlocked, setMusicBlocked] = useState(false);
   const [controls, setControls] = useState(true);
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [anim, setAnim] = useState(0);
@@ -67,7 +70,8 @@ export default function Slideshow({ layout, project, start, musicUrl, autoplay, 
   useEffect(() => {
     const el = root.current;
     let lock: WakeLock | null = null;
-    el?.requestFullscreen?.().catch(() => {});
+    // KhatiMala already asked for full screen inside the tap; this is only a fallback
+    if (!document.fullscreenElement) el?.requestFullscreen?.().catch(() => {});
     (navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<WakeLock> } }).wakeLock
       ?.request("screen")
       .then((l) => (lock = l))
@@ -87,24 +91,35 @@ export default function Slideshow({ layout, project, start, musicUrl, autoplay, 
     };
   }, []);
 
-  /* music */
+  /* music
+     Browsers (Safari always, Chrome often) only let sound start inside a tap.
+     So play() is never called from an effect: KhatiMala starts it in the
+     "స్లైడ్ షో చూడండి" tap, and the 🎵 button below calls it in its own tap. */
   useEffect(() => {
-    if (!musicUrl) return;
-    const a = new Audio(musicUrl);
-    a.loop = true;
-    a.volume = 0.8;
-    audio.current = a;
+    if (!audio) return;
+    const sync = () => setMusicOn(!audio.paused);
+    audio.addEventListener("play", sync);
+    audio.addEventListener("pause", sync);
+    sync();
+    // started in the tap but refused? (promise rejected before we got here)
+    const check = setTimeout(() => audio.paused && setMusicBlocked(true), 700);
     return () => {
-      a.pause();
-      audio.current = null;
+      clearTimeout(check);
+      audio.removeEventListener("play", sync);
+      audio.removeEventListener("pause", sync);
+      audio.pause(); // slideshow closed → music stops
     };
-  }, [musicUrl]);
-  useEffect(() => {
-    const a = audio.current;
-    if (!a) return;
-    if (musicOn && (playing || !autoplay)) void a.play().catch(() => setMusicOn(false));
-    else a.pause();
-  }, [musicOn, playing, autoplay, musicUrl]);
+  }, [audio]);
+
+  const toggleMusic = () => {
+    if (!audio) return;
+    if (audio.paused) {
+      audio
+        .play()
+        .then(() => setMusicBlocked(false))
+        .catch(() => setMusicBlocked(true));
+    } else audio.pause();
+  };
 
   /* timer */
   useEffect(() => {
@@ -213,6 +228,37 @@ export default function Slideshow({ layout, project, start, musicUrl, autoplay, 
         {`స్లైడ్ ${index + 1} / ${n}`}
       </Box>
 
+      {audio && musicBlocked && !musicOn && (
+        <Box
+          component="button"
+          type="button"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            toggleMusic();
+          }}
+          sx={{
+            position: "absolute",
+            top: "max(16px, env(safe-area-inset-top))",
+            left: "50%",
+            transform: "translateX(-50%)",
+            px: 3,
+            minHeight: 56,
+            borderRadius: "40px",
+            border: "none",
+            cursor: "pointer",
+            font: "inherit",
+            fontSize: "1.15rem",
+            fontWeight: 800,
+            bgcolor: "#f6c453",
+            color: "#241f1a",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.4)",
+            "&:focus-visible": { outline: "3px solid #fff", outlineOffset: 3 },
+          }}
+        >
+          🎵 సంగీతం మొదలుపెట్టడానికి ఇక్కడ నొక్కండి
+        </Box>
+      )}
+
       <Stack
         direction="row"
         spacing={1.25}
@@ -252,9 +298,9 @@ export default function Slideshow({ layout, project, start, musicUrl, autoplay, 
             <NavigateNextRoundedIcon fontSize="large" />
           </IconButton>
         </Tooltip>
-        {musicUrl && (
+        {audio && (
           <Tooltip title={musicOn ? "సంగీతం ఆపండి" : "సంగీతం వినిపించండి"}>
-            <IconButton aria-label={musicOn ? "సంగీతం ఆపండి" : "సంగీతం వినిపించండి"} aria-pressed={musicOn} onClick={() => setMusicOn((m) => !m)} sx={btn}>
+            <IconButton aria-label={musicOn ? "సంగీతం ఆపండి" : "సంగీతం వినిపించండి"} aria-pressed={musicOn} onClick={toggleMusic} sx={btn}>
               {musicOn ? <MusicNoteRoundedIcon /> : <MusicOffRoundedIcon />}
             </IconButton>
           </Tooltip>

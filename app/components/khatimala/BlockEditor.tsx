@@ -48,6 +48,7 @@ import { BLOCK_LABEL, isStyled, type Block, type BlockType, type ImageBlock, typ
 import type { Theme } from "./themes";
 import FontPicker, { cssStack } from "./FontPicker";
 import { readPicture } from "./storage";
+import { Hint } from "./Help";
 
 export const SIZE_PRESETS = [10, 11, 12, 13, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36, 40, 44, 48, 54, 60, 66, 72, 84, 96];
 const LINE_HEIGHTS = [1.2, 1.45, 1.7, 2, 2.4];
@@ -70,13 +71,16 @@ const tb = { minWidth: 44, minHeight: 44, px: 1 };
 /* STYLE TOOLBAR                                                      */
 /* ─────────────────────────────────────────────────────────────── */
 
-function StyleBar({ s, onChange, theme, defaultColor }: { s: TextStyle; onChange: (s: Partial<TextStyle>) => void; theme: Theme; defaultColor: string }) {
+function StyleBar({ s, onChange, theme, defaultColor, hints = false }: { s: TextStyle; onChange: (s: Partial<TextStyle>) => void; theme: Theme; defaultColor: string; hints?: boolean }) {
   const step = s.size >= 40 ? 4 : 2;
   return (
     <Stack spacing={1.25} sx={{ mb: 1.5 }}>
-      <FontPicker compact allowDoc value={s.font} onChange={(font) => onChange({ font })} label="ఈ పెట్టె ఫాంట్" />
+      <Hint show={hints} wide text="ఈ పెట్టెకు మాత్రమే వేరే ఫాంట్. + నొక్కితే మీ సొంత ఫాంట్ చేర్చుకోవచ్చు.">
+        <FontPicker compact allowDoc value={s.font} onChange={(font) => onChange({ font })} label="ఈ పెట్టె ఫాంట్" />
+      </Hint>
       <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1} alignItems="center">
         {/* size */}
+        <Hint show={hints} text="− అక్షరాలు చిన్నగా · సంఖ్య నొక్కి ఎంచుకోండి · + పెద్దగా">
         <Stack direction="row" alignItems="center" sx={{ border: "1px solid var(--border-strong)", borderRadius: "10px", bgcolor: "var(--surface-elevated)" }}>
           <Tooltip title="అక్షరాలు చిన్నగా">
             <IconButton aria-label="అక్షరాలు చిన్నగా" onClick={() => onChange({ size: Math.max(8, s.size - step) })} sx={{ width: 44, height: 44 }}>
@@ -106,8 +110,10 @@ function StyleBar({ s, onChange, theme, defaultColor }: { s: TextStyle; onChange
             </IconButton>
           </Tooltip>
         </Stack>
+        </Hint>
 
         {/* B I U */}
+        <Hint show={hints} text="B లావు · I వాలు · U అడుగు గీత">
         <ToggleButtonGroup size="small" aria-label="అక్షర శైలి" sx={{ bgcolor: "var(--surface-elevated)" }}>
           <ToggleButton value="b" selected={s.bold} onChange={() => onChange({ bold: !s.bold })} aria-label="బోల్డ్ (లావు అక్షరాలు)" sx={tb}>
             <FormatBoldRoundedIcon />
@@ -119,8 +125,10 @@ function StyleBar({ s, onChange, theme, defaultColor }: { s: TextStyle; onChange
             <FormatUnderlinedRoundedIcon />
           </ToggleButton>
         </ToggleButtonGroup>
+        </Hint>
 
         {/* align */}
+        <Hint show={hints} text="ఎడమ · మధ్య · కుడి · రెండు వైపులా సమం">
         <ToggleButtonGroup
           size="small"
           exclusive
@@ -142,8 +150,10 @@ function StyleBar({ s, onChange, theme, defaultColor }: { s: TextStyle; onChange
             <FormatAlignJustifyRoundedIcon />
           </ToggleButton>
         </ToggleButtonGroup>
+        </Hint>
 
         {/* line spacing */}
+        <Hint show={hints} text="లైన్ల మధ్య దూరం">
         <Select
           size="small"
           value={LINE_HEIGHTS.includes(s.lineHeight) ? s.lineHeight : 1.7}
@@ -158,9 +168,11 @@ function StyleBar({ s, onChange, theme, defaultColor }: { s: TextStyle; onChange
             </MenuItem>
           ))}
         </Select>
+        </Hint>
       </Stack>
 
       {/* colours */}
+      <Hint show={hints} wide text='అక్షరాల రంగు. మొదటి "అ" = రూపం (theme) అసలు రంగు. చివరి పెట్టెలో ఏ రంగైనా.'>
       <Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.75} alignItems="center" role="radiogroup" aria-label="అక్షరాల రంగు">
         <Typography variant="body2" sx={{ fontWeight: 700, mr: 0.5 }}>
           రంగు:
@@ -204,6 +216,7 @@ function StyleBar({ s, onChange, theme, defaultColor }: { s: TextStyle; onChange
           />
         </Tooltip>
       </Stack>
+      </Hint>
     </Stack>
   );
 }
@@ -346,6 +359,8 @@ type CardProps = {
   onDuplicate: () => void;
   onDelete: () => void;
   onError: (m: string) => void;
+  /** 💡 help mode: show notes on this card's buttons */
+  hints?: boolean;
 };
 
 const PLACEHOLDER: Partial<Record<BlockType, string>> = {
@@ -411,8 +426,15 @@ export function BlockCard(p: CardProps) {
           </IconButton>
         </Tooltip>
       </Stack>
+      {p.hints && (
+        <Box sx={{ mb: 1, display: "flex", justifyContent: "flex-end" }}>
+          <Hint show wide text="⬆ ⬇ పెట్టెను పైకి / కిందికి జరపండి · ⧉ నకలు · 🗑 తీసివేయండి (పొరపాటైతే ↶ వెనక్కి)">
+            <span />
+          </Hint>
+        </Box>
+      )}
 
-      {selected && s && <StyleBar s={s} theme={theme} defaultColor={defaultColor} onChange={(x) => p.onChange({ style: { ...s, ...x } } as Partial<Block>)} />}
+      {selected && s && <StyleBar s={s} theme={theme} defaultColor={defaultColor} hints={p.hints} onChange={(x) => p.onChange({ style: { ...s, ...x } } as Partial<Block>)} />}
 
       {(b.type === "heading" || b.type === "text" || b.type === "quote" || b.type === "list") && s && (
         <Box data-telugu-font="" data-block-input="" sx={{ fontFamily: family }}>
@@ -492,11 +514,13 @@ export function BlockCard(p: CardProps) {
 /* ADD BAR                                                            */
 /* ─────────────────────────────────────────────────────────────── */
 
-export function AddBar({ mode, onAdd }: { mode: Mode; onAdd: (t: BlockType) => void }) {
+export function AddBar({ mode, onAdd, hints = false }: { mode: Mode; onAdd: (t: BlockType) => void; hints?: boolean }) {
   const types: BlockType[] = ["heading", "text", "quote", "list", "table", "image", "divider", ...(mode === "doc" ? (["pagebreak"] as BlockType[]) : [])];
   return (
     <Box>
-      <Typography sx={{ fontWeight: 800, mb: 1 }}>➕ కొత్తది జోడించండి</Typography>
+      <Hint show={hints} wide text="ఇక్కడ నొక్కితే కొత్త పెట్టె వస్తుంది — మీరు ఎంచుకున్న పెట్టె తర్వాత చేరుతుంది.">
+        <Typography sx={{ fontWeight: 800, mb: 1 }}>➕ కొత్తది జోడించండి</Typography>
+      </Hint>
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }, gap: 1 }}>
         {types.map((t) => (
           <Button

@@ -27,9 +27,10 @@ import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME, type Searc
              🤖 భావాలమాల AI
              🔍 జ్ఞానశోధన
              📲 ఇన్‌స్టాల్      (only until the app is installed)
-             ⬆ పైకి          (only after scrolling down)
              ⇆ ఎడమ / కుడి వైపుకి   (moves the button; remembered on this device)
            Tap again, Esc, or tap anywhere outside → the group hides.
+   ⬆ పైకి stays OUTSIDE the group: it appears by itself after scrolling
+   down, just above the సహాయం button.
 
    The group stays mounted while hidden (inert + invisible), so the
    install prompt keeps its state and nothing re-downloads.
@@ -45,9 +46,10 @@ const EDGE_LEFT = `calc(${FAB_EDGE}px + env(safe-area-inset-left, 0px))`;
 const EDGE_RIGHT = `calc(${FAB_EDGE}px + env(safe-area-inset-right, 0px))`;
 const EDGE_BOTTOM = `calc(${FAB_EDGE}px + env(safe-area-inset-bottom, 0px))`;
 
-/* Space at the bottom of the page for the ONE launcher button. The footer adds it
-   so its last line is never covered (the open group floats over the page on purpose). */
-const FAB_SPACE = `calc(${FAB_EDGE + FAB_HEIGHT + FAB_GAP}px + env(safe-area-inset-bottom, 0px))`;
+/* Space at the bottom of the page for the launcher + the "పైకి" button above it
+   (at the page end you have scrolled, so పైకి is showing). The footer adds it so
+   its last line is never covered (the open group floats over the page on purpose). */
+const FAB_SPACE = `calc(${FAB_EDGE + FAB_HEIGHT * 2 + FAB_GAP * 2}px + env(safe-area-inset-bottom, 0px))`;
 
 /* Brand tokens from globals.css */
 const GREEN = "var(--secondary)";
@@ -219,9 +221,6 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
             {/* Shows itself only until the app is installed */}
             <PwaInstallPrompt />
 
-            {/* Shows itself only after scrolling down */}
-            <GoToTopButton />
-
             <Fab
               variant="extended"
               size="medium"
@@ -241,6 +240,10 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
             </Fab>
           </Box>
 
+          {/* ⬆ పైకి — NOT inside the group: appears by itself after scrolling down,
+              right above the సహాయం button, so it is always one tap away */}
+          <GoToTopButton />
+
           {/* The one button: opens / hides the group */}
           <Fab
             ref={launcherRef}
@@ -248,7 +251,7 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
             onClick={() => (menuOpen ? closeMenu(false) : setMenuOpen(true))}
             aria-expanded={menuOpen}
             aria-controls="floating-group"
-            aria-label={menuOpen ? "సహాయ బటన్లు దాచండి" : "సహాయ బటన్లు చూపించండి: AI, శోధన, ఇన్‌స్టాల్, పైకి"}
+            aria-label={menuOpen ? "సహాయ బటన్లు దాచండి" : "సహాయ బటన్లు చూపించండి: AI, శోధన, ఇన్‌స్టాల్"}
             sx={{
               ...fabSx,
               bgcolor: menuOpen ? INK : GREEN,

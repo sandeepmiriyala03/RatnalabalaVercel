@@ -1,19 +1,5 @@
 "use client";
 
-/* ═══════════════════════════════════════════════════════════════
-   ఖతి మాల — తెలుగు పత్రాలు, పోస్టర్లు, స్లైడ్ షోలు (MS Office లాగా, సులభంగా)
-
-   • పెట్టెలు: శీర్షిక, పేరా, పద్యం, జాబితా, పట్టిక, చిత్రం, గీత, కొత్త పేజీ
-   • ప్రతి పెట్టెకు: ఫాంట్, సైజు, B/I/U, ఎడమ/మధ్య/కుడి/సమం, రంగు, పంక్తి దూరం
-   • 10 రూపాలు (themes) · నేపథ్య చిత్రం · పేజీ సంఖ్యలు
-   • స్లైడ్ షో: ఎన్ని స్లైడ్లైనా, 5 అమరికలు, పూర్తి తెర, మీ సంగీతంతో
-   • ఎగుమతి: PDF · పోస్టర్ PNG · Word (ఫాంట్ లోపలే) · PowerPoint
-   • మీ సొంత ఫాంట్లు (ఫైల్ / కంప్యూటర్) · వెనక్కి/ముందుకు · కొత్తది (reset)
-   • ఈ పరికరంలోనే ఆటో సేవ్ (చిత్రాలతో సహా) — ఏదీ సర్వర్‌కి వెళ్ళదు
-
-   Preview, PDF, poster, PPT అన్నీ ఒకే canvas engine (khatimala/engine.ts)
-   తో గీస్తాం → ఫోన్‌లో చేసినా కంప్యూటర్‌లో చేసినా అదే ఫలితం.
-   ═══════════════════════════════════════════════════════════════ */
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -68,12 +54,16 @@ import SlidesBar from "@/app/components/khatimala/SlidesBar";
 import Slideshow from "@/app/components/khatimala/Slideshow";
 import ExportDialog from "@/app/components/khatimala/ExportDialog";
 import { loadMusic, loadProject, saveMusic, saveProject, type Music } from "@/app/components/khatimala/storage";
+import { flash, GuideDialog, Hint, type GuideTarget } from "@/app/components/khatimala/Help";
+import TipsAndUpdatesRoundedIcon from "@mui/icons-material/TipsAndUpdatesRounded";
+import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 
 type History = { past: Project[]; present: Project; future: Project[] };
 const MAX_HISTORY = 60;
 
 /* old version (title + text only) — kept so nobody loses what they wrote */
 const OLD_KEY = "ratnalabala-khatimala";
+const GUIDE_SEEN = "ratnalabala-khatimala-guide-seen";
 type OldSaved = { title: string; text: string; fontId: string; fontSize: number; canvasSize: string };
 
 export default function KhatiMala() {
@@ -90,9 +80,11 @@ export default function KhatiMala() {
   const [toast, setToast] = useState<{ text: string; undo?: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [music, setMusic] = useState<Music | null>(null);
-  const [musicUrl, setMusicUrl] = useState<string | null>(null);
   const [saved, setSaved] = useState<"idle" | "ok" | "fail">("idle");
   const [tick, setTick] = useState(0);
+  // సహాయం: 💡 notes on every button (help) · 📖 step-by-step guide (guide)
+  const [help, setHelp] = useState(false);
+  const [guide, setGuide] = useState(false);
   const restored = useRef(false);
   const last = useRef<{ key: string; at: number } | null>(null);
   const { fonts } = useTeluguFonts();
@@ -131,7 +123,7 @@ export default function KhatiMala() {
       const savedProject = sanitizeProject(await loadProject());
       let start = savedProject;
       if (!start) {
-               const old = loadPref<Partial<OldSaved>>(OLD_KEY, {});
+        const old = loadPref<Partial<OldSaved>>(OLD_KEY, {});
         if (old.title?.trim() || (old.text?.trim() && old.text.trim() !== "#spb")) {
           start = {
             ...DEFAULT_PROJECT,
@@ -153,6 +145,18 @@ export default function KhatiMala() {
     return () => {
       alive = false;
     };
+  }, []);
+
+  /* first visit on this device → open the guide once */
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(GUIDE_SEEN)) {
+        localStorage.setItem(GUIDE_SEEN, "1");
+        setGuide(true);
+      }
+    } catch {
+      /* storage blocked: no automatic guide */
+    }
   }, []);
 
   useEffect(() => {
@@ -189,13 +193,38 @@ export default function KhatiMala() {
     };
   }, [mounted, bump]);
 
-  /* music file → playable URL */
+  /* music file → one <audio> player, made ready before the slideshow opens */
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
-    if (!music) return setMusicUrl(null);
+    if (!music) {
+      audioRef.current = null;
+      return;
+    }
     const u = URL.createObjectURL(music.blob);
-    setMusicUrl(u);
-    return () => URL.revokeObjectURL(u);
+    const a = new Audio(u);
+    a.loop = true;
+    a.preload = "auto";
+    a.volume = 0.8;
+    audioRef.current = a;
+    return () => {
+      a.pause();
+      a.removeAttribute("src");
+      audioRef.current = null;
+      URL.revokeObjectURL(u);
+    };
   }, [music]);
+
+  /* Opening the slideshow: music + full screen MUST start right here, inside the tap.
+     (Started later from an effect, Safari and often Chrome block the sound.) */
+  const openShow = (start: number, autoplay: boolean) => {
+    const a = audioRef.current;
+    if (autoplay && a) {
+      a.currentTime = 0;
+      void a.play().catch(() => {}); // refused → the slideshow shows a big "start music" button
+    }
+    document.documentElement.requestFullscreen?.().catch(() => {});
+    setShow({ start, autoplay });
+  };
   const changeMusic = (m: Music | null) => {
     setMusic(m);
     void saveMusic(m);
@@ -275,6 +304,23 @@ export default function KhatiMala() {
     focusBlock(id);
   };
 
+  /* 💡 on: open the first box too, so its toolbar (and its notes) are visible */
+  const toggleHelp = () => {
+    setHelp((h) => {
+      if (!h && !selected && blocks[0]) setSelected(blocks[0].id);
+      return !h;
+    });
+  };
+  const hintCard = selected ?? blocks[0]?.id ?? null;
+
+  /* 📖 "చూపించు 👉": go to that part of the page and make it glow */
+  const showTarget = (t: GuideTarget) => {
+    setGuide(false);
+    if (t.tab && !(desktop && t.tab === "preview")) setTab(desktop && t.tab === "preview" ? "edit" : t.tab);
+    const id = t.id === "kh-blocks" && blocks[0] ? `blk-${blocks[0].id}` : t.id;
+    setTimeout(() => flash(id), 300);
+  };
+
   /* Ctrl+Z / Ctrl+Y outside text boxes (inside them the browser's own undo works) */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -299,7 +345,7 @@ export default function KhatiMala() {
   /* ---------- pieces ---------- */
 
   const editor = (
-    <Stack spacing={1.5}>
+    <Stack spacing={1.5} id="kh-blocks">
       {p.mode === "slides" && layout && (
         <Box sx={{ p: 1.5, borderRadius: "14px", bgcolor: "var(--surface)", border: "1px solid var(--border-strong)" }}>
           <SlidesBar p={p} layout={layout} current={slideIdx} tick={tick} onCurrent={(i) => (setSlide(i), setSelected(null))} set={commit} />
@@ -325,10 +371,11 @@ export default function KhatiMala() {
           onDuplicate={() => duplicate(b.id)}
           onDelete={() => remove(b.id)}
           onError={setError}
+          hints={help && hintCard === b.id}
         />
       ))}
-      <Box sx={{ pt: 1 }}>
-        <AddBar mode={p.mode} onAdd={add} />
+      <Box sx={{ pt: 1 }} id="kh-add">
+        <AddBar mode={p.mode} onAdd={add} hints={help} />
       </Box>
     </Stack>
   );
@@ -336,16 +383,20 @@ export default function KhatiMala() {
   const design = <DesignPanel p={p} set={commit} music={music} onMusic={changeMusic} onError={setError} tick={tick} />;
 
   const preview = layout ? (
-    <Box>
-      <Stack direction="row" spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
+    <Box id="kh-preview">
+      <Stack direction="row" spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap alignItems="flex-start">
         {p.mode === "slides" ? (
-          <Button variant="contained" startIcon={<PlayCircleFilledRoundedIcon />} onClick={() => setShow({ start: slideIdx, autoplay: true })} sx={{ minHeight: 52, fontWeight: 800, textTransform: "none", bgcolor: "#b4470c", "&:hover": { bgcolor: "#913908" } }}>
+          <Hint show={help} text="పూర్తి తెరలో స్లైడ్ షో — మీ పాటతో">
+          <Button variant="contained" startIcon={<PlayCircleFilledRoundedIcon />} onClick={() => openShow(slideIdx, true)} sx={{ minHeight: 52, fontWeight: 800, textTransform: "none", bgcolor: "#b4470c", "&:hover": { bgcolor: "#913908" } }}>
             స్లైడ్ షో చూడండి{music ? " 🎵" : ""}
           </Button>
+          </Hint>
         ) : (
-          <Button variant="outlined" startIcon={<FullscreenRoundedIcon />} onClick={() => setShow({ start: 0, autoplay: false })} sx={{ minHeight: 52, fontWeight: 700, textTransform: "none" }}>
+          <Hint show={help} text="పేజీలను పెద్దగా, పూర్తి తెరలో చూడండి">
+          <Button variant="outlined" startIcon={<FullscreenRoundedIcon />} onClick={() => openShow(0, false)} sx={{ minHeight: 52, fontWeight: 700, textTransform: "none" }}>
             పూర్తి తెరలో చూడండి
           </Button>
+          </Hint>
         )}
         <Button variant="contained" startIcon={<DownloadRoundedIcon />} onClick={() => setExportOpen(true)} sx={{ minHeight: 52, fontWeight: 800, textTransform: "none", bgcolor: "var(--secondary)" }}>
           డౌన్‌లోడ్
@@ -365,9 +416,13 @@ export default function KhatiMala() {
           </Button>
         </Stack>
       )}
-      <Typography variant="body2" sx={{ mt: 1.5, color: "var(--muted-text)", textAlign: "center" }}>
-        👆 పేజీలో ఏ భాగాన్ని నొక్కినా, దాన్ని మార్చే పెట్టె తెరుచుకుంటుంది.
-      </Typography>
+      <Box sx={{ mt: 1.5, display: "flex", justifyContent: "center" }}>
+        <Hint show={help} text="ఇక్కడ కనిపించేదే ఫైల్‌లో వస్తుంది">
+          <Typography variant="body2" sx={{ color: "var(--muted-text)", textAlign: "center" }}>
+            👆 పేజీలో ఏ భాగాన్ని నొక్కినా, దాన్ని మార్చే పెట్టె తెరుచుకుంటుంది.
+          </Typography>
+        </Hint>
+      </Box>
     </Box>
   ) : (
     <Box sx={{ aspectRatio: "210/297", bgcolor: "var(--surface)", borderRadius: "6px" }} aria-label="ముందు చూపు సిద్ధమవుతోంది" />
@@ -383,19 +438,28 @@ export default function KhatiMala() {
           <Typography component="h2" sx={{ fontWeight: 800, fontSize: "1.5rem", flexShrink: 0 }}>
             ఖతి మాల
           </Typography>
-          <TextField
-            size="small"
-            label="ఫైల్ పేరు"
-            value={p.title}
-            onChange={(e) => commit((x) => ({ ...x, title: e.target.value }), "title")}
-            sx={{ flex: 1, minWidth: 160, "& .MuiInputBase-root": { minHeight: 48 } }}
-          />
-          <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Box sx={{ flex: 1, minWidth: 160 }}>
+            <Hint show={help} wide text="డౌన్‌లోడ్ అయ్యే ఫైల్‌కు ఈ పేరు వస్తుంది">
+              <TextField
+                size="small"
+                label="ఫైల్ పేరు"
+                value={p.title}
+                onChange={(e) => commit((x) => ({ ...x, title: e.target.value }), "title")}
+                fullWidth
+                sx={{ "& .MuiInputBase-root": { minHeight: 48 } }}
+              />
+            </Hint>
+          </Box>
+          <Stack direction="row" spacing={0.75} alignItems="flex-start" flexWrap="wrap" useFlexGap>
+            <Hint show={help} text="కొత్తగా మొదలు — 5 నమూనాలు">
             <Tooltip title="కొత్తది / మళ్ళీ మొదలు">
-              <Button variant="outlined" startIcon={<NoteAddRoundedIcon />} onClick={() => setNewOpen(true)} sx={{ minHeight: 48, textTransform: "none", fontWeight: 700 }}>
+              <Button id="kh-new" variant="outlined" startIcon={<NoteAddRoundedIcon />} onClick={() => setNewOpen(true)} sx={{ minHeight: 48, textTransform: "none", fontWeight: 700 }}>
                 కొత్తది
               </Button>
             </Tooltip>
+            </Hint>
+            <Hint show={help} text="↶ పొరపాటు? వెనక్కి · ↷ మళ్ళీ ముందుకు">
+            <Stack direction="row" spacing={0.75} id="kh-undo">
             <Tooltip title="వెనక్కి (Ctrl+Z)">
               <span>
                 <IconButton aria-label="వెనక్కి (undo)" disabled={!hist.past.length} onClick={undo} sx={{ width: 48, height: 48, border: "1px solid var(--border-strong)" }}>
@@ -410,11 +474,46 @@ export default function KhatiMala() {
                 </IconButton>
               </span>
             </Tooltip>
-            <Button variant="contained" startIcon={<DownloadRoundedIcon />} onClick={() => setExportOpen(true)} disabled={!layout} sx={{ minHeight: 48, fontWeight: 800, textTransform: "none", bgcolor: "var(--secondary)" }}>
+            </Stack>
+            </Hint>
+            <Hint show={help} text="PDF · చిత్రం · వీడియో (పాటతో) · Word · PowerPoint">
+            <Button id="kh-download" variant="contained" startIcon={<DownloadRoundedIcon />} onClick={() => setExportOpen(true)} disabled={!layout} sx={{ minHeight: 48, fontWeight: 800, textTransform: "none", bgcolor: "var(--secondary)" }}>
               డౌన్‌లోడ్
             </Button>
+            </Hint>
           </Stack>
         </Stack>
+
+        {/* సహాయం — two ways */}
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+          <Button
+            variant={help ? "contained" : "outlined"}
+            startIcon={<TipsAndUpdatesRoundedIcon />}
+            onClick={toggleHelp}
+            aria-pressed={help}
+            sx={{ minHeight: 48, fontWeight: 800, textTransform: "none", ...(help ? { bgcolor: "#d9a400", color: "#241f1a", "&:hover": { bgcolor: "#c49300" } } : {}) }}
+          >
+            {help ? "💡 గుర్తులు దాచు" : "💡 బటన్ల గుర్తులు"}
+          </Button>
+          <Button variant="outlined" startIcon={<MenuBookRoundedIcon />} onClick={() => setGuide(true)} sx={{ minHeight: 48, fontWeight: 800, textTransform: "none" }}>
+            📖 ఎలా వాడాలి? (దశలు)
+          </Button>
+        </Stack>
+        {help && (
+          <Alert
+            severity="info"
+            icon={<TipsAndUpdatesRoundedIcon />}
+            role="status"
+            sx={{ mb: 2, fontSize: "1rem", bgcolor: "#fff8d6", color: "#3b2a00", border: "2px solid #d9a400", "& .MuiAlert-icon": { color: "#a37a00" } }}
+            action={
+              <Button onClick={toggleHelp} sx={{ fontWeight: 800, minHeight: 44, textTransform: "none", color: "#3b2a00" }}>
+                దాచు
+              </Button>
+            }
+          >
+            పసుపు చీటీలు ప్రతి బటన్ ఏం చేస్తుందో చెబుతాయి. ఏ పెట్టెను నొక్కితే దాని బటన్ల గుర్తులు కనిపిస్తాయి. "రూపం" లోనూ చూడండి.
+          </Alert>
+        )}
 
         {error && (
           <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2, fontSize: "1rem" }}>
@@ -425,22 +524,36 @@ export default function KhatiMala() {
         {/* ---------- body ---------- */}
         {desktop ? (
           <Box sx={{ display: "grid", gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: 3, alignItems: "start" }}>
-            <Box>
-              <Tabs value={tab === "preview" ? "edit" : tab} onChange={(_, v) => setTab(v)} variant="fullWidth" sx={{ mb: 2, borderBottom: "1px solid var(--border-strong)" }}>
+            <Box id="kh-body">
+              <Tabs value={tab === "preview" ? "edit" : tab} onChange={(_, v) => setTab(v)} variant="fullWidth" sx={{ mb: help ? 1 : 2, borderBottom: "1px solid var(--border-strong)" }}>
                 <Tab value="edit" icon={<EditRoundedIcon />} iconPosition="start" label="వ్రాయండి" sx={tabBtn} />
                 <Tab value="design" icon={<PaletteRoundedIcon />} iconPosition="start" label="రూపం · ఫాంట్ · సైజు" sx={tabBtn} />
               </Tabs>
+              {help && (
+                <Box sx={{ mb: 2 }}>
+                  <Hint show wide text="వ్రాయండి = మీ పాఠ్యం, చిత్రాలు · రూపం = పరిమాణం, 10 రూపాలు, ఫాంట్, స్లైడ్ షో, పాట · కుడి వైపు = ఎలా వచ్చిందో">
+                    <span />
+                  </Hint>
+                </Box>
+              )}
               {tab === "design" ? design : editor}
             </Box>
             <Box sx={{ position: "sticky", top: 84, maxHeight: "calc(100dvh - 100px)", overflowY: "auto", pr: 0.5, pb: 2 }}>{preview}</Box>
           </Box>
         ) : (
-          <Box>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth" sx={{ mb: 2, borderBottom: "1px solid var(--border-strong)" }}>
+          <Box id="kh-body">
+            <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth" sx={{ mb: help ? 1 : 2, borderBottom: "1px solid var(--border-strong)" }}>
               <Tab value="edit" icon={<EditRoundedIcon />} label="వ్రాయండి" sx={tabBtn} />
               <Tab value="design" icon={<PaletteRoundedIcon />} label="రూపం" sx={tabBtn} />
               <Tab value="preview" icon={<VisibilityRoundedIcon />} label="చూడండి" sx={tabBtn} />
             </Tabs>
+            {help && (
+              <Box sx={{ mb: 2 }}>
+                <Hint show wide text="వ్రాయండి = మీ పాఠ్యం · రూపం = పరిమాణం, రంగులు, ఫాంట్, స్లైడ్ షో, పాట · చూడండి = ఎలా వచ్చిందో, డౌన్‌లోడ్">
+                  <span />
+                </Hint>
+              </Box>
+            )}
             {tab === "edit" && editor}
             {tab === "design" && design}
             {tab === "preview" && preview}
@@ -458,6 +571,16 @@ export default function KhatiMala() {
       </CardContent>
 
       {/* ---------- dialogs ---------- */}
+      <GuideDialog
+        open={guide}
+        onClose={() => setGuide(false)}
+        onShow={showTarget}
+        onHints={() => {
+          setGuide(false);
+          if (!help) toggleHelp();
+        }}
+      />
+
       <Dialog open={newOpen} onClose={() => setNewOpen(false)} fullWidth maxWidth="sm" aria-labelledby="new-title">
         <DialogTitle id="new-title" sx={{ fontWeight: 800, pr: 7 }}>
           కొత్తగా మొదలుపెట్టండి
@@ -493,9 +616,9 @@ export default function KhatiMala() {
         </DialogContent>
       </Dialog>
 
-      {layout && <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} project={p} pageCount={pageCount} />}
+      {layout && <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} project={p} pageCount={pageCount} music={music?.blob ?? null} />}
 
-      {show && layout && <Slideshow layout={layout} project={deferred} start={show.start} autoplay={show.autoplay} musicUrl={show.autoplay ? musicUrl : null} onClose={closeShow} />}
+      {show && layout && <Slideshow layout={layout} project={deferred} start={show.start} autoplay={show.autoplay} audio={show.autoplay ? audioRef.current : null} onClose={closeShow} />}
 
       <Snackbar
         open={!!toast}

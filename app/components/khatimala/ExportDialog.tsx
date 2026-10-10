@@ -34,16 +34,20 @@ import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
-import { canShareFiles, exportDocx, exportPdf, exportPng, exportPptx, saveBlob, shareBlob, sizeLabel } from "./exporters";
+import { canShareFiles, exportDocx, exportPdf, exportPng, exportPptx, exportShowHtml, exportVideo, makeAudioContext, pickVideoType, saveBlob, shareBlob, sizeLabel, videoSeconds, type VideoShape } from "./exporters";
+import MovieRoundedIcon from "@mui/icons-material/MovieRounded";
+import MusicVideoRoundedIcon from "@mui/icons-material/MusicVideoRounded";
 import type { Project } from "./model";
 
-export type Format = "pdf" | "png" | "docx" | "pptx";
+export type Format = "pdf" | "png" | "video" | "docx" | "pptx" | "show";
 
 const FORMATS: { id: Format; title: string; hint: string; icon: React.ReactNode; color: string }[] = [
   { id: "pdf", title: "PDF", hint: "ప్రింట్ · WhatsApp లో పంపడానికి · మీ ఫాంట్ అలాగే", icon: <PictureAsPdfRoundedIcon />, color: "#a31515" },
   { id: "png", title: "చిత్రం (పోస్టర్)", hint: "WhatsApp స్టేటస్ · Instagram · Facebook", icon: <ImageRoundedIcon />, color: "#1f5f3f" },
+  { id: "video", title: "వీడియో (మీ పాటతో) ⭐", hint: "WhatsApp స్టేటస్ · Instagram Reels · Facebook — MP4", icon: <MovieRoundedIcon />, color: "#c2185b" },
   { id: "docx", title: "Word", hint: "తర్వాత మార్చుకోవచ్చు · ఫాంట్ ఫైల్ లోపలే", icon: <DescriptionRoundedIcon />, color: "#1d4ed8" },
-  { id: "pptx", title: "PowerPoint", hint: "స్లైడ్ షో · TV / ప్రొజెక్టర్", icon: <SlideshowRoundedIcon />, color: "#b4470c" },
+  { id: "pptx", title: "PowerPoint", hint: "స్లైడ్ షో · TV / ప్రొజెక్టర్ (సంగీతం ఉండదు)", icon: <SlideshowRoundedIcon />, color: "#b4470c" },
+  { id: "show", title: "స్లైడ్ షో ఫైల్ (సంగీతంతో)", hint: "Internet లేకుండా ఏ కంప్యూటర్ / ఫోన్‌లోనైనా — ఫైల్ తెరిచి ▶ నొక్కండి", icon: <MusicVideoRoundedIcon />, color: "#6a1b9a" },
 ];
 
 const STEPS = ["ఫాంట్లు, చిత్రాలు సిద్ధం", "పేజీలు గీస్తున్నాం", "ఫైల్ కూర్చుతున్నాం", "సిద్ధం!"];
@@ -59,12 +63,17 @@ type Props = {
   project: Project;
   pageCount: number;
   initial?: Format;
+  /** the song chosen for the slideshow (goes inside the offline slideshow file) */
+  music?: Blob | null;
 };
 
-export default function ExportDialog({ open, onClose, project, pageCount, initial }: Props) {
+export default function ExportDialog({ open, onClose, project, pageCount, initial, music = null }: Props) {
   const phone = useMediaQuery("(max-width:600px)");
   const [format, setFormat] = useState<Format>(initial ?? "pdf");
   const [editable, setEditable] = useState(false);
+  const [shape, setShape] = useState<VideoShape>("status");
+  const [videoType, setVideoType] = useState<string | null | undefined>(undefined);
+  useEffect(() => setVideoType(pickVideoType()), []);
   const [page, setPage] = useState(0);
   const [stage, setStage] = useState<"choose" | "working" | "done" | "error">("choose");
   const [step, setStep] = useState(0);
@@ -91,6 +100,8 @@ export default function ExportDialog({ open, onClose, project, pageCount, initia
   };
 
   const start = async () => {
+    // sound for the video must be switched on right here, inside the tap
+    const audioCtx = format === "video" && music ? makeAudioContext() : null;
     setStage("working");
     progress(0, 2);
     statusRef.current?.focus();
@@ -103,6 +114,16 @@ export default function ExportDialog({ open, onClose, project, pageCount, initia
         const r = await exportDocx(project, progress);
         out = r;
         if (r.notEmbedded.length) notes.push(`Word లోపల పెట్టలేని ఫాంట్: ${r.notEmbedded.join(", ")} — ఆ కంప్యూటర్‌లో ఉంటేనే అదే రూపం.`);
+      } else if (format === "video") {
+        const r = await exportVideo(project, music, shape, audioCtx, progress);
+        out = r;
+        if (!r.whatsappReady) notes.push("ఈ బ్రౌజర్ WebM వీడియో మాత్రమే చేయగలదు. WhatsApp కి నేరుగా పంపాలంటే తాజా Chrome / Edge / Safari లో, లేదా ఫోన్‌లో మళ్ళీ తయారు చేయండి.");
+        if (r.seconds > 90) notes.push(`వీడియో ${Math.round(r.seconds)} సెకన్లు. WhatsApp స్టేటస్‌లో పొడవైన వీడియోలు కత్తిరించబడవచ్చు — స్లైడ్లు లేదా సెకన్లు తగ్గించండి.`);
+        if (!music) notes.push("పాట లేకుండా తయారైంది. పాట కావాలంటే: రూపం → స్లైడ్ షో → నేపథ్య సంగీతం.");
+        notes.push("ఫోన్‌లో \"WhatsApp / పంచుకోండి\" నొక్కి → WhatsApp → \"నా స్టేటస్\" ఎంచుకోండి.");
+      } else if (format === "show") {
+        out = await exportShowHtml(project, music, progress);
+        notes.push("ఈ ఫైల్‌ను ఏ కంప్యూటర్‌కైనా (pen drive / WhatsApp / email) పంపండి. అక్కడ ఫైల్‌పై డబుల్-క్లిక్ చేసి, \"▶ స్లైడ్ షో మొదలుపెట్టండి\" నొక్కితే చాలు — internet అవసరం లేదు.");
       } else out = await exportPptx(project, editable, progress);
       if (out.failed.length) notes.push(`ఈ ఫాంట్ రాలేదు, బదులుగా సాధారణ తెలుగు ఫాంట్ వాడాం: ${out.failed.join(", ")}`);
       setResult({ blob: out.blob, name: out.name, notes });
@@ -196,6 +217,39 @@ export default function ExportDialog({ open, onClose, project, pageCount, initia
               </Stack>
             )}
 
+            {format === "video" && (
+              <Box>
+                {videoType === null ? (
+                  <Alert severity="warning">ఈ బ్రౌజర్‌లో వీడియో తయారు చేయలేం. తాజా Chrome / Edge / Safari లో ప్రయత్నించండి.</Alert>
+                ) : (
+                  <>
+                    <Typography sx={{ fontWeight: 700, mb: 0.5 }}>వీడియో ఆకారం:</Typography>
+                    <ToggleButtonGroup exclusive fullWidth value={shape} onChange={(_, v) => v && setShape(v)} orientation={phone ? "vertical" : "horizontal"}>
+                      <ToggleButton value="status" sx={{ textTransform: "none", flexDirection: "column", alignItems: "flex-start", textAlign: "left", py: 1, minHeight: 56 }}>
+                        <b>📱 WhatsApp స్టేటస్ (నిలువు 9:16)</b>
+                        <Typography component="span" variant="body2">
+                          స్టేటస్, Reels, Shorts కి సరిగ్గా
+                        </Typography>
+                      </ToggleButton>
+                      <ToggleButton value="same" sx={{ textTransform: "none", flexDirection: "column", alignItems: "flex-start", textAlign: "left", py: 1, minHeight: 56 }}>
+                        <b>🖥️ స్లైడ్ ఆకారంలోనే</b>
+                        <Typography component="span" variant="body2">
+                          TV, YouTube, కంప్యూటర్‌కి
+                        </Typography>
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+                    <Typography sx={{ mt: 1 }}>
+                      ⏱️ సుమారు <b>{Math.round(videoSeconds(project, pageCount))} సెకన్లు</b> ({pageCount} {project.mode === "slides" ? "స్లైడ్లు" : "పేజీలు"} × {Math.max(3, project.show.seconds || 5)} సెకన్లు) ·{" "}
+                      {music ? "🎵 మీ పాటతో" : "🔇 పాట లేదు"}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mt: 0.5, color: "var(--muted-text)" }}>
+                      వీడియో ఎంత పొడవో తయారు కావడానికి అంతే సమయం పడుతుంది. అంతవరకు ఈ పేజీని మూయకండి, వేరే tab కి వెళ్ళకండి.
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            )}
+
             {format === "pptx" && (
               <Box>
                 <Typography sx={{ fontWeight: 700, mb: 0.5 }}>PowerPoint లో అక్షరాలు:</Typography>
@@ -215,13 +269,13 @@ export default function ExportDialog({ open, onClose, project, pageCount, initia
                 </ToggleButtonGroup>
                 {project.show.seconds > 0 && (
                   <Typography variant="body2" sx={{ mt: 1, color: "var(--muted-text)" }}>
-                    స్లైడ్లు ప్రతి {project.show.seconds} సెకన్లకు తనంతట తానే మారతాయి (PowerPoint లో F5 నొక్కండి). సంగీతం ఈ సైట్ స్లైడ్ షోలో మాత్రమే.
+                    స్లైడ్లు ప్రతి {project.show.seconds} సెకన్లకు తనంతట తానే మారతాయి (PowerPoint లో F5 నొక్కండి). PowerPoint ఫైల్‌లో సంగీతం ఉండదు — పాటతో కావాలంటే "స్లైడ్ షో ఫైల్ (సంగీతంతో)" ఎంచుకోండి.
                   </Typography>
                 )}
               </Box>
             )}
 
-            <Button variant="contained" size="large" onClick={start} startIcon={<DownloadRoundedIcon />} sx={{ minHeight: 56, fontWeight: 800, fontSize: "1.1rem", textTransform: "none", bgcolor: "var(--secondary)", mt: 1 }}>
+            <Button variant="contained" size="large" onClick={start} disabled={format === "video" && videoType === null} startIcon={<DownloadRoundedIcon />} sx={{ minHeight: 56, fontWeight: 800, fontSize: "1.1rem", textTransform: "none", bgcolor: "var(--secondary)", mt: 1 }}>
               {FORMATS.find((f) => f.id === format)!.title} తయారు చేయండి
             </Button>
           </Stack>
