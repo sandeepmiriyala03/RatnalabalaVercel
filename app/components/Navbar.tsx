@@ -5,7 +5,8 @@
 
    • పెద్ద బార్: ఒకే వరుస (full → compact → ☰), కొలిచి నిర్ణయిస్తుంది
    • ప్రతి నొక్కే చోటు కనీసం 48px (--tap-target) — 60+ పాఠకుల కోసం
-   • ఒక్క అంశమే ఉన్న గుంపు (వాచకమాల, గీతామాల) = నేరుగా link, రెండు నొక్కులు కాదు
+   • 3 గుంపులే: వ్యాకరణం · సాహిత్యం · కళలు (మొత్తం 23 మాలలు)
+   • ఒక్క అంశమే ఉన్న గుంపు ఉంటే = నేరుగా link, రెండు నొక్కులు కాదు
    • ☰ మెనూ: కుడి నుండి (బటన్ ఉన్న వైపే), మూసే బటన్, వెతకడం, అన్ని గుంపులూ తెరిచే
    • ఇప్పుడున్న పేజీ: ఉప-పేజీల్లోనూ (/poems/12) హైలైట్
    • Next.js 16.4 Cache Components: usePathname() ను <Suspense> లో ఉంచాం,
@@ -89,8 +90,9 @@ const isActivePath = (path: string, pathname: string | null) =>
 
 /* ═══════════════════════════════════════════
    COLORS — globals.css tokens (dark mode ఆటోమేటిక్)
+   బార్ రంగు globals.css లోని RB-THEME block నుంచే (--secondary)
 ═══════════════════════════════════════════ */
-const BG = "var(--secondary)"; // forest green bar
+const BG = "var(--secondary)"; // bar colour (RB-THEME)
 const TEXT = "var(--background)"; // ivory text on the bar
 const ACCENT = "var(--accent-light)"; // gold active pill
 const ON_ACCENT = "#241f1a"; // బంగారు పై నల్లని అక్షరం, రెండు modes లోనూ (--foreground dark లో తెల్లగా మారుతుంది)
@@ -325,10 +327,6 @@ function DesktopNav({ compact, pathname, withFavorite }: { compact: boolean; pat
         <DesktopGroup key={g.label} group={g} compact={compact} pathname={pathname} />
       ))}
 
-      <BarLink href={TEST_LAB.path} active={isActivePath(TEST_LAB.path, pathname)} compact={compact}>
-        {TEST_LAB.label}
-      </BarLink>
-
       {compact ? (
         <Tooltip title="అభిప్రాయం">
           <IconButton
@@ -414,8 +412,7 @@ function NavDrawer({ open, onClose, pathname }: { open: boolean; onClose: () => 
   }, [q]);
 
   const showHome = !q || HOME_LABEL.includes(q);
-  const showLab = !q || TEST_LAB.label.includes(q);
-  const nothing = !groups.length && !showHome && !showLab;
+  const nothing = !groups.length && !showHome;
 
   return (
     <Drawer
@@ -494,12 +491,6 @@ function NavDrawer({ open, onClose, pathname }: { open: boolean; onClose: () => 
                 </List>
               </Box>
             ))}
-
-            {showLab && (
-              <Box sx={{ mt: 1.5 }}>
-                <DrawerItem item={TEST_LAB} pathname={pathname} onClose={onClose} />
-              </Box>
-            )}
           </List>
 
           {nothing && (
