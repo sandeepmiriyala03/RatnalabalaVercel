@@ -3,26 +3,21 @@
 /* ═══════════════════════════════════════════════════════════════
    NAVBAR — రత్నాలబాల–జ్ఞానమాల
 
-   • పెద్ద బార్: ఒకే వరుస (full → compact → ☰), కొలిచి నిర్ణయిస్తుంది
-   • ప్రతి నొక్కే చోటు కనీసం 48px (--tap-target) — 60+ పాఠకుల కోసం
-   • 3 గుంపులే: వ్యాకరణం · సాహిత్యం · కళలు (మొత్తం 23 మాలలు)
-   • ఒక్క అంశమే ఉన్న గుంపు ఉంటే = నేరుగా link, రెండు నొక్కులు కాదు
-   • ☰ మెనూ: కుడి నుండి (బటన్ ఉన్న వైపే), మూసే బటన్, వెతకడం, అన్ని గుంపులూ తెరిచే
-   • ఇప్పుడున్న పేజీ: ఉప-పేజీల్లోనూ (/poems/12) హైలైట్
-   • Next.js 16.4 Cache Components: usePathname() ను <Suspense> లో ఉంచాం,
-     dynamic routes ఉన్నా build ఆగదు; fallback లో అదే మెనూ (హైలైట్ లేకుండా)
+   • ఒకే వరుస (full → compact → ☰), కొలిచి నిర్ణయిస్తుంది
+   • 3 గుంపులు, 23 మాలలు — lib/malas.ts నుంచి (ముఖ పేజీ కూడా అదే)
+   • నొక్కే ప్రతి చోటు ≥ 44px; ☰ మెనూ కుడి నుండి, వెతకడంతో
+   • ఇప్పుడున్న పేజీ ఉప-పేజీల్లోనూ (/poems/12) హైలైట్
+   • Inline styles లేవు — globals.css §14 (rb-nav-*, rb-drawer-*)
+   • బార్ రంగు = --secondary (globals.css §1 RB-THEME)
+   • Cache Components: usePathname() <Suspense> లో
    ═══════════════════════════════════════════════════════════════ */
 
-import {
-  AppBar, Toolbar, Typography, Box, IconButton,
-  Drawer, List, ListItem, ListItemText, Divider,
-  Menu, MenuItem, Button, ListItemButton, Tooltip, InputBase,
-} from "@mui/material";
+import { AppBar, Toolbar, IconButton, Drawer, List, ListItem, ListItemText, Divider, Menu, MenuItem, Button, ListItemButton, Tooltip, InputBase } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
@@ -30,99 +25,36 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ModuleFavoriteButton from "@/app/components/ModuleFavoriteButton";
+import { MALA_GROUPS, type MalaGroup } from "@/lib/malas";
 
-/* ═══════════════════════════════════════════
-   NAV GROUPS
-═══════════════════════════════════════════ */
 type NavItem = { label: string; path: string };
 type NavGroup = { label: string; icon: string; items: NavItem[] };
 
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: "వ్యాకరణం",
-    icon: "📖",
-    items: [
-      { label: "అక్షరమాల", path: "/aksharamala" },
-      { label: "గుణింతమాల", path: "/guninta" },
-      { label: "పదాలమాల", path: "/padalamala" },
-      { label: "సామెతలమాల", path: "/sametalu" },
-      { label: "సంధిమాల", path: "/sandhi" },
-      { label: "సమాసముమాల", path: "/samasa" },
-    ],
-  },
-  {
-    label: "సాహిత్యం",
-    icon: "📚",
-    items: [
-      { label: "పద్యాలమాల", path: "/poems" },
-      { label: "మిరా", path: "/mirapoems" },
-      { label: "శతకాలమాల", path: "/shatakamu" },
-      { label: "స్మృతిమాల", path: "/smruthimala" },
-      { label: "కథామాల", path: "/kathamala" },
-      { label: "పరాభవమాల", path: "/parabhava" },
-      { label: "గీతామాల", path: "/geeta" },
-      { label: "PDF ప్రశ్నోత్తరి", path: "/prashnottari" },
-      { label: "నా చదువు", path: "/my-reading" },
-      { label: "జ్ఞానమాల — అన్ని మాలలు ఒకే చోట", path: "/gnanamala" },
-    ],
-  },
-  {
-    label: "కళలు",
-    icon: "🎨",
-    items: [
-      { label: "ఖతిమాల", path: "/khatiMala" },
-      { label: "చిత్రమాల", path: "/chitramala" },
-      { label: "స్వరమాల", path: "/swaramala" },
-      { label: "లిపిమాల", path: "/lipimala" },
-      { label: "విదురమాల", path: "/rahasyabhasha" },
-      { label: "శైలిమాల", path: "/shailimala" },
-      { label: "వాచకమాల", path: "/news" },
-    ],
-  },
-];
-const HOME_LABEL = "ముంగిలి"; // "home"
+const NAV_GROUPS: NavGroup[] = MALA_GROUPS.map((g: MalaGroup) => ({
+  label: g.label,
+  icon: g.emoji,
+  items: g.items.map((m) => ({ label: m.navLabel ?? m.label, path: m.path })),
+}));
 
+const HOME_LABEL = "ముంగిలి";
 const FEEDBACK_URL = "https://forms.gle/z4zugcnmZrW9d9cR9";
-
-/* ఉప-పేజీలూ లెక్కే: /poems/12 లో ఉంటే "పద్యాలమాల" హైలైట్ */
-const isActivePath = (path: string, pathname: string | null) =>
-  !!pathname && (pathname === path || (path !== "/" && pathname.startsWith(`${path}/`)));
-
-/* ═══════════════════════════════════════════
-   COLORS — globals.css tokens (dark mode ఆటోమేటిక్)
-   బార్ రంగు globals.css లోని RB-THEME block నుంచే (--secondary)
-═══════════════════════════════════════════ */
-const BG = "var(--secondary)"; // bar colour (RB-THEME)
-const TEXT = "var(--background)"; // ivory text on the bar
-const ACCENT = "var(--accent-light)"; // gold active pill
-const ON_ACCENT = "#241f1a"; // బంగారు పై నల్లని అక్షరం, రెండు modes లోనూ (--foreground dark లో తెల్లగా మారుతుంది)
-const TAP = "var(--tap-target, 48px)";
-const SAFE_TOP = "env(safe-area-inset-top, 0px)";
-const FOCUS = { "&:focus-visible": { outline: "3px solid var(--focus-ring)", outlineOffset: 2 } };
-const BAR_FOCUS = { "&:focus-visible": { outline: `3px solid ${ACCENT}`, outlineOffset: 2 } };
-
-/* ═══════════════════════════════════════════
-   SKIP LINK
-═══════════════════════════════════════════ */
 const MAIN_CONTENT_ID = "main-content";
-const NAV_OFFSET_PX = 72;
 
+const isActivePath = (path: string, pathname: string | null) => !!pathname && (pathname === path || (path !== "/" && pathname.startsWith(`${path}/`)));
+const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
+
+/* ─── skip link ─── */
 function skipToMainContent(e: React.MouseEvent<HTMLAnchorElement>) {
   e.preventDefault();
   const target = document.getElementById(MAIN_CONTENT_ID) ?? document.querySelector<HTMLElement>("main");
   if (!target) return;
   if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
-  target.style.outline = "none";
-  target.style.scrollMarginTop = `calc(${NAV_OFFSET_PX}px + ${SAFE_TOP})`;
   target.focus({ preventScroll: true });
-  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
-  target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
 }
 
-/* ═══════════════════════════════════════════
-   THEME TOGGLE — బార్‌లోది, మెనూలోది ఎప్పుడూ ఒకే స్థితి
-   (<html data-theme> ను గమనిస్తుంది)
-═══════════════════════════════════════════ */
+/* ─── theme toggle (bar + drawer stay in sync via <html data-theme>) ─── */
 const readIsDark = () => {
   const attr = document.documentElement.getAttribute("data-theme");
   return attr ? attr === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -130,24 +62,21 @@ const readIsDark = () => {
 
 function useThemeToggle() {
   const [isDark, setIsDark] = useState(false);
-
   useEffect(() => {
     setIsDark(readIsDark());
     const mo = new MutationObserver(() => setIsDark(readIsDark()));
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => mo.disconnect();
   }, []);
-
   const toggle = () => {
     const next = readIsDark() ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
     try {
       localStorage.setItem("theme", next);
     } catch {
-      /* private browsing: just won't persist */
+      /* private browsing */
     }
   };
-
   return { isDark, toggle };
 }
 
@@ -156,89 +85,47 @@ function ThemeToggleButton({ variant = "bar" }: { variant?: "bar" | "icon" | "li
   const label = isDark ? "లైట్ మోడ్‌కు మార్చండి" : "డార్క్ మోడ్‌కు మార్చండి";
   const icon = isDark ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />;
 
-  if (variant === "list") {
+  if (variant === "list")
     return (
-      <ListItemButton onClick={toggle} sx={{ borderRadius: "10px", minHeight: TAP, gap: 1.5, ...FOCUS }}>
+      <ListItemButton onClick={toggle} className="rb-drawer__row">
         {icon}
-        <ListItemText primary={label} primaryTypographyProps={{ fontSize: "1rem", fontWeight: 600 }} />
+        <ListItemText primary={label} />
       </ListItemButton>
     );
-  }
 
-  if (variant === "icon") {
+  if (variant === "icon")
     return (
       <Tooltip title={label}>
-        <IconButton onClick={toggle} aria-label={label} sx={{ color: TEXT, width: 44, height: 44, border: "1px solid rgba(255,255,255,0.4)", ...BAR_FOCUS }}>
+        <IconButton onClick={toggle} aria-label={label} className="rb-nav__icon-btn">
           {icon}
         </IconButton>
       </Tooltip>
     );
-  }
 
   return (
-    <Button
-      onClick={toggle}
-      startIcon={isDark ? <LightModeRoundedIcon sx={{ fontSize: 18 }} /> : <DarkModeRoundedIcon sx={{ fontSize: 18 }} />}
-      sx={{
-        color: TEXT,
-        px: 1.6,
-        minHeight: 44,
-        borderRadius: "999px",
-        fontSize: "0.95rem",
-        fontWeight: 500,
-        textTransform: "none",
-        whiteSpace: "nowrap",
-        flexShrink: 0,
-        border: "1px solid rgba(255,255,255,0.4)",
-        "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
-        ...BAR_FOCUS,
-      }}
-    >
+    <Button onClick={toggle} startIcon={icon} className="rb-nav__pill rb-nav__outline">
       {isDark ? "లైట్ మోడ్" : "డార్క్ మోడ్"}
     </Button>
   );
 }
 
-/* ═══════════════════════════════════════════
-   BAR PILL
-═══════════════════════════════════════════ */
-const pillSx = (active: boolean, compact: boolean) => ({
-  color: active ? ON_ACCENT : TEXT,
-  bgcolor: active ? ACCENT : "transparent",
-  px: compact ? 1.1 : 1.6,
-  minHeight: 44,
-  display: "inline-flex",
-  alignItems: "center",
-  borderRadius: "999px",
-  fontSize: "0.95rem",
-  fontWeight: active ? 800 : 500,
-  textTransform: "none" as const,
-  whiteSpace: "nowrap" as const,
-  flexShrink: 0,
-  minWidth: 0,
-  textDecoration: "none",
-  "&:hover": { bgcolor: active ? ACCENT : "rgba(255,255,255,0.18)" },
-  ...BAR_FOCUS,
-});
-
+/* ─── bar link ─── */
 function BarLink({ href, active, compact, children }: { href: string; active: boolean; compact: boolean; children: React.ReactNode }) {
   return (
-    <Box component={Link} href={href} aria-current={active ? "page" : undefined} sx={pillSx(active, compact)}>
+    <Link href={href} aria-current={active ? "page" : undefined} className={cx("rb-nav__pill", compact && "is-compact", active && "is-active")}>
       {children}
-    </Box>
+    </Link>
   );
 }
 
-/* ═══════════════════════════════════════════
-   DESKTOP DROPDOWN (ఒక్క అంశమే ఉంటే నేరుగా link)
-═══════════════════════════════════════════ */
+/* ─── dropdown group ─── */
 function DesktopGroup({ group, compact, pathname }: { group: NavGroup; compact: boolean; pathname: string | null }) {
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
   const open = Boolean(anchor);
   const isActive = group.items.some((i) => isActivePath(i.path, pathname));
   const text = compact ? group.label : `${group.icon} ${group.label}`;
 
-  if (group.items.length === 1) {
+  if (group.items.length === 1)
     return (
       <Tooltip title={group.items[0].label}>
         <span>
@@ -248,7 +135,6 @@ function DesktopGroup({ group, compact, pathname }: { group: NavGroup; compact: 
         </span>
       </Tooltip>
     );
-  }
 
   return (
     <>
@@ -256,28 +142,16 @@ function DesktopGroup({ group, compact, pathname }: { group: NavGroup; compact: 
         onClick={(e) => setAnchor(e.currentTarget)}
         aria-haspopup="menu"
         aria-expanded={open}
-        endIcon={open ? <ExpandLessIcon sx={{ fontSize: 18 }} /> : <ExpandMoreIcon sx={{ fontSize: 18 }} />}
-        sx={{ ...pillSx(isActive, compact), "& .MuiButton-endIcon": { ml: 0.25 } }}
+        endIcon={open ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+        className={cx("rb-nav__pill", compact && "is-compact", isActive && "is-active")}
       >
         {text}
       </Button>
-
       <Menu
         anchorEl={anchor}
         open={open}
         onClose={() => setAnchor(null)}
-        PaperProps={{
-          sx: {
-            mt: 1,
-            borderRadius: "14px",
-            minWidth: 220,
-            py: 0.5,
-            bgcolor: "var(--surface-elevated)",
-            color: "var(--foreground)",
-            border: "1px solid var(--border-strong)",
-            boxShadow: "0 12px 32px rgba(0,0,0,0.18)",
-          },
-        }}
+        slotProps={{ paper: { className: "rb-nav-menu" } }}
         transformOrigin={{ horizontal: "left", vertical: "top" }}
         anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
       >
@@ -290,19 +164,7 @@ function DesktopGroup({ group, compact, pathname }: { group: NavGroup; compact: 
               href={item.path}
               onClick={() => setAnchor(null)}
               aria-current={active ? "page" : undefined}
-              sx={{
-                minHeight: TAP,
-                fontSize: "1rem",
-                fontWeight: active ? 800 : 500,
-                color: "inherit",
-                bgcolor: active ? `color-mix(in srgb, ${ACCENT} 40%, transparent)` : "transparent",
-                boxShadow: active ? "inset 4px 0 0 var(--secondary)" : "none",
-                borderRadius: "10px",
-                mx: 0.75,
-                my: 0.25,
-                "&:hover": { bgcolor: `color-mix(in srgb, ${ACCENT} 22%, transparent)` },
-                "&.Mui-focusVisible": { outline: "3px solid var(--focus-ring)", outlineOffset: -3 },
-              }}
+              className={cx("rb-nav-menu__item", active && "is-active")}
             >
               {item.label}
             </MenuItem>
@@ -313,9 +175,7 @@ function DesktopGroup({ group, compact, pathname }: { group: NavGroup; compact: 
   );
 }
 
-/* ═══════════════════════════════════════════
-   DESKTOP ROW — ఒకే వరుస
-═══════════════════════════════════════════ */
+/* ─── one row of the bar ─── */
 function DesktopNav({ compact, pathname, withFavorite }: { compact: boolean; pathname: string | null; withFavorite: boolean }) {
   return (
     <>
@@ -329,68 +189,28 @@ function DesktopNav({ compact, pathname, withFavorite }: { compact: boolean; pat
 
       {compact ? (
         <Tooltip title="అభిప్రాయం">
-          <IconButton
-            component="a"
-            href={FEEDBACK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="అభిప్రాయం (కొత్త ట్యాబ్‌లో)"
-            sx={{ color: TEXT, width: 44, height: 44, border: "1px solid rgba(255,255,255,0.4)", flexShrink: 0, ...BAR_FOCUS }}
-          >
+          <IconButton component="a" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" aria-label="అభిప్రాయం (కొత్త ట్యాబ్‌లో)" className="rb-nav__icon-btn">
             <ChatBubbleOutlineRoundedIcon />
           </IconButton>
         </Tooltip>
       ) : (
-        <Box
-          component="a"
-          href={FEEDBACK_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="అభిప్రాయం (కొత్త ట్యాబ్‌లో)"
-          sx={{ ...pillSx(false, false), border: "1px solid rgba(255,255,255,0.4)" }}
-        >
+        <a href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" aria-label="అభిప్రాయం (కొత్త ట్యాబ్‌లో)" className="rb-nav__pill rb-nav__outline">
           💬 అభిప్రాయం
-        </Box>
+        </a>
       )}
 
-      {withFavorite && (
-        <Box sx={{ flexShrink: 0, display: "flex" }}>
-          <ModuleFavoriteButton />
-        </Box>
-      )}
+      {withFavorite && <ModuleFavoriteButton />}
       <ThemeToggleButton variant={compact ? "icon" : "bar"} />
     </>
   );
 }
 
-/* ═══════════════════════════════════════════
-   ☰ మెనూ (Drawer) — అన్నీ కనిపించేలా, వెతకడంతో
-═══════════════════════════════════════════ */
+/* ─── ☰ drawer ─── */
 function DrawerItem({ item, pathname, onClose }: { item: NavItem; pathname: string | null; onClose: () => void }) {
   const active = isActivePath(item.path, pathname);
   return (
-    <ListItem
-      component={Link}
-      href={item.path}
-      onClick={onClose}
-      aria-current={active ? "page" : undefined}
-      sx={{
-        minHeight: TAP,
-        borderRadius: "10px",
-        mb: 0.25,
-        color: "inherit",
-        bgcolor: active ? `color-mix(in srgb, ${ACCENT} 45%, transparent)` : "transparent",
-        boxShadow: active ? "inset 4px 0 0 var(--secondary)" : "none",
-        "&:hover": { bgcolor: active ? `color-mix(in srgb, ${ACCENT} 45%, transparent)` : "var(--surface)" },
-        ...FOCUS,
-      }}
-    >
-      <ListItemText
-        primary={item.label}
-        secondary={active ? "మీరు ఇక్కడ ఉన్నారు" : undefined}
-        primaryTypographyProps={{ fontSize: "1.05rem", fontWeight: active ? 800 : 500 }}
-        secondaryTypographyProps={{ fontSize: "0.85rem", color: "var(--muted-text)" }}
-      />
+    <ListItem component={Link} href={item.path} onClick={onClose} aria-current={active ? "page" : undefined} className={cx("rb-drawer__item", active && "is-active")}>
+      <ListItemText primary={item.label} secondary={active ? "మీరు ఇక్కడ ఉన్నారు" : undefined} />
     </ListItem>
   );
 }
@@ -399,132 +219,73 @@ function NavDrawer({ open, onClose, pathname }: { open: boolean; onClose: () => 
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
 
-  // మూసినప్పుడు వెతుకుడు ఖాళీ
   useEffect(() => {
     if (!open) setQuery("");
   }, [open]);
 
   const groups = useMemo(() => {
     if (!q) return NAV_GROUPS;
-    return NAV_GROUPS.map((g) =>
-      g.label.toLowerCase().includes(q) ? g : { ...g, items: g.items.filter((i) => i.label.toLowerCase().includes(q)) }
-    ).filter((g) => g.items.length);
+    return NAV_GROUPS.map((g) => (g.label.toLowerCase().includes(q) ? g : { ...g, items: g.items.filter((i) => i.label.toLowerCase().includes(q)) })).filter((g) => g.items.length);
   }, [q]);
 
   const showHome = !q || HOME_LABEL.includes(q);
   const nothing = !groups.length && !showHome;
 
   return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onClose}
-      PaperProps={{
-        sx: {
-          width: 340,
-          maxWidth: "90vw",
-          borderRadius: "18px 0 0 18px",
-          bgcolor: "var(--background)",
-          color: "var(--foreground)",
-          pt: SAFE_TOP,
-          pb: "env(safe-area-inset-bottom, 0px)",
-        },
-      }}
-    >
-      <Box component="nav" aria-label="ప్రధాన మెనూ" sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {/* తల: పేరు + మూసే బటన్ */}
-        <Box sx={{ bgcolor: BG, color: TEXT, px: 2, py: 1, display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", flex: 1 }}>రత్నాలబాల–జ్ఞానమాల</Typography>
-          <Button
-            onClick={onClose}
-            startIcon={<CloseRoundedIcon />}
-            sx={{ color: TEXT, minHeight: 44, textTransform: "none", fontWeight: 700, fontSize: "0.95rem", borderRadius: "999px", ...BAR_FOCUS }}
-          >
+    <Drawer anchor="right" open={open} onClose={onClose} slotProps={{ paper: { className: "rb-drawer" } }}>
+      <nav aria-label="ప్రధాన మెనూ" className="rb-drawer__nav">
+        <div className="rb-drawer__head">
+          <p className="rb-drawer__title">రత్నాలబాల–జ్ఞానమాల</p>
+          <Button onClick={onClose} startIcon={<CloseRoundedIcon />} className="rb-drawer__close">
             మూసివేయండి
           </Button>
-        </Box>
+        </div>
 
-        {/* వెతకడం */}
-        <Box sx={{ px: 2, pt: 2, pb: 1 }}>
-          <Box
-            component="label"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              px: 1.5,
-              minHeight: TAP,
-              borderRadius: "12px",
-              border: "2px solid var(--border-strong)",
-              bgcolor: "var(--surface-elevated)",
-              "&:focus-within": { borderColor: "var(--focus-ring)" },
-            }}
-          >
-            <SearchRoundedIcon sx={{ color: "var(--muted-text)" }} aria-hidden />
-            <InputBase
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="మాల పేరు వెతకండి"
-              inputProps={{ "aria-label": "మాల పేరు వెతకండి", type: "search" }}
-              sx={{ flex: 1, fontSize: "1.05rem", color: "inherit" }}
-            />
-          </Box>
-        </Box>
+        <div className="rb-drawer__search-wrap">
+          <label className="rb-drawer__search">
+            <SearchRoundedIcon aria-hidden />
+            <InputBase value={query} onChange={(e) => setQuery(e.target.value)} placeholder="మాల పేరు వెతకండి" inputProps={{ "aria-label": "మాల పేరు వెతకండి", type: "search" }} />
+          </label>
+        </div>
 
-        <Box sx={{ flex: 1, overflowY: "auto", px: 2, pb: 2 }}>
+        <div className="rb-drawer__body">
           <List disablePadding>
             {showHome && <DrawerItem item={{ label: HOME_LABEL, path: "/" }} pathname={pathname === "/" ? "/" : null} onClose={onClose} />}
-
             {groups.map((g) => (
-              <Box component="li" key={g.label} sx={{ listStyle: "none", mt: 1.5 }}>
-                <Typography
-                  component="h2"
-                  sx={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--muted-text)", px: 1, mb: 0.5, display: "flex", gap: 0.75 }}
-                >
+              <li key={g.label} className="rb-drawer__group">
+                <h2 className="rb-drawer__group-title">
                   <span aria-hidden>{g.icon}</span>
                   {g.label}
-                </Typography>
+                </h2>
                 <List disablePadding>
                   {g.items.map((item) => (
                     <DrawerItem key={item.path} item={item} pathname={pathname} onClose={onClose} />
                   ))}
                 </List>
-              </Box>
+              </li>
             ))}
           </List>
 
           {nothing && (
-            <Typography sx={{ px: 1, py: 2, color: "var(--muted-text)", lineHeight: 1.8 }}>
+            <p className="rb-drawer__empty">
               &ldquo;{query}&rdquo; పేరుతో మాల దొరకలేదు. పేరులో కొంత భాగం మాత్రమే టైప్ చేసి చూడండి (ఉదా: &ldquo;పద్య&rdquo;).
-            </Typography>
+            </p>
           )}
 
-          <Divider sx={{ my: 2, borderColor: "var(--border-strong)" }} />
+          <Divider className="rb-drawer__divider" />
           <ThemeToggleButton variant="list" />
-          <ListItemButton
-            component="a"
-            href={FEEDBACK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={onClose}
-            sx={{ borderRadius: "10px", minHeight: TAP, gap: 1.5, ...FOCUS }}
-          >
+          <ListItemButton component="a" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer" onClick={onClose} className="rb-drawer__row">
             <ChatBubbleOutlineRoundedIcon />
-            <ListItemText primary="అభిప్రాయం చెప్పండి" secondary="కొత్త ట్యాబ్‌లో తెరుచుకుంటుంది" primaryTypographyProps={{ fontSize: "1rem", fontWeight: 600 }} secondaryTypographyProps={{ fontSize: "0.85rem", color: "var(--muted-text)" }} />
+            <ListItemText primary="అభిప్రాయం చెప్పండి" secondary="కొత్త ట్యాబ్‌లో తెరుచుకుంటుంది" />
           </ListItemButton>
-        </Box>
-      </Box>
+        </div>
+      </nav>
     </Drawer>
   );
 }
 
-/* ═══════════════════════════════════════════
-   "ఒకే వరుసలో పడుతుందా?" — కొలిచి నిర్ణయం
-   (పాఠకుడి అక్షర సైజు, తెలుగు ఫాంట్ వెడల్పు మారుస్తాయి)
-     full → compact → drawer (☰)
-═══════════════════════════════════════════ */
+/* ─── "does it fit on one row?" — measured (font & text size change widths) ─── */
 type NavMode = "full" | "compact" | "drawer";
-
 const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 function useNavMode() {
@@ -532,15 +293,14 @@ function useNavMode() {
   const brandRef = useRef<HTMLAnchorElement>(null);
   const fullRef = useRef<HTMLDivElement>(null);
   const compactRef = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<NavMode | null>(null); // null = కొలవక ముందు (CSS fallback)
+  const [mode, setMode] = useState<NavMode | null>(null);
 
   const measure = useCallback(() => {
     const bar = toolbarRef.current;
     const brand = brandRef.current;
     if (!bar || !brand) return;
     const cs = getComputedStyle(bar);
-    const GAP = 24;
-    const available = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - brand.offsetWidth - GAP;
+    const available = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - brand.offsetWidth - 24;
     const full = fullRef.current?.scrollWidth ?? Infinity;
     const compact = compactRef.current?.scrollWidth ?? Infinity;
     setMode(full <= available ? "full" : compact <= available ? "compact" : "drawer");
@@ -563,120 +323,51 @@ function useNavMode() {
 
 function MeasureCopy({ innerRef, compact, withFavorite }: { innerRef: React.RefObject<HTMLDivElement | null>; compact: boolean; withFavorite: boolean }) {
   return (
-    <Box aria-hidden sx={{ position: "absolute", width: 0, height: 0, overflow: "hidden", visibility: "hidden", pointerEvents: "none" }}>
-      <Box ref={innerRef} {...{ inert: true }} sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, whiteSpace: "nowrap", width: "max-content" }}>
+    <div aria-hidden className="rb-nav__measure">
+      <div ref={innerRef} {...{ inert: true }} className="rb-nav__measure-inner">
         <DesktopNav compact={compact} pathname={null} withFavorite={withFavorite} />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }
 
-/* ═══════════════════════════════════════════
-   NAVBAR
-═══════════════════════════════════════════ */
+/* ─── navbar ─── */
 function NavbarView({ pathname, withFavorite }: { pathname: string | null; withFavorite: boolean }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { mode, toolbarRef, brandRef, fullRef, compactRef } = useNavMode();
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
-  // పేజీ మారితే ☰ మెనూ మూసుకోవాలి (వెనక్కి బటన్‌తో వెళ్ళినా)
   useEffect(() => setDrawerOpen(false), [pathname]);
-
-  const showDesktop = mode === null ? { xs: "none", lg: "flex" } : mode === "drawer" ? "none" : "flex";
-  const showDrawerButton = mode === null ? { xs: "flex", lg: "none" } : mode === "drawer" ? "flex" : "none";
 
   return (
     <>
-      <Box
-        component="a"
-        href={`#${MAIN_CONTENT_ID}`}
-        onClick={skipToMainContent}
-        sx={{
-          position: "absolute",
-          left: "-9999px",
-          top: "auto",
-          width: "1px",
-          height: "1px",
-          overflow: "hidden",
-          "&:focus": {
-            position: "fixed",
-            left: 16,
-            top: `calc(16px + ${SAFE_TOP})`,
-            width: "auto",
-            height: "auto",
-            overflow: "visible",
-            zIndex: 2000,
-            px: 1.75,
-            py: 1,
-            borderRadius: "8px",
-            bgcolor: ACCENT,
-            color: ON_ACCENT,
-            fontSize: "0.95rem",
-            fontWeight: 700,
-            textDecoration: "none",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-          },
-        }}
-      >
+      <a href={`#${MAIN_CONTENT_ID}`} onClick={skipToMainContent} className="rb-skip-link">
         ప్రధాన కంటెంట్‌కు వెళ్ళండి
-      </Box>
+      </a>
 
-      <AppBar position="sticky" elevation={2} sx={{ bgcolor: BG, pt: SAFE_TOP }}>
-        <Toolbar
-          ref={toolbarRef}
-          sx={{
-            px: { xs: 1.5, sm: 2, md: 3 },
-            display: "flex",
-            flexWrap: "nowrap",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 1.5,
-            minHeight: { xs: 60, md: 64 },
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          <Link ref={brandRef} href="/" style={{ textDecoration: "none", flexShrink: 1, minWidth: 0 }} aria-label="రత్నాలబాల–జ్ఞానమాల, ముంగిలి">
-            <Typography
-              component="span"
-              sx={{ display: "block", fontWeight: 800, fontSize: { xs: "1.05rem", md: "1.2rem" }, color: TEXT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
-            >
-              <Box component="span" sx={{ display: { xs: "inline", sm: "none" } }}>రత్నాలబాల</Box>
-              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>రత్నాలబాల–జ్ఞానమాల</Box>
-            </Typography>
+      <AppBar position="sticky" elevation={0} className="rb-nav">
+        <Toolbar ref={toolbarRef} disableGutters className="rb-nav__bar" data-mode={mode ?? "auto"}>
+          <Link ref={brandRef} href="/" aria-label="రత్నాలబాల–జ్ఞానమాల, ముంగిలి" className="rb-nav__brand">
+            <span className="rb-nav__brand-text">
+              <span className="rb-show-xs">రత్నాలబాల</span>
+              <span className="rb-hide-xs">రత్నాలబాల–జ్ఞానమాల</span>
+            </span>
           </Link>
 
           <MeasureCopy innerRef={fullRef} compact={false} withFavorite={withFavorite} />
           <MeasureCopy innerRef={compactRef} compact withFavorite={withFavorite} />
 
-          <Box component="nav" aria-label="ప్రధాన మెనూ" sx={{ display: showDesktop, alignItems: "center", gap: 0.5, flexWrap: "nowrap", flexShrink: 0 }}>
+          <nav aria-label="ప్రధాన మెనూ" className="rb-nav__desktop">
             <DesktopNav compact={mode === "compact"} pathname={pathname} withFavorite={withFavorite} />
-          </Box>
+          </nav>
 
-          {/* ☰: మాటతో పాటు — పెద్దవాళ్ళకు మూడు గీతలు మాత్రమే అర్థం కాకపోవచ్చు */}
-          <Box sx={{ display: showDrawerButton, alignItems: "center", gap: 0.5, flexShrink: 0 }}>
+          {/* ☰ with a word — three lines alone may not be clear to older readers */}
+          <div className="rb-nav__compact-tools">
             {withFavorite && <ModuleFavoriteButton />}
-            <Button
-              onClick={() => setDrawerOpen(true)}
-              aria-expanded={drawerOpen}
-              aria-haspopup="dialog"
-              startIcon={<MenuIcon />}
-              sx={{
-                color: TEXT,
-                minHeight: 44,
-                px: 1.5,
-                borderRadius: "999px",
-                border: "1px solid rgba(255,255,255,0.5)",
-                textTransform: "none",
-                fontWeight: 700,
-                fontSize: "0.98rem",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.18)" },
-                ...BAR_FOCUS,
-              }}
-            >
+            <Button onClick={() => setDrawerOpen(true)} aria-expanded={drawerOpen} aria-haspopup="dialog" startIcon={<MenuIcon />} className="rb-nav__pill rb-nav__outline">
               మెనూ
             </Button>
-          </Box>
+          </div>
         </Toolbar>
       </AppBar>
 
@@ -690,8 +381,6 @@ function NavbarWithPath() {
 }
 
 export default function Navbar() {
-  /* Cache Components: usePathname() dynamic route లో prerender సమయంలో ఆగుతుంది.
-     ఆ సమయంలో అదే మెనూ (హైలైట్, favourite లేకుండా) చూపిస్తాం — layout మారదు. */
   return (
     <Suspense fallback={<NavbarView pathname={null} withFavorite={false} />}>
       <NavbarWithPath />

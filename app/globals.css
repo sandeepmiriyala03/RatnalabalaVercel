@@ -1,123 +1,102 @@
 /* =====================================================
-   రత్నాలబాల – జ్ఞానమాల · globals.css
+   రత్నాలబాల – జ్ఞానమాల · globals.css  (చివరి రూపం)
 
-   ♿ AUDIENCE: mostly 60+ Telugu readers.
-   WCAG AA is the floor; every text colour below targets
-   AAA (7:1) on --background in both themes. Ratios are
-   measured, not estimated.
+   ♿ 60+ తెలుగు పాఠకుల కోసం.
+   • ప్రతి అక్షరం రంగు: రెండు modes లోనూ AAA (≥ 7:1) — కొలిచినవి
+   • నొక్కే ప్రతి చోటు ≥ 44px (WCAG 2.5.5 AAA); ముఖ్య బటన్లు 52px
+   • 320px ఫోన్ నుంచి 4K తెర వరకు — పక్కకు జరపనక్కర్లేదు (1.4.10)
+   • అక్షర అంతరం 1.5× పెంచినా ఏదీ కత్తిరించబడదు (1.4.12) — స్థిర ఎత్తులు లేవు
+   • Inline styles వద్దు: components లో className="rb-…" మాత్రమే
+   • Icons: @mui/icons-material ఒక్కటే (Tailwind లేదు)
+   • Fonts ఇక్కడ లేవు — main.py నుంచి lib/teluguFonts.ts లోడ్ చేస్తుంది
 
-   Contents
-   1. Theme tokens (light / dark / high contrast)
-   2. Base & reset
-   3. Reading & typography (Telugu-tuned)
-   4. MUI font override
-   5. Links
-   6. Surfaces
-   7. Touch targets & forms
-   8. Accessibility (focus, selection, motion, forced colours)
-   (No @font-face here: fonts come from main.py, loaded on demand
-    by lib/teluguFonts.ts)
+   విభాగాలు (VS Code: Ctrl+F → "§3" లాగా)
+   §1  ★ RB-THEME — బ్రాండ్ రంగులు (ఒక్క చోటే మార్చండి)
+   §2  మిగతా tokens (ఆకారం, నీడ, అక్షరాలు, కదలిక)
+   §3  Base & reset
+   §4  చదవడం — తెలుగు అక్షరాల కోసం
+   §5  MUI font override
+   §6  Links
+   §7  Accessibility (focus, selection, motion, contrast, forced colours)
+   §8  నొక్కే చోట్లు & forms
+   §9  MUI polish (inline sx లేని components కూడా అందంగా)
+   §10 Layout (container, grid, stack)
+   §11 Components — rb-btn, rb-card, rb-tile, rb-chip …
+   §12 ముఖ పేజీ — hero, మా కవులు, మాలలు, పట్టీ, ప్రాజెక్ట్ గురించి
+   §13 శైలిమాల — ట్యాబ్‌లు, పాటలు, వీడియోలు, APK
+   §14 Navbar & ☰ మెనూ
+   §15 Yuktai Grid
+   §16 అన్ని పరికరాలు — landscape, tablets, పెద్ద తెరలు, safe areas
+   §17 Print
    ===================================================== */
 
 
 /* =====================================================
-   1. THEME TOKENS
+   §1 ★★★ RB-THEME ★★★ — బ్రాండ్ రంగులు
+   సైట్ రంగు మార్చాలంటే ఇక్కడ మాత్రమే. (కొలిచిన contrast ప్రక్కనే)
    ===================================================== */
 
 :root {
   color-scheme: light;
 
-  /* Surfaces: warm ivory, never stark white (less glare for ageing eyes) */
+  /* Paper — warm ivory, never stark white (less glare) */
   --background: #fdfaf5;
-  --foreground: #241f1a;        /* 15.7:1 */
   --surface: #f7f2ea;
   --surface-elevated: #ffffff;
+  --foreground: #241f1a;        /* 15.7:1 */
+  --muted-text: #574f46;        /* 7.7:1 bg · 7.2:1 surface */
 
   /* Brand */
-  --primary: #8b3a1f;           /* 7.4:1  terracotta */
-  --primary-light: #b0552f;     /* 4.8:1  large text / icons only */
-  --secondary: #1a3d2b;         /* 11.6:1 forest green (navbar) */
-  --secondary-light: #2d6a4f;   /* 6.1:1  large text / icons only */
+  --primary: #86371c;           /* terracotta — 7.8:1 bg · 7.3:1 surface; ivory on it 7.8:1 */
+  --primary-light: #b0552f;     /* icons / large text only */
+  --secondary: #241f1a;         /* ink — Navbar & dark bands; ivory on it 15.7:1 */
+  --secondary-light: #574f46;
+  --accent: #c9820a;            /* gold — shapes only, never text */
+  --accent-text: #6b4400;       /* gold-brown text — 8.2:1 */
+  --accent-light: #e0a838;      /* gold fill (active pill) — dark text on it 7.6:1 */
+  --accent-gradient: linear-gradient(135deg, #f6b93b, #e67e22);
+  --on-accent: #241f1a;         /* text on gold — both modes */
 
-  /* Accent: vivid for fills, dark for text */
-  --accent: #c9820a;            /* 3.0:1  decorative fills only, never text */
-  --accent-text: #6b4400;       /* 8.2:1  links, captions */
-  --accent-light: #e0a838;      /* decorative tint / active pill fill */
-  --accent-gradient: linear-gradient(135deg, #f6b93b, #e67e22); /* shapes only */
-  --on-accent: #241f1a;         /* text on gold pill: 7.6:1 */
+  /* Edges */
+  --border: #e4dacb;            /* hairlines */
+  --border-strong: #7a6650;     /* 5.3:1 — inputs, anything that must read as a boundary */
 
-  /* Supporting text */
-  --muted-text: #574f46;        /* 7.7:1  (was 5.7:1, now AAA) */
-
-  /* Borders */
-  --border: #e4dacb;            /* hairlines only, not a functional edge */
-  --border-strong: #7a6650;     /* 5.3:1  inputs, cards, anything that must read as a boundary */
-
-  /* Status colours: AAA on --background, never colour alone (pair with an icon/word) */
+  /* Status (always pair with an icon or word, never colour alone) */
   --success: #1d5e36;           /* 7.5:1 */
   --warning: #7a4a00;           /* 7.2:1 */
   --error: #a1271b;             /* 7.2:1 */
   --info: #1f4e79;              /* 8.3:1 */
 
-  /* Focus: two-tone ring (see section 8) stays visible on ivory AND on the green navbar */
-  --focus-ring: #8b3a1f;
+  /* Focus & selection */
+  --focus-ring: #86371c;
   --focus-gap: #fdfaf5;
-
-  /* Text selection */
   --selection-bg: #f6dfa8;
   --selection-fg: #241f1a;      /* 12.5:1 */
 
-  /* Shape & size */
-  --radius: 14px;
-  --radius-sm: 10px;
-  --tap-target: 48px;           /* WCAG 2.5.5 AAA is 44px; 48px for tremor / low precision */
-  --app-header-height: 64px;    /* was only defined in dark mode */
-
-  /* Typography */
-  /* Fonts are NOT defined in this file. The list and files come only
-     from main.py (/api/main?endpoint=fonts); lib/teluguFonts.ts loads
-     the chosen font when it's picked. Until then the Telugu system
-     fallbacks below are used, then the font swaps in automatically.
-     Name = DEFAULT_FONT in main.py. */
-  --telugu-font-family: "Dhurjati";
-  /* ~18px. FontControlsTelugu writes (size × 1.125)rem here, so its
-     "100%" means this same senior-friendly 18px */
-  --telugu-font-size: 1.125rem;
-  --telugu-line-height: 1.8;    /* Telugu vowel signs + vattulu need extra room */
-  --reading-width: 65ch;
-
-  /* Fallbacks that actually contain Telugu glyphs, before generic system fonts,
-     so text never drops to boxes while a custom font loads */
-  --font-telugu-fallback: "Noto Sans Telugu", "Noto Serif Telugu", "Nirmala UI",
-    "Gautami", "Kohinoor Telugu", "Telugu Sangam MN";
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
-
-  /* Motion */
-  --transition-fast: 0.15s ease;
-  --transition-medium: 0.25s ease;
+  /* Media letterbox */
+  --media-bg: #000;
 }
 
-/* Dark: follows the OS unless the person picked "light" in the toggle */
+/* Dark — follows the phone/computer setting unless "light" was picked */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
     --background: #17140f;
-    --foreground: #f0e9dd;      /* 15.2:1 */
     --surface: #211c15;
     --surface-elevated: #2a241b;
-    --primary: #e2916a;         /* 7.4:1 */
-    --primary-light: #e59a72;
-    --secondary: #6bbd93;       /* 8.2:1 */
-    --secondary-light: #6bb38c;
-    --accent: #e0a838;          /* 8.6:1, text-safe here */
-    --accent-text: #e0a838;
-    --accent-light: #f0c675;
+    --foreground: #f0e9dd;      /* 15.2:1 */
+    --muted-text: #c4b9a6;      /* 9.5:1 */
+    --primary: #e9a07c;         /* 8.6:1 bg · 7.2:1 card; dark text on it 8.6:1 */
+    --primary-light: #e9a07c;
+    --secondary: #c4b9a6;       /* sand bar; dark text on it 9.5:1 */
+    --secondary-light: #c4b9a6;
+    --accent: #e0a838;
+    --accent-text: #e0a838;     /* 8.6:1 */
+    --accent-light: #f0c675;    /* dark text on it 10.1:1 */
     --accent-gradient: linear-gradient(135deg, #f0c675, #e0a838);
-    --on-accent: #241f1a;       /* 10.1:1 on gold */
-    --muted-text: #c4b9a6;      /* 9.5:1 (was 7.8:1) */
+    --on-accent: #241f1a;
     --border: #3a3226;
-    --border-strong: #9c8766;   /* 5.3:1 (was 4.5:1, borderline) */
+    --border-strong: #9c8766;   /* 5.3:1 */
     --success: #7fd4a0;
     --warning: #f0c675;
     --error: #ff8a7a;
@@ -125,27 +104,27 @@
     --focus-ring: #f0c675;
     --focus-gap: #17140f;
     --selection-bg: #5a4318;
-    --selection-fg: #f0e9dd;    /* 7.7:1 */
+    --selection-fg: #f0e9dd;
   }
 }
 
-/* Dark chosen manually in the toggle */
+/* Dark — picked by hand in the Navbar toggle */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --background: #17140f;
-  --foreground: #f0e9dd;
   --surface: #211c15;
   --surface-elevated: #2a241b;
-  --primary: #e2916a;
-  --primary-light: #e59a72;
-  --secondary: #6bbd93;
-  --secondary-light: #6bb38c;
+  --foreground: #f0e9dd;
+  --muted-text: #c4b9a6;
+  --primary: #e9a07c;
+  --primary-light: #e9a07c;
+  --secondary: #c4b9a6;
+  --secondary-light: #c4b9a6;
   --accent: #e0a838;
   --accent-text: #e0a838;
   --accent-light: #f0c675;
   --accent-gradient: linear-gradient(135deg, #f0c675, #e0a838);
   --on-accent: #241f1a;
-  --muted-text: #c4b9a6;
   --border: #3a3226;
   --border-strong: #9c8766;
   --success: #7fd4a0;
@@ -158,9 +137,7 @@
   --selection-fg: #f0e9dd;
 }
 
-/* "Increase contrast" setting on iOS / macOS / Windows */
-/* Listed after the theme blocks, with matching specificity, so it
-   also applies in dark mode and when a theme was picked manually */
+/* "Increase contrast" on iOS / macOS / Windows — after the themes so it wins */
 @media (prefers-contrast: more) {
   :root,
   :root[data-theme],
@@ -170,10 +147,79 @@
     --border-strong: var(--foreground);
   }
 }
+/* ★★★ RB-THEME ముగింపు ★★★ */
 
 
 /* =====================================================
-   2. BASE & RESET
+   §2 TOKENS — ఆకారం, నీడ, అక్షరాలు, కదలిక
+   ===================================================== */
+
+:root {
+  /* Shape */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius: 14px;
+  --radius-card: 18px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  /* Size */
+  --tap-target: 48px;           /* 2.5.5 AAA is 44px; 48 for shaky hands */
+  --tap-main: 52px;             /* main buttons */
+  --app-header-height: 64px;
+  --container: 1200px;
+  --container-narrow: 820px;
+  --gutter: clamp(16px, 4vw, 32px);
+  --section-gap: clamp(48px, 7vw, 88px);
+
+  /* Type — Telugu needs room for vowel signs and vattulu */
+  --telugu-font-family: "Dhurjati";   /* = DEFAULT_FONT in main.py */
+  --telugu-font-size: 1.125rem;       /* ≈ 18px; FontControlsTelugu writes here */
+  --telugu-line-height: 1.8;
+  --reading-width: 65ch;
+  --fs-sm: 0.95rem;
+  --fs-md: 1.05rem;
+  --fs-lg: 1.15rem;
+  --fs-xl: 1.35rem;
+  --fs-h3: clamp(1.25rem, 1.1rem + 0.6vw, 1.45rem);
+  --fs-h2: clamp(1.5rem, 1.25rem + 1vw, 1.85rem);
+  --fs-h1: clamp(2.4rem, 1.8rem + 2.6vw, 4rem);
+  --font-telugu-fallback: "Noto Sans Telugu", "Noto Serif Telugu", "Nirmala UI", "Gautami", "Kohinoor Telugu", "Telugu Sangam MN";
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Depth — warm shadows from the ink colour */
+  --shadow-sm: 0 1px 2px color-mix(in srgb, var(--foreground) 8%, transparent);
+  --shadow-md: 0 2px 4px color-mix(in srgb, var(--foreground) 5%, transparent), 0 8px 22px color-mix(in srgb, var(--foreground) 8%, transparent);
+  --shadow-lg: 0 4px 10px color-mix(in srgb, var(--foreground) 7%, transparent), 0 18px 44px color-mix(in srgb, var(--foreground) 12%, transparent);
+
+  /* Soft brand glows (≤ 9% — text stays AAA) */
+  --tint-gold: color-mix(in srgb, var(--accent-light) 10%, transparent);
+  --tint-terracotta: color-mix(in srgb, var(--primary) 6%, transparent);
+  --gold-edge: color-mix(in srgb, var(--accent-light) 65%, transparent);
+
+  /* Motion */
+  --transition-fast: 0.15s ease;
+  --transition-medium: 0.25s ease;
+}
+
+:root[data-theme="dark"] {
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.4), 0 18px 44px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 4px 10px rgba(0, 0, 0, 0.4), 0 18px 44px rgba(0, 0, 0, 0.55);
+  }
+}
+
+
+/* =====================================================
+   §3 BASE & RESET
    ===================================================== */
 
 *,
@@ -184,57 +230,62 @@
 
 html {
   font-size: var(--telugu-font-size);
-  -webkit-text-size-adjust: 100%;  /* stop iOS resizing text on rotate */
+  -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   scroll-behavior: smooth;
-  /* in-page anchor jumps land below the sticky Navbar, not under it */
-  scroll-padding-top: calc(var(--app-header-height) + env(safe-area-inset-top, 0px));
+  scroll-padding-top: calc(var(--app-header-height) + env(safe-area-inset-top, 0px) + 8px);
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--accent-light) 30%, transparent);
+  scrollbar-color: color-mix(in srgb, var(--border-strong) 70%, transparent) transparent;
+  accent-color: var(--primary);
 }
 
 html,
 body {
   margin: 0;
   padding: 0;
-  /* "clip" (not "hidden") so the sticky Navbar keeps sticking */
-  overflow-x: clip;
+  overflow-x: clip;             /* "clip", not "hidden": sticky Navbar keeps sticking */
 }
 
-/* Very old browsers without "clip" (Safari < 16) */
 @supports not (overflow-x: clip) {
-  body {
-    overflow-x: hidden;
-  }
+  body { overflow-x: hidden; }
 }
 
 body {
+  min-height: 100vh;
   min-height: 100dvh;
   font-family: var(--telugu-font-family), var(--font-telugu-fallback), var(--font-sans);
   line-height: var(--telugu-line-height);
-  background-color: var(--background);
   color: var(--foreground);
-  /* No -webkit-font-smoothing: antialiased. It thins text on macOS,
-     which lowers effective contrast for older readers. */
+  background-color: var(--background);
+  background-image:
+    radial-gradient(1200px 620px at -10% -10%, var(--tint-gold), transparent 60%),
+    radial-gradient(900px 520px at 110% 0%, var(--tint-terracotta), transparent 60%);
+  background-repeat: no-repeat;
+  overflow-wrap: break-word;    /* long Telugu words / links never push the page sideways */
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Only images and video. (Not svg/canvas: "height: auto" on an
-   inline SVG without a viewBox collapses it to 150px, and charts
-   size their own canvas.) */
 img,
 video {
   max-width: 100%;
   height: auto;
 }
 
-/* The old "html { font-size × 0.95 } on mobile" rule is removed.
-   Shrinking text on small screens is the opposite of what older
-   readers need; phones are where they struggle most. */
+[hidden] {
+  display: none !important;
+}
+
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border-strong) 65%, transparent);
+  border-radius: var(--radius-pill);
+  border: 3px solid var(--background);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
 
 /* =====================================================
-   3. READING & TYPOGRAPHY
-   Only line-height / wrapping here. Margins are left alone
-   so existing page layouts don't shift.
+   §4 చదవడం — తెలుగు
    ===================================================== */
 
 h1, h2, h3, h4, h5, h6 {
@@ -242,55 +293,60 @@ h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
 }
 
-p,
-li,
-blockquote {
+p, li, blockquote, dd, figcaption {
   text-wrap: pretty;
   hyphens: none;                /* never break Telugu words mid-syllable */
 }
 
-/* Wrap long-form text (poems, stories) in this for a comfortable line length */
+/* Fake italic breaks vattulu/gunintalu → off. Fake bold kept (single-weight fonts need it) */
+:lang(te) {
+  font-synthesis: weight;
+}
+
+:lang(te) :is(em, i, cite) {
+  font-style: normal;
+  font-weight: 700;
+}
+
 .reading {
   max-width: var(--reading-width);
   margin-inline: auto;
   line-height: 1.9;
 }
 
-.muted {
-  color: var(--muted-text);
-}
+.muted { color: var(--muted-text); }
 
-code,
-pre,
-kbd,
-samp {
+code, pre, kbd, samp {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.9em;
 }
 
-/* MUI's smallest text sizes, raised for older eyes */
-.MuiTooltip-tooltip {
-  font-size: 0.95rem !important;
-  line-height: 1.6 !important;
-  padding: 8px 12px !important;
+kbd {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 3px;
+  background: var(--surface);
 }
 
-.MuiFormHelperText-root {
-  font-size: 0.9rem !important;
-  line-height: 1.6 !important;
+mark {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
+  border-radius: 3px;
+  padding: 0 0.15em;
 }
+
+hr {
+  border: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
+}
+
 
 
 /* =====================================================
-   4. MUI FONT
-   MUI hard-codes "Roboto" on its components. "inherit" makes
-   every MUI part use the reader's chosen Telugu font instead
-   (portaled menus/dialogs inherit it from body too).
-
-   Not touched, so a chosen font can show:
-   - Box: MUI never sets a font on it (poster/preview areas)
-   - anything marked data-telugu-font, and everything inside it
-     (font pickers, poster text, previews)
+   §5 MUI FONT — every MUI part uses the reader's Telugu font.
+   Untouched: Box (posters/previews) and [data-telugu-font] (font samples)
    ===================================================== */
 
 [class*="Mui"]:not(.MuiBox-root):not([data-telugu-font]):not([data-telugu-font] *) {
@@ -299,7 +355,7 @@ samp {
 
 
 /* =====================================================
-   5. LINKS
+   §6 LINKS
    ===================================================== */
 
 a {
@@ -307,60 +363,117 @@ a {
   text-decoration: none;
 }
 
-a:hover {
-  opacity: 0.85;
-}
-
-/* Plain links inside running text are always underlined, so they
-   don't rely on colour alone (WCAG 1.4.1). Only unclassed links in
-   paragraphs / quotes / captions / .reading, so nav items and card
-   links are never affected. */
-:is(p, blockquote, figcaption, .reading) a:not([class]),
-a.accent-link {
+/* Plain links inside text are always underlined (not colour alone — 1.4.1) */
+:is(p, blockquote, figcaption, li, .reading) a:not([class]),
+a.rb-link {
   color: var(--accent-text);
+  font-weight: 700;
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 4px;
 }
 
-:is(p, blockquote, figcaption, .reading) a:not([class]):hover,
-a.accent-link:hover {
-  opacity: 1;
+:is(p, blockquote, figcaption, li, .reading) a:not([class]):hover,
+a.rb-link:hover {
   text-decoration-thickness: 3px;
 }
 
 
 /* =====================================================
-   6. SURFACES
+   §7 ACCESSIBILITY
    ===================================================== */
 
-.surface {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+/* Two-tone ring: background-coloured gap + strong ring — visible on any surface */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--focus-gap);
 }
 
-.surface-elevated {
-  background: var(--surface-elevated);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
-/* For edges that carry meaning: inputs, selectable cards, checkboxes */
-.surface-outlined {
-  background: var(--surface-elevated);
-  border-radius: var(--radius);
-  border: 1.5px solid var(--border-strong);
+.visually-hidden,
+.rb-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link — hidden until focused with the keyboard */
+.rb-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.rb-skip-link:focus {
+  position: fixed;
+  left: 16px;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  width: auto;
+  height: auto;
+  overflow: visible;
+  z-index: 2000;
+  padding: 10px 16px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-light);
+  color: var(--on-accent);
+  font-weight: 800;
+  box-shadow: var(--shadow-lg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .MuiBackdrop-root:not(.MuiBackdrop-invisible) {
+    backdrop-filter: none !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible { outline: 3px solid Highlight; box-shadow: none; }
+
+  .rb-card, .rb-tile, .rb-panel, .rb-band, .rb-hero, .rb-quote-frame, .rb-note,
+  .rb-pullquote, .rb-chip, .rb-badge, .rb-btn, .rb-seg, .rb-drawer, .rb-nav-menu {
+    border: 1px solid CanvasText;
+  }
+
+  .rb-rule, .rb-beads, hr { background: CanvasText; box-shadow: none; }
+  .rb-nav__pill.is-active, .rb-nav-menu__item.is-active, .rb-drawer__item.is-active { outline: 2px solid Highlight; }
 }
 
 
 /* =====================================================
-   7. TOUCH TARGETS & FORMS
+   §8 నొక్కే చోట్లు & FORMS
    ===================================================== */
 
-/* 44px minimum (WCAG 2.5.5 AAA) on MUI buttons. Icon buttons inside
-   inputs (Autocomplete clear/arrow, password eye) are skipped so text
-   fields don't grow taller. */
+a, button, input, select, textarea, label, summary, [role="button"], [role="tab"] {
+  touch-action: manipulation;   /* no double-tap zoom delay */
+}
+
 .MuiButton-root,
 .MuiIconButton-root:not(.MuiInputAdornment-root *):not(.MuiAutocomplete-endAdornment *) {
   min-height: 44px;
@@ -370,7 +483,6 @@ a.accent-link:hover {
   min-width: 44px;
 }
 
-/* Rows people tap in menus and lists: 48px */
 .MuiListItemButton-root,
 .MuiMenuItem-root,
 .MuiTab-root {
@@ -383,13 +495,29 @@ a.accent-link:hover {
   font-size: 1rem !important;
 }
 
-/* Input edges: MUI's default grey outline is ~1.9:1, too faint */
+input, select, textarea {
+  font: inherit;                /* ≥ 16px — iOS will not zoom on focus */
+  caret-color: var(--primary);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.3em;
+  height: 1.3em;
+  vertical-align: middle;
+}
+
+::placeholder,
+.MuiInputBase-input::placeholder {
+  color: var(--muted-text) !important;
+  opacity: 1 !important;
+}
+
 .MuiOutlinedInput-notchedOutline {
   border-color: var(--border-strong) !important;
   border-width: 1.5px !important;
 }
 
-/* …but keep the states clear: hover, focus (thicker, brand colour), error */
 .MuiOutlinedInput-root:hover:not(.Mui-disabled):not(.Mui-focused):not(.Mui-error) .MuiOutlinedInput-notchedOutline {
   border-color: var(--foreground) !important;
 }
@@ -404,115 +532,1218 @@ a.accent-link:hover {
   border-width: 2px !important;
 }
 
-.MuiFormLabel-root.Mui-focused:not(.Mui-error) {
-  color: var(--focus-ring) !important;
-}
-
+.MuiFormLabel-root.Mui-focused:not(.Mui-error) { color: var(--focus-ring) !important; }
 .MuiFormLabel-root.Mui-error,
-.MuiFormHelperText-root.Mui-error {
-  color: var(--error) !important;
-}
+.MuiFormHelperText-root.Mui-error { color: var(--error) !important; }
 
-/* The field already shows focus with its thick border, so no second
-   ring around the inner <input> */
-.MuiInputBase-input:focus-visible {
-  outline: none;
-  box-shadow: none;
-}
+.MuiInputBase-input:focus-visible { outline: none; box-shadow: none; }
 
-input,
-select,
-textarea {
-  font: inherit;               /* 18px base also stops iOS zooming on focus */
-}
-
-::placeholder,
-.MuiInputBase-input::placeholder {
-  color: var(--muted-text) !important;
-  opacity: 1 !important;       /* MUI fades placeholders to ~2:1 */
-}
-
-/* Disabled fields stay readable (MUI uses ~2:1 grey) */
 .MuiInputBase-input.Mui-disabled {
   color: var(--muted-text) !important;
   -webkit-text-fill-color: var(--muted-text) !important;
 }
 
-.MuiFormLabel-root.Mui-disabled {
-  color: var(--muted-text) !important;
+.MuiFormLabel-root.Mui-disabled { color: var(--muted-text) !important; }
+
+.MuiFormHelperText-root { font-size: 0.9rem !important; line-height: 1.6 !important; }
+
+
+/* =====================================================
+   §9 MUI POLISH
+   Gives MUI parts the brand look even where a page still has
+   no rb-* class yet (MUI's own default is a cool blue).
+   ===================================================== */
+
+.MuiButton-root,
+.MuiTab-root,
+.MuiToggleButton-root {
+  text-transform: none !important;   /* Telugu has no capitals; UPPERCASE English is harder to read */
+  letter-spacing: normal !important;
+}
+
+.MuiButton-root { font-weight: 700; }
+
+body .MuiButton-text:not([class*="rb-"]),
+body .MuiButton-outlined:not([class*="rb-"]) {
+  color: var(--primary);
+}
+
+body .MuiButton-outlined:not([class*="rb-"]) {
+  border: 1.5px solid currentColor;
+}
+
+body .MuiButton-contained:not([class*="rb-"]) {
+  background-color: var(--primary);
+  color: var(--background);
+  box-shadow: var(--shadow-sm);
+}
+
+body .MuiPaper-elevation1, body .MuiPaper-elevation2,
+body .MuiPaper-elevation3, body .MuiPaper-elevation4 {
+  box-shadow: var(--shadow-md);
+}
+
+body .MuiPaper-elevation6, body .MuiPaper-elevation8, body .MuiPaper-elevation12,
+body .MuiPaper-elevation16, body .MuiPaper-elevation24 {
+  box-shadow: var(--shadow-lg);
+}
+
+.MuiMenu-paper, .MuiPopover-paper, .MuiAutocomplete-paper {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.MuiMenuItem-root.Mui-selected {
+  background-color: color-mix(in srgb, var(--accent-light) 22%, transparent) !important;
+}
+
+.MuiTooltip-tooltip {
+  background-color: var(--foreground) !important;
+  color: var(--background) !important;
+  font-size: 0.95rem !important;
+  line-height: 1.6 !important;
+  padding: 8px 12px !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+.MuiTooltip-arrow { color: var(--foreground) !important; }
+
+.MuiDialog-paper { box-shadow: var(--shadow-lg) !important; }
+
+.MuiBackdrop-root:not(.MuiBackdrop-invisible) {
+  background-color: color-mix(in srgb, var(--foreground) 45%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.MuiTabs-indicator { height: 3px; border-radius: 3px 3px 0 0; background-color: var(--primary); }
+.MuiTab-root { font-weight: 700; }
+.MuiTab-root.Mui-selected { color: var(--primary); }
+
+.MuiAccordion-root::before { display: none; }
+.MuiAccordion-root.Mui-expanded { box-shadow: var(--shadow-md); }
+
+.MuiChip-root { font-weight: 600; }
+.MuiChip-label { font-size: 0.95rem; }
+
+.MuiAlert-root { border-radius: var(--radius-sm); font-size: 1rem; line-height: 1.7; }
+
+.MuiLinearProgress-root, .MuiLinearProgress-bar { border-radius: var(--radius-pill); }
+
+.MuiCircularProgress-root { color: var(--primary); }
+
+.MuiSwitch-switchBase.Mui-checked { color: var(--primary) !important; }
+.MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track { background-color: var(--primary) !important; }
+
+body .MuiFab-root { box-shadow: var(--shadow-md); }
+
+.MuiSvgIcon-root { flex-shrink: 0; }
+
+@media (hover: hover) {
+  body .MuiButton-contained:hover { box-shadow: var(--shadow-md); }
+  body .MuiFab-root:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
 }
 
 
 /* =====================================================
-   8. ACCESSIBILITY
+   §10 LAYOUT
    ===================================================== */
 
-/* Two-tone focus ring: a background-coloured gap, then a strong ring.
-   The old single terracotta ring was only 1.6:1 on the green navbar.
-   (No border-radius here: it would square off pill buttons on focus.) */
-:focus-visible {
-  outline: 3px solid var(--focus-ring);
-  outline-offset: 3px;
-  box-shadow: 0 0 0 3px var(--focus-gap);
+.rb-container {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
 }
 
-/* Inside the green navbar, use gold so the ring stands out */
-.MuiAppBar-root :focus-visible {
-  outline-color: var(--accent-light);
-  box-shadow: 0 0 0 3px var(--secondary);
+.rb-container--narrow { max-width: var(--container-narrow); }
+
+.rb-section { margin-block-end: var(--section-gap); }
+
+.rb-stack { display: flex; flex-direction: column; gap: 16px; }
+.rb-stack--lg { gap: 28px; }
+
+.rb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
 }
 
-/* For solid buttons filled with --primary */
-.focus-ring-halo:focus-visible {
-  outline: 2px solid var(--surface-elevated);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 5px var(--primary);
+.rb-row--center { justify-content: center; }
+.rb-row--between { justify-content: space-between; }
+
+/* On phones, button rows stack and buttons go full width */
+@media (max-width: 599.98px) {
+  .rb-row--stack-xs { flex-direction: column; align-items: stretch; }
+  .rb-row--stack-xs > * { width: 100%; }
 }
 
-::selection {
-  background: var(--selection-bg);
-  color: var(--selection-fg);
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
+.rb-grid {
+  display: grid;
+  gap: clamp(14px, 2vw, 24px);
+  grid-template-columns: 1fr;
+  list-style: none;
+  margin: 0;
   padding: 0;
-  margin: -1px;
+}
+
+@media (min-width: 600px) {
+  .rb-grid--2, .rb-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rb-grid--tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 900px) {
+  .rb-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rb-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rb-grid--tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* Two tiles per row on phones; the 5th tile spans */
+@media (max-width: 599.98px) {
+  .rb-grid--tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rb-grid--tiles > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+
+.rb-spacer { flex: 1; }
+.rb-mt { margin-top: 20px; }
+.rb-center { text-align: center; }
+
+
+/* =====================================================
+   §11 COMPONENTS
+   Use on MUI parts too: <Button className="rb-btn rb-btn--primary">
+   ("body" prefix = beats MUI's default look, no !important)
+   ===================================================== */
+
+/* ── Buttons ── */
+body .rb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: var(--tap-main);
+  min-width: 0;
+  padding: 0.35em 1.4em;
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  font-size: var(--fs-md);
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast), filter var(--transition-fast);
+}
+
+body .rb-btn .MuiButton-startIcon,
+body .rb-btn .MuiButton-endIcon { margin: 0; }
+body .rb-btn .MuiSvgIcon-root { font-size: 1.3em; }
+
+body .rb-btn--primary { background: var(--primary); color: var(--background); box-shadow: var(--shadow-sm); }
+body .rb-btn--ink { background: var(--foreground); color: var(--background); box-shadow: var(--shadow-md); }
+body .rb-btn--outline { background: var(--surface-elevated); color: var(--primary); border-color: var(--primary); }
+body .rb-btn--outline-gold { background: transparent; color: var(--accent-text); border-color: color-mix(in srgb, var(--accent-text) 60%, transparent); }
+body .rb-btn--quiet { background: transparent; color: var(--foreground); border-color: var(--border-strong); }
+body .rb-btn--on-band { background: var(--background); color: var(--primary); }
+
+body .rb-btn--lg { min-height: 58px; font-size: var(--fs-lg); padding-inline: 1.75em; }
+body .rb-btn--sm { min-height: var(--tap-target); font-size: 1rem; padding-inline: 1.1em; }
+
+@media (max-width: 599.98px) {
+  body .rb-btn--block-xs { width: 100%; }
+}
+
+@media (hover: hover) {
+  body .rb-btn--primary:hover, body .rb-btn--ink:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+  body .rb-btn--primary:hover { background: var(--primary); filter: brightness(1.08); }
+  body .rb-btn--ink:hover { background: var(--foreground); }
+  body .rb-btn--outline:hover, body .rb-btn--quiet:hover { background: var(--surface); box-shadow: var(--shadow-md); }
+  body .rb-btn--outline-gold:hover { background: color-mix(in srgb, var(--accent-light) 14%, transparent); }
+  body .rb-btn--on-band:hover { background: var(--background); filter: brightness(0.96); }
+}
+
+body .rb-btn:active { transform: scale(0.98); }
+
+/* ── Cards ── */
+.rb-card {
+  position: relative;
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+  padding: clamp(18px, 3vw, 30px);
+}
+
+.rb-card--flex { display: flex; flex-direction: column; height: 100%; }
+.rb-card--top-maroon { border-top: 5px solid var(--primary); }
+.rb-card--top-gold { border-top: 5px solid var(--accent-text); }
+.rb-card--top-ink { border-top: 5px solid var(--foreground); }
+
+.rb-card__kicker {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.rb-card--top-gold .rb-card__kicker { color: var(--accent-text); }
+
+.rb-card__title {
+  margin: 4px 0 12px;
+  font-size: var(--fs-h3);
+  font-weight: 800;
+}
+
+.rb-card__text {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.9;
+}
+
+/* ── Tiles (big tap areas) — colour via .is-maroon / .is-gold / .is-ink ── */
+.is-maroon { --tone: var(--primary); }
+.is-gold { --tone: var(--accent-text); }
+.is-ink { --tone: var(--foreground); }
+
+.rb-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  min-height: 136px;
+  padding: 18px 12px;
+  text-align: center;
+  color: var(--foreground);
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--border);
+  border-bottom: 4px solid var(--tone, var(--primary));
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-medium), box-shadow var(--transition-medium);
+}
+
+.rb-tile__title { font-size: var(--fs-lg); font-weight: 800; line-height: 1.4; }
+.rb-tile__text { font-size: 1rem; color: var(--muted-text); line-height: 1.5; }
+
+.rb-icon-circle {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  color: var(--tone, var(--primary));
+  background: var(--surface);
+  border: 2px solid var(--tone, var(--primary));
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.rb-icon-circle .MuiSvgIcon-root { font-size: 1.75rem; }
+
+.rb-icon-box {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  color: var(--tone, var(--primary));
+  background: color-mix(in srgb, var(--tone, var(--primary)) 12%, var(--surface-elevated));
+}
+
+.rb-icon-box .MuiSvgIcon-root { font-size: 1.6rem; }
+
+@media (hover: hover) {
+  .rb-tile:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+  .rb-tile:hover .rb-icon-circle { background: var(--tone, var(--primary)); color: var(--background); }
+}
+
+/* ── Chips & badges ── */
+.rb-chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+
+body .rb-chip {
+  height: auto;
+  min-height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+body .rb-chip .MuiChip-label { padding: 4px 14px; font-size: 0.98rem; white-space: normal; overflow: visible; }
+
+.rb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.2em 0.85em;
+  border-radius: var(--radius-pill);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.7;
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--tone, var(--border-strong)) 9%, var(--background));
+  border: 1.5px solid var(--tone, var(--border-strong));
+}
+
+.rb-badge::before {
+  content: "";
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--tone, var(--border-strong));
+}
+
+/* ── Section heading with three beads ── */
+.rb-section-head { text-align: center; margin-bottom: 28px; }
+
+.rb-section-head__kicker {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--accent-text);
+}
+
+.rb-section-head__title {
+  margin: 0;
+  font-size: var(--fs-h2);
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.rb-beads {
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin: 14px auto 0;
+  border-radius: 50%;
+  background: var(--accent-text);
+  box-shadow: -16px 0 0 var(--primary), 16px 0 0 var(--foreground);
+}
+
+/* ── Gold rule under a title ── */
+.rb-rule {
+  display: block;
+  width: 72px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent-gradient);
+}
+
+/* ── Poem text ── */
+.rb-poem {
+  margin: 0;
+  font-size: var(--fs-lg);
+  line-height: 2;
+  white-space: pre-line;
+}
+
+/* ── Pull quote ── */
+.rb-pullquote {
+  margin: 0 0 16px;
+  padding-left: 16px;
+  border-left: 4px solid var(--accent-light);
+}
+
+.rb-pullquote__text { margin: 0; font-size: 1.25rem; font-weight: 800; line-height: 1.7; }
+.rb-pullquote__by { margin: 0; font-size: 1rem; color: var(--muted-text); }
+
+/* ── Panels, notes, empty states, placeholders ── */
+.rb-panel {
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-md);
+  padding: clamp(18px, 3vw, 30px);
+  text-align: start;
+}
+
+.rb-panel__title {
+  margin: 28px 0 12px;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+
+.rb-panel__title:first-child { margin-top: 0; }
+
+.rb-note {
+  padding: clamp(16px, 2.5vw, 24px);
+  border-radius: var(--radius-card);
+  border: 2px solid var(--accent-light);
+  background: color-mix(in srgb, var(--accent-light) 12%, var(--background));
+  font-size: var(--fs-md);
+  line-height: 1.9;
+}
+
+.rb-empty,
+.rb-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  padding: 24px;
+  text-align: center;
+  font-size: var(--fs-lg);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+}
+
+.rb-placeholder { min-height: 280px; }
+
+.rb-error { color: var(--error); font-size: var(--fs-md); text-align: center; padding: 24px 0; }
+
+.rb-loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 0; color: var(--muted-text); }
+
+/* ── Steps (ordered how-to) ── */
+.rb-steps {
+  margin: 0;
+  padding-left: 1.8em;
+}
+
+.rb-steps > li {
+  margin-bottom: 8px;
+  padding-left: 4px;
+  font-size: var(--fs-md);
+  line-height: 1.9;
+}
+
+.rb-steps > li::marker { font-weight: 800; color: var(--primary); }
+
+/* ── Accordion (MUI) ── */
+body .rb-accordion {
+  margin-bottom: 8px;
+  background: var(--surface);
+  color: var(--foreground);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md) !important;
+  box-shadow: none;
+}
+
+body .rb-accordion .MuiAccordionSummary-root { min-height: 56px; }
+body .rb-accordion .MuiAccordionSummary-content { margin: 12px 0; font-size: var(--fs-lg); font-weight: 800; }
+body .rb-accordion .MuiAccordionSummary-expandIconWrapper { color: var(--foreground); }
+
+/* ── Stats ── */
+.rb-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+@media (min-width: 600px) { .rb-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.rb-stat-tile { padding: 12px; border-radius: var(--radius-sm); background: var(--surface); }
+.rb-stat-tile__num { font-size: 1.3rem; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
+.rb-stat-tile__label { font-size: 1rem; line-height: 1.5; }
+
+/* ── Feature line (icon + text) ── */
+.rb-feature { display: flex; gap: 12px; align-items: flex-start; margin: 0 0 8px; font-size: var(--fs-md); line-height: 1.8; }
+.rb-feature > .MuiSvgIcon-root { font-size: 1.5rem; margin-top: 3px; color: var(--accent-text); }
+
+.rb-highlight-box {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+
+.rb-highlight-box > .MuiSvgIcon-root { font-size: 2rem; color: var(--primary); }
+.rb-highlight-box__title { margin: 0; font-size: 1.1rem; font-weight: 800; }
+.rb-highlight-box__title span { font-size: 1rem; font-weight: 700; color: var(--primary); }
+.rb-highlight-box__text { margin: 4px 0 0; font-size: 1.02rem; line-height: 1.8; }
+
+/* ── Ornament ─── ✦ ─── ── */
+.rb-ornament {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-block: 2rem;
+  color: var(--accent-text);
+  font-size: 1.1rem;
+}
+
+.rb-ornament::before,
+.rb-ornament::after { content: ""; flex: 1; height: 2px; border-radius: 2px; }
+.rb-ornament::before { background: linear-gradient(90deg, transparent, var(--accent-light)); }
+.rb-ornament::after { background: linear-gradient(90deg, var(--accent-light), transparent); }
+
+/* ── Simple table & fold ── */
+.rb-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius); }
+
+.rb-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius);
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+}
+
+.rb-table th, .rb-table td { padding: 12px 14px; text-align: start; border-bottom: 1px solid var(--border); vertical-align: top; }
+.rb-table th { background: var(--surface); font-weight: 800; }
+.rb-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface) 55%, transparent); }
+.rb-table tbody tr:last-child td { border-bottom: 0; }
+
+.rb-fold { border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-elevated); padding: 0 1rem; }
+.rb-fold > summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: var(--tap-target); padding: 0.75rem 0; list-style: none; cursor: pointer; font-weight: 800; }
+.rb-fold > summary::-webkit-details-marker { display: none; }
+.rb-fold > summary::after { content: ""; width: 10px; height: 10px; border-right: 2.5px solid currentColor; border-bottom: 2.5px solid currentColor; transform: rotate(45deg); transition: transform var(--transition-fast); flex-shrink: 0; }
+.rb-fold[open] { box-shadow: var(--shadow-md); }
+.rb-fold[open] > summary::after { transform: rotate(-135deg); }
+
+/* ── Muggu (kolam) dots — any band, in its own text colour ── */
+.rb-kolam {
+  background-image: radial-gradient(color-mix(in srgb, currentColor 12%, transparent) 1.2px, transparent 1.3px);
+  background-size: 22px 22px;
+}
+
+
+/* =====================================================
+   §12 ముఖ పేజీ
+   ===================================================== */
+
+/* ── Hero: ivory paper, gold glow, muggu dots ── */
+.rb-hero {
+  position: relative;
+  padding: clamp(40px, 7vw, 76px) 0 clamp(72px, 9vw, 100px);
+  color: var(--foreground);
+  border-bottom: 1px solid var(--gold-edge);
+  background:
+    radial-gradient(color-mix(in srgb, var(--foreground) 7%, transparent) 1.1px, transparent 1.2px) 0 0 / 24px 24px,
+    radial-gradient(900px 460px at 12% 0%, color-mix(in srgb, var(--accent-light) 24%, transparent), transparent 70%),
+    radial-gradient(800px 460px at 100% 100%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 70%),
+    var(--surface);
+}
+
+.rb-hero__grid {
+  display: grid;
+  gap: clamp(32px, 5vw, 56px);
+  align-items: center;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 900px) { .rb-hero__grid { grid-template-columns: 1.1fr 1fr; } }
+
+.rb-hero__text { text-align: center; }
+@media (min-width: 900px) { .rb-hero__text { text-align: start; } }
+
+.rb-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--gold-edge);
+  background: var(--surface-elevated);
+  color: var(--accent-text);
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
+}
+
+.rb-hero__title {
+  margin: 0;
+  font-size: var(--fs-h1);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.rb-hero__title-sub {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.5em;
+  color: var(--primary);
+}
+
+.rb-hero .rb-rule { margin: 20px auto 0; }
+@media (min-width: 900px) { .rb-hero .rb-rule { margin-inline: 0; } }
+
+.rb-hero__lead {
+  max-width: 28em;
+  margin: 20px auto 0;
+  font-size: clamp(1.1rem, 1rem + 0.4vw, 1.3rem);
+  line-height: 1.8;
+  color: var(--muted-text);
+}
+
+.rb-hero__lead strong { color: var(--foreground); }
+@media (min-width: 900px) { .rb-hero__lead { margin-inline: 0; } }
+
+.rb-hero__actions { margin-top: 32px; justify-content: center; }
+@media (min-width: 900px) { .rb-hero__actions { justify-content: flex-start; } }
+
+/* Hero numbers, separated by fine gold lines */
+.rb-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  margin: 32px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (max-width: 599.98px) {
+  .rb-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
+}
+
+@media (min-width: 600px) {
+  .rb-stats { gap: 0; }
+  .rb-stat { padding-inline: 24px; border-left: 1.5px solid var(--gold-edge); }
+  .rb-stat:first-child { padding-left: 0; border-left: 0; }
+}
+
+@media (min-width: 900px) { .rb-stats { justify-content: flex-start; } }
+
+.rb-stat__num { font-size: 1.8rem; font-weight: 800; line-height: 1.2; color: var(--primary); font-variant-numeric: tabular-nums; }
+.rb-stat__label { font-size: 1rem; font-weight: 700; color: var(--muted-text); }
+
+/* Somana poem — framed like a page from an old book */
+.rb-quote-frame {
+  position: relative;
+  margin: 0;
+  padding: clamp(28px, 4vw, 36px) clamp(20px, 4vw, 36px) clamp(24px, 3vw, 32px);
+  text-align: center;
+  background: var(--surface-elevated);
+  border: 1.5px solid var(--gold-edge);
+  outline: 1px solid color-mix(in srgb, var(--accent-light) 45%, transparent);
+  outline-offset: -10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.rb-quote-frame__mark {
+  position: absolute;
+  top: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-elevated);
+  color: var(--accent-text);
+  border: 1.5px solid var(--gold-edge);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.rb-quote-frame__text { margin: 8px 0 0; font-size: clamp(1.05rem, 1rem + 0.3vw, 1.18rem); line-height: 2.1; white-space: pre-line; }
+.rb-quote-frame__stars { margin: 12px 0; color: var(--accent-text); letter-spacing: 0.6em; }
+.rb-quote-frame__by { margin: 0; font-size: var(--fs-md); font-weight: 800; color: var(--primary); }
+.rb-quote-frame__note { margin: 4px 0 0; font-size: 1rem; color: var(--muted-text); }
+
+/* Action tiles float up over the hero's lower edge */
+.rb-tiles { position: relative; margin-top: clamp(-56px, -6vw, -40px); }
+
+/* Today's poem + radio */
+.rb-duo { display: grid; gap: clamp(20px, 3vw, 28px); grid-template-columns: 1fr; align-items: stretch; }
+@media (min-width: 900px) { .rb-duo { grid-template-columns: 1fr 1fr; } }
+
+.rb-radio { text-align: center; scroll-margin-top: calc(var(--app-header-height) + 24px); }
+.rb-radio .rb-card__text { color: var(--muted-text); margin-bottom: 16px; }
+
+/* Poets */
+.rb-poet__head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.rb-poet__name { margin: 0; font-size: var(--fs-h3); font-weight: 800; line-height: 1.4; }
+.rb-poet__meta { margin: 0; font-size: 1.02rem; color: var(--muted-text); }
+.rb-poet__about { margin: 0 0 16px; font-size: var(--fs-md); line-height: 1.9; }
+.rb-poet .rb-chips { margin-bottom: 20px; }
+
+.rb-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--tone, var(--primary));
+  color: var(--background);
+  border: 3px solid var(--accent-light);
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.rb-preface { margin-top: 24px; padding-top: 20px; border-top: 1.5px dashed var(--border-strong); }
+.rb-preface__title { margin: 0 0 12px; font-size: 1.25rem; font-weight: 800; }
+.rb-preface p { margin: 0 0 14px; font-size: var(--fs-md); line-height: 2; }
+.rb-signature { margin: 0; text-align: end; font-size: var(--fs-md); font-weight: 800; line-height: 1.8; }
+.rb-signature span { display: block; font-weight: 600; color: var(--muted-text); }
+
+/* Mala tabs — a pill "segmented" bar; selected colour = .is-maroon/.is-gold/.is-ink on the Tabs */
+.rb-seg-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
+
+body .rb-seg {
+  min-height: 0;
+  max-width: 100%;
+  padding: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+}
+
+body .rb-seg .MuiTabs-indicator { display: none; }
+
+body .rb-seg .MuiTab-root {
+  min-height: var(--tap-main);
+  padding: 0 18px;
+  border-radius: var(--radius-pill);
+  color: var(--foreground);
+  font-size: var(--fs-md);
+  font-weight: 800;
+}
+
+body .rb-seg .MuiTab-root.Mui-selected { background: var(--tone, var(--foreground)); color: var(--background); }
+body .rb-seg .MuiTab-root .MuiSvgIcon-root { font-size: 1.35rem; }
+body .rb-seg .MuiTabs-scrollButtons { width: 44px; }
+
+/* Mala name cell in the grid */
+.rb-mala-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--tap-target);
+  color: var(--foreground);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+
+@media (hover: hover) { .rb-mala-link:hover { text-decoration: underline; text-underline-offset: 4px; } }
+
+/* Promo band (Shailimala) — terracotta with muggu dots; ivory text 7.8:1 */
+.rb-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: clamp(20px, 3.5vw, 32px);
+  text-align: center;
+  border-radius: var(--radius-card);
+  background-color: var(--primary);
+  color: var(--background);
+  box-shadow: var(--shadow-md);
+}
+
+@media (min-width: 600px) { .rb-band { flex-direction: row; text-align: start; gap: 24px; } }
+
+.rb-band__icon.MuiSvgIcon-root { font-size: 3.5rem; color: var(--accent-light); }
+.rb-band__text { flex: 1; }
+.rb-band__title { margin: 0; font-size: var(--fs-xl); font-weight: 800; }
+.rb-band__sub { margin: 4px 0 0; font-size: var(--fs-md); line-height: 1.8; }
+
+/* Dark mode: terracotta is light, so the band's icon switches to ink */
+:root[data-theme="dark"] .rb-band__icon.MuiSvgIcon-root { color: var(--background); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rb-band__icon.MuiSvgIcon-root { color: var(--background); } }
+
+/* About */
+.rb-about { text-align: center; }
+.rb-about__lead { max-width: 36em; margin: 0 auto 16px; font-size: 1.1rem; line-height: 1.9; }
+.rb-about .rb-panel { max-width: 900px; margin: 24px auto 0; }
+.rb-thanks { margin: 0; padding-left: 1.4em; font-size: var(--fs-md); line-height: 1.9; }
+
+
+/* =====================================================
+   §13 శైలిమాల
+   ===================================================== */
+
+.rb-page { padding-block: clamp(24px, 5vw, 48px); }
+
+.rb-page-head { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1.5px solid var(--border-strong); }
+.rb-page-head__title { margin: 0 0 8px; font-size: clamp(2rem, 1.6rem + 1.6vw, 2.6rem); font-weight: 800; }
+.rb-page-head__sub { margin: 0 0 16px; font-size: var(--fs-lg); line-height: 1.7; color: var(--muted-text); }
+
+.rb-pills { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 20px; padding: 0; list-style: none; }
+
+.rb-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--foreground);
+}
+
+a.rb-pill { text-decoration: underline; text-underline-offset: 4px; }
+@media (hover: hover) { a.rb-pill:hover { background: var(--surface-elevated); box-shadow: var(--shadow-sm); } }
+
+.rb-lede { margin: 0; font-size: var(--fs-md); line-height: 1.95; }
+
+.rb-step-card { padding: 16px; border-radius: var(--radius-md); background: var(--surface-elevated); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.rb-step-card__head { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.rb-step-card__title { margin: 0; font-size: 1.2rem; font-weight: 800; }
+.rb-step-card__text { margin: 0; font-size: 1rem; line-height: 1.8; }
+
+.rb-step-num {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--background);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.rb-tip { margin-top: 16px; padding: 16px 20px; border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border-strong); font-size: var(--fs-md); line-height: 1.8; }
+.rb-fineprint { margin-top: 32px; font-size: 1rem; line-height: 1.8; color: var(--muted-text); }
+
+/* Tabs that stay visible while scrolling */
+.rb-sticky-tabs {
+  position: sticky;
+  top: calc(var(--app-header-height) + env(safe-area-inset-top, 0px));
+  z-index: 2;
+  margin-bottom: 24px;
+  background: var(--background);
+  border-bottom: 2px solid var(--border-strong);
+}
+
+body .rb-line-tabs .MuiTab-root { min-height: 60px; padding: 0 16px; font-size: 1.08rem; font-weight: 800; color: var(--foreground); }
+body .rb-line-tabs .MuiTab-root.Mui-selected { color: var(--primary); }
+body .rb-line-tabs .MuiTabs-indicator { height: 4px; border-radius: 2px; background: var(--primary); }
+body .rb-line-tabs .MuiTabs-scrollButtons { width: 44px; }
+
+.rb-h3 { margin: 0 0 12px; font-size: var(--fs-xl); font-weight: 800; }
+
+/* Font sample in the font list — family is set from code, size here */
+.rb-font-sample { display: inline-block; font-size: 1.45rem; line-height: 1.7; transition: opacity var(--transition-medium); }
+.rb-font-sample[data-state="wait"] { color: var(--muted-text); }   /* still loading — muted, not faded (keeps 7:1) */
+
+.rb-name { font-size: var(--fs-lg); font-weight: 800; }
+
+/* APK card */
+.rb-apk { text-align: center; }
+.rb-apk__icon { font-size: 64px; line-height: 1; margin-bottom: 8px; }
+.rb-apk__meta { margin: 0 0 16px; font-size: var(--fs-md); color: var(--muted-text); }
+.rb-apk__hint { margin: 12px 0 0; font-size: 1rem; color: var(--muted-text); }
+
+/* Media players */
+.rb-audio { display: block; width: 100%; max-width: 340px; height: 54px; }
+.rb-video { display: block; width: 100%; max-width: 720px; aspect-ratio: 16 / 9; height: auto; border-radius: var(--radius-sm); background: var(--media-bg); object-fit: contain; }
+
+
+/* =====================================================
+   §14 NAVBAR & ☰ మెనూ
+   ===================================================== */
+
+body .rb-nav {
+  background: var(--secondary);
+  color: var(--background);
+  padding-top: env(safe-area-inset-top, 0px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--accent-light) 60%, transparent), var(--shadow-md);
+}
+
+/* gold focus ring on the dark bar */
+.rb-nav :focus-visible { outline-color: var(--accent-light); box-shadow: 0 0 0 3px var(--secondary); }
+
+body .rb-nav__bar {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 60px;
+  padding-inline: max(12px, env(safe-area-inset-left, 0px)) max(12px, env(safe-area-inset-right, 0px));
+  overflow: hidden;
+}
+
+@media (min-width: 600px) { body .rb-nav__bar { padding-inline: 16px; } }
+@media (min-width: 900px) { body .rb-nav__bar { min-height: 64px; padding-inline: 24px; } }
+
+.rb-nav__brand { display: inline-flex; align-items: center; min-height: 44px; flex-shrink: 1; min-width: 0; color: var(--background); }
+
+.rb-nav__brand-text {
+  display: block;
+  overflow: hidden;
   white-space: nowrap;
-  border: 0;
+  text-overflow: ellipsis;
+  padding-block: 0.2em;          /* room for Telugu vowel signs above/below */
+  font-size: 1.05rem;
+  font-weight: 800;
 }
 
-/* Reduced motion: near-zero durations (not "none") so components
-   that wait for a transition to finish still close/open */
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
+@media (min-width: 900px) { .rb-nav__brand-text { font-size: 1.2rem; } }
 
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+.rb-show-xs { display: inline; }
+.rb-hide-xs { display: none; }
+@media (min-width: 600px) { .rb-show-xs { display: none; } .rb-hide-xs { display: inline; } }
+
+.rb-nav__desktop,
+.rb-nav__compact-tools { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; flex-shrink: 0; }
+
+/* full → compact → ☰  (decided by measuring; "auto" = before measuring) */
+.rb-nav__bar[data-mode="drawer"] .rb-nav__desktop,
+.rb-nav__bar[data-mode="full"] .rb-nav__compact-tools,
+.rb-nav__bar[data-mode="compact"] .rb-nav__compact-tools,
+.rb-nav__bar[data-mode="auto"] .rb-nav__desktop { display: none; }
+
+@media (min-width: 1200px) {
+  .rb-nav__bar[data-mode="auto"] .rb-nav__desktop { display: flex; }
+  .rb-nav__bar[data-mode="auto"] .rb-nav__compact-tools { display: none; }
+}
+
+/* Invisible copies used only for measuring */
+.rb-nav__measure { position: absolute; width: 0; height: 0; overflow: hidden; visibility: hidden; pointer-events: none; }
+.rb-nav__measure-inner { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; width: max-content; }
+
+/* Pills on the bar */
+body .rb-nav__pill {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: var(--radius-pill);
+  color: var(--background);
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+body .rb-nav__pill.is-compact { padding: 0 9px; }
+body .rb-nav__pill.is-active { background: var(--accent-light); color: var(--on-accent); font-weight: 800; }
+body .rb-nav__pill .MuiButton-endIcon,
+body .rb-nav__pill .MuiButton-startIcon { margin-inline: 4px 0; }
+body .rb-nav__pill .MuiSvgIcon-root { font-size: 1.1rem; }
+
+body .rb-nav__outline { border: 1px solid color-mix(in srgb, var(--background) 45%, transparent); }
+
+body .rb-nav__icon-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  color: var(--background);
+  border: 1px solid color-mix(in srgb, var(--background) 45%, transparent);
+}
+
+@media (hover: hover) {
+  body .rb-nav__pill:hover,
+  body .rb-nav__icon-btn:hover { background: color-mix(in srgb, var(--background) 18%, transparent); }
+  body .rb-nav__pill.is-active:hover { background: var(--accent-light); }
+}
+
+/* Dropdown */
+body .rb-nav-menu {
+  margin-top: 8px;
+  min-width: 230px;
+  padding: 4px 0;
+  border-radius: var(--radius);
+  background: var(--surface-elevated);
+  color: var(--foreground);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+body .rb-nav-menu__item {
+  min-height: var(--tap-target);
+  margin: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 500;
+  color: inherit;
+}
+
+body .rb-nav-menu__item.is-active {
+  font-weight: 800;
+  background: color-mix(in srgb, var(--accent-light) 40%, transparent);
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+
+body .rb-nav-menu__item:hover { background: color-mix(in srgb, var(--accent-light) 22%, transparent); }
+body .rb-nav-menu__item.Mui-focusVisible { outline: 3px solid var(--focus-ring); outline-offset: -3px; }
+
+/* Drawer */
+body .rb-drawer {
+  width: 340px;
+  max-width: 90vw;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.rb-drawer__nav { display: flex; flex-direction: column; height: 100%; }
+
+.rb-drawer__head { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--secondary); color: var(--background); }
+.rb-drawer__head :focus-visible { outline-color: var(--accent-light); box-shadow: 0 0 0 3px var(--secondary); }
+.rb-drawer__title { flex: 1; margin: 0; font-size: 1.05rem; font-weight: 800; }
+body .rb-drawer__close { min-height: 44px; border-radius: var(--radius-pill); color: var(--background); font-size: 0.95rem; font-weight: 700; }
+
+.rb-drawer__search-wrap { padding: 16px 16px 8px; }
+
+.rb-drawer__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap-target);
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-strong);
+  background: var(--surface-elevated);
+}
+
+.rb-drawer__search:focus-within { border-color: var(--focus-ring); }
+.rb-drawer__search > .MuiSvgIcon-root { color: var(--muted-text); }
+body .rb-drawer__search .MuiInputBase-root { flex: 1; font-size: var(--fs-md); color: inherit; }
+
+.rb-drawer__body { flex: 1; overflow-y: auto; padding: 0 16px 16px; overscroll-behavior: contain; }
+.rb-drawer__group { margin-top: 12px; list-style: none; }
+
+.rb-drawer__group-title { display: flex; gap: 6px; margin: 0 0 4px; padding: 0 8px; font-size: 0.95rem; font-weight: 800; color: var(--muted-text); }
+
+body .rb-drawer__item {
+  min-height: var(--tap-target);
+  margin-bottom: 2px;
+  border-radius: var(--radius-sm);
+  color: inherit;
+}
+
+body .rb-drawer__item:hover { background: var(--surface); }
+body .rb-drawer__item.is-active { background: color-mix(in srgb, var(--accent-light) 45%, transparent); box-shadow: inset 4px 0 0 var(--primary); }
+body .rb-drawer__item .MuiListItemText-primary { font-size: var(--fs-md); font-weight: 500; }
+body .rb-drawer__item.is-active .MuiListItemText-primary { font-weight: 800; }
+body .rb-drawer__item .MuiListItemText-secondary,
+body .rb-drawer__row .MuiListItemText-secondary { font-size: 0.9rem; color: var(--muted-text); }
+
+body .rb-drawer__row { gap: 12px; min-height: var(--tap-target); border-radius: var(--radius-sm); color: inherit; }
+body .rb-drawer__row .MuiListItemText-primary { font-size: 1rem; font-weight: 600; }
+
+.rb-drawer__divider { margin: 16px 0; border-color: var(--border-strong); }
+.rb-drawer__empty { margin: 0; padding: 16px 8px; color: var(--muted-text); line-height: 1.8; }
+
+
+/* =====================================================
+   §15 YUKTAI GRID — its own inline 10–13px text grows to ≥ 16px,
+   its buttons and inputs to ≥ 48px
+   ===================================================== */
+
+.rb-yuktai { overflow-x: clip; }
+
+.rb-yuktai [style*="font-size: 9px"],
+.rb-yuktai [style*="font-size: 10px"],
+.rb-yuktai [style*="font-size: 11px"],
+.rb-yuktai [style*="font-size: 12px"],
+.rb-yuktai [style*="font-size: 13px"],
+.rb-yuktai [style*="font-size: 14px"] {
+  font-size: 1rem !important;
+  line-height: 1.6 !important;
+}
+
+.rb-yuktai input,
+.rb-yuktai select { font-size: var(--fs-md) !important; min-height: 48px !important; }
+.rb-yuktai button { min-height: 48px !important; min-width: 48px !important; font-size: 1rem !important; }
+.rb-yuktai th,
+.rb-yuktai td { font-size: var(--fs-md) !important; vertical-align: middle; }
+.rb-yuktai :focus-visible { outline: 3px solid var(--focus-ring) !important; outline-offset: 2px; }
+
+/* Yuktai's own colours → our tokens (so it matches the site and works in dark mode).
+   It writes inline styles; these attribute selectors re-map each one. */
+.rb-yuktai [style*="background: rgb(255, 255, 255)"] { background: var(--surface-elevated) !important; }
+.rb-yuktai [style*="background: rgb(248, 250, 252)"],
+.rb-yuktai [style*="background: rgb(240, 253, 244)"] { background: var(--surface) !important; }
+.rb-yuktai [style*="background: rgb(16, 185, 129)"] { background: var(--primary) !important; }
+.rb-yuktai [style*="background: rgb(100, 116, 139)"] { background: var(--border-strong) !important; }
+.rb-yuktai [style*="color: rgb(15, 23, 42)"] { color: var(--foreground) !important; }
+.rb-yuktai [style*="color: rgb(100, 116, 139)"],
+.rb-yuktai [style*="color: rgb(148, 163, 184)"] { color: var(--muted-text) !important; }
+.rb-yuktai [style*="background: rgb(16, 185, 129)"] [style*="color: rgb(255, 255, 255)"],
+.rb-yuktai [style*="background: rgb(16, 185, 129)"][style*="color: rgb(255, 255, 255)"] { color: var(--background) !important; }
+.rb-yuktai [style*="rgb(226, 232, 240)"] { border-color: var(--border) !important; }
+.rb-yuktai [style*="rgb(203, 213, 225)"] { border-color: var(--border-strong) !important; }
+/* fixed-height AI panel: scroll instead of cutting text when text is enlarged (1.4.4) */
+.rb-yuktai [style*="max-height: 70vh"] { overflow-y: auto !important; }
+
+/* faded text (opacity 0.55–0.9) fails 7:1 — full strength, muted colour instead */
+.rb-yuktai [style*="opacity: 0.55"],
+.rb-yuktai [style*="opacity: 0.7"],
+.rb-yuktai [style*="opacity: 0.9"] { opacity: 1 !important; color: var(--muted-text) !important; }
+.rb-yuktai [style*="background: rgb(16, 185, 129)"] [style*="opacity"] { color: var(--background) !important; }
+
+/* phone card view: a row holding a player → label on top, player full width */
+.rb-yuktai div:has(> span > video),
+.rb-yuktai div:has(> span > audio) { flex-direction: column !important; align-items: stretch !important; gap: 6px; }
+.rb-yuktai span:has(> video),
+.rb-yuktai span:has(> audio) { width: 100% !important; max-width: 100%; }
+
+
+/* =====================================================
+   §16 అన్ని పరికరాలు
+   ===================================================== */
+
+/* Very small phones (≤ 360px): a little less padding, nothing cut */
+@media (max-width: 360px) {
+  :root { --gutter: 14px; }
+  body .rb-btn { padding-inline: 1em; }
+  .rb-hero__badge { font-size: 0.95rem; }
+}
+
+/* Phones turned sideways: short screens — shorter hero, tabs not sticky */
+@media (max-height: 500px) and (orientation: landscape) {
+  .rb-hero { padding-block: 24px 64px; }
+  .rb-sticky-tabs { position: static; }
+  body .rb-drawer { width: 380px; }
+}
+
+/* Notch / rounded corners in landscape */
+@supports (padding: max(0px)) {
+  .rb-container {
+    padding-left: max(var(--gutter), env(safe-area-inset-left, 0px));
+    padding-right: max(var(--gutter), env(safe-area-inset-right, 0px));
   }
 }
 
-/* Windows High Contrast / forced colours */
-@media (forced-colors: active) {
-  :focus-visible {
-    outline: 3px solid Highlight;
-    box-shadow: none;
+/* Big monitors & TVs: text grows a little, lines stay readable */
+@media (min-width: 1600px) {
+  :root { --container: 1320px; }
+}
+
+@media (min-width: 2200px) {
+  html { font-size: calc(var(--telugu-font-size) * 1.15); }
+}
+
+/* Touch screens: no hover-only lift left "stuck" after a tap */
+@media (hover: none) {
+  .rb-tile:hover, body .rb-btn:hover { transform: none; }
+}
+
+
+/* =====================================================
+   §17 PRINT — poems print clean on paper
+   ===================================================== */
+
+@media print {
+  :root { color-scheme: light; }
+
+  body { background: none; }
+
+  .rb-nav, .MuiAppBar-root, .MuiFab-root, .MuiBackdrop-root, .rb-sticky-tabs, .no-print {
+    display: none !important;
   }
 
-  .surface,
-  .surface-elevated,
-  .surface-outlined {
-    border: 1px solid CanvasText;
-  }
+  .rb-card, .rb-panel, .rb-quote-frame, .rb-tile, body .MuiPaper-root { box-shadow: none !important; }
+  .rb-card, .rb-quote-frame, .rb-table, blockquote, figure { break-inside: avoid; }
+  .rb-hero { background: none; border: 0; }
 }
