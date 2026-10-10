@@ -1,17 +1,24 @@
 "use client";
 
 /* ═══════════════════════════════════════════════════════════════
-   జ్ఞానమాల — అన్ని మాలలు ఒకే చోట
+   రత్నాలబాల – జ్ఞానమాల — ముఖ పేజీ (కొత్త రూపం, చిన్నగా)
 
-   • పైన: సైట్ పేరు + పాల్కురికి సోమన పద్యం (ఆకుపచ్చ బ్యాండ్, Navbar రంగు)
-   • స్వరమాల రేడియో + పోస్టర్ / వీడియో / వాయిస్ డౌన్‌లోడ్లు
-   • మాలల జాబితా: బంగారు దారం, ఒక్కో గుంపుకు ఒక పూస (Navbar లోని అన్ని మాలలూ)
-   • 60+ పాఠకుల కోసం: అక్షరాలు ≥ 0.95rem, నొక్కే చోటు ≥ 48px, AAA రంగులు,
+   పై నుంచి కిందికి — ఒక్కో విభాగం ఒక్క పని:
+   1. ఆకుపచ్చ బ్యాండ్: పేరు, ఒక వాక్యం, 2 పెద్ద బటన్లు, లెక్కలు, సోమన పద్యం
+   2. "ఏం చేయాలనుకుంటున్నారు?" — 5 పెద్ద టైల్స్ (బ్యాండ్ పైకి తేలుతూ)
+   3. ఈ రోజు పద్యం  +  స్వరమాల రేడియో (పక్కపక్కనే)
+   4. మా కవులు (page.tsx నుంచి వచ్చే poets — రెండు కార్డులు)
+   5. మాలలు — 4 ట్యాబ్‌లు (22 మాలలు ఒకేసారి కాకుండా గుంపుల వారీగా)
+   6. శైలిమాల పట్టీ: Android యాప్, రింగ్‌టోన్లు, ఫాంట్లు
+   7. ప్రాజెక్ట్ గురించి — మడిచి కింద (సాంకేతికత, కృతజ్ఞతలు, స్వరాలు)
+
+   • 60+ పాఠకుల కోసం: అక్షరాలు ≥ 1rem, నొక్కే చోటు ≥ 48px, AAA రంగులు,
      కదిలే animations లేవు; dark mode site tokens తో ఆటోమేటిక్
+   • ఫాంట్ ఇక్కడ పెట్టలేదు — సైట్ ఫాంట్ (lib/teluguFonts) నే వాడుతుంది
    ═══════════════════════════════════════════════════════════════ */
 
 import { useEffect, useState } from "react";
-import { Box, Button, CircularProgress, Collapse, Container, Divider, Stack, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, Collapse, Container, Stack, Tab, Tabs, Typography } from "@mui/material";
 import Link from "next/link";
 import DownloadAllPosters from "../components/DownloadAllPosters";
 import DownloadAllVoices from "../components/DownloadAllVoices";
@@ -44,7 +51,6 @@ import StyleTwoToneIcon from "@mui/icons-material/StyleTwoTone";
 import NewspaperTwoToneIcon from "@mui/icons-material/NewspaperTwoTone";
 import TempleHinduTwoToneIcon from "@mui/icons-material/TempleHinduTwoTone";
 import QuizTwoToneIcon from "@mui/icons-material/QuizTwoTone";
-import VolumeUpTwoToneIcon from "@mui/icons-material/VolumeUpTwoTone";
 import HeadphonesTwoToneIcon from "@mui/icons-material/HeadphonesTwoTone";
 import BrushTwoToneIcon from "@mui/icons-material/BrushTwoTone";
 import SchoolTwoToneIcon from "@mui/icons-material/SchoolTwoTone";
@@ -56,6 +62,9 @@ import GridViewTwoToneIcon from "@mui/icons-material/GridViewTwoTone";
 import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
+import PhoneAndroidTwoToneIcon from "@mui/icons-material/PhoneAndroidTwoTone";
 import type { SvgIconComponent } from "@mui/icons-material";
 
 /* ─── site tokens (globals.css) — dark mode ఆటోమేటిక్ ─── */
@@ -63,12 +72,14 @@ const INK = "var(--foreground)";
 const PAPER = "var(--background)";
 const MAROON = "var(--primary)";
 const GREEN = "var(--secondary)";
-const GOLD_SHAPE = "var(--accent)"; // దారం, పూసలు మాత్రమే — అక్షరాలకు కాదు
-const GOLD_TEXT = "var(--accent-text)"; // తెలుపు నేపథ్యంపై బంగారు అక్షరం (8.2:1)
+const GOLD_LIGHT = "var(--accent-light)"; // ఆకుపచ్చ పై బంగారు అక్షరం
+const GOLD_TEXT = "var(--accent-text)"; // తెలుపు నేపథ్యంపై బంగారు అక్షరం
 const MUTED = "var(--muted-text)";
 const CARD_BG = "var(--surface-elevated)";
+const SURFACE = "var(--surface)";
 const BORDER_STRONG = "var(--border-strong)";
-const FOCUS = { "&:focus-visible": { outline: "3px solid var(--focus-ring)", outlineOffset: "2px" } };
+const FOCUS = { "&:focus-visible": { outline: "3px solid var(--focus-ring)", outlineOffset: "3px" } };
+const SHADOW = "0 6px 24px color-mix(in srgb, var(--foreground) 10%, transparent)";
 
 interface Poem {
   title: string;
@@ -118,9 +129,9 @@ const GROUPS: Group[] = [
       { label: "చిత్రమాల", path: "/chitramala", intro: "పద్యాలను చిత్రాలుగా, పోస్టర్లుగా మార్చండి", Icon: ImageTwoToneIcon },
       { label: "స్వరమాల", path: "/swaramala", intro: "చదవండి, వినండి — తెలుగు స్వరాల అనుభవం", Icon: MicTwoToneIcon },
       { label: "లిపిమాల", path: "/lipimala", intro: "తెలుగు లిపుల పరిచయం, OCR తో రూపాంతరం", Icon: TranslateTwoToneIcon },
-      { label: "ఖతిమాల", path: "/khatiMala", intro: "50+ తెలుగు ఫాంట్లతో పాఠ్య రచన", Icon: FontDownloadTwoToneIcon },
+      { label: "ఖతిమాల", path: "/khatiMala", intro: "50+ ఫాంట్లతో రాసి PDF, పోస్టర్, వీడియో", Icon: FontDownloadTwoToneIcon },
       { label: "విదురమాల", path: "/rahasyabhasha", intro: "రహస్య భాష శైలుల అన్వేషణ, అభ్యాసం", Icon: VpnKeyTwoToneIcon },
-      { label: "శైలిమాల", path: "/shailimala", intro: "రచనా శైలుల పరిచయం, అభ్యాసం", Icon: StyleTwoToneIcon },
+      { label: "శైలిమాల", path: "/shailimala", intro: "ఫాంట్లు, పుస్తకాలు, యాప్, రింగ్‌టోన్లు — ఉచితం", Icon: StyleTwoToneIcon },
     ],
   },
   {
@@ -128,23 +139,32 @@ const GROUPS: Group[] = [
     Icon: LocalLibraryTwoToneIcon,
     color: GREEN,
     items: [
-      { label: "వాచకమాల", path: "/news", intro: "తెలుగు వాచకి — వార్తలు చదవండి, వినండి", Icon: NewspaperTwoToneIcon },
+      { label: "వాచకమాల", path: "/news", intro: "తెలుగు వార్తలు చదవండి, వినండి", Icon: NewspaperTwoToneIcon },
       { label: "గీతామాల", path: "/geeta", intro: "భగవద్గీత శ్లోకాలు", Icon: TempleHinduTwoToneIcon },
-      { label: "PDF ప్రశ్నోత్తరి", path: "/prashnottari", intro: "మీ తెలుగు PDF అప్‌లోడ్ చేసి ప్రశ్నలు అడగండి", Icon: QuizTwoToneIcon },
+      { label: "PDF ప్రశ్నోత్తరి", path: "/prashnottari", intro: "మీ తెలుగు PDF పై ప్రశ్నలు అడగండి", Icon: QuizTwoToneIcon },
     ],
   },
 ];
+const MALA_COUNT = GROUPS.reduce((n, g) => n + g.items.length, 0);
 
-/* ─── "ప్రాజెక్ట్ గురించి" ─── */
-const FEEDBACK_URL = "https://forms.gle/z4zugcnmZrW9d9cR9"; // Navbar లోని అదే ఫారం
-
-const DO_HERE: { title: string; text: string; path: string; Icon: SvgIconComponent }[] = [
-  { title: "చదవండి", text: "పద్యాలు, శతకాలు, కథలు, జ్ఞాపకాలు", path: "/poems", Icon: AutoStoriesTwoToneIcon },
-  { title: "వినండి", text: "మగ, స్త్రీ స్వరాల్లో — స్వరమాల రేడియోతో వరుసగా", path: "/swaramala", Icon: HeadphonesTwoToneIcon },
-  { title: "నేర్చుకోండి", text: "అక్షరాలు, గుణింతాలు, సంధులు, సమాసాలు, సామెతలు", path: "/aksharamala", Icon: SchoolTwoToneIcon },
-  { title: "సృష్టించండి", text: "పద్యాలను పోస్టర్లు, వీడియోలుగా; 50+ తెలుగు ఫాంట్లతో", path: "/chitramala", Icon: BrushTwoToneIcon },
-  { title: "అడగండి", text: "మీ తెలుగు PDF పై ప్రశ్నలు — జవాబు పేజీ సంఖ్యతో", path: "/prashnottari", Icon: ForumTwoToneIcon },
+/* ─── 5 పెద్ద టైల్స్ ─── */
+const DO_HERE: { title: string; text: string; path: string; Icon: SvgIconComponent; color: string }[] = [
+  { title: "చదవండి", text: "పద్యాలు, శతకాలు, కథలు", path: "/poems", Icon: AutoStoriesTwoToneIcon, color: MAROON },
+  { title: "వినండి", text: "మగ, స్త్రీ స్వరాల్లో", path: "/swaramala", Icon: HeadphonesTwoToneIcon, color: GREEN },
+  { title: "నేర్చుకోండి", text: "అక్షరాలు, గుణింతాలు, సంధులు", path: "/aksharamala", Icon: SchoolTwoToneIcon, color: MAROON },
+  { title: "సృష్టించండి", text: "పోస్టర్, వీడియో, PDF", path: "/khatiMala", Icon: BrushTwoToneIcon, color: GREEN },
+  { title: "అడగండి", text: "మీ PDF పై ప్రశ్నలు", path: "/prashnottari", Icon: ForumTwoToneIcon, color: MAROON },
 ];
+
+const HERO_STATS: [string, string][] = [
+  ["1,280+", "పద్యాలు"],
+  ["130", "కథలు"],
+  [String(MALA_COUNT), "మాలలు"],
+  ["50+", "ఫాంట్లు"],
+];
+
+/* "ప్రాజెక్ట్ గురించి" లోపల */
+const FEEDBACK_URL = "https://forms.gle/z4zugcnmZrW9d9cR9";
 
 const STATS: [string, string][] = [
   ["1,280+", "మొత్తం పద్యాలు"],
@@ -160,14 +180,9 @@ const STATS: [string, string][] = [
 
 const PROMISES: { title: string; text: string; Icon: SvgIconComponent }[] = [
   { title: "ఉచితం", text: "వాణిజ్యేతర ప్రాజెక్ట్. చదవడానికి, వినడానికి డబ్బు లేదు.", Icon: VolunteerActivismTwoToneIcon },
-  {
-    title: "మీ గోప్యత",
-    text: "మీరు చేర్చిన ఫాంట్లు మీ పరికరంలోనే ఉంటాయి. PDF ఫైల్ సేవ్ కాదు, దాని పాఠ్యం 24 గంటల్లో తొలగిపోతుంది.",
-    Icon: LockTwoToneIcon,
-  },
+  { title: "మీ గోప్యత", text: "మీరు చేర్చిన ఫాంట్లు మీ పరికరంలోనే ఉంటాయి. PDF ఫైల్ సేవ్ కాదు, దాని పాఠ్యం 24 గంటల్లో తొలగిపోతుంది.", Icon: LockTwoToneIcon },
 ];
 
-/* సాంకేతికత — ఒక్కొక్కటి పాఠకుడికి ఏం చేస్తుందో సాధారణ మాటల్లో */
 const TECH: { group: string; items: { name: string; does: string }[] }[] = [
   {
     group: "మీరు చూసేది, వాడేది",
@@ -207,66 +222,54 @@ const TECH: { group: string; items: { name: string; does: string }[] }[] = [
   },
 ];
 
-const sectionTitle = { fontWeight: 800, fontSize: "1.1rem", mb: 1.25, mt: 3, "&:first-of-type": { mt: 0 } } as const;
+const sectionTitle = { fontWeight: 800, fontSize: "1.15rem", mb: 1.25, mt: 3.5, "&:first-of-type": { mt: 0 } } as const;
 
-/* బంగారు దారంపై గుంపు పూస */
-function GroupBead({ Icon, color }: { Icon: SvgIconComponent; color: string }) {
+/* ─── చిన్న భాగాలు ─── */
+
+function SectionHeading({ id, kicker, children }: { id: string; kicker?: string; children: React.ReactNode }) {
   return (
-    <Box
-      aria-hidden
-      sx={{
-        width: 40,
-        height: 40,
-        borderRadius: "50%",
-        flexShrink: 0,
-        display: "grid",
-        placeItems: "center",
-        bgcolor: CARD_BG,
-        border: `2px solid ${color}`,
-        boxShadow: `0 0 0 4px ${PAPER}`,
-        position: "relative",
-        zIndex: 1,
-      }}
-    >
-      <Icon sx={{ fontSize: "1.25rem", color }} />
+    <Box sx={{ textAlign: "center", mb: 3 }}>
+      {kicker && (
+        <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: GOLD_TEXT, letterSpacing: "0.02em", mb: 0.5 }}>{kicker}</Typography>
+      )}
+      <Typography id={id} component="h2" sx={{ fontWeight: 800, fontSize: { xs: "1.55rem", md: "1.8rem" }, lineHeight: 1.4 }}>
+        {children}
+      </Typography>
+      <Box aria-hidden sx={{ display: "flex", justifyContent: "center", gap: 0.75, mt: 1.25 }}>
+        {[MAROON, GOLD_TEXT, GREEN].map((c) => (
+          <Box key={c} sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: c }} />
+        ))}
+      </Box>
     </Box>
   );
 }
 
-/* తెరుచుకునే విభాగం బటన్ — పెద్దగా, స్పష్టంగా */
-function ToggleButton({
-  open,
-  onClick,
-  icon,
-  children,
-  color = MAROON,
-}: {
-  open: boolean;
-  onClick: () => void;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-  color?: string;
-}) {
+function ToggleButton({ open, onClick, icon, children, color = MAROON }: { open: boolean; onClick: () => void; icon?: React.ReactNode; children: React.ReactNode; color?: string }) {
   return (
     <Button
       onClick={onClick}
       aria-expanded={open}
       startIcon={icon}
       endIcon={open ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
-      sx={{ minHeight: 48, px: 2, textTransform: "none", fontWeight: 700, fontSize: "1rem", color, borderRadius: "var(--radius-sm)", ...FOCUS }}
+      sx={{ minHeight: 52, px: 2.5, textTransform: "none", fontWeight: 800, fontSize: "1.05rem", color, borderRadius: "999px", border: `1.5px solid ${BORDER_STRONG}`, ...FOCUS }}
     >
       {children}
     </Button>
   );
 }
 
-export default function RatnalabalaHighlights() {
+const card = { p: { xs: 2.25, sm: 3 }, borderRadius: "var(--radius)", border: `1.5px solid ${BORDER_STRONG}`, bgcolor: CARD_BG, boxShadow: SHADOW } as const;
+
+/* ═══════════════════════════════════════════════════════════════ */
+
+export default function RatnalabalaHighlights({ poets }: { poets?: React.ReactNode }) {
   const [poems, setPoems] = useState<Poem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pick, setPick] = useState(0); // ఈ రోజు పద్యం
+  const [group, setGroup] = useState(0);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [voicesOpen, setVoicesOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -275,7 +278,13 @@ export default function RatnalabalaHighlights() {
         const res = await fetch("/api/poems");
         if (!res.ok) throw new Error(String(res.status));
         const data: Record<string, string> = await res.json();
-        if (alive) setPoems(Object.entries(data).map(([title, content]) => ({ title, content, slug: title })));
+        const list = Object.entries(data).map(([title, content]) => ({ title, content, slug: title }));
+        if (!alive) return;
+        setPoems(list);
+        // రోజుకొక పద్యం — సంవత్సరంలో ఎన్నో రోజో దాని ప్రకారం (అందరికీ ఒకటే)
+        const now = new Date();
+        const day = Math.floor((now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000);
+        if (list.length) setPick(day % list.length);
       } catch {
         if (alive) setError("పద్యాలు లోడ్ కాలేదు. ఇంటర్నెట్ చూసి పేజీని మళ్ళీ తెరవండి.");
       } finally {
@@ -287,123 +296,435 @@ export default function RatnalabalaHighlights() {
     };
   }, []);
 
+  const today = poems[pick];
+  const g = GROUPS[group];
+
   return (
     <Box sx={{ bgcolor: PAPER, color: INK }}>
-      {/* ═══════════ పైభాగం — Navbar రంగు ఆకుపచ్చ బ్యాండ్ + సోమన పద్యం ═══════════ */}
-      <Box component="header" sx={{ bgcolor: GREEN, color: PAPER, py: { xs: 5, md: 7 }, px: 2 }}>
-        <Container maxWidth="md" disableGutters sx={{ textAlign: "center" }}>
-          <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "2.2rem", md: "2.9rem" }, lineHeight: 1.3 }}>
-            రత్నాలబాల
-          </Typography>
-          <Typography sx={{ fontSize: { xs: "1.15rem", md: "1.3rem" }, fontWeight: 700, color: "var(--accent-light)", mt: 0.5 }}>
-            జ్ఞానమాల
-          </Typography>
+      {/* ═══════════ 1. పైభాగం ═══════════ */}
+      <Box
+        component="header"
+        sx={{
+          bgcolor: GREEN,
+          color: PAPER,
+          pt: { xs: 5, md: 8 },
+          pb: { xs: 8, md: 11 },
+          px: 2,
+          // నిశ్చల చుక్కల అలంకరణ (కదలదు)
+          backgroundImage: "radial-gradient(color-mix(in srgb, var(--background) 13%, transparent) 1.2px, transparent 1.2px)",
+          backgroundSize: "22px 22px",
+        }}
+      >
+        <Container maxWidth="lg" disableGutters>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.1fr 1fr" }, gap: { xs: 4, md: 6 }, alignItems: "center" }}>
+            {/* left: name + CTAs */}
+            <Box sx={{ textAlign: { xs: "center", md: "left" } }}>
+              <Typography sx={{ fontSize: "1.05rem", fontWeight: 800, color: GOLD_LIGHT, mb: 1 }}>🪔 ఉచిత తెలుగు సాహిత్య వేదిక</Typography>
+              <Typography component="h1" sx={{ fontWeight: 800, fontSize: { xs: "2.6rem", sm: "3.2rem", md: "3.6rem" }, lineHeight: 1.25 }}>
+                రత్నాలబాల
+                <Box component="span" sx={{ display: "block", color: GOLD_LIGHT, fontSize: "0.55em", mt: 0.5 }}>
+                  జ్ఞానమాల
+                </Box>
+              </Typography>
+              <Typography sx={{ fontSize: { xs: "1.15rem", md: "1.3rem" }, lineHeight: 1.8, mt: 2, maxWidth: "28em", mx: { xs: "auto", md: 0 } }}>
+                తెలుగు పద్యం, కథ, వ్యాకరణం — <strong>చదవండి · వినండి · నేర్చుకోండి</strong>. పెద్ద అక్షరాలతో, అందరికీ సులభంగా.
+              </Typography>
 
-          <Box aria-hidden sx={{ width: 56, height: 3, bgcolor: "var(--accent-light)", mx: "auto", my: 3, borderRadius: 2 }} />
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 3.5, justifyContent: { xs: "center", md: "flex-start" } }}>
+                <Button
+                  component={Link}
+                  href="/poems"
+                  endIcon={<ArrowForwardRoundedIcon />}
+                  sx={{
+                    minHeight: 58,
+                    px: 3.5,
+                    borderRadius: "999px",
+                    textTransform: "none",
+                    fontWeight: 800,
+                    fontSize: "1.15rem",
+                    bgcolor: PAPER,
+                    color: GREEN,
+                    "&:hover": { bgcolor: PAPER, filter: "brightness(0.96)" },
+                    "&:focus-visible": { outline: `3px solid ${GOLD_LIGHT}`, outlineOffset: "3px" },
+                  }}
+                >
+                  📖 పద్యాలు చదవండి
+                </Button>
+                <Button
+                  component="a"
+                  href="#radio"
+                  sx={{
+                    minHeight: 58,
+                    px: 3.5,
+                    borderRadius: "999px",
+                    textTransform: "none",
+                    fontWeight: 800,
+                    fontSize: "1.15rem",
+                    color: PAPER,
+                    border: `2px solid ${PAPER}`,
+                    "&:hover": { bgcolor: "color-mix(in srgb, var(--background) 12%, transparent)" },
+                    "&:focus-visible": { outline: `3px solid ${GOLD_LIGHT}`, outlineOffset: "3px" },
+                  }}
+                >
+                  🎧 వినండి
+                </Button>
+              </Stack>
 
-          <Box component="figure" sx={{ m: 0 }}>
-            <Typography
-              component="blockquote"
-              sx={{ m: 0, fontSize: { xs: "1.02rem", md: "1.12rem" }, lineHeight: 2, whiteSpace: "pre-line" }}
+              {/* counts */}
+              <Box component="ul" aria-label="ఇక్కడ ఉన్నవి" sx={{ listStyle: "none", p: 0, m: 0, mt: 3.5, display: "flex", flexWrap: "wrap", gap: { xs: 2.5, sm: 4 }, justifyContent: { xs: "center", md: "flex-start" } }}>
+                {HERO_STATS.map(([n, l]) => (
+                  <Box component="li" key={l}>
+                    <Box sx={{ fontWeight: 800, fontSize: "1.7rem", lineHeight: 1.2, color: GOLD_LIGHT, fontVariantNumeric: "tabular-nums" }}>{n}</Box>
+                    <Box sx={{ fontSize: "1rem", fontWeight: 700 }}>{l}</Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+
+            {/* right: Somana poem in a frame */}
+            <Box
+              component="figure"
+              sx={{
+                m: 0,
+                p: { xs: 2.5, sm: 3.5 },
+                borderRadius: "var(--radius)",
+                border: `2px solid ${GOLD_LIGHT}`,
+                bgcolor: "color-mix(in srgb, var(--background) 9%, transparent)",
+                textAlign: "center",
+                position: "relative",
+              }}
             >
-              {`అమిత యశస్క ఆద్యయన ఇద్రుచి ఈశ్వర ఉగ్ర ఊర్జిత
+              <Box aria-hidden sx={{ position: "absolute", top: -22, left: "50%", transform: "translateX(-50%)", px: 1.5, bgcolor: GREEN, fontSize: 30, lineHeight: 1.4 }}>
+                ❝
+              </Box>
+              <Typography component="blockquote" sx={{ m: 0, fontSize: { xs: "1.05rem", md: "1.15rem" }, lineHeight: 2.05, whiteSpace: "pre-line" }}>
+                {`అమిత యశస్క ఆద్యయన ఇద్రుచి ఈశ్వర ఉగ్ర ఊర్జిత
 క్రమ ఋషభాంక ౠజిహర ఌస్తిత ౡస్మిత ఏకరుద్ర ఐం
 ద్రమహిత రూప ఓమితి పదద్యుతి ఔర్వ లలాట అంబికా
 సమరసభావ అఃకలిత వర్ణనుతం బసవేశ పాహిమాం!!`}
-            </Typography>
-            <Typography component="figcaption" sx={{ fontSize: "1rem", fontWeight: 700, mt: 1.5, opacity: 0.95 }}>
-              — పాల్కురికి సోమన
-            </Typography>
+              </Typography>
+              <Typography component="figcaption" sx={{ fontSize: "1.02rem", fontWeight: 800, mt: 1.5, color: GOLD_LIGHT }}>
+                — పాల్కురికి సోమన
+              </Typography>
+              <Typography sx={{ fontSize: "1rem", mt: 0.5 }}>తెలుగు అక్షరమాల అంతా ఒకే పద్యంలో</Typography>
+            </Box>
           </Box>
         </Container>
       </Box>
 
-      <Container maxWidth="md" sx={{ py: { xs: 4, md: 5 } }}>
-        {/* ═══════════ పరిచయం ═══════════ */}
-        <Box component="section" aria-label="పరిచయం" sx={{ mb: 4, textAlign: "center" }}>
-          <Typography sx={{ fontSize: "1.08rem", lineHeight: 1.9, maxWidth: "34em", mx: "auto" }}>
-            తెలుగు పద్యాలు, శతకాలు, కథలు, వ్యాకరణం — ఒకే వేదికపై చదవడానికి, వినడానికి, నేర్చుకోవడానికి. ఉచిత, వాణిజ్యేతర ప్రాజెక్ట్.
-          </Typography>
-
-          <Box sx={{ mt: 1 }}>
-            <ToggleButton open={aboutOpen} onClick={() => setAboutOpen((v) => !v)}>
-              {aboutOpen ? "తక్కువగా చూపించు" : "ప్రాజెక్ట్ గురించి పూర్తిగా చదవండి"}
-            </ToggleButton>
+      {/* ═══════════ 2. 5 టైల్స్ — బ్యాండ్ పైకి తేలుతూ ═══════════ */}
+      <Container maxWidth="lg" sx={{ position: "relative", mt: { xs: -5, md: -7 } }}>
+        <Box component="nav" aria-label="ఏం చేయాలనుకుంటున్నారు?">
+          <Box
+            component="ul"
+            sx={{ listStyle: "none", p: 0, m: 0, display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)", md: "repeat(5, 1fr)" }, gap: { xs: 1.25, md: 2 } }}
+          >
+            {DO_HERE.map(({ title, text, path, Icon, color }, i) => (
+              <Box component="li" key={title} sx={{ gridColumn: { xs: i === 4 ? "1 / -1" : "auto", sm: "auto" } }}>
+                <Box
+                  component={Link}
+                  href={path}
+                  sx={{
+                    height: "100%",
+                    boxSizing: "border-box",
+                    minHeight: 132,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                    gap: 0.75,
+                    p: 2,
+                    borderRadius: "var(--radius)",
+                    bgcolor: CARD_BG,
+                    color: INK,
+                    textDecoration: "none",
+                    border: `1.5px solid ${BORDER_STRONG}`,
+                    borderBottom: `4px solid ${color}`,
+                    boxShadow: SHADOW,
+                    "&:hover": { bgcolor: SURFACE },
+                    "&:hover .tile-icon": { bgcolor: color, color: PAPER },
+                    ...FOCUS,
+                  }}
+                >
+                  <Box className="tile-icon" aria-hidden sx={{ width: 56, height: 56, borderRadius: "50%", display: "grid", placeItems: "center", bgcolor: SURFACE, color, border: `2px solid ${color}` }}>
+                    <Icon sx={{ fontSize: "1.8rem" }} />
+                  </Box>
+                  <Box sx={{ fontWeight: 800, fontSize: "1.2rem" }}>{title}</Box>
+                  <Box sx={{ fontSize: "1rem", color: MUTED, lineHeight: 1.5 }}>{text}</Box>
+                </Box>
+              </Box>
+            ))}
           </Box>
+        </Box>
+      </Container>
 
-          <Collapse in={aboutOpen} timeout={200} unmountOnExit>
-            <Box
-              sx={{ mt: 2, p: { xs: 2, sm: 3 }, textAlign: "left", borderRadius: "var(--radius)", border: `1.5px solid ${BORDER_STRONG}`, bgcolor: CARD_BG }}
-            >
-              {/* 1. ఎందుకు */}
-              <Typography component="h3" sx={sectionTitle}>
-                ఈ వేదిక ఎందుకు
-              </Typography>
-              <Typography sx={{ fontSize: "1.02rem", lineHeight: 1.9, maxWidth: "36em" }}>
-                తెలుగు పద్యాలు, కథలు, వ్యాకరణం పుస్తకాల్లో, జ్ఞాపకాల్లో మాత్రమే ఉండిపోకూడదు. వాటిని ఫోన్‌లో, కంప్యూటర్‌లో ఎవరైనా
-                సులభంగా చదవడానికి, వినడానికి, తర్వాతి తరాలకు అందించడానికి ఈ వేదిక. పెద్ద అక్షరాలు, స్పష్టమైన రంగులు, వినే సౌకర్యంతో
-                — పెద్దవాళ్ళకూ సులభంగా ఉండేలా తయారైంది.
-              </Typography>
+      <Container maxWidth="lg" sx={{ py: { xs: 5, md: 7 } }}>
+        {/* ═══════════ 3. ఈ రోజు పద్యం + రేడియో ═══════════ */}
+        <Box component="section" aria-label="ఈ రోజు పద్యం, స్వరమాల రేడియో" sx={{ mb: { xs: 6, md: 8 } }}>
+          {loading && (
+            <Stack alignItems="center" spacing={1.5} sx={{ py: 5 }} role="status">
+              <CircularProgress size={32} sx={{ color: MAROON }} />
+              <Typography sx={{ fontSize: "1.05rem", color: MUTED }}>పద్యాలు లోడ్ అవుతున్నాయి…</Typography>
+            </Stack>
+          )}
 
-              {/* 2. ఏం చేయవచ్చు */}
-              <Typography component="h3" sx={sectionTitle}>
-                ఇక్కడ మీరు ఏం చేయవచ్చు
-              </Typography>
-              <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
-                {DO_HERE.map(({ title, text, path, Icon }) => (
-                  <li key={title}>
-                    <Box
-                      component={Link}
-                      href={path}
-                      sx={{
-                        height: "100%",
-                        minHeight: 56,
-                        display: "flex",
-                        gap: 1.25,
-                        alignItems: "flex-start",
-                        p: 1.5,
-                        borderRadius: "var(--radius-sm)",
-                        bgcolor: "var(--surface)",
-                        color: INK,
-                        textDecoration: "none",
-                        border: "1px solid transparent",
-                        "&:hover": { borderColor: BORDER_STRONG },
-                        ...FOCUS,
-                      }}
-                    >
-                      <Icon sx={{ fontSize: "1.5rem", color: MAROON, flexShrink: 0, mt: 0.25 }} aria-hidden />
-                      <Box>
-                        <Box sx={{ fontWeight: 800, fontSize: "1.05rem" }}>{title}</Box>
-                        <Box sx={{ fontSize: "0.95rem", color: MUTED, lineHeight: 1.6 }}>{text}</Box>
-                      </Box>
-                    </Box>
-                  </li>
-                ))}
+          {error && (
+            <Typography role="alert" align="center" sx={{ py: 3, fontSize: "1.05rem", color: "var(--error)" }}>
+              {error}
+            </Typography>
+          )}
+
+          {!loading && !error && poems.length > 0 && (
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: { xs: 2.5, md: 3 }, alignItems: "stretch" }}>
+              {/* ఈ రోజు పద్యం */}
+              <Box component="article" aria-labelledby="today-title" sx={{ ...card, borderTop: `5px solid ${MAROON}`, display: "flex", flexDirection: "column" }}>
+                <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: MAROON }}>🌅 ఈ రోజు పద్యం</Typography>
+                <Typography id="today-title" component="h2" sx={{ fontWeight: 800, fontSize: "1.4rem", mt: 0.5, mb: 1.5 }}>
+                  {today?.title}
+                </Typography>
+                <Typography aria-live="polite" sx={{ fontSize: "1.15rem", lineHeight: 2, whiteSpace: "pre-line", flex: 1 }}>
+                  {today?.content}
+                </Typography>
+                <Typography sx={{ fontSize: "1rem", color: MUTED, mt: 1.5 }}>— మిరియాల వెంకటరత్నం, రత్నాలబాల</Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mt: 2.5 }}>
+                  <Button
+                    onClick={() => setPick((p) => (p + 1) % poems.length)}
+                    startIcon={<AutorenewRoundedIcon />}
+                    sx={{ minHeight: 52, px: 2.5, borderRadius: "999px", textTransform: "none", fontWeight: 800, fontSize: "1.05rem", color: MAROON, border: `1.5px solid ${MAROON}`, ...FOCUS }}
+                  >
+                    మరో పద్యం
+                  </Button>
+                  <Button
+                    component={Link}
+                    href="/poems"
+                    endIcon={<ArrowForwardRoundedIcon />}
+                    sx={{
+                      minHeight: 52,
+                      px: 2.5,
+                      borderRadius: "999px",
+                      textTransform: "none",
+                      fontWeight: 800,
+                      fontSize: "1.05rem",
+                      bgcolor: MAROON,
+                      color: PAPER,
+                      "&:hover": { bgcolor: MAROON, filter: "brightness(1.1)" },
+                      ...FOCUS,
+                    }}
+                  >
+                    అన్ని {poems.length} పద్యాలు
+                  </Button>
+                </Stack>
               </Box>
 
-              {/* 3. ఎంత ఉంది */}
+              {/* రేడియో */}
+              <Box id="radio" component="section" aria-labelledby="radio-title" sx={{ ...card, borderTop: `5px solid ${GREEN}`, textAlign: "center", scrollMarginTop: 96 }}>
+                <Typography sx={{ fontSize: "1rem", fontWeight: 800, color: GREEN }}>🎧 స్వరమాల రేడియో</Typography>
+                <Typography id="radio-title" component="h2" sx={{ fontWeight: 800, fontSize: "1.4rem", mt: 0.5, mb: 0.5 }}>
+                  కళ్ళు మూసుకుని వినండి
+                </Typography>
+                <Typography sx={{ fontSize: "1.05rem", color: MUTED, mb: 2 }}>స్వరం ఎంచుకుంటే {poems.length} పద్యాలు వరుసగా వినిపిస్తాయి.</Typography>
+
+                <PoemRadio poems={poems} />
+
+                <Box sx={{ mt: 2.5 }}>
+                  <ToggleButton open={toolsOpen} onClick={() => setToolsOpen((v) => !v)} icon={<DownloadForOfflineRoundedIcon />} color={GREEN}>
+                    పోస్టర్లు, వీడియోలు, వాయిస్‌లు
+                  </ToggleButton>
+                </Box>
+                <Collapse in={toolsOpen} timeout={200} unmountOnExit>
+                  <Stack spacing={1.5} sx={{ mt: 2 }}>
+                    <DownloadAllPosters poems={poems} authors={AUTHORS} poetryName={POETRY_NAME} />
+                    <DownloadAllVideos poems={poems} authors={AUTHORS} poetryName={POETRY_NAME} />
+                    <DownloadAllVoices poems={poems} />
+                  </Stack>
+                </Collapse>
+              </Box>
+            </Box>
+          )}
+        </Box>
+
+        {/* ═══════════ 4. మా కవులు ═══════════ */}
+        {poets && (
+          <Box component="section" aria-labelledby="poets-title" sx={{ mb: { xs: 6, md: 8 } }}>
+            <SectionHeading id="poets-title" kicker="ఈ వేదిక వెనుక">
+              మా కవులు
+            </SectionHeading>
+            {poets}
+          </Box>
+        )}
+
+        {/* ═══════════ 5. మాలలు — 4 ట్యాబ్‌లు ═══════════ */}
+        <Box component="section" aria-labelledby="malas-title" sx={{ mb: { xs: 6, md: 8 } }}>
+          <SectionHeading id="malas-title" kicker={`${MALA_COUNT} మాలలు, 4 గుంపులు`}>
+            మాలలు అన్వేషించండి
+          </SectionHeading>
+
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+            <Tabs
+              value={group}
+              onChange={(_, v: number) => setGroup(v)}
+              variant="scrollable"
+              scrollButtons="auto"
+              allowScrollButtonsMobile
+              aria-label="మాలల గుంపులు"
+              sx={{
+                minHeight: 0,
+                p: 0.75,
+                borderRadius: "999px",
+                bgcolor: SURFACE,
+                border: `1.5px solid ${BORDER_STRONG}`,
+                maxWidth: "100%",
+                "& .MuiTabs-indicator": { display: "none" },
+                "& .MuiTab-root": { minHeight: 52, borderRadius: "999px", textTransform: "none", fontWeight: 800, fontSize: "1.05rem", color: INK, px: 2.25, ...FOCUS },
+                "& .MuiTab-root.Mui-selected": { bgcolor: g.color, color: PAPER },
+              }}
+            >
+              {GROUPS.map((gr, i) => (
+                <Tab
+                  key={gr.label}
+                  id={`mala-tab-${i}`}
+                  aria-controls="mala-panel"
+                  icon={<gr.Icon sx={{ fontSize: "1.35rem" }} />}
+                  iconPosition="start"
+                  label={`${gr.label} (${gr.items.length})`}
+                />
+              ))}
+            </Tabs>
+          </Box>
+
+          <Box
+            id="mala-panel"
+            role="tabpanel"
+            aria-labelledby={`mala-tab-${group}`}
+            component="ul"
+            sx={{ listStyle: "none", p: 0, m: 0, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", md: "repeat(3, 1fr)" }, gap: 1.75 }}
+          >
+            {g.items.map((item) => (
+              <li key={item.path}>
+                <Box
+                  component={Link}
+                  href={item.path}
+                  sx={{
+                    height: "100%",
+                    boxSizing: "border-box",
+                    minHeight: 84,
+                    textDecoration: "none",
+                    color: INK,
+                    display: "flex",
+                    gap: 1.75,
+                    alignItems: "center",
+                    borderRadius: "var(--radius)",
+                    p: 2,
+                    bgcolor: CARD_BG,
+                    border: `1.5px solid ${BORDER_STRONG}`,
+                    "&:hover": { bgcolor: SURFACE, borderColor: g.color },
+                    "&:hover .go": { color: g.color },
+                    ...FOCUS,
+                  }}
+                >
+                  <Box aria-hidden sx={{ width: 52, height: 52, flexShrink: 0, borderRadius: "14px", display: "grid", placeItems: "center", bgcolor: `color-mix(in srgb, ${g.color} 12%, ${PAPER})`, color: g.color }}>
+                    <item.Icon sx={{ fontSize: "1.75rem" }} />
+                  </Box>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: "1.15rem", lineHeight: 1.5 }}>{item.label}</Typography>
+                    <Typography sx={{ fontSize: "1rem", color: MUTED, lineHeight: 1.55 }}>{item.intro}</Typography>
+                  </Box>
+                  <ArrowForwardRoundedIcon className="go" aria-hidden sx={{ color: MUTED, flexShrink: 0 }} />
+                </Box>
+              </li>
+            ))}
+          </Box>
+        </Box>
+
+        {/* ═══════════ 6. శైలిమాల పట్టీ — యాప్, రింగ్‌టోన్లు ═══════════ */}
+        <Box
+          component="aside"
+          aria-label="ఉచిత డౌన్‌లోడ్లు"
+          sx={{
+            mb: { xs: 6, md: 8 },
+            p: { xs: 2.5, sm: 3.5 },
+            borderRadius: "var(--radius)",
+            bgcolor: MAROON,
+            color: PAPER,
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: "center",
+            gap: { xs: 2, sm: 3 },
+            textAlign: { xs: "center", sm: "left" },
+            backgroundImage: "radial-gradient(color-mix(in srgb, var(--background) 12%, transparent) 1.2px, transparent 1.2px)",
+            backgroundSize: "20px 20px",
+          }}
+        >
+          <PhoneAndroidTwoToneIcon aria-hidden sx={{ fontSize: "3.5rem", color: GOLD_LIGHT }} />
+          <Box sx={{ flex: 1 }}>
+            <Typography component="h2" sx={{ fontWeight: 800, fontSize: "1.35rem" }}>
+              ఫోన్‌లో యాప్‌గా · రింగ్‌టోన్లు · 50+ ఫాంట్లు
+            </Typography>
+            <Typography sx={{ fontSize: "1.05rem", lineHeight: 1.8, mt: 0.5 }}>మా Android యాప్, AI పాటల రింగ్‌టోన్లు, తెలుగు ఫాంట్లు, పుస్తకాలు — అన్నీ ఉచితం.</Typography>
+          </Box>
+          <Button
+            component={Link}
+            href="/shailimala#apk"
+            endIcon={<ArrowForwardRoundedIcon />}
+            sx={{
+              minHeight: 56,
+              px: 3,
+              flexShrink: 0,
+              borderRadius: "999px",
+              textTransform: "none",
+              fontWeight: 800,
+              fontSize: "1.1rem",
+              bgcolor: PAPER,
+              color: MAROON,
+              width: { xs: "100%", sm: "auto" },
+              "&:hover": { bgcolor: PAPER, filter: "brightness(0.96)" },
+              "&:focus-visible": { outline: `3px solid ${GOLD_LIGHT}`, outlineOffset: "3px" },
+            }}
+          >
+            శైలిమాల తెరవండి
+          </Button>
+        </Box>
+
+        {/* ═══════════ 7. ప్రాజెక్ట్ గురించి — మడిచి ═══════════ */}
+        <Box component="section" aria-label="ప్రాజెక్ట్ గురించి" sx={{ textAlign: "center" }}>
+          <Typography sx={{ fontSize: "1.1rem", lineHeight: 1.9, maxWidth: "36em", mx: "auto", mb: 2 }}>
+            తెలుగు పద్యాలు, కథలు పుస్తకాల్లో, జ్ఞాపకాల్లో మాత్రమే ఉండిపోకూడదు — తర్వాతి తరాలకు అందించడానికే ఈ ఉచిత, వాణిజ్యేతర వేదిక.
+          </Typography>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} justifyContent="center" alignItems="center">
+            <ToggleButton open={aboutOpen} onClick={() => setAboutOpen((v) => !v)}>
+              {aboutOpen ? "తక్కువగా చూపించు" : "ప్రాజెక్ట్ గురించి పూర్తిగా"}
+            </ToggleButton>
+            <Button
+              component="a"
+              href={FEEDBACK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              startIcon={<ChatBubbleOutlineRoundedIcon />}
+              sx={{ minHeight: 52, px: 2.5, textTransform: "none", fontWeight: 800, fontSize: "1.05rem", borderRadius: "999px", bgcolor: GREEN, color: PAPER, "&:hover": { bgcolor: GREEN, filter: "brightness(1.1)" }, ...FOCUS }}
+            >
+              అభిప్రాయం చెప్పండి
+              <Box component="span" sx={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>
+                {" "}
+                (కొత్త ట్యాబ్‌లో)
+              </Box>
+            </Button>
+          </Stack>
+
+          <Collapse in={aboutOpen} timeout={200} unmountOnExit>
+            <Box sx={{ ...card, mt: 3, textAlign: "left", maxWidth: 900, mx: "auto" }}>
               <Typography component="h3" sx={sectionTitle}>
                 ఇప్పటివరకు ఉన్నవి
               </Typography>
               <Box component="ul" sx={{ m: 0, pl: 0, listStyle: "none", display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(3, 1fr)" }, gap: 1 }}>
-                {STATS.map(([n, label], i) => (
-                  <Box
-                    component="li"
-                    key={label}
-                    sx={{
-                      p: 1.25,
-                      borderRadius: "var(--radius-sm)",
-                      bgcolor: i === 0 ? "color-mix(in srgb, var(--primary) 8%, var(--surface))" : "var(--surface)",
-                      gridColumn: i === 0 ? { xs: "1 / -1", sm: "auto" } : undefined,
-                    }}
-                  >
-                    <Box sx={{ fontWeight: 800, fontSize: i === 0 ? "1.5rem" : "1.25rem", color: MAROON, fontVariantNumeric: "tabular-nums" }}>{n}</Box>
-                    <Box sx={{ fontSize: "0.95rem", lineHeight: 1.5 }}>{label}</Box>
+                {STATS.map(([n, label]) => (
+                  <Box component="li" key={label} sx={{ p: 1.5, borderRadius: "var(--radius-sm)", bgcolor: SURFACE }}>
+                    <Box sx={{ fontWeight: 800, fontSize: "1.3rem", color: MAROON, fontVariantNumeric: "tabular-nums" }}>{n}</Box>
+                    <Box sx={{ fontSize: "1rem", lineHeight: 1.5 }}>{label}</Box>
                   </Box>
                 ))}
               </Box>
 
-              {/* 4. మా మాట */}
               <Typography component="h3" sx={sectionTitle}>
                 మా మాట
               </Typography>
@@ -411,57 +732,49 @@ export default function RatnalabalaHighlights() {
                 {PROMISES.map(({ title, text, Icon }) => (
                   <Box key={title} sx={{ display: "flex", gap: 1.25, alignItems: "flex-start" }}>
                     <Icon sx={{ fontSize: "1.5rem", color: GREEN, flexShrink: 0, mt: 0.25 }} aria-hidden />
-                    <Typography sx={{ fontSize: "1rem", lineHeight: 1.8 }}>
+                    <Typography sx={{ fontSize: "1.05rem", lineHeight: 1.8 }}>
                       <strong>{title}:</strong> {text}
                     </Typography>
                   </Box>
                 ))}
               </Stack>
 
-              {/* 5. సాంకేతికత */}
               <Typography component="h3" sx={sectionTitle}>
                 సాంకేతికత
               </Typography>
-
-              {/* మా సొంత: Yuktai Grid */}
-              <Box
-                sx={{
-                  p: 2,
-                  mb: 1.5,
-                  borderRadius: "var(--radius-sm)",
-                  border: `2px solid ${MAROON}`,
-                  bgcolor: "color-mix(in srgb, var(--primary) 6%, var(--surface))",
-                  display: "flex",
-                  gap: 1.5,
-                  alignItems: "flex-start",
-                }}
-              >
+              <Box sx={{ p: 2, mb: 2, borderRadius: "var(--radius-sm)", border: `2px solid ${MAROON}`, bgcolor: `color-mix(in srgb, ${MAROON} 6%, ${SURFACE})`, display: "flex", gap: 1.5, alignItems: "flex-start" }}>
                 <GridViewTwoToneIcon sx={{ fontSize: "2rem", color: MAROON, flexShrink: 0 }} aria-hidden />
                 <Box>
                   <Typography sx={{ fontWeight: 800, fontSize: "1.1rem" }}>
                     Yuktai Grid{" "}
-                    <Box component="span" sx={{ fontWeight: 700, fontSize: "0.95rem", color: MAROON }}>
-                      — మా సొంత library
+                    <Box component="span" sx={{ fontWeight: 700, fontSize: "1rem", color: MAROON }}>
+                      — మా సొంత, ఓపెన్ సోర్స్
                     </Box>
                   </Typography>
-                  <Typography sx={{ fontSize: "1rem", lineHeight: 1.8, mt: 0.5 }}>
-                    యుక్తిశాల AI తయారుచేసిన తెలుగు పట్టిక (grid). కథలు, పద్యాల జాబితాలను పట్టికగా చూపించి, వెతకడానికి, వరుస మార్చడానికి,
-                    <strong> PDF, Excel </strong>గా డౌన్‌లోడ్ చేసుకోవడానికి వీలు కల్పిస్తుంది. స్మృతిమాల లోని "కథల పట్టిక" ఇదే.
+                  <Typography sx={{ fontSize: "1.02rem", lineHeight: 1.8, mt: 0.5 }}>
+                    యుక్తిశాల AI తయారుచేసిన తెలుగు పట్టిక — వెతకడం, క్రమం, పేజీలు, ఫోన్‌లో కార్డులు, AI సహాయకుడు. కథల పట్టిక, శైలిమాల ఫాంట్ల జాబితా ఇదే.{" "}
+                    <Box component="a" href="https://www.npmjs.com/package/@yuktishaalaa/yuktai" target="_blank" rel="noopener noreferrer" sx={{ color: GOLD_TEXT, fontWeight: 700, textDecoration: "underline", ...FOCUS }}>
+                      npm
+                    </Box>{" "}
+                    ·{" "}
+                    <Box component="a" href="https://github.com/sandeepmiriyala03/yuktai" target="_blank" rel="noopener noreferrer" sx={{ color: GOLD_TEXT, fontWeight: 700, textDecoration: "underline", ...FOCUS }}>
+                      GitHub
+                    </Box>
                   </Typography>
                 </Box>
               </Box>
 
-              <Stack spacing={1.5}>
-                {TECH.map((g) => (
-                  <Box key={g.group}>
-                    <Typography sx={{ fontWeight: 800, fontSize: "1rem", color: GREEN, mb: 0.75 }}>{g.group}</Typography>
+              <Stack spacing={2}>
+                {TECH.map((tg) => (
+                  <Box key={tg.group}>
+                    <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", color: GREEN, mb: 0.75 }}>{tg.group}</Typography>
                     <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "15em 1fr" }, columnGap: 2, rowGap: { xs: 0.25, sm: 0.75 } }}>
-                      {g.items.map((t) => (
+                      {tg.items.map((t) => (
                         <Box key={t.name} sx={{ display: "contents" }}>
-                          <Box component="dt" sx={{ fontWeight: 700, fontSize: "0.98rem", mt: { xs: 1, sm: 0 } }}>
+                          <Box component="dt" sx={{ fontWeight: 700, fontSize: "1rem", mt: { xs: 1, sm: 0 } }}>
                             {t.name}
                           </Box>
-                          <Box component="dd" sx={{ m: 0, fontSize: "0.98rem", color: MUTED, lineHeight: 1.7 }}>
+                          <Box component="dd" sx={{ m: 0, fontSize: "1rem", color: MUTED, lineHeight: 1.7 }}>
                             {t.does}
                           </Box>
                         </Box>
@@ -471,11 +784,25 @@ export default function RatnalabalaHighlights() {
                 ))}
               </Stack>
 
-              {/* 6. ఎవరివి */}
+              <Typography component="h3" sx={sectionTitle}>
+                స్వరాలు
+              </Typography>
+              <Typography sx={{ fontSize: "1.02rem", lineHeight: 1.9 }}>
+                <strong>మగ / స్త్రీ స్వరం</strong> — Microsoft AI వాయిస్‌లు (Mohan, Shruti):{" "}
+                <Box component="a" href="https://speech.microsoft.com/portal/voicegallery" target="_blank" rel="noopener noreferrer" sx={{ color: GOLD_TEXT, textDecoration: "underline", overflowWrap: "anywhere", ...FOCUS }}>
+                  speech.microsoft.com
+                </Box>
+                . <strong>Google TTS</strong> — Google Translate లో వినే అదే స్వరం:{" "}
+                <Box component="a" href="https://translate.google.com" target="_blank" rel="noopener noreferrer" sx={{ color: GOLD_TEXT, textDecoration: "underline", ...FOCUS }}>
+                  translate.google.com
+                </Box>
+                .
+              </Typography>
+
               <Typography component="h3" sx={sectionTitle}>
                 కృతజ్ఞతలు
               </Typography>
-              <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: "1rem", lineHeight: 1.9 }}>
+              <Box component="ul" sx={{ m: 0, pl: 2.5, fontSize: "1.05rem", lineHeight: 1.9 }}>
                 <li>
                   <strong>రత్నాలబాల పద్యాలు</strong> — మిరియాల వెంకటరత్నం గారు
                 </li>
@@ -486,185 +813,6 @@ export default function RatnalabalaHighlights() {
                   <strong>వేదిక</strong> — యుక్తిశాల AI
                 </li>
               </Box>
-
-              {/* 7. అభిప్రాయం */}
-              <Box
-                sx={{
-                  mt: 3,
-                  p: 2,
-                  borderRadius: "var(--radius-sm)",
-                  bgcolor: "color-mix(in srgb, var(--secondary) 8%, var(--surface))",
-                  display: "flex",
-                  flexWrap: "wrap",
-                  alignItems: "center",
-                  gap: 1.5,
-                }}
-              >
-                <Typography sx={{ flex: "1 1 16em", fontSize: "1rem", lineHeight: 1.8 }}>
-                  ఏదైనా పద్యం తప్పుగా ఉందా? కొత్త మాల కావాలా? మీ మాట మాకు ముఖ్యం.
-                </Typography>
-                <Button
-                  component="a"
-                  href={FEEDBACK_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  startIcon={<ChatBubbleOutlineRoundedIcon />}
-                  sx={{
-                    minHeight: 48,
-                    px: 2.5,
-                    textTransform: "none",
-                    fontWeight: 800,
-                    fontSize: "1rem",
-                    borderRadius: "var(--radius-sm)",
-                    bgcolor: GREEN,
-                    color: PAPER,
-                    "&:hover": { bgcolor: GREEN, filter: "brightness(1.1)" },
-                    ...FOCUS,
-                  }}
-                >
-                  అభిప్రాయం చెప్పండి
-                </Button>
-              </Box>
-            </Box>
-          </Collapse>
-        </Box>
-
-        {/* ═══════════ స్వరమాల రేడియో + డౌన్‌లోడ్లు ═══════════ */}
-        <Box component="section" aria-labelledby="radio-title" sx={{ mb: 5 }}>
-          {loading && (
-            <Stack alignItems="center" spacing={1.5} sx={{ py: 4 }} role="status">
-              <CircularProgress size={28} sx={{ color: MAROON }} />
-              <Typography sx={{ fontSize: "1rem", color: MUTED }}>పద్యాలు లోడ్ అవుతున్నాయి…</Typography>
-            </Stack>
-          )}
-
-          {error && (
-            <Typography role="alert" align="center" sx={{ py: 3, fontSize: "1rem", color: "var(--error)" }}>
-              {error}
-            </Typography>
-          )}
-
-          {!loading && !error && poems.length > 0 && (
-            <Box sx={{ p: { xs: 2, sm: 3 }, textAlign: "center", borderRadius: "var(--radius)", border: `1.5px solid ${BORDER_STRONG}`, bgcolor: CARD_BG }}>
-              <Typography id="radio-title" component="h2" sx={{ fontWeight: 800, fontSize: "1.2rem", mb: 0.5 }}>
-                🎧 స్వరమాల రేడియో
-              </Typography>
-              <Typography sx={{ fontSize: "1rem", color: MUTED, mb: 2 }}>
-                స్వరం ఎంచుకుని {poems.length} పద్యాలు వరుసగా వినండి.
-              </Typography>
-
-              <PoemRadio poems={poems} />
-
-              <Box sx={{ mt: 2 }}>
-                <ToggleButton open={toolsOpen} onClick={() => setToolsOpen((v) => !v)} icon={<DownloadForOfflineRoundedIcon />}>
-                  పోస్టర్లు, వీడియోలు, వాయిస్‌లు డౌన్‌లోడ్ చేయండి
-                </ToggleButton>
-              </Box>
-
-              <Collapse in={toolsOpen} timeout={200} unmountOnExit>
-                <Stack spacing={1.5} sx={{ mt: 2 }}>
-                  <DownloadAllPosters poems={poems} authors={AUTHORS} poetryName={POETRY_NAME} />
-                  <DownloadAllVideos poems={poems} authors={AUTHORS} poetryName={POETRY_NAME} />
-                  <DownloadAllVoices poems={poems} />
-                </Stack>
-              </Collapse>
-            </Box>
-          )}
-        </Box>
-
-        {/* ═══════════ మాలలు — బంగారు దారం, గుంపుకు ఒక పూస ═══════════ */}
-        <Box component="section" aria-labelledby="malas-title">
-          <Typography id="malas-title" component="h2" textAlign="center" sx={{ fontWeight: 800, fontSize: "1.4rem", mb: 3 }}>
-            మాలలు అన్వేషించండి
-          </Typography>
-
-          <Box sx={{ position: "relative", pl: { xs: 3.5, sm: 4.5 } }}>
-            <Box
-              aria-hidden
-              sx={{ position: "absolute", left: 19, top: 20, bottom: 20, width: 3, borderRadius: 2, bgcolor: GOLD_SHAPE, opacity: 0.55 }}
-            />
-
-            <Stack spacing={4}>
-              {GROUPS.map((group) => (
-                <Box key={group.label} component="nav" aria-label={group.label}>
-                  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5, ml: { xs: -3.5, sm: -4.5 } }}>
-                    <GroupBead Icon={group.Icon} color={group.color} />
-                    <Typography component="h3" sx={{ fontWeight: 800, fontSize: "1.15rem" }}>
-                      {group.label}
-                    </Typography>
-                  </Stack>
-
-                  <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0, display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)" }, gap: 1.25 }}>
-                    {group.items.map((item) => (
-                      <li key={item.path}>
-                        <Box
-                          component={Link}
-                          href={item.path}
-                          sx={{
-                            height: "100%",
-                            minHeight: 64,
-                            textDecoration: "none",
-                            color: INK,
-                            display: "flex",
-                            gap: 1.5,
-                            alignItems: "flex-start",
-                            borderRadius: "var(--radius-sm)",
-                            p: 1.75,
-                            bgcolor: CARD_BG,
-                            border: `1.5px solid ${BORDER_STRONG}`,
-                            borderLeft: `5px solid ${group.color}`,
-                            "&:hover": { bgcolor: "var(--surface)" },
-                            ...FOCUS,
-                          }}
-                        >
-                          <item.Icon sx={{ fontSize: "1.5rem", color: group.color, mt: 0.25, flexShrink: 0 }} aria-hidden />
-                          <Box sx={{ minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 800, fontSize: "1.05rem", lineHeight: 1.5 }}>{item.label}</Typography>
-                            <Typography sx={{ fontSize: "0.95rem", color: MUTED, lineHeight: 1.6 }}>{item.intro}</Typography>
-                          </Box>
-                        </Box>
-                      </li>
-                    ))}
-                  </Box>
-                </Box>
-              ))}
-            </Stack>
-          </Box>
-        </Box>
-
-        {/* ═══════════ స్వరాల గురించి ═══════════ */}
-        <Box component="section" aria-label="స్వరాల గురించి" sx={{ mt: 5 }}>
-          <ToggleButton open={voicesOpen} onClick={() => setVoicesOpen((v) => !v)} icon={<VolumeUpTwoToneIcon />} color={MUTED}>
-            స్వరాల గురించి
-          </ToggleButton>
-
-          <Collapse in={voicesOpen} timeout={200} unmountOnExit>
-            <Box sx={{ mt: 1.5, p: { xs: 2, sm: 2.5 }, borderRadius: "var(--radius)", bgcolor: CARD_BG, border: `1px solid ${BORDER_STRONG}` }}>
-              <Typography sx={{ fontSize: "1rem", lineHeight: 1.8 }}>
-                <strong>మగ / స్త్రీ స్వరం</strong> — Microsoft AI వాయిస్‌లు (Mohan, Shruti).{" "}
-                <Box
-                  component="a"
-                  href="https://speech.microsoft.com/portal/voicegallery"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{ color: GOLD_TEXT, textDecoration: "underline", overflowWrap: "anywhere", ...FOCUS }}
-                >
-                  speech.microsoft.com/portal/voicegallery
-                </Box>
-              </Typography>
-              <Divider sx={{ my: 1.5, borderColor: "var(--border)" }} />
-              <Typography sx={{ fontSize: "1rem", lineHeight: 1.8 }}>
-                <strong>Google TTS</strong> — Google Translate లో వినే అదే స్వరం.{" "}
-                <Box
-                  component="a"
-                  href="https://translate.google.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{ color: GOLD_TEXT, textDecoration: "underline", ...FOCUS }}
-                >
-                  translate.google.com
-                </Box>
-              </Typography>
             </Box>
           </Collapse>
         </Box>
