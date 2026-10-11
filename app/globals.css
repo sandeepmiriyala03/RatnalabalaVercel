@@ -32,109 +32,113 @@
 
 
 /* =====================================================
-   §1 ★★★ RB-THEME ★★★ — బ్రాండ్ రంగులు
+   §1 ★★★ RB-THEME ★★★ — బ్రాండ్ రంగులు (సాదా, సూటిగా)
+   తెల్లని కాగితం · నీలం (ప్రధానం) · పసుపు (చిన్న గుర్తులకే)
+   ఆకుపచ్చ, నలుపు లేవు. Glow, gradient లేవు.
    సైట్ రంగు మార్చాలంటే ఇక్కడ మాత్రమే. (కొలిచిన contrast ప్రక్కనే)
    ===================================================== */
 
 :root {
   color-scheme: light;
 
-  /* Paper — warm ivory, never stark white (less glare) */
-  --background: #fdfaf5;
-  --surface: #f7f2ea;
+  /* Paper — plain white page, light grey-blue panels */
+  --background: #ffffff;
+  --surface: #f3f5f8;
   --surface-elevated: #ffffff;
-  --foreground: #241f1a;        /* 15.7:1 */
-  --muted-text: #574f46;        /* 7.7:1 bg · 7.2:1 surface */
+  --foreground: #1c2433;        /* dark slate, not black — 15.6:1 */
+  --muted-text: #434c5c;        /* 8.6:1 bg · 7.9:1 surface */
 
   /* Brand */
-  --primary: #86371c;           /* terracotta — 7.8:1 bg · 7.3:1 surface; ivory on it 7.8:1 */
-  --primary-light: #b0552f;     /* icons / large text only */
-  --secondary: #241f1a;         /* ink — Navbar & dark bands; ivory on it 15.7:1 */
-  --secondary-light: #574f46;
-  --accent: #c9820a;            /* gold — shapes only, never text */
-  --accent-text: #6b4400;       /* gold-brown text — 8.2:1 */
-  --accent-light: #e0a838;      /* gold fill (active pill) — dark text on it 7.6:1 */
-  --accent-gradient: linear-gradient(135deg, #f6b93b, #e67e22);
-  --on-accent: #241f1a;         /* text on gold — both modes */
+  --primary: #1f4e8c;           /* blue — 8.3:1 bg · 7.6:1 surface; white on it 8.3:1 */
+  --primary-light: #3a6fb5;     /* icons / large text only */
+  --secondary: #173d6e;         /* navy — Navbar & bands; white on it 10.9:1 */
+  --secondary-light: #434c5c;
+  --accent: #e0a100;            /* turmeric — shapes only, never text */
+  --accent-text: #6e4300;       /* brown text — 8.5:1 bg · 7.8:1 surface */
+  --accent-light: #f2c14e;      /* active pill — dark text on it 9.3:1 */
+  --accent-gradient: var(--accent);   /* plain colour, no gradient */
+  --on-accent: #1c2433;         /* text on turmeric — both modes */
 
   /* Edges */
-  --border: #e4dacb;            /* hairlines */
-  --border-strong: #7a6650;     /* 5.3:1 — inputs, anything that must read as a boundary */
+  --border: #dde3ea;            /* hairlines */
+  --border-strong: #6b7585;     /* 4.7:1 — inputs, boundaries */
 
   /* Status (always pair with an icon or word, never colour alone) */
-  --success: #1d5e36;           /* 7.5:1 */
-  --warning: #7a4a00;           /* 7.2:1 */
+  --success: #1f4e8c;           /* blue, not green — 8.3:1 */
+  --warning: #6e4300;           /* 8.5:1 */
   --error: #a1271b;             /* 7.2:1 */
-  --info: #1f4e79;              /* 8.3:1 */
+  --info: #1f4e8c;              /* 8.3:1 */
 
   /* Focus & selection */
-  --focus-ring: #86371c;
-  --focus-gap: #fdfaf5;
-  --selection-bg: #f6dfa8;
-  --selection-fg: #241f1a;      /* 12.5:1 */
+  --focus-ring: #1f4e8c;
+  --focus-gap: #ffffff;
+  --selection-bg: #fbe3a0;
+  --selection-fg: #1c2433;
 
   /* Media letterbox */
-  --media-bg: #000;
+  --media-bg: #1c2433;
 }
 
 /* Dark — follows the phone/computer setting unless "light" was picked */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --background: #17140f;
-    --surface: #211c15;
-    --surface-elevated: #2a241b;
-    --foreground: #f0e9dd;      /* 15.2:1 */
-    --muted-text: #c4b9a6;      /* 9.5:1 */
-    --primary: #e9a07c;         /* 8.6:1 bg · 7.2:1 card; dark text on it 8.6:1 */
-    --primary-light: #e9a07c;
-    --secondary: #c4b9a6;       /* sand bar; dark text on it 9.5:1 */
-    --secondary-light: #c4b9a6;
-    --accent: #e0a838;
-    --accent-text: #e0a838;     /* 8.6:1 */
-    --accent-light: #f0c675;    /* dark text on it 10.1:1 */
-    --accent-gradient: linear-gradient(135deg, #f0c675, #e0a838);
-    --on-accent: #241f1a;
-    --border: #3a3226;
-    --border-strong: #9c8766;   /* 5.3:1 */
-    --success: #7fd4a0;
-    --warning: #f0c675;
-    --error: #ff8a7a;
-    --info: #8cc4f2;
-    --focus-ring: #f0c675;
-    --focus-gap: #17140f;
-    --selection-bg: #5a4318;
-    --selection-fg: #f0e9dd;
+    --background: #121821;
+    --surface: #1a222e;
+    --surface-elevated: #222c3a;
+    --foreground: #edf1f6;      /* 15.7:1 */
+    --muted-text: #bcc6d3;      /* 10.3:1 */
+    --primary: #a3c4f0;         /* 9.9:1 bg · 7.9:1 card; dark text on it 9.9:1 */
+    --primary-light: #a3c4f0;
+    --secondary: #b4c8e4;       /* light-blue bar; dark text on it 10.5:1 */
+    --secondary-light: #bcc6d3;
+    --accent: #f2c14e;
+    --accent-text: #f2c14e;     /* 10.6:1 */
+    --accent-light: #f2c14e;
+    --accent-gradient: var(--accent);
+    --on-accent: #1c2433;
+    --border: #334054;
+    --border-strong: #8793a4;   /* 5.7:1 */
+    --success: #a3c4f0;
+    --warning: #f2c14e;
+    --error: #ff9a8c;
+    --info: #a3c4f0;
+    --focus-ring: #f2c14e;
+    --focus-gap: #121821;
+    --selection-bg: #5a4a1c;
+    --selection-fg: #edf1f6;
+    --media-bg: #000;
   }
 }
 
 /* Dark — picked by hand in the Navbar toggle */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --background: #17140f;
-  --surface: #211c15;
-  --surface-elevated: #2a241b;
-  --foreground: #f0e9dd;
-  --muted-text: #c4b9a6;
-  --primary: #e9a07c;
-  --primary-light: #e9a07c;
-  --secondary: #c4b9a6;
-  --secondary-light: #c4b9a6;
-  --accent: #e0a838;
-  --accent-text: #e0a838;
-  --accent-light: #f0c675;
-  --accent-gradient: linear-gradient(135deg, #f0c675, #e0a838);
-  --on-accent: #241f1a;
-  --border: #3a3226;
-  --border-strong: #9c8766;
-  --success: #7fd4a0;
-  --warning: #f0c675;
-  --error: #ff8a7a;
-  --info: #8cc4f2;
-  --focus-ring: #f0c675;
-  --focus-gap: #17140f;
-  --selection-bg: #5a4318;
-  --selection-fg: #f0e9dd;
+  --background: #121821;
+  --surface: #1a222e;
+  --surface-elevated: #222c3a;
+  --foreground: #edf1f6;
+  --muted-text: #bcc6d3;
+  --primary: #a3c4f0;
+  --primary-light: #a3c4f0;
+  --secondary: #b4c8e4;
+  --secondary-light: #bcc6d3;
+  --accent: #f2c14e;
+  --accent-text: #f2c14e;
+  --accent-light: #f2c14e;
+  --accent-gradient: var(--accent);
+  --on-accent: #1c2433;
+  --border: #334054;
+  --border-strong: #8793a4;
+  --success: #a3c4f0;
+  --warning: #f2c14e;
+  --error: #ff9a8c;
+  --info: #a3c4f0;
+  --focus-ring: #f2c14e;
+  --focus-gap: #121821;
+  --selection-bg: #5a4a1c;
+  --selection-fg: #edf1f6;
+  --media-bg: #000;
 }
 
 /* "Increase contrast" on iOS / macOS / Windows — after the themes so it wins */
@@ -194,9 +198,9 @@
   --shadow-lg: 0 4px 10px color-mix(in srgb, var(--foreground) 7%, transparent), 0 18px 44px color-mix(in srgb, var(--foreground) 12%, transparent);
 
   /* Soft brand glows (≤ 9% — text stays AAA) */
-  --tint-gold: color-mix(in srgb, var(--accent-light) 10%, transparent);
-  --tint-terracotta: color-mix(in srgb, var(--primary) 6%, transparent);
-  --gold-edge: color-mix(in srgb, var(--accent-light) 65%, transparent);
+  --tint-gold: transparent;          /* simple look: no glows */
+  --tint-terracotta: transparent;
+  --gold-edge: var(--border);
 
   /* Motion */
   --transition-fast: 0.15s ease;
@@ -257,10 +261,6 @@ body {
   line-height: var(--telugu-line-height);
   color: var(--foreground);
   background-color: var(--background);
-  background-image:
-    radial-gradient(1200px 620px at -10% -10%, var(--tint-gold), transparent 60%),
-    radial-gradient(900px 520px at 110% 0%, var(--tint-terracotta), transparent 60%);
-  background-repeat: no-repeat;
   overflow-wrap: break-word;    /* long Telugu words / links never push the page sideways */
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -338,8 +338,8 @@ mark {
 
 hr {
   border: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent-light), transparent);
+  height: 1px;
+  background: var(--border);
 }
 
 
@@ -740,7 +740,7 @@ body .rb-btn .MuiButton-endIcon { margin: 0; }
 body .rb-btn .MuiSvgIcon-root { font-size: 1.3em; }
 
 body .rb-btn--primary { background: var(--primary); color: var(--background); box-shadow: var(--shadow-sm); }
-body .rb-btn--ink { background: var(--foreground); color: var(--background); box-shadow: var(--shadow-md); }
+body .rb-btn--ink { background: var(--secondary); color: var(--background); box-shadow: var(--shadow-sm); }
 body .rb-btn--outline { background: var(--surface-elevated); color: var(--primary); border-color: var(--primary); }
 body .rb-btn--outline-gold { background: transparent; color: var(--accent-text); border-color: color-mix(in srgb, var(--accent-text) 60%, transparent); }
 body .rb-btn--quiet { background: transparent; color: var(--foreground); border-color: var(--border-strong); }
@@ -756,7 +756,7 @@ body .rb-btn--sm { min-height: var(--tap-target); font-size: 1rem; padding-inlin
 @media (hover: hover) {
   body .rb-btn--primary:hover, body .rb-btn--ink:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
   body .rb-btn--primary:hover { background: var(--primary); filter: brightness(1.08); }
-  body .rb-btn--ink:hover { background: var(--foreground); }
+  body .rb-btn--ink:hover { background: var(--secondary); filter: brightness(1.1); }
   body .rb-btn--outline:hover, body .rb-btn--quiet:hover { background: var(--surface); box-shadow: var(--shadow-md); }
   body .rb-btn--outline-gold:hover { background: color-mix(in srgb, var(--accent-light) 14%, transparent); }
   body .rb-btn--on-band:hover { background: var(--background); filter: brightness(0.96); }
@@ -803,7 +803,7 @@ body .rb-btn:active { transform: scale(0.98); }
 /* ── Tiles (big tap areas) — colour via .is-maroon / .is-gold / .is-ink ── */
 .is-maroon { --tone: var(--primary); }
 .is-gold { --tone: var(--accent-text); }
-.is-ink { --tone: var(--foreground); }
+.is-ink { --tone: var(--secondary); }
 
 .rb-tile {
   display: flex;
@@ -1074,8 +1074,8 @@ body .rb-accordion .MuiAccordionSummary-expandIconWrapper { color: var(--foregro
 
 .rb-ornament::before,
 .rb-ornament::after { content: ""; flex: 1; height: 2px; border-radius: 2px; }
-.rb-ornament::before { background: linear-gradient(90deg, transparent, var(--accent-light)); }
-.rb-ornament::after { background: linear-gradient(90deg, var(--accent-light), transparent); }
+.rb-ornament::before { background: var(--accent); }
+.rb-ornament::after { background: var(--accent); }
 
 /* ── Simple table & fold ── */
 .rb-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius); }
@@ -1103,8 +1103,7 @@ body .rb-accordion .MuiAccordionSummary-expandIconWrapper { color: var(--foregro
 
 /* ── Muggu (kolam) dots — any band, in its own text colour ── */
 .rb-kolam {
-  background-image: radial-gradient(color-mix(in srgb, currentColor 12%, transparent) 1.2px, transparent 1.3px);
-  background-size: 22px 22px;
+  background-image: none;      /* simple look: no dots */
 }
 
 
@@ -1112,17 +1111,14 @@ body .rb-accordion .MuiAccordionSummary-expandIconWrapper { color: var(--foregro
    §12 ముఖ పేజీ
    ===================================================== */
 
-/* ── Hero: ivory paper, gold glow, muggu dots ── */
+/* ── Hero: plain panel, blue line on top ── */
 .rb-hero {
   position: relative;
   padding: clamp(40px, 7vw, 76px) 0 clamp(72px, 9vw, 100px);
   color: var(--foreground);
-  border-bottom: 1px solid var(--gold-edge);
-  background:
-    radial-gradient(color-mix(in srgb, var(--foreground) 7%, transparent) 1.1px, transparent 1.2px) 0 0 / 24px 24px,
-    radial-gradient(900px 460px at 12% 0%, color-mix(in srgb, var(--accent-light) 24%, transparent), transparent 70%),
-    radial-gradient(800px 460px at 100% 100%, color-mix(in srgb, var(--primary) 8%, transparent), transparent 70%),
-    var(--surface);
+  border-top: 4px solid var(--primary);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .rb-hero__grid {
@@ -1306,7 +1302,7 @@ body .rb-seg .MuiTab-root {
   font-weight: 800;
 }
 
-body .rb-seg .MuiTab-root.Mui-selected { background: var(--tone, var(--foreground)); color: var(--background); }
+body .rb-seg .MuiTab-root.Mui-selected { background: var(--tone, var(--primary)); color: var(--background); }
 body .rb-seg .MuiTab-root .MuiSvgIcon-root { font-size: 1.35rem; }
 body .rb-seg .MuiTabs-scrollButtons { width: 44px; }
 
@@ -1448,7 +1444,7 @@ body .rb-nav {
   background: var(--secondary);
   color: var(--background);
   padding-top: env(safe-area-inset-top, 0px);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--accent-light) 60%, transparent), var(--shadow-md);
+  border-bottom: 3px solid var(--accent);
 }
 
 /* gold focus ring on the dark bar */
