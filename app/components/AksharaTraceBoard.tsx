@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { Box, IconButton, Typography, CircularProgress, Stack, Button, useTheme } from "@mui/material";
+import { Box, IconButton, Typography, CircularProgress, Stack, Button } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -20,7 +20,7 @@ const MIN_SIZE = 200;
 const MAX_SIZE = 340;
 const GUIDE_SCALE = 0.35;    // guide font size relative to the board
 const GUIDE_MAX_FILL = 0.8;  // long conjuncts (క్ష్మి) shrink to fit 80% of the board
-const GUIDE_COLOR = "#e6eaf0";
+const GUIDE_COLOR = "#b9c3d0";  // visible grey guide (old #e6eaf0 was ~1.1:1, too faint for older eyes)
 const STROKE_COLOR = "#1976d2";
 const PASS_PERCENT = 60;
 const GREAT_PERCENT = 80;
@@ -134,9 +134,15 @@ function describeTrace(coverage: number, precision: number) {
 
 /* ================= COMPONENT ================= */
 
+/** Canvas cannot read CSS var(--telugu-font-family): resolve the real font list from the page */
+function resolveFontFamily(el: HTMLElement | null): string {
+  const ff = el ? getComputedStyle(el).fontFamily : "";
+  return ff && !ff.includes("var(") ? ff : '"Noto Sans Telugu", "Nirmala UI", "Gautami", sans-serif';
+}
+
 const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
-  const theme = useTheme();
-  const fontFamily = String(theme.typography.fontFamily ?? "sans-serif");
+  // was theme.typography.fontFamily — if that holds var(...), canvas ignored it and drew a tiny 10px default
+  const [fontFamily, setFontFamily] = useState('"Noto Sans Telugu", sans-serif');
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const guideRef = useRef<HTMLCanvasElement | null>(null);
@@ -165,18 +171,28 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Wait for web fonts, so the guide isn't drawn with a fallback font
+  // Wait for web fonts, so the guide isn't drawn with a fallback font.
+  // Telugu fonts load later (when picked) — redraw whenever a font finishes loading.
+  const [fontTick, setFontTick] = useState(0);
   useEffect(() => {
+    setFontFamily(resolveFontFamily(containerRef.current));
     if (!document.fonts) {
       setFontsReady(true);
       return;
     }
     let active = true;
+    const refresh = () => {
+      if (!active) return;
+      setFontFamily(resolveFontFamily(containerRef.current));
+      setFontTick((t) => t + 1);
+    };
     document.fonts.ready.then(() => {
       if (active) setFontsReady(true);
     });
+    document.fonts.addEventListener("loadingdone", refresh);
     return () => {
       active = false;
+      document.fonts.removeEventListener("loadingdone", refresh);
     };
   }, []);
 
@@ -191,7 +207,7 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
     canvas.height = size * ratio;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     drawCenteredLetter(ctx, letter, size, fontFamily, GUIDE_COLOR);
-  }, [size, letter, fontFamily, fontsReady]);
+  }, [size, letter, fontFamily, fontsReady, fontTick]);
 
   // Drawing canvas setup (resizing a canvas clears it, so reset state too)
   useEffect(() => {
@@ -223,6 +239,8 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
 
+    // keep the stroke even if the finger slides off the board for a moment
+    (e.currentTarget as HTMLCanvasElement).setPointerCapture?.(e.pointerId);
     drawing.current = true;
     hasDrawn.current = true;
     setResult(null);
@@ -230,6 +248,8 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
     const { x, y } = getCoords(e.nativeEvent);
     ctx.beginPath();
     ctx.moveTo(x, y);
+    ctx.lineTo(x + 0.01, y); // a single tap leaves a dot (was invisible)
+    ctx.stroke();
   };
 
   const draw = (e: React.PointerEvent) => {
@@ -346,7 +366,6 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
           onPointerDown={start}
           onPointerMove={draw}
           onPointerUp={stop}
-          onPointerLeave={stop}
           onPointerCancel={stop}
           aria-label={`${letter} అక్షరం రాయడానికి బోర్డు`}
           style={{
@@ -361,9 +380,10 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
 
         <IconButton
           onClick={clearCanvas}
-          size="small"
           aria-label="తుడిచివేయండి"
           sx={{
+            width: 48,
+            height: 48,
             position: "absolute",
             bottom: 8,
             right: 8,
@@ -380,11 +400,10 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
       <Stack direction="row" justifyContent="center" sx={{ mt: 1.5 }}>
         <Button
           variant="contained"
-          size="small"
           onClick={checkTrace}
           disabled={isChecking}
           startIcon={isChecking ? <CircularProgress size={16} sx={{ color: "white" }} /> : <SendIcon fontSize="small" />}
-          sx={{ borderRadius: "999px", px: 2.5, fontWeight: 700, textTransform: "none" }}
+          sx={{ borderRadius: "999px", px: 2.5, minHeight: 48, fontWeight: 700, textTransform: "none" }}
         >
           తనిఖీ చేయండి
         </Button>
@@ -404,13 +423,18 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
               px: 1.5,
               py: 0.5,
               borderRadius: "999px",
-              bgcolor: result.correct ? "success.light" : "error.light",
+              // border + icon carry the colour; text stays theme text (light pill hid light text in dark mode)
+              border: "2px solid",
+              borderColor: result.correct ? "success.main" : "error.main",
+              color: "text.primary",
             }}
+            role="status"
+            aria-live="polite"
           >
             {result.correct ? (
-              <CheckCircleIcon fontSize="small" sx={{ color: "success.dark" }} />
+              <CheckCircleIcon fontSize="small" color="success" />
             ) : (
-              <CancelIcon fontSize="small" sx={{ color: "error.dark" }} />
+              <CancelIcon fontSize="small" color="error" />
             )}
             <Typography variant="body2" fontWeight={700}>
               {result.message}
@@ -418,13 +442,13 @@ const AksharaTraceBoard: React.FC<TraceProps> = ({ letter }) => {
           </Stack>
 
           {result.source === "rust" && result.coverage !== undefined && (
-            <Typography variant="caption" sx={{ display: "block", mt: 0.5, opacity: 0.75 }}>
+            <Typography variant="caption" sx={{ display: "block", mt: 0.5, color: "text.secondary" }}>
               పూర్తి: {result.coverage}% • ఖచ్చితత్వం: {result.precision}%
               {result.ms !== undefined && ` • ⏱ ${formatDuration(result.ms)} (Rust · WASM)`}
             </Typography>
           )}
           {result.source === "server" && (
-            <Typography variant="caption" sx={{ display: "block", mt: 0.5, opacity: 0.6 }}>
+            <Typography variant="caption" sx={{ display: "block", mt: 0.5, color: "text.secondary" }}>
               సర్వర్ ద్వారా తనిఖీ చేయబడింది
             </Typography>
           )}

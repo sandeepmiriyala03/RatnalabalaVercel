@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   Stack,
@@ -54,6 +54,7 @@ import {
 } from "@/lib/family-voice";
 
 import { track } from "@/lib/track";
+import { announceVoice, NO_TELUGU_VOICE, onOtherVoice, pickTeluguVoice, TTS_TIMEOUT_MS, unlockAudio } from "@/lib/voice";
 
 import FamilyVoiceRecorder from "@/app/components/Familyvoicerecorder";
 import { exportAksharasToExcel, exportAksharasToPdf } from "@/app/components/exportPoems";
@@ -128,7 +129,6 @@ const AI_TIMEOUT_MS = 20000;
 const PANEL_WIDTH = 380;
 const API_BASE = process.env.NEXT_PUBLIC_AI_SERVICE_URL || "/api";
 const VIRAMA = "\u0c4d";
-
 const TYPE_TE: Record<Akshara["type"], string> = {
   swaralu: "అచ్చు",
   vyanjanalu: "హల్లు",
@@ -303,9 +303,14 @@ function HowItWorks({
 function AiWordsPanel({
   state,
   onSpeak,
+  speaking,
+  familyMode,
 }: {
   state: Exclude<AiWordsState, { status: "idle" }>;
   onSpeak: (word: string) => void;
+  /** the word being spoken now (null = silent) */
+  speaking: string | null;
+  familyMode: boolean;
 }) {
   return (
     <Box sx={{ p: 2, borderRadius: "12px", border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
@@ -356,11 +361,13 @@ function AiWordsPanel({
                 component="button"
                 type="button"
                 onClick={() => onSpeak(w.word)}
-                aria-label={`${w.word} వినండి`}
+                aria-label={speaking === w.word ? `${w.word} — వినిపిస్తోంది` : `${w.word} వినండి`}
+                aria-pressed={speaking === w.word}
                 sx={{
                   p: 1.25,
-                  border: "1px solid",
-                  borderColor: "divider",
+                  minHeight: 48,
+                  border: speaking === w.word ? "2px solid" : "1px solid",
+                  borderColor: speaking === w.word ? "secondary.main" : "divider",
                   borderRadius: 2,
                   bgcolor: "background.paper",
                   font: "inherit",
@@ -372,7 +379,10 @@ function AiWordsPanel({
                 }}
               >
                 {w.emoji && <Typography sx={{ fontSize: 26, lineHeight: 1.2 }}>{w.emoji}</Typography>}
-                <Typography sx={{ fontWeight: 800, fontSize: "1.2rem" }}>{w.word}</Typography>
+                <Typography sx={{ fontWeight: 800, fontSize: "1.2rem" }}>
+                  {speaking === w.word && <span aria-hidden>🔊 </span>}
+                  {w.word}
+                </Typography>
                 {w.aksharas && w.aksharas.length > 1 && (
                   <Typography variant="caption" sx={{ display: "block", opacity: 0.75 }}>
                     {w.aksharas.join(" · ")}
@@ -388,7 +398,8 @@ function AiWordsPanel({
           </Box>
 
           <Typography variant="caption" sx={{ display: "block", mt: 1, opacity: 0.6 }}>
-            🔊 పదంపై నొక్కితే వినిపిస్తుంది
+            🔊 పదంపై నొక్కితే వినిపిస్తుంది; మళ్ళీ నొక్కితే ఆగుతుంది
+            {familyMode && " • 🏠 మీ గొంతు రికార్డ్ చేసిన అక్షరాలకే — ఈ పదాలు కంప్యూటర్ స్వరంలో వినిపిస్తాయి"}
             {state.rejected > 0 &&
               ` • 🦀 Rust తనిఖీలో ${state.rejected} సరిపోని పదం(లు) తొలగించబడ్డాయి`}
           </Typography>
@@ -409,7 +420,11 @@ function CardResults({
   onPickLetter,
   card,
   isGrid = false,
+  speaking,
+  familyMode,
 }: {
+  speaking: string | null;
+  familyMode: boolean;
   selected: Akshara | null;
   similar: SimilarResult | null;
   similarLoading: boolean;
@@ -507,7 +522,7 @@ function CardResults({
       </Box>
 
       {/* AI words */}
-      {aiWords.status !== "idle" && <AiWordsPanel state={aiWords} onSpeak={onSpeak} />}
+      {aiWords.status !== "idle" && <AiWordsPanel state={aiWords} onSpeak={onSpeak} speaking={speaking} familyMode={familyMode} />}
     </Stack>
   );
 }
@@ -537,7 +552,7 @@ const GRID_COLUMNS: GridColumn<AksharaRow>[] = [
     label: "అక్షరం",
     width: 100,
     render: (value) => (
-      <Box sx={{ fontSize: "2rem", fontWeight: 900, lineHeight: 1.2, color: "#1a237e" }}>{String(value ?? "")}</Box>
+      <Box sx={{ fontSize: "2rem", fontWeight: 900, lineHeight: 1.2, color: "var(--primary, #1f4e8c)" }}>{String(value ?? "")}</Box>
     ),
   },
   {
@@ -668,6 +683,14 @@ export default function AksharamalaParent() {
   const clickIdRef = useRef(0); // ignores late answers from an older click
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Speaking: one sound at a time; a newer tap always wins over an older one
+  const [speaking, setSpeaking] = useState<string | null>(null);
+  const speakingRef = useRef<string | null>(null);
+  const speakIdRef = useRef(0);
+  const ttsAbortRef = useRef<AbortController | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+
   const isGrid = viewMode === "grid";
 
   /* 1. Preload WASM once, so the search timer measures only the analysis */
@@ -681,13 +704,35 @@ export default function AksharamalaParent() {
       });
   }, []);
 
-  // Stop any AI-word audio when leaving the page
-  useEffect(() => {
-    return () => {
-      audioRef.current?.pause();
-      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-    };
+  /** Stops whatever this page is saying (server audio, device voice, pending request) */
+  const stopSpeaking = useCallback(() => {
+    speakIdRef.current++; // any answer still on its way is now ignored
+    ttsAbortRef.current?.abort();
+    ttsAbortRef.current = null;
+    audioRef.current?.pause();
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current); // was leaking when a sound was cut short
+      audioUrlRef.current = null;
+    }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    speakingRef.current = null;
+    setSpeaking(null);
   }, []);
+
+  // Leaving the page → silence.
+  // A letter card (or any other player on the page) starts → our word stops, so two voices never overlap.
+  useEffect(() => {
+    const onOtherPlay = (e: Event) => {
+      if (e.target !== audioRef.current && speakingRef.current) stopSpeaking();
+    };
+    document.addEventListener("play", onOtherPlay, true); // media in the page (videos …) — capture
+    const off = onOtherVoice("aksharamala-ai-words", () => speakingRef.current && stopSpeaking()); // letter cards
+    return () => {
+      document.removeEventListener("play", onOtherPlay, true);
+      off();
+      stopSpeaking();
+    };
+  }, [stopSpeaking]);
 
   // Keep the family-voice option in sync with what has been recorded
   useEffect(() => {
@@ -908,6 +953,7 @@ export default function AksharamalaParent() {
   const handleCardClick = (a: Akshara) => {
     const clickId = ++clickIdRef.current;
     track("letter_open", { letter: a.letter });
+    stopSpeaking(); // the previous letter's word must not keep talking
     setSelected(a);
     if (!isDesktop) setSheetOpen(true);
     loadSimilar(a, clickId);
@@ -924,16 +970,63 @@ export default function AksharamalaParent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  /** Speaks an AI word: same TTS as the cards, browser voice as fallback. */
+  /** Device voice — only when the TTS server fails. Says plainly when the device has no Telugu voice. */
+  const speakWithDevice = async (text: string, id: number) => {
+    if (!("speechSynthesis" in window)) {
+      setVoiceNotice("ఈ బ్రౌజర్‌లో స్వరం అందుబాటులో లేదు. ఇంటర్నెట్ చూసి మళ్ళీ నొక్కండి.");
+      return stopSpeaking();
+    }
+    const voice = await pickTeluguVoice(voiceGender === "family" ? "female" : voiceGender);
+    if (id !== speakIdRef.current) return;
+    if (!voice) {
+      // Without a Telugu voice the device reads Telugu as English gibberish or stays silent
+      setVoiceNotice(NO_TELUGU_VOICE);
+      return stopSpeaking();
+    }
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.voice = voice;
+    utterance.lang = voice.lang;
+    utterance.rate = 0.8; // slower for older listeners
+    const end = () => {
+      if (id === speakIdRef.current) {
+        speakingRef.current = null;
+        setSpeaking(null);
+      }
+    };
+    utterance.onend = end;
+    utterance.onerror = end;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  /** Speaks an AI word: same TTS as the cards; device voice as fallback.
+      Tapping the word that is playing stops it. */
   const speakWord = async (text: string) => {
+    if (speakingRef.current === text) return stopSpeaking();
+
     track("ai_word_speak", { letter: selected?.letter });
-    audioRef.current?.pause();
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    stopSpeaking();
+    setVoiceNotice(null);
+    // the letter cards (and any player on the page) go quiet
+    announceVoice("aksharamala-ai-words");
+    document.querySelectorAll<HTMLMediaElement>("audio, video").forEach((m) => m.pause());
+
+    const id = speakIdRef.current;
+    speakingRef.current = text;
+    setSpeaking(text);
+
+    // Unlock audio NOW, inside the tap (iPhone blocks play() after an await)
+    const audio = unlockAudio(audioRef.current);
+    audioRef.current = audio;
+
+    const controller = new AbortController();
+    ttsAbortRef.current = controller;
+    const timer = setTimeout(() => controller.abort(), TTS_TIMEOUT_MS);
 
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           text,
           source: "edge",
@@ -942,20 +1035,27 @@ export default function AksharamalaParent() {
         }),
       });
       if (!res.ok) throw new Error(`TTS API ${res.status}`);
+      const blob = await res.blob();
+      if (id !== speakIdRef.current) return; // a newer tap took over
+      // a 200 with an error page / empty body is not sound
+      if (!blob.size || (blob.type && !blob.type.startsWith("audio"))) throw new Error(`TTS gave ${blob.type || "nothing"}`);
 
-      const url = URL.createObjectURL(await res.blob());
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      audio.onended = () => URL.revokeObjectURL(url);
-      audio.onerror = () => URL.revokeObjectURL(url);
+      const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
+      audio.onended = () => {
+        if (id === speakIdRef.current) stopSpeaking();
+      };
+      audio.onerror = () => {
+        if (id === speakIdRef.current && audio.src === url) void speakWithDevice(text, id);
+      };
+      audio.src = url;
       await audio.play();
     } catch (err) {
-      console.warn("[Aksharamala] TTS failed, using browser voice:", err);
-      if (!("speechSynthesis" in window)) return;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "te-IN";
-      utterance.rate = 0.8;
-      window.speechSynthesis.speak(utterance);
+      if (id !== speakIdRef.current) return; // stopped or replaced — stay quiet
+      console.warn("[Aksharamala] TTS failed, using device voice:", err);
+      await speakWithDevice(text, id);
+    } finally {
+      clearTimeout(timer);
     }
   };
 
@@ -1005,6 +1105,8 @@ export default function AksharamalaParent() {
       onSpeak={speakWord}
       onPickLetter={handlePickLetter}
       isGrid={isGrid}
+      speaking={speaking}
+      familyMode={voiceGender === "family"}
       card={
         // పట్టికలో కార్డులు లేవు — ఎంచుకున్న ఒక్క అక్షరం కార్డ్ మాత్రమే (memory సురక్షితం).
         // key = అక్షరం id → వేరే అక్షరం ఎంచుకుంటే కార్డ్ కొత్తగా మొదలవుతుంది (పాత ఆడియో, రాత ఆగుతాయి)
@@ -1061,13 +1163,16 @@ export default function AksharamalaParent() {
             flexWrap="wrap"
             sx={{ mb: 2 }}
           >
-            <Typography variant="body2" sx={{ opacity: 0.75 }}>🔊 స్వరం:</Typography>
+            <Typography id="voice-label" variant="body2" sx={{ color: "text.secondary" }}>🔊 స్వరం:</Typography>
             <ToggleButtonGroup
               size="small"
               value={voiceGender}
               exclusive
+              aria-labelledby="voice-label"
               onChange={(_, v) => {
                 if (!v) return;
+                stopSpeaking(); // the old voice must not keep talking
+                setVoiceNotice(null);
                 setVoiceGender(v);
                 if (v === "family") track("family_voice_on");
               }}
@@ -1092,6 +1197,12 @@ export default function AksharamalaParent() {
               {familyCount > 0 ? `మీ గొంతు (${familyCount})` : "మీ గొంతుతో రికార్డ్ చేయండి"}
             </Button>
           </Stack>
+
+          {voiceNotice && (
+            <Alert severity="info" role="status" onClose={() => setVoiceNotice(null)} sx={{ mb: 2, borderRadius: "12px", textAlign: "left" }}>
+              {voiceNotice}
+            </Alert>
+          )}
 
           <Stack direction="row" spacing={1.5} justifyContent="center" useFlexGap flexWrap="wrap" sx={{ mb: 3 }}>
             <Chip label={`మొత్తం: ${totalCount}`} color="secondary" sx={{ fontWeight: 800 }} />
@@ -1129,7 +1240,8 @@ export default function AksharamalaParent() {
                 </InputAdornment>
               ) : null,
             }}
-            sx={{ bgcolor: "white", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
+            // background.paper, not "white": in dark mode the light text was invisible on white
+            sx={{ bgcolor: "background.paper", borderRadius: "12px", "& .MuiOutlinedInput-root": { borderRadius: "12px" } }}
           />
 
           {/* కార్డులు / యుక్తి AI పట్టిక */}
@@ -1469,7 +1581,10 @@ export default function AksharamalaParent() {
       <Drawer
         anchor="bottom"
         open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        onClose={() => {
+          stopSpeaking();
+          setSheetOpen(false);
+        }}
         PaperProps={{
           sx: {
             borderTopLeftRadius: 16,
@@ -1483,7 +1598,14 @@ export default function AksharamalaParent() {
       >
         <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: "divider", mx: "auto", mb: 1 }} />
         <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-          <IconButton onClick={() => setSheetOpen(false)} aria-label="మూసివేయండి" size="small">
+          <IconButton
+            onClick={() => {
+              stopSpeaking();
+              setSheetOpen(false);
+            }}
+            aria-label="మూసివేయండి"
+            sx={{ width: 48, height: 48 }}
+          >
             <CloseIcon size={20} color="currentColor" />
           </IconButton>
         </Box>
