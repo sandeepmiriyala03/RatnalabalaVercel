@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useRef, useState, useCallback, useEffect, useId } from "react";
 import {
@@ -17,7 +17,7 @@ import AksharaTraceBoard from "./AksharaTraceBoard";
 import { splitTeluguAksharas } from "@/lib/telugu-akshara-wasm";
 import { FAMILY_FALLBACK_VOICE, getFamilyVoiceName, getRecording } from "@/lib/family-voice";
 import { track } from "@/lib/track";
-import { announceVoice, NO_TELUGU_VOICE, onOtherVoice, pickTeluguVoice, TTS_TIMEOUT_MS, unlockAudio } from "@/lib/voice";
+import { announceVoice, isAudioBlob, NO_TELUGU_VOICE, onOtherVoice, pickTeluguVoice, TTS_TIMEOUT_MS, unlockAudio } from "@/lib/voice";
 
 type Akshara = {
   id: string;
@@ -189,15 +189,17 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true, voiceG
   };
 
   const speakWithDevice = async (id: number) => {
-    const voice = await pickTeluguVoice(voiceGender);
-    if (id !== speakIdRef.current) return;
-    if (!voice) {
+    if (!("speechSynthesis" in window)) {
       setVoiceNotice(NO_TELUGU_VOICE);
       return stopSpeaking();
     }
+    const voice = await pickTeluguVoice(voiceGender);
+    if (id !== speakIdRef.current) return;
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.voice = voice;
-    utterance.lang = voice.lang;
+    // A Telugu voice if the list shows one. Android often lists none but still
+    // speaks Telugu when asked with lang "te-IN" — so try anyway.
+    if (voice) utterance.voice = voice;
+    utterance.lang = voice?.lang ?? "te-IN";
     utterance.rate = 0.8;
     utterance.pitch = 1.1;
     const end = () => {
@@ -207,7 +209,10 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true, voiceG
       }
     };
     utterance.onend = end;
-    utterance.onerror = end;
+    utterance.onerror = () => {
+      end();
+      if (id === speakIdRef.current) setVoiceNotice(NO_TELUGU_VOICE);
+    };
     setIsLoadingVoice(false);
     setIsSpeaking(true);
     window.speechSynthesis.speak(utterance);
@@ -258,7 +263,7 @@ const AksharaPosterCard: React.FC<Props> = ({ akshara, enableRead = true, voiceG
       if (!res.ok) throw new Error(`TTS API ${res.status}`);
       const blob = await res.blob();
       if (id !== speakIdRef.current) return;
-      if (!blob.size || (blob.type && !blob.type.startsWith("audio"))) throw new Error(`TTS gave ${blob.type || "nothing"}`);
+      if (!isAudioBlob(blob)) throw new Error(`TTS gave ${blob.type || "nothing"} (${blob.size} bytes)`);
       await playBlob(audio, blob, id);
     } catch (err) {
       if (id !== speakIdRef.current) return; // stopped or replaced — stay quiet

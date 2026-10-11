@@ -12,8 +12,15 @@
 
 export type VoiceKind = "male" | "female" | "family";
 
-/** TTS server gets this long; then the device's own Telugu voice is used */
-export const TTS_TIMEOUT_MS = 12000;
+/** TTS server gets this long; then the device's own Telugu voice is used.
+    25 s: the Python TTS function can take 10–20 s on a cold start. */
+export const TTS_TIMEOUT_MS = 25000;
+
+/** Is this server answer really sound? Servers often send audio as
+    "application/octet-stream" — only an error page (text / JSON) is refused. */
+export function isAudioBlob(blob: Blob): boolean {
+  return blob.size > 0 && !/^(text\/|application\/(json|problem))/i.test(blob.type);
+}
 
 const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 
@@ -66,4 +73,4 @@ export async function pickTeluguVoice(kind: VoiceKind): Promise<SpeechSynthesisV
   return te.find((v) => want.test(v.name)) ?? te[0];
 }
 
-export const NO_TELUGU_VOICE = "సర్వర్ స్వరం అందలేదు, ఈ పరికరంలో తెలుగు స్వరం కూడా లేదు. ఇంటర్నెట్ చూసి మళ్ళీ నొక్కండి.";
+export const NO_TELUGU_VOICE = "స్వరం వినిపించలేకపోయాం. ఇంటర్నెట్ చూసి ఒక్క నిమిషం తర్వాత మళ్ళీ నొక్కండి.";

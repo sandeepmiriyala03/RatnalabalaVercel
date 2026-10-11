@@ -54,7 +54,7 @@ import {
 } from "@/lib/family-voice";
 
 import { track } from "@/lib/track";
-import { announceVoice, NO_TELUGU_VOICE, onOtherVoice, pickTeluguVoice, TTS_TIMEOUT_MS, unlockAudio } from "@/lib/voice";
+import { announceVoice, isAudioBlob, NO_TELUGU_VOICE, onOtherVoice, pickTeluguVoice, TTS_TIMEOUT_MS, unlockAudio } from "@/lib/voice";
 
 import FamilyVoiceRecorder from "@/app/components/Familyvoicerecorder";
 import { exportAksharasToExcel, exportAksharasToPdf } from "@/app/components/exportPoems";
@@ -978,14 +978,11 @@ export default function AksharamalaParent() {
     }
     const voice = await pickTeluguVoice(voiceGender === "family" ? "female" : voiceGender);
     if (id !== speakIdRef.current) return;
-    if (!voice) {
-      // Without a Telugu voice the device reads Telugu as English gibberish or stays silent
-      setVoiceNotice(NO_TELUGU_VOICE);
-      return stopSpeaking();
-    }
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = voice;
-    utterance.lang = voice.lang;
+    // A Telugu voice if the list shows one. Android often lists none but still
+    // speaks Telugu when asked with lang "te-IN" — so try anyway.
+    if (voice) utterance.voice = voice;
+    utterance.lang = voice?.lang ?? "te-IN";
     utterance.rate = 0.8; // slower for older listeners
     const end = () => {
       if (id === speakIdRef.current) {
@@ -994,7 +991,10 @@ export default function AksharamalaParent() {
       }
     };
     utterance.onend = end;
-    utterance.onerror = end;
+    utterance.onerror = () => {
+      end();
+      if (id === speakIdRef.current) setVoiceNotice(NO_TELUGU_VOICE);
+    };
     window.speechSynthesis.speak(utterance);
   };
 
@@ -1038,7 +1038,7 @@ export default function AksharamalaParent() {
       const blob = await res.blob();
       if (id !== speakIdRef.current) return; // a newer tap took over
       // a 200 with an error page / empty body is not sound
-      if (!blob.size || (blob.type && !blob.type.startsWith("audio"))) throw new Error(`TTS gave ${blob.type || "nothing"}`);
+      if (!isAudioBlob(blob)) throw new Error(`TTS gave ${blob.type || "nothing"} (${blob.size} bytes)`);
 
       const url = URL.createObjectURL(blob);
       audioUrlRef.current = url;
