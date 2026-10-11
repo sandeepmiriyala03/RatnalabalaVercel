@@ -45,7 +45,7 @@ type Props = {
 type FontOption = { label: string; value: TeluguFont; group?: string };
 
 const GROUP_MINE = "నా ఫాంట్లు";
-const GROUP_SITE = "రత్నాలబాల ఫాంట్లు";
+const GROUP_SITE = "తెలుగు ఫాంట్లు";
 
 type AgentDecision = { fontFamily: TeluguFont; fontSizeMultiplier: number; reason: string };
 
@@ -628,6 +628,38 @@ export default function FontControlsTelugu({
               </Typography>
             </Box>
           )}
+        </Box>
+
+        {/* 🙏 ఫాంట్ రూపకర్తలకు ధన్యవాదాలు — page load time తర్వాత */}
+        <Box
+          component="section"
+          aria-labelledby="font-thanks-title"
+          sx={{ mt: 1.5, pt: 1.5, borderTop: "1px dashed var(--border-strong, #8c7155)" }}
+        >
+          <Typography
+            id="font-thanks-title"
+            component="h2"
+            sx={{ fontSize: "1rem", fontWeight: 700, lineHeight: 1.7, color: "var(--primary, #9e1b1b)", mb: 0.75 }}
+          >
+             తెలుగు భాషాభిమానులందరికీ హృదయపూర్వక నమస్కారాలు!
+          </Typography>
+          <Typography sx={{ fontSize: "0.95rem", lineHeight: 1.9, color: "var(--foreground)", mb: 1 }}>
+            డిజిటల్ యుగంలో మన తెలుగు భాష అడుగుపెట్టడం, ముద్రణలోనూ ఆన్‌లైన్‌లోనూ తెలుగు యూనికోడ్ ఫాంట్లు ఇంత సులభంగా
+            అందుబాటులోకి రావడం మనందరికీ ఎంతో సంతోషకరమైన విషయం. తెలుగు ఫాంట్లను ప్రతి ఒక్కరికీ ఉచితంగా అందించాలనే
+            గొప్ప లక్ష్యంతో{" "}
+            <Link href="https://fonts.siliconandhra.org" target="_blank" rel="noopener noreferrer" sx={{ fontWeight: 700, color: "var(--primary, #9e1b1b)" }}>
+              సిలికానాంధ్ర
+            </Link>
+            , <strong>FreeTeluguFonts.com</strong>, <strong>telugufonts.in</strong> బృందాలు చేస్తున్న కృషి ఎంతో
+            అభినందనీయం.
+          </Typography>
+          <Typography sx={{ fontSize: "0.95rem", lineHeight: 1.9, color: "var(--foreground)" }}>
+            మన తెలుగు లిపికి ఆధునిక యూనికోడ్ ఓపెన్‌టైప్ (OpenType) సాంకేతికతను జోడించి, ఎంతో ఓపికతో, శ్రమతో అందమైన
+            ఫాంట్లను రూపొందించి ఉచితంగా అందిస్తున్న <strong>శ్రీ అప్పాజీ అంబరీష దర్భ గారికి</strong>,{" "}
+            <strong>శ్రీ పురుషోత్ కుమార్ గుత్తుల గారికి</strong>, అలాగే ఇతర ఫాంట్ రూపకర్తలందరికీ{" "}
+            <strong>‘రత్నాలబాల–జ్ఞానమాల’</strong> తరఫున మనస్ఫూర్తిగా ధన్యవాదాలు. తెలుగు భాషను డిజిటల్ రూపంలో ముందుకు
+            తీసుకెళ్తున్న మీ సేవలు ఎప్పటికీ గుర్తుండిపోతాయి!
+          </Typography>
         </Box>
       </Paper>
 
