@@ -19,6 +19,7 @@ import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
 import type { GridColumn } from "@yuktishaalaa/yuktai";
 import YGrid from "./YuktaiGridClient";
+import { fontStack, getCachedFonts, loadTeluguFont } from "@/lib/teluguFonts";
 
 /* ─── types (sent from page.tsx) ─── */
 export type MediaFile = { name: string; size: number };
@@ -106,41 +107,142 @@ function Empty({ text }: { text: string }) {
 
 /* ═══════════════ 🔤 FONTS ═══════════════ */
 
-/** Sample text in the font itself — loads only when the row is on screen.
+/* Font sample loader — one download per file for the whole visit.
+   1. The same file is already in the site list (main.py, lib/teluguFonts)
+      → reuse that font (no second download, same name as the font picker).
+   2. Otherwise load public/Fonts/<file> with FontFace under a safe name.
+   3. Checks that the font really draws Telugu letters. */
+type SampleResult = { family: string } | { error: "load" | "notelugu" };
+const sampleCache = new Map<string, Promise<SampleResult>>();
+
+const safeFamily = (file: string) => "Shaili-" + file.replace(/\.[^.]+$/, "").replace(/[^\p{L}\p{N}]+/gu, "-");
+
+/** Does the font draw Telugu itself? Telugu letters only — no spaces or
+    Latin, which a Latin-only font would draw and fool the width test. */
+function drawsTelugu(family: string): boolean {
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return true;
+  const sample = "తెలుగుఅక్షరమాలక్షేమంశ్రీ";
+  return ["monospace", "serif"].every((generic) => {
+    ctx.font = `40px ${generic}`;
+    const base = ctx.measureText(sample).width;
+    ctx.font = `40px "${family.replace(/"/g, "")}", ${generic}`;
+    return Math.abs(ctx.measureText(sample).width - base) > 0.5;
+  });
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
+}
+
+async function loadSampleFont(file: string): Promise<SampleResult> {
+  const href = url("Fonts", file);
+
+  // 1. Same file in the site's font list → use it
+  const site = getCachedFonts()?.find((f) => f.src.some((s) => s.url === href || decodeURIComponent(s.url) === `/Fonts/${file}`));
+  if (site && (await loadTeluguFont(site.value))) {
+    return drawsTelugu(site.value) ? { family: site.value } : { error: "notelugu" };
+  }
+
+  // 2. Straight from public/Fonts (try twice — slow phones)
+  const family = safeFamily(file);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const face = new FontFace(family, `url("${href}")`, { display: "swap" });
+      await withTimeout(face.load(), 20000);
+      document.fonts.add(face);
+      return drawsTelugu(family) ? { family } : { error: "notelugu" };
+    } catch {
+      /* bad name, network or broken file → try again once */
+    }
+  }
+  return { error: "load" };
+}
+
+function sampleFont(file: string, retry = false): Promise<SampleResult> {
+  if (retry) sampleCache.delete(file);
+  let p = sampleCache.get(file);
+  if (!p) {
+    p = loadSampleFont(file);
+    sampleCache.set(file, p);
+    // a failed load must not stay cached — "మళ్ళీ" should really retry
+    void p.then((r) => "error" in r && r.error === "load" && sampleCache.delete(file));
+  }
+  return p;
+}
+
+/** Sample text in the font itself — loads when its row comes on screen.
     The family name is data, so it is set from code (ref), not a style attribute. */
-function FontSample({ file, family }: { file: string; family: string }) {
+function FontSample({ file }: { file: string }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const [state, setState] = useState<"wait" | "ok" | "bad">("wait");
+  const [state, setState] = useState<"wait" | "ok" | "bad" | "notelugu">("wait");
+  const [tries, setTries] = useState(0);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    let done = false;
-    const ready = () => {
-      el.style.fontFamily = `"${family}", var(--telugu-font-family), var(--font-telugu-fallback)`;
-      setState("ok");
-    };
+    if (!el || !file) return;
+    let alive = true;
+    let started = false;
+
     const load = () => {
-      if (done) return;
-      done = true;
-      if ([...document.fonts].some((f) => f.family === family && f.status === "loaded")) return ready();
-      new FontFace(family, `url("${url("Fonts", file)}")`, { display: "swap" })
-        .load()
-        .then((f) => {
-          document.fonts.add(f);
-          ready();
-        })
-        .catch(() => setState("bad"));
+      if (started) return;
+      started = true;
+      sampleFont(file, tries > 0).then((r) => {
+        if (!alive) return;
+        if ("family" in r) {
+          el.style.fontFamily = fontStack(r.family);
+          setState("ok");
+        } else setState(r.error === "notelugu" ? "notelugu" : "bad");
+      });
     };
-    if (!("IntersectionObserver" in window)) return load();
-    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && (load(), io.disconnect()), { rootMargin: "200px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [file, family]);
+
+    if (!("IntersectionObserver" in window)) {
+      load();
+      return () => void (alive = false);
+    }
+    // Watch the whole row/card: a sample hidden in a sideways-scrolling
+    // table column still loads when its row is on screen
+    const target = el.closest<HTMLElement>("tr, [role='row'], li, article") ?? el;
+    const io = new IntersectionObserver(
+      (es) => {
+        if (es.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          load();
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+    io.observe(target);
+    return () => {
+      alive = false;
+      io.disconnect();
+    };
+  }, [file, tries]);
+
+  if (state === "bad" || state === "notelugu") {
+    return (
+      <span role="status" className="rb-row">
+        <span className="rb-font-sample" data-state={state}>
+          {state === "bad" ? "నమూనా లోడ్ కాలేదు" : "ఈ ఫాంట్‌లో తెలుగు అక్షరాలు లేవు"}
+        </span>
+        {state === "bad" && (
+          <Button
+            onClick={() => {
+              setState("wait");
+              setTries((t) => t + 1);
+            }}
+            className="rb-btn rb-btn--outline rb-btn--sm"
+          >
+            మళ్ళీ
+          </Button>
+        )}
+      </span>
+    );
+  }
 
   return (
     <span ref={ref} data-telugu-font data-state={state} lang="te" className="rb-font-sample">
-      {state === "bad" ? "నమూనా చూపలేకపోయాం" : "అమ్మ ఆవు ఇల్లు — తెలుగు వెలుగు"}
+      అమ్మ ఆవు ఇల్లు — తెలుగు వెలుగు
     </span>
   );
 }
@@ -185,7 +287,7 @@ const INSTALL = [
 
 const FONT_COLUMNS: GridColumn<FontRow>[] = [
   { key: "name", label: "ఫాంట్ పేరు", sortable: true, render: (v) => <strong className="rb-name">{String(v)}</strong> },
-  { key: "sample", label: "నమూనా", render: (_v, r) => <FontSample file={r.sample} family={`Shaili ${r.id}`} /> },
+  { key: "sample", label: "నమూనా", render: (_v, r) => <FontSample key={r.sample} file={r.sample} /> },
   { key: "formats", label: "రకం", type: "badge", hiddenOnMobile: true },
   {
     key: "ttf",
