@@ -10,6 +10,10 @@ const isDev = process.env.NODE_ENV === "development";
    "dev", which would never invalidate. */
 const precacheRevision = process.env.VERCEL_GIT_COMMIT_SHA ?? randomUUID();
 
+/* Build time = deploy time (Vercel builds on every deploy).
+   Footer shows it as "🔄 చివరి మార్పు: 11 అక్టో 2026, 6:29 PM" (IST). */
+const deployedAt = new Date().toISOString();
+
 /* ═══════════════════════════════════════════
    HEADERS
 ═══════════════════════════════════════════ */
@@ -91,6 +95,9 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // don't advertise "X-Powered-By: Next.js"
+
+  /* Footer → "చివరి మార్పు" (read in the browser as process.env.NEXT_PUBLIC_DEPLOYED_AT) */
+  env: { NEXT_PUBLIC_DEPLOYED_AT: deployedAt },
 
   /* Next.js 16.4: Cache Components + Partial Prefetching.
      • Pages are prerendered as a static shell, so tapping a menu shows the page at once
