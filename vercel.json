@@ -4,5 +4,15 @@
     "api/main.py": {
       "excludeFiles": "{public/**,node_modules/**,.next/**,app/**,lib/**,hooks/**,types/**,icons/**,data/**,e2e/**,scripts/**,rust/**,poems/**,mirapoems/**,Ugadi108/**,DatabaseScripts/**,featured-content-agent/**,agent/**,python_services/**,pylib/**}"
     }
-  }
+  },
+  "headers": [
+    {
+      "source": "/app-release-signed.apk",
+      "headers": [
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"app-release-signed.apk\"" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ]
 }
