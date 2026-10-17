@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useId, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import React, { memo, useEffect, useId, useMemo, useRef, useState } from "react";
+import { usePathname, unstable_isUnrecognizedActionError } from "next/navigation";
+import { useOffline } from "next/offline";
 import {
   Box, Typography, Card, CardContent,
   Button, Stack, Collapse, TextField,
@@ -135,6 +136,90 @@ const LIFECYCLE_STEPS: { key: LifecycleKey; fn: string; label: string; hint: str
 const TOOL_LABELS = Object.fromEntries(POEM_TOOLS.map((t) => [t.name, t.label])) as Record<PoemToolName, string>;
 
 const AI_SAFETY_TIMEOUT_MS = 90_000;
+
+// కొత్త deploy తర్వాత పాత యాప్ (PWA cache) పాత server action ని పిలిస్తే
+// ఒక్కసారి మాత్రమే పేజీ రీలోడ్ — అదే మళ్ళీ జరిగితే loop కాకుండా ఆగుతుంది
+const STALE_RELOAD_KEY = "ratnalabala:poem-ai-stale-reload";
+
+function reloadOnceForNewVersion(): boolean {
+  try {
+    const last = Number(window.sessionStorage.getItem(STALE_RELOAD_KEY) || 0);
+    if (Date.now() - last < 60_000) return false; // ఇప్పుడే రీలోడ్ అయింది
+    window.sessionStorage.setItem(STALE_RELOAD_KEY, String(Date.now()));
+  } catch {
+    // sessionStorage లేకపోయినా (private mode) ఒక్కసారి రీలోడ్ చేస్తాం
+  }
+  window.location.reload();
+  return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* ప్రశ్న పెట్టె — తన అక్షరాలు తానే పట్టుకుంటుంది                      */
+/* ------------------------------------------------------------------ */
+// ముందు ప్రతి అక్షరానికీ మొత్తం PoemCard (పద్యం, పోస్టర్, స్వరం…) మళ్ళీ
+// render అయ్యేది — మొబైల్‌లో టైప్ చేస్తుంటే నెమ్మది. ఇప్పుడు ఈ చిన్న భాగం మాత్రమే.
+type PoemAIInputProps = {
+  /** panel మూసి తెరిచినా రాసిన ప్రశ్న పోకుండా (render లేకుండా) */
+  draftRef: React.MutableRefObject<string>;
+  busy: boolean;
+  offline: boolean;
+  placeholder: string;
+  onSend: (text: string) => void;
+};
+
+const PoemAIInput = memo(function PoemAIInput({ draftRef, busy, offline, placeholder, onSend }: PoemAIInputProps) {
+  const [text, setText] = useState(() => draftRef.current);
+  const canSend = !busy && !offline && Boolean(text.trim());
+
+  const update = (value: string) => {
+    draftRef.current = value;
+    setText(value);
+  };
+
+  const send = () => {
+    if (!canSend) return;
+    onSend(text);
+    update("");
+  };
+
+  return (
+    <Stack direction="row" spacing={1} alignItems="flex-start">
+      {/* జవాబు వస్తున్నప్పుడూ పెట్టె disabled కాదు: మొబైల్ keyboard
+          అకస్మాత్తుగా మూసుకుపోయి తెర ఎగరదు, తర్వాతి ప్రశ్న రాసుకోవచ్చు */}
+      <TextField
+        fullWidth
+        size="small"
+        multiline
+        maxRows={4}
+        placeholder={placeholder}
+        value={text}
+        onChange={(e) => update(e.target.value)}
+        onKeyDown={(e) => {
+          // Enter పంపుతుంది, Shift+Enter కొత్త లైన్ (తెలుగు keyboard composition లో Enter వదిలేస్తాం)
+          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            send();
+          }
+        }}
+        slotProps={{ htmlInput: { enterKeyHint: "send", "aria-label": "భావాలమాల ప్రశ్న" } }}
+      />
+      <Button
+        onClick={send}
+        disabled={!canSend}
+        variant="contained"
+        color="secondary"
+        sx={{ minWidth: 44, height: 40, px: 1.5, touchAction: "manipulation" }}
+        aria-label="ప్రశ్న పంపండి"
+      >
+        {busy ? (
+          <CircularProgress size={18} sx={{ color: "#fff" }} />
+        ) : (
+          <SendRoundedIcon fontSize="small" />
+        )}
+      </Button>
+    </Stack>
+  );
+});
 
 /* ---- Server (poemAI.tsx) stream చేసే చిన్న display components ---- */
 /* ఇవి "use client" ఫైల్‌లో ఉన్నాయి కాబట్టి server వీటిని బొమ్మలుగా    */
@@ -498,13 +583,18 @@ export default function PoemCard({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen,    setToolsOpen]    = useState(false);
   const [aiOpen,       setAiOpen]       = useState(false);
-  const [aiQuestion,   setAiQuestion]   = useState("");
+  // ప్రశ్న పెట్టెలోని మాటలు — state కాదు ref: టైప్ చేస్తుంటే PoemCard render కాదు
+  const aiDraftRef = useRef("");
+  // రెండుసార్లు త్వరగా నొక్కితే రెండు ప్రశ్నలు వెళ్ళకుండా (state కంటే ముందే తెలిసే గుర్తు)
+  const aiBusyRef = useRef(false);
   const [aiError,      setAiError]      = useState<string | null>(null);
   const [aiBusy,       setAiBusy]       = useState(false);
   const [memoryOpen,   setMemoryOpen]   = useState(false);
   // దశల పట్టీ: ఈ ప్రశ్నకు ఇప్పటివరకు పూర్తైన దశలు
   const [reached,      setReached]      = useState<LifecycleKey[]>([]);
   const [toolUsed,     setToolUsed]     = useState<PoemToolName | null>(null);
+  // Next.js useOffline: నెట్ పోతే server action ఆగి, వచ్చాక మళ్ళీ వెళ్తుంది — ఆ సంగతి చూపిస్తాం
+  const offline = useOffline();
   const [copied, setCopied] = useState(false);
   const [dailySendOpen, setDailySendOpen] = useState(false);
   const [sendPhone, setSendPhone] = useState("");
@@ -555,20 +645,12 @@ export default function PoemCard({
   const reachedWithClient: LifecycleKey[] =
     reached.includes("done") && lastAnswer && !aiBusy ? [...reached, "useAIState"] : reached;
 
-  // The moment the AI panel opens, drop the default question into the box.
-  // Only fills when empty, so reopening never stomps on the person's own text.
-  useEffect(() => {
-    if (aiOpen && canAskAI && !aiQuestion.trim()) {
-      setAiQuestion(DEFAULT_AI_QUESTION);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiOpen, canAskAI]);
-
   // Reset the Q&A state when the poem changes, so a stale answer from a
   // previous poem can never show under a new one.
   // (సంభాషణలు poemKey తో వేరు కాబట్టి పాత జవాబు కొత్త పద్యం కింద రాదు.)
   useEffect(() => {
-    setAiQuestion("");
+    aiDraftRef.current = "";
+    aiBusyRef.current = false;
     setAiError(null);
     setAiBusy(false);
     setCopied(false);
@@ -759,9 +841,10 @@ export default function PoemCard({
   /* ---------------------------- ask AI ---------------------------- */
 
   // chip నొక్కితే దాని ఉదాహరణ ప్రశ్న నేరుగా వెళ్తుంది; లేకపోతే పెట్టెలోని ప్రశ్న
-  const handleAskAI = async (exampleQuestion?: string) => {
-    const trimmed = (exampleQuestion ?? aiQuestion).trim();
-    if (!trimmed || aiBusy) return;
+  const handleAskAI = async (question: string) => {
+    const trimmed = question.trim();
+    if (!trimmed || aiBusyRef.current || offline) return;
+    aiBusyRef.current = true;
 
     // కొత్త ప్రశ్న వస్తే పాత జవాబు చదవడం ఆపేయాలి
     if (speakingTarget === "answer") handleStop();
@@ -776,7 +859,6 @@ export default function PoemCard({
       ...prev,
       { id: `${Date.now()}-q`, poemKey, role: "user", display: <PoemAIQuestion text={trimmed} /> },
     ]);
-    setAiQuestion("");
     // దశ 3: server action పిలుపు (useActions)
     setReached(["createAI", "useUIState", "useActions"]);
 
@@ -784,6 +866,7 @@ export default function PoemCard({
     const watchdog = setTimeout(() => {
       if (settled) return;
       settled = true;
+      aiBusyRef.current = false;
       setAiError("సమాధానం రావడానికి ఎక్కువ సమయం పట్టింది. మళ్ళీ ప్రయత్నించండి.");
       setAiBusy(false);
     }, AI_SAFETY_TIMEOUT_MS);
@@ -812,23 +895,40 @@ export default function PoemCard({
         }
       }
     } catch (err) {
-      console.error("[PoemCard] askPoem failed", {
-        poemKey,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      if (!settled) setAiError("ఏదో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.");
+      // కొత్త deploy వచ్చింది కానీ ఈ ఫోన్‌లో పాత యాప్ (PWA cache) నడుస్తోంది:
+      // పాత server action id కొత్త server కి తెలియదు → ఒక్కసారి రీలోడ్
+      if (unstable_isUnrecognizedActionError(err)) {
+        console.error("[PoemCard] askPoem: stale app version, reloading", { poemKey });
+        if (!settled) setAiError("కొత్త వెర్షన్ వచ్చింది — పేజీ మళ్ళీ తెరుస్తున్నాం…");
+        if (!reloadOnceForNewVersion() && !settled) {
+          setAiError("కొత్త వెర్షన్ వచ్చింది. యాప్‌ను పూర్తిగా మూసి మళ్ళీ తెరవండి.");
+        }
+      } else {
+        console.error("[PoemCard] askPoem failed", {
+          poemKey,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        if (!settled) setAiError("ఏదో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.");
+      }
     } finally {
       clearTimeout(watchdog);
       if (!settled) {
         settled = true;
+        aiBusyRef.current = false;
         setAiBusy(false);
       }
     }
   };
 
+  // ప్రశ్న పెట్టె memo అయింది కాబట్టి దానికి ఎప్పుడూ ఒకే function ఇవ్వాలి;
+  // లోపల తాజా handleAskAI ని ref ద్వారా పిలుస్తుంది
+  const askRef = useRef(handleAskAI);
+  useEffect(() => { askRef.current = handleAskAI; });
+  const sendFromBox = useMemo(() => (text: string) => { void askRef.current(text); }, []);
+
   // "కొత్త సంభాషణ": ఈ పద్యం UI state, AI state రెండూ ఖాళీ
   const handleResetChat = async () => {
-    if (aiBusy) return;
+    if (aiBusyRef.current) return;
     if (speakingTarget === "answer") handleStop();
     setUIMessages((prev) => prev.filter((m) => m.poemKey !== poemKey));
     setReached([]);
@@ -931,15 +1031,6 @@ export default function PoemCard({
       setSendStatus(error instanceof Error ? error.message : "సేవ్ చేయడం సాధ్యపడలేదు.");
     } finally {
       setSendBusy(false);
-    }
-  };
-
-  const handleQuestionKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // Enter submits, Shift+Enter still allows a newline in the question.
-    // (Enter that only confirms a Telugu keyboard composition is ignored.)
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-      e.preventDefault();
-      if (!aiBusy) handleAskAI();
     }
   };
 
@@ -1361,7 +1452,12 @@ export default function PoemCard({
 
             {canAskAI && (
               <Button
-                onClick={() => { setAiOpen((v) => !v); setToolsOpen(false); }}
+                onClick={() => {
+                  // తెరవగానే సాధారణ ప్రశ్న సిద్ధం (వాడుకరి రాసింది ఉంటే దాన్ని మార్చం)
+                  if (!aiOpen && !aiDraftRef.current.trim()) aiDraftRef.current = DEFAULT_AI_QUESTION;
+                  setAiOpen((v) => !v);
+                  setToolsOpen(false);
+                }}
                 aria-expanded={aiOpen}
                 aria-controls={`${uid}-ai`}
                 variant="outlined"
@@ -1463,36 +1559,34 @@ export default function PoemCard({
                     నొక్కి ప్రయత్నించండి · సహాయకులు (tools): {POEM_TOOLS.length}
                   </Typography>
                   <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                    <Tooltip arrow title={`"${PLAIN_EXAMPLE.example}" — సహాయకుడు లేకుండా Groq మాటలతో జవాబు`}>
-                      <span>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          disabled={aiBusy}
-                          onClick={() => handleAskAI(PLAIN_EXAMPLE.example)}
-                          startIcon={<ChatBubbleOutlineRoundedIcon sx={{ fontSize: 16 }} />}
-                          sx={{ textTransform: "none", fontWeight: 600, borderRadius: "999px", minHeight: 34, color: "text.secondary", borderColor: "divider" }}
-                        >
-                          {PLAIN_EXAMPLE.label}
-                        </Button>
-                      </span>
-                    </Tooltip>
+                    {/* Tooltip వద్దు: ఫోన్‌లో మొదటి నొక్కు tooltip తెరవడానికే పోయి
+                        (iPhone) బటన్ పని చేయదు, తెరుచుకున్న tooltip కింది బటన్లను కప్పేస్తుంది.
+                        నొక్కగానే అసలు ప్రశ్న సంభాషణలో కనిపిస్తుంది — అదే వివరణ. */}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={aiBusy || offline}
+                      onClick={() => handleAskAI(PLAIN_EXAMPLE.example)}
+                      title={`${PLAIN_EXAMPLE.example} — సహాయకుడు లేకుండా Groq మాటలతో జవాబు`}
+                      startIcon={<ChatBubbleOutlineRoundedIcon sx={{ fontSize: 16 }} />}
+                      sx={{ textTransform: "none", fontWeight: 600, borderRadius: "999px", minHeight: 34, touchAction: "manipulation", color: "text.secondary", borderColor: "divider" }}
+                    >
+                      {PLAIN_EXAMPLE.label}
+                    </Button>
                     {POEM_TOOLS.map((tool) => (
-                      <Tooltip key={tool.name} arrow title={`"${tool.example}" — ${tool.label} సహాయకుడిని పిలుస్తుంది`}>
-                        <span>
-                          <Button
-                            size="small"
-                            variant={toolUsed === tool.name ? "contained" : "outlined"}
-                            color="secondary"
-                            disabled={aiBusy}
-                            onClick={() => handleAskAI(tool.example)}
-                            startIcon={<BuildRoundedIcon sx={{ fontSize: 15 }} />}
-                            sx={{ textTransform: "none", fontWeight: 600, borderRadius: "999px", minHeight: 34, boxShadow: "none" }}
-                          >
-                            {tool.label}
-                          </Button>
-                        </span>
-                      </Tooltip>
+                      <Button
+                        key={tool.name}
+                        size="small"
+                        variant={toolUsed === tool.name ? "contained" : "outlined"}
+                        color="secondary"
+                        disabled={aiBusy || offline}
+                        onClick={() => handleAskAI(tool.example)}
+                        title={`${tool.example} — ${tool.label} సహాయకుడిని పిలుస్తుంది`}
+                        startIcon={<BuildRoundedIcon sx={{ fontSize: 15 }} />}
+                        sx={{ textTransform: "none", fontWeight: 600, borderRadius: "999px", minHeight: 34, touchAction: "manipulation", boxShadow: "none" }}
+                      >
+                        {tool.label}
+                      </Button>
                     ))}
                   </Stack>
                 </Box>
@@ -1518,33 +1612,21 @@ export default function PoemCard({
                   </Stack>
                 )}
 
-                <Stack direction="row" spacing={1} alignItems="flex-start">
-                  <TextField
-                    fullWidth
-                    size="small"
-                    multiline
-                    maxRows={4}
-                    placeholder={myMessages.length ? "ఇంకో ప్రశ్న: ఇంకా సులభంగా చెప్పు, పాదాలుగా చూపించు, కఠిన పదాలు…" : "ఈ పద్యం భావం ఏమిటి? ఏదైనా ప్రశ్న అడగండి…"}
-                    value={aiQuestion}
-                    onChange={(e) => setAiQuestion(e.target.value)}
-                    onKeyDown={handleQuestionKeyDown}
-                    disabled={aiBusy}
-                  />
-                  <Button
-                    onClick={() => handleAskAI()}
-                    disabled={aiBusy || !aiQuestion.trim()}
-                    variant="contained"
-                    color="secondary"
-                    sx={{ minWidth: 44, height: 40, px: 1.5 }}
-                    aria-label="ప్రశ్న పంపండి"
-                  >
-                    {aiBusy ? (
-                      <CircularProgress size={18} sx={{ color: "#fff" }} />
-                    ) : (
-                      <SendRoundedIcon fontSize="small" />
-                    )}
-                  </Button>
-                </Stack>
+                <PoemAIInput
+                  draftRef={aiDraftRef}
+                  busy={aiBusy}
+                  offline={offline}
+                  placeholder={myMessages.length ? "ఇంకో ప్రశ్న: ఇంకా సులభంగా చెప్పు, పాదాలుగా చూపించు, కఠిన పదాలు…" : "ఈ పద్యం భావం ఏమిటి? ఏదైనా ప్రశ్న అడగండి…"}
+                  onSend={sendFromBox}
+                />
+
+                {offline && (
+                  <Typography variant="caption" role="status" sx={{ display: "block", mt: 1, color: "warning.main", fontWeight: 600 }}>
+                    {aiBusy
+                      ? "ఇంటర్నెట్ పోయింది — కనెక్షన్ రాగానే జవాబు దానంతట అదే వస్తుంది."
+                      : "ఇంటర్నెట్ లేదు. కనెక్షన్ వచ్చాక ప్రశ్న పంపండి."}
+                  </Typography>
+                )}
 
                 {aiError && (
                   <Typography variant="caption" color="error" sx={{ display: "block", mt: 1 }}>
