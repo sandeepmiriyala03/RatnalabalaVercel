@@ -166,7 +166,18 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
         <Stack
           spacing={`${FAB_GAP}px`}
           alignItems={align}
-          sx={{ position: "fixed", ...edge, bottom: EDGE_BOTTOM, zIndex: FAB_Z }}
+          sx={{
+            position: "fixed",
+            ...edge,
+            bottom: EDGE_BOTTOM,
+            zIndex: FAB_Z,
+            /* మూసిన గుంపు (visibility: hidden) కూడా చోటు ఆక్రమిస్తుంది — ఈ Stack
+               ఆ ఖాళీ చోటు మొత్తం కనిపించని పొరలా తెరను కప్పి, ఫోన్‌లో కుడి వైపు
+               బటన్లను (భావాలమాల, పంపు ➤) నొక్కనివ్వదు. అందుకే Stack కి నొక్కులు
+               వద్దు; కనిపించే బటన్లకు మాత్రమే. */
+            pointerEvents: "none",
+            "& > :not(#floating-group)": { pointerEvents: "auto" }, // పైకి, సహాయం
+          }}
         >
           {/* The group (stays mounted; hidden = invisible + inert) */}
           <Box
@@ -181,6 +192,7 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
               gap: `${FAB_GAP}px`,
               opacity: menuOpen ? 1 : 0,
               visibility: menuOpen ? "visible" : "hidden",
+              pointerEvents: menuOpen ? "auto" : "none", // మూసి ఉన్నప్పుడు (మాయమయ్యే animation లో కూడా) నొక్కులు కింది పేజీకి
               transform: menuOpen ? "none" : "translateY(12px) scale(0.96)",
               transformOrigin: side === "right" ? "bottom right" : "bottom left",
               transition: "opacity .18s ease, transform .18s ease, visibility 0s linear " + (menuOpen ? "0s" : ".18s"),
