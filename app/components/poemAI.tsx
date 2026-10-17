@@ -29,6 +29,7 @@ import {
 } from "@ai-sdk/rsc";
 import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
+import { POEM_TOOLS, toolInfo, type PoemToolName } from "@/app/components/poemAITools";
 
 // "use client" ఫైల్ నుంచి వచ్చే చిన్న display components —
 // server వాటిని stream చేస్తుంది, బ్రౌజర్ వాటిని చూపిస్తుంది.
@@ -56,7 +57,7 @@ export type PoemAIMessage = {
 /** AI state = ప్రతి పద్యానికి వేరే చరిత్ర (key = PoemCard లోని readingEntry.id). */
 export type PoemAIState = Record<string, PoemAIMessage[]>;
 
-export type PoemToolName = "showPadalu" | "explainWords";
+export type { PoemToolName };
 
 /** Server నుంచి PoemCard దశల పట్టీకి వచ్చే సమాచారం. */
 export type PoemLifecycle =
@@ -125,8 +126,9 @@ ${poem}
 - పద్యంలో లేని విషయాలను కల్పించవద్దు.
 - ఈ పద్యానికి సంబంధం లేని ప్రశ్న అయితే, "నేను ఈ పద్యం గురించి మాత్రమే చెప్పగలను" అని మర్యాదగా చెప్పు.
 - Markdown గుర్తులు లేకుండా సాదా వచనంలో రాయి.
-- పద్యాన్ని పాదాలుగా విడదీసి చూపమంటే showPadalu సహాయకుడిని వాడు.
-- కఠిన పదాలు లేదా పదాల అర్థాలు అడిగితే explainWords సహాయకుడిని వాడు.`;
+
+సహాయకులు (tools):
+${POEM_TOOLS.map((t) => `- ${t.name}: ${t.description}`).join("\n")}`;
 }
 
 /** మోడల్ అలవాటుగా వాడే **, -, # గుర్తులు తీసేయడం (Python strip_markdown లాగే). */
@@ -211,7 +213,7 @@ async function askPoem(input: AskPoemInput): Promise<PoemUIMessage> {
       // (ఆ) సహాయకులు (tools) — Groq తనే ఎప్పుడు పిలవాలో నిర్ణయిస్తాడు
       tools: {
         showPadalu: {
-          description: "పద్యాన్ని పాదాలుగా విడదీసి చూపించమని అడిగినప్పుడు వాడు.",
+          description: toolInfo("showPadalu").description,
           inputSchema: z.object({}),
           generate: async function* () {
             lifecycle.update({ step: "tool", tool: "showPadalu" });
@@ -224,8 +226,7 @@ async function askPoem(input: AskPoemInput): Promise<PoemUIMessage> {
           },
         },
         explainWords: {
-          description:
-            "పద్యంలోని కఠిన పదాలు, వాటి సులభమైన అర్థాలు అడిగినప్పుడు వాడు. పద్యంలో నిజంగా ఉన్న పదాలనే ఇవ్వు.",
+          description: toolInfo("explainWords").description,
           inputSchema: z.object({
             words: z
               .array(z.object({ word: z.string().max(60), meaning: z.string().max(200) }))

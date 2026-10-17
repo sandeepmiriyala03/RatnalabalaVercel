@@ -30,7 +30,10 @@ import PsychologyRoundedIcon      from "@mui/icons-material/PsychologyRounded";
 // AI SDK RSC — client వైపు hooks. Server వైపు (createAI, getMutableAIState,
 // streamUI) అంతా ./poemAI.tsx లో ఉంది.
 import { readStreamableValue, useActions, useAIState, useUIState } from "@ai-sdk/rsc";
-import type { PoemAI, PoemLifecycle, PoemToolName } from "@/app/components/poemAI";
+import type { PoemAI, PoemLifecycle } from "@/app/components/poemAI";
+import { PLAIN_EXAMPLE, POEM_TOOLS, type PoemToolName } from "@/app/components/poemAITools";
+import BuildRoundedIcon           from "@mui/icons-material/BuildRounded";
+import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
@@ -128,10 +131,8 @@ const LIFECYCLE_STEPS: { key: LifecycleKey; fn: string; label: string; hint: str
   { key: "useAIState",        fn: "useAIState",        label: "బటన్లకు మాటలు",   hint: "జవాబు మాటలు వినండి, కాపీ, వాట్సాప్ బటన్లకు అందాయి." },
 ];
 
-const TOOL_LABELS: Record<PoemToolName, string> = {
-  showPadalu: "పాదాల విభజన",
-  explainWords: "కఠిన పదాలు",
-};
+// తెలుగు పేర్లు poemAITools.ts నుంచే (ఒకే జాబితా)
+const TOOL_LABELS = Object.fromEntries(POEM_TOOLS.map((t) => [t.name, t.label])) as Record<PoemToolName, string>;
 
 const AI_SAFETY_TIMEOUT_MS = 90_000;
 
@@ -757,8 +758,9 @@ export default function PoemCard({
 
   /* ---------------------------- ask AI ---------------------------- */
 
-  const handleAskAI = async () => {
-    const trimmed = aiQuestion.trim();
+  // chip నొక్కితే దాని ఉదాహరణ ప్రశ్న నేరుగా వెళ్తుంది; లేకపోతే పెట్టెలోని ప్రశ్న
+  const handleAskAI = async (exampleQuestion?: string) => {
+    const trimmed = (exampleQuestion ?? aiQuestion).trim();
     if (!trimmed || aiBusy) return;
 
     // కొత్త ప్రశ్న వస్తే పాత జవాబు చదవడం ఆపేయాలి
@@ -1455,6 +1457,46 @@ export default function PoemCard({
                   toolUsed={toolUsed}
                 />
 
+                {/* ప్రయత్నించండి — ఒక్క నొక్కుతో ఉదాహరణ ప్రశ్న; ఏ సహాయకులు ఉన్నాయో కూడా ఇక్కడే */}
+                <Box sx={{ mb: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.75 }}>
+                    నొక్కి ప్రయత్నించండి · సహాయకులు (tools): {POEM_TOOLS.length}
+                  </Typography>
+                  <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+                    <Tooltip arrow title={`"${PLAIN_EXAMPLE.example}" — సహాయకుడు లేకుండా Groq మాటలతో జవాబు`}>
+                      <span>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          disabled={aiBusy}
+                          onClick={() => handleAskAI(PLAIN_EXAMPLE.example)}
+                          startIcon={<ChatBubbleOutlineRoundedIcon sx={{ fontSize: 16 }} />}
+                          sx={{ textTransform: "none", fontWeight: 600, borderRadius: "999px", minHeight: 34, color: "text.secondary", borderColor: "divider" }}
+                        >
+                          {PLAIN_EXAMPLE.label}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    {POEM_TOOLS.map((tool) => (
+                      <Tooltip key={tool.name} arrow title={`"${tool.example}" — ${tool.label} సహాయకుడిని పిలుస్తుంది`}>
+                        <span>
+                          <Button
+                            size="small"
+                            variant={toolUsed === tool.name ? "contained" : "outlined"}
+                            color="secondary"
+                            disabled={aiBusy}
+                            onClick={() => handleAskAI(tool.example)}
+                            startIcon={<BuildRoundedIcon sx={{ fontSize: 15 }} />}
+                            sx={{ textTransform: "none", fontWeight: 600, borderRadius: "999px", minHeight: 34, boxShadow: "none" }}
+                          >
+                            {tool.label}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    ))}
+                  </Stack>
+                </Box>
+
                 {/* సంభాషణ — UI state (useUIState) లోని ఈ పద్యం సందేశాలు */}
                 {myMessages.length > 0 && (
                   <Stack spacing={1} sx={{ mb: 1.5 }} aria-label="భావాలమాల సంభాషణ">
@@ -1489,7 +1531,7 @@ export default function PoemCard({
                     disabled={aiBusy}
                   />
                   <Button
-                    onClick={handleAskAI}
+                    onClick={() => handleAskAI()}
                     disabled={aiBusy || !aiQuestion.trim()}
                     variant="contained"
                     color="secondary"
