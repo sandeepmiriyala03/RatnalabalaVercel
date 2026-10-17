@@ -23,6 +23,14 @@ import CheckRoundedIcon           from "@mui/icons-material/CheckRounded";
 import InfoOutlinedIcon           from "@mui/icons-material/InfoOutlined";
 import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
 import ScheduleRoundedIcon        from "@mui/icons-material/ScheduleRounded";
+import RestartAltRoundedIcon      from "@mui/icons-material/RestartAltRounded";
+import CheckRoundedIcon2          from "@mui/icons-material/DoneAllRounded";
+import PsychologyRoundedIcon      from "@mui/icons-material/PsychologyRounded";
+
+// AI SDK RSC — client వైపు hooks. Server వైపు (createAI, getMutableAIState,
+// streamUI) అంతా ./poemAI.tsx లో ఉంది.
+import { readStreamableValue, useActions, useAIState, useUIState } from "@ai-sdk/rsc";
+import type { PoemAI, PoemLifecycle, PoemToolName } from "@/app/components/poemAI";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
@@ -99,33 +107,209 @@ const BG_MUSIC_VOLUME_DEFAULT = 0.18;
 // the person can just tap send immediately. They can still edit or clear it.
 const DEFAULT_AI_QUESTION = "ఈ పద్యం భావం ఏమిటి? సులభంగా వివరించండి.";
 
-// Asks the Groq-backed poem-ai endpoint a question about THIS poem.
-// - .md poems: send collection + filename; the backend reads the real file.
-// - database poems (no file): those two are undefined, so the poem's
-//   title + content are sent and the backend answers from that text.
-async function askPoemAI(
-  question: string,
-  poem: { title: string; content: string; collection?: string; filename?: string }
-): Promise<string> {
-  const res = await fetch("/api/main?endpoint=poem-ai", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      collection: poem.collection,
-      filename: poem.filename,
-      title: poem.title,
-      content: poem.content,
-      question,
-    }),
-  });
+/* ------------------------------------------------------------------ */
+/* భావాలమాల AI జీవనచక్రం — panel లోని దశల పట్టీ                         */
+/* ఒక్కో దశ ఒక AI SDK RSC function. వాడుకరికి "AI అంటే ఒక prompt మాత్రమే */
+/* కాదు" అని కనిపించేలా, ప్రతి ప్రశ్నకు ఈ దశలు ఒక్కొక్కటిగా వెలుగుతాయి.    */
+/* ------------------------------------------------------------------ */
 
-  const data = await res.json().catch(() => ({}));
+type LifecycleKey =
+  | "createAI" | "useUIState" | "useActions" | "getMutableAIState"
+  | "streamUI" | "tool" | "done" | "useAIState";
 
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || "సమాధానం రాలేదు — మళ్ళీ ప్రయత్నించండి.");
-  }
+const LIFECYCLE_STEPS: { key: LifecycleKey; fn: string; label: string; hint: string; optional?: boolean }[] = [
+  { key: "createAI",          fn: "createAI",          label: "AI సిద్ధం",       hint: "పేజీ తెరవగానే భావాలమాల AI (provider) సిద్ధంగా ఉంది." },
+  { key: "useUIState",        fn: "useUIState",        label: "ప్రశ్న తెరపై",     hint: "మీ ప్రశ్న వెంటనే సంభాషణలో కనిపించింది." },
+  { key: "useActions",        fn: "useActions",        label: "Server కి",       hint: "ప్రశ్న server action కి వెళ్ళింది." },
+  { key: "getMutableAIState", fn: "getMutableAIState", label: "జ్ఞాపకంలో",       hint: "ఈ పద్యం సంభాషణ చరిత్రలో మీ ప్రశ్న చేరింది." },
+  { key: "streamUI",          fn: "streamUI",          label: "Groq ఆలోచన",      hint: "పద్యం, చరిత్ర, సహాయకుల జాబితాతో Groq కి పంపాం." },
+  { key: "tool",              fn: "tool",              label: "సహాయకుడు",       hint: "Groq ఒక సహాయకుడిని (tool) పిలిచాడు.", optional: true },
+  { key: "done",              fn: ".done()",           label: "జ్ఞాపకం పూర్తి",   hint: "జవాబు సంభాషణ చరిత్రలో చేరింది." },
+  { key: "useAIState",        fn: "useAIState",        label: "బటన్లకు మాటలు",   hint: "జవాబు మాటలు వినండి, కాపీ, వాట్సాప్ బటన్లకు అందాయి." },
+];
 
-  return data.answer as string;
+const TOOL_LABELS: Record<PoemToolName, string> = {
+  showPadalu: "పాదాల విభజన",
+  explainWords: "కఠిన పదాలు",
+};
+
+const AI_SAFETY_TIMEOUT_MS = 90_000;
+
+/* ---- Server (poemAI.tsx) stream చేసే చిన్న display components ---- */
+/* ఇవి "use client" ఫైల్‌లో ఉన్నాయి కాబట్టి server వీటిని బొమ్మలుగా    */
+/* పంపగలదు. Props మాటలు / జాబితాలు మాత్రమే.                           */
+
+export function PoemAIQuestion({ text }: { text: string }) {
+  return (
+    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
+      {text}
+    </Typography>
+  );
+}
+
+export function PoemAIThinking() {
+  return (
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "text.secondary" }}>
+      <CircularProgress size={14} color="inherit" thickness={5} />
+      <Typography variant="body2">Groq ఆలోచిస్తోంది…</Typography>
+    </Stack>
+  );
+}
+
+export function PoemAIAnswer({ text, streaming }: { text: string; streaming: boolean }) {
+  return (
+    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.8 }} aria-busy={streaming}>
+      {text}
+      {streaming && (
+        <Box
+          component="span"
+          aria-hidden
+          sx={{
+            display: "inline-block", width: "0.5em", height: "1em", ml: 0.25,
+            verticalAlign: "text-bottom", bgcolor: "secondary.main", opacity: 0.6,
+            animation: "poemAiCaret 1s steps(2) infinite",
+            "@keyframes poemAiCaret": { "0%": { opacity: 0.6 }, "100%": { opacity: 0 } },
+            "@media (prefers-reduced-motion: reduce)": { animation: "none" },
+          }}
+        />
+      )}
+    </Typography>
+  );
+}
+
+export function PoemAIToolLoading({ label }: { label: string }) {
+  return (
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ color: "secondary.main" }}>
+      <CircularProgress size={14} color="inherit" thickness={5} />
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>{label}</Typography>
+    </Stack>
+  );
+}
+
+function ToolTag({ tool }: { tool: PoemToolName }) {
+  return (
+    <Typography
+      component="span"
+      sx={{
+        display: "inline-block", fontSize: 11, fontWeight: 700, letterSpacing: 0.3,
+        px: 1, py: 0.1, borderRadius: "999px", border: "1px solid", borderColor: "secondary.main",
+        color: "secondary.main", mb: 1,
+      }}
+    >
+      సహాయకుడు · {TOOL_LABELS[tool]}
+    </Typography>
+  );
+}
+
+export function PoemAIPadalu({ padalu }: { padalu: string[] }) {
+  return (
+    <Box>
+      <ToolTag tool="showPadalu" />
+      <Stack spacing={0.75}>
+        {padalu.map((pada, i) => (
+          <Stack key={i} direction="row" spacing={1.25} alignItems="baseline">
+            <Typography sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", minWidth: 44 }}>
+              పాదం {i + 1}
+            </Typography>
+            <Typography sx={{ fontFamily: "'Noto Serif Telugu', serif", lineHeight: 1.8 }}>{pada}</Typography>
+          </Stack>
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+export function PoemAIWords({ words }: { words: { word: string; meaning: string }[] }) {
+  return (
+    <Box>
+      <ToolTag tool="explainWords" />
+      <Box component="dl" sx={{ m: 0, display: "grid", gridTemplateColumns: "max-content 1fr", columnGap: 1.5, rowGap: 0.75 }}>
+        {words.map((w, i) => (
+          <React.Fragment key={i}>
+            <Typography component="dt" sx={{ fontWeight: 700, fontFamily: "'Noto Serif Telugu', serif" }}>{w.word}</Typography>
+            <Typography component="dd" variant="body2" sx={{ m: 0, lineHeight: 1.7 }}>{w.meaning}</Typography>
+          </React.Fragment>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
+export function PoemAIError({ message }: { message: string }) {
+  return (
+    <Typography variant="body2" color="error" role="alert">
+      {message}
+    </Typography>
+  );
+}
+
+/* ---- దశల పట్టీ ---- */
+
+function LifecycleStepper({
+  reached, busy, failed, toolUsed,
+}: {
+  reached: LifecycleKey[];
+  busy: boolean;
+  failed: boolean;
+  toolUsed: PoemToolName | null;
+}) {
+  const finished = !busy && reached.includes("done");
+  const current = busy ? LIFECYCLE_STEPS.find((s) => !reached.includes(s.key) && !(s.optional && !toolUsed && reached.includes("done")))?.key : undefined;
+  const last = [...LIFECYCLE_STEPS].reverse().find((s) => reached.includes(s.key));
+  const status = failed
+    ? "ఈ ప్రశ్న పూర్తి కాలేదు. మళ్ళీ ప్రయత్నించండి."
+    : last
+    ? (last.key === "tool" && toolUsed ? `Groq "${TOOL_LABELS[toolUsed]}" సహాయకుడిని పిలిచాడు.` : last.hint)
+    : "ప్రశ్న పంపితే, AI ఈ దశల్లో పనిచేస్తుంది.";
+
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Box
+        component="ol"
+        aria-label="భావాలమాల AI దశలు"
+        sx={{
+          listStyle: "none", m: 0, p: 0,
+          display: "grid", gridTemplateColumns: { xs: "repeat(4, 1fr)", sm: "repeat(8, 1fr)" }, gap: 0.75,
+        }}
+      >
+        {LIFECYCLE_STEPS.map((step, i) => {
+          const isDone = reached.includes(step.key);
+          const isSkipped = step.optional && !toolUsed && finished;
+          const isCurrent = current === step.key;
+          return (
+            <Box
+              component="li"
+              key={step.key}
+              aria-current={isCurrent ? "step" : undefined}
+              title={step.hint}
+              sx={{
+                borderRadius: "10px", px: 0.75, py: 0.75, minWidth: 0, textAlign: "center",
+                border: "1.5px solid",
+                borderStyle: step.optional ? "dashed" : "solid",
+                borderColor: isDone ? "secondary.main" : isCurrent ? "secondary.light" : "divider",
+                bgcolor: isDone ? (t) => alpha(t.palette.secondary.main, 0.1) : "transparent",
+                opacity: isSkipped ? 0.45 : 1,
+                transition: "background-color 0.2s, border-color 0.2s",
+                animation: isCurrent ? "poemAiPulse 1.2s ease-in-out infinite" : "none",
+                "@keyframes poemAiPulse": { "50%": { borderColor: "transparent" } },
+                "@media (prefers-reduced-motion: reduce)": { animation: "none" },
+              }}
+            >
+              <Typography sx={{ fontSize: 11, fontWeight: 700, color: isDone ? "secondary.main" : "text.secondary", lineHeight: 1.3 }}>
+                {isDone ? "✓" : i + 1} {step.key === "tool" && toolUsed ? TOOL_LABELS[toolUsed] : step.label}
+              </Typography>
+              <Typography sx={{ fontSize: 9.5, fontFamily: "ui-monospace, Menlo, monospace", color: "text.secondary", overflowWrap: "anywhere", lineHeight: 1.3 }}>
+                {isSkipped ? "అవసరం రాలేదు" : step.fn}
+              </Typography>
+            </Box>
+          );
+        })}
+      </Box>
+      <Typography role="status" aria-live="polite" variant="caption" color={failed ? "error" : "text.secondary"} sx={{ display: "block", mt: 0.75 }}>
+        {status}
+      </Typography>
+    </Box>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -314,9 +498,12 @@ export default function PoemCard({
   const [toolsOpen,    setToolsOpen]    = useState(false);
   const [aiOpen,       setAiOpen]       = useState(false);
   const [aiQuestion,   setAiQuestion]   = useState("");
-  const [aiAnswer,     setAiAnswer]     = useState<string | null>(null);
   const [aiError,      setAiError]      = useState<string | null>(null);
-  const [aiLoading,    setAiLoading]    = useState(false);
+  const [aiBusy,       setAiBusy]       = useState(false);
+  const [memoryOpen,   setMemoryOpen]   = useState(false);
+  // దశల పట్టీ: ఈ ప్రశ్నకు ఇప్పటివరకు పూర్తైన దశలు
+  const [reached,      setReached]      = useState<LifecycleKey[]>([]);
+  const [toolUsed,     setToolUsed]     = useState<PoemToolName | null>(null);
   const [copied, setCopied] = useState(false);
   const [dailySendOpen, setDailySendOpen] = useState(false);
   const [sendPhone, setSendPhone] = useState("");
@@ -354,6 +541,19 @@ export default function PoemCard({
     href: pathname,
   };
 
+  /* ---------------- AI SDK RSC hooks (దశలు 2, 3, 8) ---------------- */
+  // ప్రతి పద్యానికి వేరే సంభాషణ: AI state, UI state రెండూ ఈ key తో వేరవుతాయి
+  const poemKey = readingEntry.id;
+  const [uiMessages, setUIMessages] = useUIState<typeof PoemAI>();          // దశ 2
+  const { askPoem, resetPoemChat } = useActions<typeof PoemAI>();          // దశ 3
+  const [poemHistory] = useAIState<typeof PoemAI>(poemKey);                // దశ 8
+  const history = poemHistory ?? [];
+  const myMessages = uiMessages.filter((m) => m.poemKey === poemKey);
+  // వినండి / కాపీ / వాట్సాప్ కి మాటలు — బొమ్మ (UI state) నుంచి కాదు, AI state నుంచి
+  const lastAnswer = [...history].reverse().find((m) => m.role === "assistant")?.content ?? null;
+  const reachedWithClient: LifecycleKey[] =
+    reached.includes("done") && lastAnswer && !aiBusy ? [...reached, "useAIState"] : reached;
+
   // The moment the AI panel opens, drop the default question into the box.
   // Only fills when empty, so reopening never stomps on the person's own text.
   useEffect(() => {
@@ -365,12 +565,14 @@ export default function PoemCard({
 
   // Reset the Q&A state when the poem changes, so a stale answer from a
   // previous poem can never show under a new one.
+  // (సంభాషణలు poemKey తో వేరు కాబట్టి పాత జవాబు కొత్త పద్యం కింద రాదు.)
   useEffect(() => {
     setAiQuestion("");
-    setAiAnswer(null);
     setAiError(null);
-    setAiLoading(false);
+    setAiBusy(false);
     setCopied(false);
+    setReached([]);
+    setToolUsed(null);
   }, [poem.slug, poem.filename, collection]);
 
   const [isSpeaking,   setIsSpeaking]   = useState(false);
@@ -440,7 +642,7 @@ export default function PoemCard({
   };
 
   const handleSpeak = async (target: SpeakTarget = "poem") => {
-    const text = target === "answer" ? (aiAnswer ?? "") : voiceText;
+    const text = target === "answer" ? (lastAnswer ?? "") : voiceText;
     if (!text.trim()) return;
 
     // Starting one narration stops the other (poem <-> answer).
@@ -557,28 +759,87 @@ export default function PoemCard({
 
   const handleAskAI = async () => {
     const trimmed = aiQuestion.trim();
-    if (!trimmed) return;
+    if (!trimmed || aiBusy) return;
 
-    // A new question replaces the answer, so stop its narration.
+    // కొత్త ప్రశ్న వస్తే పాత జవాబు చదవడం ఆపేయాలి
     if (speakingTarget === "answer") handleStop();
 
-    setAiLoading(true);
+    setAiBusy(true);
     setAiError(null);
-    setAiAnswer(null);
     setCopied(false);
+    setToolUsed(null);
+
+    // దశ 1 (provider ఇప్పటికే ఉంది) + దశ 2: ప్రశ్న వెంటనే తెరపై (useUIState)
+    setUIMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-q`, poemKey, role: "user", display: <PoemAIQuestion text={trimmed} /> },
+    ]);
+    setAiQuestion("");
+    // దశ 3: server action పిలుపు (useActions)
+    setReached(["createAI", "useUIState", "useActions"]);
+
+    let settled = false;
+    const watchdog = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setAiError("సమాధానం రావడానికి ఎక్కువ సమయం పట్టింది. మళ్ళీ ప్రయత్నించండి.");
+      setAiBusy(false);
+    }, AI_SAFETY_TIMEOUT_MS);
+
+    const add = (key: LifecycleKey) => setReached((r) => (r.includes(key) ? r : [...r, key]));
 
     try {
-      const answer = await askPoemAI(trimmed, {
+      const reply = await askPoem({
+        poemKey,
+        question: trimmed,
         title: poem.title,
         content: poem.content,
-        collection,
-        filename: poem.filename,
+        author: authorText,
       });
-      setAiAnswer(answer);
-    } catch (err: any) {
-      setAiError(err.message || "ఏదో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.");
+      setUIMessages((prev) => [...prev, reply]);
+
+      // దశలు 4–7: server నుంచి వచ్చే జీవనచక్ర సమాచారం
+      if (reply.lifecycle) {
+        for await (const event of readStreamableValue<PoemLifecycle>(reply.lifecycle)) {
+          if (!event || settled) continue;
+          if (event.step === "aiState") add("getMutableAIState");
+          if (event.step === "streamUI" || event.step === "text") { add("getMutableAIState"); add("streamUI"); }
+          if (event.step === "tool") { add("getMutableAIState"); add("streamUI"); add("tool"); setToolUsed(event.tool); }
+          if (event.step === "done") { add("getMutableAIState"); add("streamUI"); add("done"); if (event.tool) { add("tool"); setToolUsed(event.tool); } }
+          if (event.step === "error") setAiError(event.message);
+        }
+      }
+    } catch (err) {
+      console.error("[PoemCard] askPoem failed", {
+        poemKey,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      if (!settled) setAiError("ఏదో సమస్య వచ్చింది. మళ్ళీ ప్రయత్నించండి.");
     } finally {
-      setAiLoading(false);
+      clearTimeout(watchdog);
+      if (!settled) {
+        settled = true;
+        setAiBusy(false);
+      }
+    }
+  };
+
+  // "కొత్త సంభాషణ": ఈ పద్యం UI state, AI state రెండూ ఖాళీ
+  const handleResetChat = async () => {
+    if (aiBusy) return;
+    if (speakingTarget === "answer") handleStop();
+    setUIMessages((prev) => prev.filter((m) => m.poemKey !== poemKey));
+    setReached([]);
+    setToolUsed(null);
+    setAiError(null);
+    setCopied(false);
+    try {
+      await resetPoemChat(poemKey);
+    } catch (err) {
+      console.error("[PoemCard] resetPoemChat failed", {
+        poemKey,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   };
 
@@ -586,16 +847,16 @@ export default function PoemCard({
 
   // Copy the answer text exactly as shown.
   const handleCopyAnswer = async () => {
-    if (!aiAnswer) return;
+    if (!lastAnswer) return;
 
     let ok = false;
     try {
-      await navigator.clipboard.writeText(aiAnswer);
+      await navigator.clipboard.writeText(lastAnswer);
       ok = true;
     } catch {
       // Fallback for older browsers / non-secure contexts.
       const ta = document.createElement("textarea");
-      ta.value = aiAnswer;
+      ta.value = lastAnswer;
       ta.style.position = "fixed";
       ta.style.opacity = "0";
       document.body.appendChild(ta);
@@ -613,8 +874,8 @@ export default function PoemCard({
   // Share on WhatsApp: poem title + answer + site link, in the person's own
   // WhatsApp (app on phones, WhatsApp Web on desktop).
   const handleShareWhatsApp = () => {
-    if (!aiAnswer) return;
-    const text = `${poem.title}\n\n${aiAnswer}\n\n${SITE_URL}`;
+    if (!lastAnswer) return;
+    const text = `${poem.title}\n\n${lastAnswer}\n\n${SITE_URL}`;
     window.open(
       `https://wa.me/?text=${encodeURIComponent(text)}`,
       "_blank",
@@ -676,7 +937,7 @@ export default function PoemCard({
     // (Enter that only confirms a Telugu keyboard composition is ignored.)
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      if (!aiLoading) handleAskAI();
+      if (!aiBusy) handleAskAI();
     }
   };
 
@@ -1159,7 +1420,7 @@ export default function PoemCard({
                         component="span"
                         sx={{ display: "block", whiteSpace: "pre-line", lineHeight: 1.6 }}
                       >
-                        {"సర్వర్‌లో జరిగే దశలు:\n1. ప్రశ్నను స్వీకరించి రోజువారీ పరిమితిని తనిఖీ చేస్తుంది.\n2. అసలు పద్యాన్ని ఫైల్ లేదా డేటాబేస్ నుంచి తీసుకుంటుంది.\n3. BAML ద్వారా పద్యాన్ని Groqకి పంపి సమాధానం తయారు చేస్తుంది.\n4. సమాధానాన్ని ఈ కార్డులో చూపిస్తుంది.\nAPI key సర్వర్‌లోనే ఉంటుంది."}
+                        {"AI అంటే ఒక prompt మాత్రమే కాదు. ప్రతి ప్రశ్నకు:\n1. createAI — AI సిద్ధంగా ఉంటుంది\n2. useUIState — ప్రశ్న తెరపై\n3. useActions — server కి\n4. getMutableAIState — సంభాషణ జ్ఞాపకంలో\n5. streamUI — Groq మాట మాటగా జవాబు\n6. tool — అవసరమైతే సహాయకుడు\n7. .done() — జ్ఞాపకం పూర్తి\n8. useAIState — మాటలు బటన్లకు\nAPI key సర్వర్‌లోనే ఉంటుంది."}
                       </Typography>
                     }
                   >
@@ -1173,27 +1434,55 @@ export default function PoemCard({
                   </Tooltip>
                 </Box>
 
+                <LifecycleStepper
+                  reached={reachedWithClient}
+                  busy={aiBusy}
+                  failed={Boolean(aiError)}
+                  toolUsed={toolUsed}
+                />
+
+                {/* సంభాషణ — UI state (useUIState) లోని ఈ పద్యం సందేశాలు */}
+                {myMessages.length > 0 && (
+                  <Stack spacing={1} sx={{ mb: 1.5 }} aria-label="భావాలమాల సంభాషణ">
+                    {myMessages.map((m) => (
+                      <Box
+                        key={m.id}
+                        sx={{
+                          alignSelf: m.role === "user" ? "flex-end" : "stretch",
+                          maxWidth: m.role === "user" ? "88%" : "100%",
+                          px: 1.5, py: 1, borderRadius: "10px",
+                          background: m.role === "user"
+                            ? alpha(theme.palette.secondary.main, 0.14)
+                            : alpha(theme.palette.secondary.main, 0.06),
+                        }}
+                      >
+                        {m.display}
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+
                 <Stack direction="row" spacing={1} alignItems="flex-start">
                   <TextField
                     fullWidth
                     size="small"
                     multiline
                     maxRows={4}
-                    placeholder="ఈ పద్యం భావం ఏమిటి? ఏదైనా ప్రశ్న అడగండి…"
+                    placeholder={myMessages.length ? "ఇంకో ప్రశ్న: ఇంకా సులభంగా చెప్పు, పాదాలుగా చూపించు, కఠిన పదాలు…" : "ఈ పద్యం భావం ఏమిటి? ఏదైనా ప్రశ్న అడగండి…"}
                     value={aiQuestion}
                     onChange={(e) => setAiQuestion(e.target.value)}
                     onKeyDown={handleQuestionKeyDown}
-                    disabled={aiLoading}
+                    disabled={aiBusy}
                   />
                   <Button
                     onClick={handleAskAI}
-                    disabled={aiLoading || !aiQuestion.trim()}
+                    disabled={aiBusy || !aiQuestion.trim()}
                     variant="contained"
                     color="secondary"
                     sx={{ minWidth: 44, height: 40, px: 1.5 }}
                     aria-label="ప్రశ్న పంపండి"
                   >
-                    {aiLoading ? (
+                    {aiBusy ? (
                       <CircularProgress size={18} sx={{ color: "#fff" }} />
                     ) : (
                       <SendRoundedIcon fontSize="small" />
@@ -1207,7 +1496,53 @@ export default function PoemCard({
                   </Typography>
                 )}
 
-                {aiAnswer && (
+                {/* AI జ్ఞాపకం — AI state (useAIState) ను వాడుకరికి చూపడం */}
+                {history.length > 0 && (
+                  <Box sx={{ mt: 1.25 }}>
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                      <Button
+                        size="small"
+                        onClick={() => setMemoryOpen((v) => !v)}
+                        aria-expanded={memoryOpen}
+                        aria-controls={`${uid}-memory`}
+                        startIcon={<PsychologyRoundedIcon fontSize="small" />}
+                        endIcon={memoryOpen ? <ExpandLessRoundedIcon fontSize="small" /> : <ExpandMoreRoundedIcon fontSize="small" />}
+                        sx={{ textTransform: "none", color: "text.secondary", fontWeight: 600 }}
+                      >
+                        AI జ్ఞాపకం · {history.length} సందేశాలు
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={handleResetChat}
+                        disabled={aiBusy}
+                        startIcon={<RestartAltRoundedIcon fontSize="small" />}
+                        sx={{ textTransform: "none", color: "text.secondary" }}
+                      >
+                        కొత్త సంభాషణ
+                      </Button>
+                    </Stack>
+                    <Collapse in={memoryOpen} unmountOnExit>
+                      <Box
+                        id={`${uid}-memory`}
+                        sx={{ mt: 0.75, p: 1.25, borderRadius: "8px", border: `1px dashed ${alpha(theme.palette.divider, 0.6)}` }}
+                      >
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.75 }}>
+                          Groq కి గుర్తున్నది ఇదే (AI state). తదుపరి ప్రశ్నతో ఇదంతా మళ్ళీ వెళ్తుంది.
+                        </Typography>
+                        <Stack spacing={0.5}>
+                          {history.map((m, i) => (
+                            <Typography key={i} variant="caption" sx={{ display: "block", lineHeight: 1.6 }}>
+                              <b>{m.role === "user" ? "మీరు" : "AI"}{m.tool ? ` (సహాయకుడు: ${TOOL_LABELS[m.tool]})` : ""}:</b>{" "}
+                              {m.content.length > 140 ? `${m.content.slice(0, 140)}…` : m.content}
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </Box>
+                    </Collapse>
+                  </Box>
+                )}
+
+                {lastAnswer && !aiBusy && (
                   <Box
                     sx={{
                       mt: 1.5,
@@ -1216,10 +1551,10 @@ export default function PoemCard({
                       background: alpha(theme.palette.secondary.main, 0.08),
                     }}
                   >
-                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
-                      {aiAnswer}
+                    <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <CheckRoundedIcon2 sx={{ fontSize: 14 }} /> చివరి జవాబు (AI state నుంచి)
                     </Typography>
-                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
                       <Button
                         size="small"
                         variant="outlined"

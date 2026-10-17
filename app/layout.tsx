@@ -6,6 +6,9 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import Script from "next/script";
 import type { Metadata, Viewport } from "next";
+// భావాలమాల AI (AI SDK RSC) — createAI provider. PoemCard 7 పేజీల్లో ఉంటుంది,
+// కాబట్టి provider అన్ని పేజీలను చుట్టాలి. ఇది server component.
+import { PoemAI } from "@/app/components/poemAI";
 
 const SITE_URL = "https://ratnalabala.vercel.app";
 
@@ -99,7 +102,9 @@ export default function RootLayout({
       <body>
         {/* Navbar, page content, WebMCP registration and the floating
             buttons (left: AI, right: install + search) */}
-        <RootClientLayout>{children}</RootClientLayout>
+        <PoemAI>
+          <RootClientLayout>{children}</RootClientLayout>
+        </PoemAI>
 
         {/* One offline banner for every page */}
         <OfflineBanner />
