@@ -1432,6 +1432,20 @@ export default function PoemCard({
                       <InfoOutlinedIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Tooltip>
+                  {/* కొత్త సంభాషణ — panel పైనే, footer / floating buttons కింద దాగకుండా */}
+                  {(myMessages.length > 0 || history.length > 0) && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      onClick={handleResetChat}
+                      disabled={aiBusy}
+                      startIcon={<RestartAltRoundedIcon fontSize="small" />}
+                      sx={{ ml: "auto", textTransform: "none", fontWeight: 600, borderRadius: "8px", minHeight: 36, whiteSpace: "nowrap" }}
+                    >
+                      కొత్త సంభాషణ
+                    </Button>
+                  )}
                 </Box>
 
                 <LifecycleStepper
@@ -1499,7 +1513,7 @@ export default function PoemCard({
                 {/* AI జ్ఞాపకం — AI state (useAIState) ను వాడుకరికి చూపడం */}
                 {history.length > 0 && (
                   <Box sx={{ mt: 1.25 }}>
-                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                    <Stack direction="row" spacing={1} alignItems="center">
                       <Button
                         size="small"
                         onClick={() => setMemoryOpen((v) => !v)}
@@ -1510,15 +1524,6 @@ export default function PoemCard({
                         sx={{ textTransform: "none", color: "text.secondary", fontWeight: 600 }}
                       >
                         AI జ్ఞాపకం · {history.length} సందేశాలు
-                      </Button>
-                      <Button
-                        size="small"
-                        onClick={handleResetChat}
-                        disabled={aiBusy}
-                        startIcon={<RestartAltRoundedIcon fontSize="small" />}
-                        sx={{ textTransform: "none", color: "text.secondary" }}
-                      >
-                        కొత్త సంభాషణ
                       </Button>
                     </Stack>
                     <Collapse in={memoryOpen} unmountOnExit>
