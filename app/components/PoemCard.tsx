@@ -32,13 +32,132 @@ import PsychologyRoundedIcon      from "@mui/icons-material/PsychologyRounded";
 // streamUI) అంతా ./poemAI.tsx లో ఉంది.
 import { readStreamableValue, useActions, useAIState, useUIState } from "@ai-sdk/rsc";
 import type { PoemAI, PoemLifecycle } from "@/app/components/poemAI";
-import { PLAIN_EXAMPLE, POEM_TOOLS, type PoemToolName, type SimilarPoem } from "@/app/components/poemAITools";
-import BuildRoundedIcon           from "@mui/icons-material/BuildRounded";
-import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
+import {
+  PLAIN_EXAMPLE,
+  POEM_AI_ACTION_EVENT,
+  POEM_TOOLS,
+  type PoemAIActionDetail,
+  type PoemClientAction,
+  type PoemToolName,
+  type PoetPoem,
+  type Sametha,
+  type SimilarPoem,
+} from "@/app/components/poemAITools";
+import { capturePosterAsDataUrl } from "@/lib/posterExport";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";
 import ReadingEntryButton from "@/app/components/ReadingEntryButton";
+
+/* ------------------------------------------------------------------ */
+/* సహాయకుల dropdown: ఎంచుకో → ఏం చేస్తుందో చదువు → పంపు → నిర్ధారించు */
+/* ------------------------------------------------------------------ */
+const PLAIN_VALUE = "plain";
+
+type PoemAIToolPickerProps = {
+  busy: boolean;
+  offline: boolean;
+  onRun: (question: string) => void;
+};
+
+const PoemAIToolPicker = memo(function PoemAIToolPicker({ busy, offline, onRun }: PoemAIToolPickerProps) {
+  const [value, setValue] = useState("");
+  const [confirming, setConfirming] = useState(false);
+
+  const tool = POEM_TOOLS.find((t) => t.name === value);
+  const picked = value === PLAIN_VALUE ? PLAIN_EXAMPLE : tool;
+  const disabled = busy || offline;
+
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <TextField
+        select
+        fullWidth
+        size="small"
+        label={`సహాయకుడిని ఎంచుకోండి · మొత్తం ${POEM_TOOLS.length}`}
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setConfirming(false);
+        }}
+        disabled={disabled}
+        // ఫోన్ సొంత జాబితా (native select): తెరపై ఏదీ కప్పదు, ఒక్క నొక్కుతో తెరుచుకుంటుంది
+        slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
+      >
+        <option value="" disabled>
+          — ఎంచుకోండి —
+        </option>
+        <option value={PLAIN_VALUE}>{PLAIN_EXAMPLE.label} (సహాయకుడు లేకుండా)</option>
+        {POEM_TOOLS.map((t) => (
+          <option key={t.name} value={t.name}>
+            {t.label}
+          </option>
+        ))}
+      </TextField>
+
+      {picked && (
+        <Box
+          role="region"
+          aria-live="polite"
+          aria-label="ఈ సహాయకుడు ఏం చేస్తుంది"
+          sx={{ mt: 1, p: 1.25, borderRadius: "10px", border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}
+        >
+          <Typography variant="body2" sx={{ lineHeight: 1.75 }}>
+            {picked.about}
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.75 }}>
+            AI కి వెళ్ళే ప్రశ్న: “{picked.example}”
+          </Typography>
+
+          {!confirming ? (
+            <Button
+              variant="contained"
+              color="secondary"
+              size="small"
+              disabled={disabled}
+              onClick={() => setConfirming(true)}
+              startIcon={<SendRoundedIcon fontSize="small" />}
+              sx={{ mt: 1.25, textTransform: "none", fontWeight: 700, borderRadius: "8px", minHeight: 38, touchAction: "manipulation" }}
+            >
+              పంపండి
+            </Button>
+          ) : (
+            <Box sx={{ mt: 1.25 }}>
+              <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.75 }}>
+                “{picked.label}” ఇప్పుడు చేయమంటారా?
+              </Typography>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  size="small"
+                  disabled={disabled}
+                  onClick={() => {
+                    setConfirming(false);
+                    onRun(picked.example);
+                  }}
+                  sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", minHeight: 38, touchAction: "manipulation" }}
+                >
+                  అవును, చేయండి
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setConfirming(false)}
+                  sx={{ textTransform: "none", fontWeight: 600, borderRadius: "8px", minHeight: 38, touchAction: "manipulation" }}
+                >
+                  వద్దు
+                </Button>
+              </Stack>
+            </Box>
+          )}
+        </Box>
+      )}
+    </Box>
+  );
+});
 
 /* ------------------------------------------------------------------ */
 /* Poster (shared as an image) — colours must stay light & fixed      */
@@ -370,6 +489,92 @@ export function PoemAISimilar({ query, poems }: { query: string; poems: SimilarP
   );
 }
 
+// 4. ఈ కవి ఇతర పద్యాలు
+export function PoemAIPoetPoems({ author, poems }: { author: string; poems: PoetPoem[] }) {
+  return (
+    <Box>
+      <ToolTag tool="findPoetPoems" />
+      {author && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+          కవి: <b>{author}</b>
+        </Typography>
+      )}
+      {poems.length === 0 ? (
+        <Typography variant="body2">ఈ కవి ఇతర పద్యాలు దొరకలేదు.</Typography>
+      ) : (
+        <Stack component="ul" spacing={1} sx={{ m: 0, p: 0, listStyle: "none" }}>
+          {poems.map((p, i) => (
+            <Box component="li" key={`${p.title}-${i}`} sx={{ p: 1.25, borderRadius: "10px", border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}>
+              <Typography sx={{ fontWeight: 700, fontFamily: "'Noto Serif Telugu', serif" }}>{p.title}</Typography>
+              <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-line", lineHeight: 1.7, fontFamily: "'Noto Serif Telugu', serif" }}>
+                {p.snippet}
+              </Typography>
+            </Box>
+          ))}
+        </Stack>
+      )}
+    </Box>
+  );
+}
+
+// 5. సామెత జత — సామెతల మాల నుంచి నిజమైన సామెతలు
+export function PoemAISametha({ keywords, list }: { keywords: string[]; list: Sametha[] }) {
+  return (
+    <Box>
+      <ToolTag tool="matchSametha" />
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+        వెతికిన మాటలు: <b>{keywords.join(", ")}</b>
+      </Typography>
+      {list.length === 0 ? (
+        <Typography variant="body2">ఈ మాటలతో సామెత దొరకలేదు. వేరే విధంగా అడిగి చూడండి.</Typography>
+      ) : (
+        <Stack component="ul" spacing={0.75} sx={{ m: 0, p: 0, listStyle: "none" }}>
+          {list.map((x, i) => (
+            <Box component="li" key={i} sx={{ pl: 1.25, borderLeft: "3px solid", borderColor: "secondary.main" }}>
+              <Typography sx={{ fontFamily: "'Noto Serif Telugu', serif", lineHeight: 1.8 }}>“{x.text}”</Typography>
+            </Box>
+          ))}
+        </Stack>
+      )}
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+        మూలం: సామెతల మాల
+      </Typography>
+    </Box>
+  );
+}
+
+// 6, 7. వినిపించు / పోస్టర్ — బటన్ నొక్కితే అదే పద్యం కార్డు పని చేస్తుంది (event ద్వారా)
+export function PoemAIAction({ poemKey, action }: { poemKey: string; action: PoemClientAction }) {
+  const [sent, setSent] = useState(false);
+  const isListen = action === "listen";
+
+  const run = () => {
+    const detail: PoemAIActionDetail = { poemKey, action };
+    window.dispatchEvent(new CustomEvent<PoemAIActionDetail>(POEM_AI_ACTION_EVENT, { detail }));
+    setSent(true);
+    window.setTimeout(() => setSent(false), 4000); // మళ్ళీ నొక్కవచ్చు
+  };
+
+  return (
+    <Box>
+      <ToolTag tool={isListen ? "listenPoem" : "makePoster"} />
+      <Typography variant="body2" sx={{ mb: 1 }}>
+        {isListen ? "కింది బటన్ నొక్కితే ఈ పద్యం వినిపిస్తాను." : "కింది బటన్ నొక్కితే ఈ పద్యం పోస్టర్ మీ ఫోన్‌కి వస్తుంది."}
+      </Typography>
+      <Button
+        variant="contained"
+        color="secondary"
+        onClick={run}
+        disabled={sent}
+        startIcon={isListen ? <PlayArrowRoundedIcon /> : <DownloadRoundedIcon />}
+        sx={{ textTransform: "none", fontWeight: 700, borderRadius: "8px", minHeight: 40, touchAction: "manipulation" }}
+      >
+        {sent ? (isListen ? "వినిపిస్తోంది…" : "తయారవుతోంది…") : isListen ? "ఇప్పుడు వినండి" : "పోస్టర్ డౌన్‌లోడ్"}
+      </Button>
+    </Box>
+  );
+}
+
 export function PoemAIError({ message }: { message: string }) {
   return (
     <Typography variant="body2" color="error" role="alert">
@@ -593,6 +798,8 @@ interface Poem {
   // (no file) omit them — the card then sends the poem text itself instead.
   filename?: string;
   collection?: string;
+  /** database పద్యాలకు — "ఈ కవి ఇతర పద్యాలు" సహాయకుడికి */
+  poet_id?: number;
 }
 
 type Props = {
@@ -929,6 +1136,7 @@ export default function PoemCard({
         title: poem.title,
         content: poem.content,
         author: authorText,
+        poetId: poem.poet_id,
       });
       setUIMessages((prev) => [...prev, reply]);
 
@@ -974,6 +1182,37 @@ export default function PoemCard({
   const askRef = useRef(handleAskAI);
   useEffect(() => { askRef.current = handleAskAI; });
   const sendFromBox = useMemo(() => (text: string) => { void askRef.current(text); }, []);
+
+  // వినిపించు / పోస్టర్ సహాయకుల బటన్లు: ఈ పద్యం కార్డుకే వచ్చిన event అయితే పని చేయడం
+  const downloadPoster = async () => {
+    if (!poemRef.current) return;
+    try {
+      const img = await capturePosterAsDataUrl(poemRef.current, "social");
+      if (!img) return;
+      const link = document.createElement("a");
+      link.href = img;
+      link.download = "telugu-padyam.png";
+      link.click();
+    } catch (err) {
+      console.error("[PoemCard] AI poster failed", { poemKey, error: err instanceof Error ? err.message : String(err) });
+      setAiError("పోస్టర్ తయారు కాలేదు. మళ్ళీ ప్రయత్నించండి.");
+    }
+  };
+  const actionRef = useRef<(a: PoemClientAction) => void>(() => {});
+  useEffect(() => {
+    actionRef.current = (a) => {
+      if (a === "listen") void handleSpeak("poem");
+      else void downloadPoster();
+    };
+  });
+  useEffect(() => {
+    const onAction = (e: Event) => {
+      const detail = (e as CustomEvent<PoemAIActionDetail>).detail;
+      if (detail?.poemKey === poemKey) actionRef.current(detail.action);
+    };
+    window.addEventListener(POEM_AI_ACTION_EVENT, onAction);
+    return () => window.removeEventListener(POEM_AI_ACTION_EVENT, onAction);
+  }, [poemKey]);
 
   // "కొత్త సంభాషణ": ఈ పద్యం UI state, AI state రెండూ ఖాళీ
   const handleResetChat = async () => {
@@ -1602,43 +1841,9 @@ export default function PoemCard({
                   toolUsed={toolUsed}
                 />
 
-                {/* ప్రయత్నించండి — ఒక్క నొక్కుతో ఉదాహరణ ప్రశ్న; ఏ సహాయకులు ఉన్నాయో కూడా ఇక్కడే */}
-                <Box sx={{ mb: 1.5 }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.75 }}>
-                    నొక్కి ప్రయత్నించండి · సహాయకులు (tools): {POEM_TOOLS.length}
-                  </Typography>
-                  <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
-                    {/* Tooltip వద్దు: ఫోన్‌లో మొదటి నొక్కు tooltip తెరవడానికే పోయి
-                        (iPhone) బటన్ పని చేయదు, తెరుచుకున్న tooltip కింది బటన్లను కప్పేస్తుంది.
-                        నొక్కగానే అసలు ప్రశ్న సంభాషణలో కనిపిస్తుంది — అదే వివరణ. */}
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={aiBusy || offline}
-                      onClick={() => handleAskAI(PLAIN_EXAMPLE.example)}
-                      title={`${PLAIN_EXAMPLE.example} — సహాయకుడు లేకుండా Groq మాటలతో జవాబు`}
-                      startIcon={<ChatBubbleOutlineRoundedIcon sx={{ fontSize: 16 }} />}
-                      sx={{ textTransform: "none", fontWeight: 600, borderRadius: "999px", minHeight: 34, touchAction: "manipulation", color: "text.secondary", borderColor: "divider" }}
-                    >
-                      {PLAIN_EXAMPLE.label}
-                    </Button>
-                    {POEM_TOOLS.map((tool) => (
-                      <Button
-                        key={tool.name}
-                        size="small"
-                        variant={toolUsed === tool.name ? "contained" : "outlined"}
-                        color="secondary"
-                        disabled={aiBusy || offline}
-                        onClick={() => handleAskAI(tool.example)}
-                        title={`${tool.example} — ${tool.label} సహాయకుడిని పిలుస్తుంది`}
-                        startIcon={<BuildRoundedIcon sx={{ fontSize: 15 }} />}
-                        sx={{ textTransform: "none", fontWeight: 600, borderRadius: "999px", minHeight: 34, touchAction: "manipulation", boxShadow: "none" }}
-                      >
-                        {tool.label}
-                      </Button>
-                    ))}
-                  </Stack>
-                </Box>
+                {/* సహాయకులు: dropdown లో ఎంచుకోండి → ఏం చేస్తుందో చదవండి → పంపండి → నిర్ధారించండి.
+                    (chips + Tooltip బదులు: ఫోన్‌లో చిన్న బటన్లు, tooltip సమస్యలు ఉండవు) */}
+                <PoemAIToolPicker busy={aiBusy} offline={offline} onRun={sendFromBox} />
 
                 {/* సంభాషణ — UI state (useUIState) లోని ఈ పద్యం సందేశాలు */}
                 {myMessages.length > 0 && (

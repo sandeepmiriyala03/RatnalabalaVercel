@@ -29,14 +29,26 @@ import {
 } from "@ai-sdk/rsc";
 import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
-import { POEM_TOOLS, toolInfo, type PoemToolName, type SimilarPoem } from "@/app/components/poemAITools";
+import {
+  POEM_TOOLS,
+  toolInfo,
+  type PoemToolName,
+  type PoetPoem,
+  type Sametha,
+  type SimilarPoem,
+} from "@/app/components/poemAITools";
+import { POETRY_COLLECTIONS, authorsToText } from "@/types/poetry";
+import { SAMETALU_FILE_MAP } from "@/app/types/sametalu";
 
 // "use client" ఫైల్ నుంచి వచ్చే చిన్న display components —
 // server వాటిని stream చేస్తుంది, బ్రౌజర్ వాటిని చూపిస్తుంది.
 import {
   PoemAIAnswer,
   PoemAIError,
+  PoemAIAction,
   PoemAIPadalu,
+  PoemAIPoetPoems,
+  PoemAISametha,
   PoemAISimilar,
   PoemAIThinking,
   PoemAIToolLoading,
@@ -84,6 +96,8 @@ export type AskPoemInput = {
   title: string;
   content: string;
   author?: string;
+  /** database పద్యాలకు కవి సంఖ్య (ఈ కవి ఇతర పద్యాలు) — లేకపోతే author పేరుతో వెతుకుతాం */
+  poetId?: number;
 };
 
 /* ------------------------------------------------------------------ */
@@ -101,10 +115,15 @@ const MAX_HISTORY = 10;
 // ఇలాంటి పద్యాలు: ఇప్పటికే ఉన్న database శోధన (api/main.py → BGE-M3 + pgvector).
 // Groq ఖర్చు లేదు; రోజువారీ పరిమితి (300), CDN cache అక్కడే ఉన్నాయి.
 // Local లో వేరే చోటు చూపాలంటే: BHAVALAMALA_SEARCH_URL=http://localhost:3000/api/search
-const SEARCH_URL = process.env.BHAVALAMALA_SEARCH_URL || "https://ratnalabala.vercel.app/api/search";
+const SITE_ORIGIN = process.env.RATNALABALA_SITE_URL || "https://ratnalabala.vercel.app";
+const SEARCH_URL = process.env.BHAVALAMALA_SEARCH_URL || `${SITE_ORIGIN}/api/search`;
 const SIMILAR_SHOW = 4;          // తెరపై ఎన్ని
 const SEARCH_TIMEOUT_MS = 15_000;
 const SEARCH_LIMIT_MSG = "ఈరోజు శోధన పరిమితి పూర్తయింది. రేపు మళ్ళీ ప్రయత్నించండి.";
+const POET_SHOW = 4;
+const SAMETHA_SHOW = 3;
+const DATA_CACHE_MS = 60 * 60 * 1000; // కవి పద్యాలు, సామెతలు అరుదుగా మారతాయి: 1 గంట server memory లో
+const POET_UNKNOWN_MSG = "ఈ పద్యం కవి వివరాలు database లో లేవు, కాబట్టి ఇతర పద్యాలు తేలేకపోయాను.";
 const SEARCH_FAILED_MSG = "ఇప్పుడు database లో వెతకలేకపోయాను. కొద్దిసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.";
 
 const AI_UNAVAILABLE_MSG = "AI సేవ ఇప్పుడు అందుబాటులో లేదు. కొద్దిసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.";
@@ -202,6 +221,97 @@ async function searchSimilarPoems(
   }
 }
 
+/** కవి సంఖ్య: card పంపింది (database పద్యం) లేదా శతకాల జాబితాలో కవి పేరుతో */
+function resolvePoetId(poetId: unknown, author: string): number | null {
+  const id = Number(poetId);
+  if (Number.isInteger(id) && id > 0 && id < 100_000) return id;
+  const match = POETRY_COLLECTIONS.find((c) => authorsToText(c.authors).trim() === author.trim());
+  return match ? match.poetId : null;
+}
+
+// ఒకే కవి పద్యాలు ప్రతి ప్రశ్నకూ database నుంచి మళ్ళీ తేకుండా (warm server లో)
+const poetCache = new Map<number, { at: number; poems: { title: string; content: string }[] }>();
+
+async function fetchPoetPoems(
+  poetId: number,
+  currentTitle: string,
+): Promise<{ poems: PoetPoem[] } | { error: string }> {
+  try {
+    let entry = poetCache.get(poetId);
+    if (!entry || Date.now() - entry.at > DATA_CACHE_MS) {
+      const res = await fetch(`${SITE_ORIGIN}/api/main?endpoint=poems&poet_id=${poetId}`, {
+        signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+      });
+      if (!res.ok) {
+        console.error("[poem-ai rsc] poet poems failed", { poetId, status: res.status });
+        return { error: SEARCH_FAILED_MSG };
+      }
+      const rows = (await res.json()) as Record<string, unknown>[];
+      const poems = (Array.isArray(rows) ? rows : [])
+        .map((r) => ({ title: String(r.title ?? "").trim(), content: String(r.content ?? "").trim() }))
+        .filter((r) => r.title && r.content);
+      entry = { at: Date.now(), poems };
+      poetCache.set(poetId, entry);
+    }
+    // ప్రతిసారీ వేరేవి: యాదృచ్ఛికంగా కొన్ని (ఈ పద్యం తప్ప)
+    const others = entry.poems.filter((p) => p.title !== currentTitle);
+    const picked = [...others].sort(() => Math.random() - 0.5).slice(0, POET_SHOW);
+    return {
+      poems: picked.map((p) => ({ title: p.title, snippet: p.content.split("\n").filter(Boolean).slice(0, 2).join("\n") })),
+    };
+  } catch (error) {
+    console.error("[poem-ai rsc] poet poems error", {
+      poetId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { error: SEARCH_FAILED_MSG };
+  }
+}
+
+// సామెతల మాల: public/ssmetalamala/*.json (సైట్ నుంచే, CDN) — ఒకసారి తెచ్చి memory లో
+let sametaluCache: { at: number; list: string[] } | null = null;
+
+async function loadSametalu(): Promise<string[]> {
+  if (sametaluCache && Date.now() - sametaluCache.at < DATA_CACHE_MS) return sametaluCache.list;
+  const files = [...new Set(Object.values(SAMETALU_FILE_MAP))].filter((f) => f && f !== "all");
+  const results = await Promise.allSettled(
+    files.map(async (file) => {
+      const res = await fetch(`${SITE_ORIGIN}/ssmetalamala/${file}.json`, {
+        signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+      });
+      if (!res.ok) return [] as string[]; // ఆ అక్షరానికి ఫైల్ లేకపోవచ్చు
+      const data = (await res.json()) as { sametalu?: { text?: string }[] };
+      return (data.sametalu ?? []).map((x) => String(x.text ?? "").trim()).filter((t) => t.length > 4);
+    }),
+  );
+  const list = results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  if (list.length) sametaluCache = { at: Date.now(), list };
+  return list;
+}
+
+/** Groq ఇచ్చిన మాటలు ఎన్ని కనిపిస్తే అంత ముందు; మాట చివరి అక్షరం మారినా (కోపం / కోపము) పట్టుకుంటుంది */
+async function matchSametalu(keywords: string[]): Promise<{ list: Sametha[] } | { error: string }> {
+  try {
+    const all = await loadSametalu();
+    if (!all.length) return { error: SEARCH_FAILED_MSG };
+    const words = keywords.map((k) => k.trim()).filter((k) => k.length >= 2);
+    const stems = words.map((w) => (w.length > 3 ? w.slice(0, -1) : w));
+    const scored = all
+      .map((text) => {
+        const matched = words.filter((_, i) => text.includes(stems[i]));
+        return { text, matched };
+      })
+      .filter((x) => x.matched.length > 0)
+      .sort((a, b) => b.matched.length - a.matched.length || a.text.length - b.text.length);
+    return { list: scored.slice(0, SAMETHA_SHOW) };
+  } catch (error) {
+    console.error("[poem-ai rsc] sametha error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { error: SEARCH_FAILED_MSG };
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Server action 1 — ప్రశ్న అడగడం                                      */
 /* ------------------------------------------------------------------ */
@@ -217,6 +327,7 @@ async function askPoem(input: AskPoemInput): Promise<PoemUIMessage> {
   const poem = String(input?.content ?? "").trim().slice(0, MAX_POEM_CHARS);
   const title = String(input?.title ?? "").trim().slice(0, MAX_TITLE_CHARS);
   const author = String(input?.author ?? "").trim().slice(0, MAX_TITLE_CHARS);
+  const poetId = resolvePoetId(input?.poetId, author);
 
   if (!poemKey || !question || !poem) {
     lifecycle.done({ step: "error", message: EMPTY_INPUT_MSG });
@@ -328,6 +439,79 @@ async function askPoem(input: AskPoemInput): Promise<PoemUIMessage> {
             });
             lifecycle.done({ step: "done", tool: "findSimilarPoems" });
             return <PoemAISimilar query={theme} poems={found.poems} />;
+          },
+        },
+        // 4. ఈ కవి ఇతర పద్యాలు — కవి ఎవరో Groq కాదు, మన code చెబుతుంది (input లేదు)
+        findPoetPoems: {
+          description: toolInfo("findPoetPoems").description,
+          inputSchema: z.object({}),
+          generate: async function* () {
+            lifecycle.update({ step: "tool", tool: "findPoetPoems" });
+            yield <PoemAIToolLoading label="ఈ కవి ఇతర పద్యాలు database లో వెతుకుతున్నాను…" />;
+
+            const found = poetId ? await fetchPoetPoems(poetId, title) : { error: POET_UNKNOWN_MSG };
+            if ("error" in found) {
+              finish({ role: "assistant", content: found.error, tool: "findPoetPoems" });
+              lifecycle.done({ step: "done", tool: "findPoetPoems" });
+              return <PoemAIError message={found.error} />;
+            }
+            finish({
+              role: "assistant",
+              content: found.poems.length
+                ? `${author || "ఈ కవి"} ఇతర పద్యాలు:\n${found.poems.map((p) => p.title).join("\n")}`
+                : "ఈ కవి ఇతర పద్యాలు దొరకలేదు.",
+              tool: "findPoetPoems",
+            });
+            lifecycle.done({ step: "done", tool: "findPoetPoems" });
+            return <PoemAIPoetPoems author={author} poems={found.poems} />;
+          },
+        },
+        // 5. సామెత జత — Groq మాటలు మాత్రమే ఇస్తాడు; సామెత మన సామెతల మాల నుంచే
+        matchSametha: {
+          description: toolInfo("matchSametha").description,
+          inputSchema: z.object({
+            keywords: z.array(z.string().min(2).max(30)).min(1).max(5).describe("సామెతల్లో కనిపించే తెలుగు మాటలు"),
+          }),
+          generate: async function* ({ keywords }) {
+            lifecycle.update({ step: "tool", tool: "matchSametha" });
+            yield <PoemAIToolLoading label="సామెతల మాలలో వెతుకుతున్నాను…" />;
+
+            const found = await matchSametalu(keywords);
+            if ("error" in found) {
+              finish({ role: "assistant", content: found.error, tool: "matchSametha" });
+              lifecycle.done({ step: "done", tool: "matchSametha" });
+              return <PoemAIError message={found.error} />;
+            }
+            finish({
+              role: "assistant",
+              content: found.list.length
+                ? `సరిపోయే సామెతలు:\n${found.list.map((x) => x.text).join("\n")}`
+                : `"${keywords.join(", ")}" మాటలతో సామెత దొరకలేదు.`,
+              tool: "matchSametha",
+            });
+            lifecycle.done({ step: "done", tool: "matchSametha" });
+            return <PoemAISametha keywords={keywords} list={found.list} />;
+          },
+        },
+        // 6, 7. వినిపించు / పోస్టర్ — పని బ్రౌజర్‌లో; server బటన్ మాత్రమే పంపుతుంది
+        listenPoem: {
+          description: toolInfo("listenPoem").description,
+          inputSchema: z.object({}),
+          generate: async function* () {
+            lifecycle.update({ step: "tool", tool: "listenPoem" });
+            finish({ role: "assistant", content: "పద్యం వినడానికి బటన్ ఇచ్చాను.", tool: "listenPoem" });
+            lifecycle.done({ step: "done", tool: "listenPoem" });
+            return <PoemAIAction poemKey={poemKey} action="listen" />;
+          },
+        },
+        makePoster: {
+          description: toolInfo("makePoster").description,
+          inputSchema: z.object({}),
+          generate: async function* () {
+            lifecycle.update({ step: "tool", tool: "makePoster" });
+            finish({ role: "assistant", content: "పోస్టర్ డౌన్‌లోడ్ బటన్ ఇచ్చాను.", tool: "makePoster" });
+            lifecycle.done({ step: "done", tool: "makePoster" });
+            return <PoemAIAction poemKey={poemKey} action="poster" />;
           },
         },
       },
