@@ -32,7 +32,7 @@ import PsychologyRoundedIcon      from "@mui/icons-material/PsychologyRounded";
 // streamUI) అంతా ./poemAI.tsx లో ఉంది.
 import { readStreamableValue, useActions, useAIState, useUIState } from "@ai-sdk/rsc";
 import type { PoemAI, PoemLifecycle } from "@/app/components/poemAI";
-import { PLAIN_EXAMPLE, POEM_TOOLS, type PoemToolName } from "@/app/components/poemAITools";
+import { PLAIN_EXAMPLE, POEM_TOOLS, type PoemToolName, type SimilarPoem } from "@/app/components/poemAITools";
 import BuildRoundedIcon           from "@mui/icons-material/BuildRounded";
 import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
 
@@ -317,6 +317,55 @@ export function PoemAIWords({ words }: { words: { word: string; meaning: string 
           </React.Fragment>
         ))}
       </Box>
+    </Box>
+  );
+}
+
+// మూడో సహాయకుడు: database లో దొరికిన ఇలాంటి పద్యాలు
+export function PoemAISimilar({ query, poems }: { query: string; poems: SimilarPoem[] }) {
+  return (
+    <Box>
+      <ToolTag tool="findSimilarPoems" />
+      <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+        వెతికిన భావం: <b>{query}</b>
+      </Typography>
+      {poems.length === 0 ? (
+        <Typography variant="body2">ఈ భావంతో ఇంకేమీ దొరకలేదు. వేరే మాటలతో అడిగి చూడండి.</Typography>
+      ) : (
+        <Stack component="ul" spacing={1} sx={{ m: 0, p: 0, listStyle: "none" }}>
+          {poems.map((p, i) => (
+            <Box
+              component="li"
+              key={`${p.title}-${i}`}
+              sx={{ p: 1.25, borderRadius: "10px", border: "1px solid", borderColor: "divider", bgcolor: "background.paper" }}
+            >
+              <Stack direction="row" spacing={1} alignItems="baseline" flexWrap="wrap" useFlexGap>
+                {p.link ? (
+                  <Typography
+                    component="a"
+                    href={p.link}
+                    sx={{ fontWeight: 700, fontFamily: "'Noto Serif Telugu', serif", color: "secondary.main" }}
+                  >
+                    {p.title}
+                  </Typography>
+                ) : (
+                  <Typography sx={{ fontWeight: 700, fontFamily: "'Noto Serif Telugu', serif" }}>{p.title}</Typography>
+                )}
+                {p.mala && (
+                  <Typography component="span" variant="caption" color="text.secondary">
+                    · {p.mala}
+                  </Typography>
+                )}
+              </Stack>
+              {p.snippet && (
+                <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-line", lineHeight: 1.7, fontFamily: "'Noto Serif Telugu', serif" }}>
+                  {p.snippet}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Stack>
+      )}
     </Box>
   );
 }

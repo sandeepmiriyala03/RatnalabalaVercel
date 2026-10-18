@@ -29,7 +29,7 @@ import {
 } from "@ai-sdk/rsc";
 import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
-import { POEM_TOOLS, toolInfo, type PoemToolName } from "@/app/components/poemAITools";
+import { POEM_TOOLS, toolInfo, type PoemToolName, type SimilarPoem } from "@/app/components/poemAITools";
 
 // "use client" ఫైల్ నుంచి వచ్చే చిన్న display components —
 // server వాటిని stream చేస్తుంది, బ్రౌజర్ వాటిని చూపిస్తుంది.
@@ -37,6 +37,7 @@ import {
   PoemAIAnswer,
   PoemAIError,
   PoemAIPadalu,
+  PoemAISimilar,
   PoemAIThinking,
   PoemAIToolLoading,
   PoemAIWords,
@@ -97,6 +98,15 @@ const MAX_TITLE_CHARS = 200;
 // కాబట్టి ఒక్కో పద్యానికి చివరి 10 సందేశాలు మాత్రమే ఉంచుతాం.
 const MAX_HISTORY = 10;
 
+// ఇలాంటి పద్యాలు: ఇప్పటికే ఉన్న database శోధన (api/main.py → BGE-M3 + pgvector).
+// Groq ఖర్చు లేదు; రోజువారీ పరిమితి (300), CDN cache అక్కడే ఉన్నాయి.
+// Local లో వేరే చోటు చూపాలంటే: BHAVALAMALA_SEARCH_URL=http://localhost:3000/api/search
+const SEARCH_URL = process.env.BHAVALAMALA_SEARCH_URL || "https://ratnalabala.vercel.app/api/search";
+const SIMILAR_SHOW = 4;          // తెరపై ఎన్ని
+const SEARCH_TIMEOUT_MS = 15_000;
+const SEARCH_LIMIT_MSG = "ఈరోజు శోధన పరిమితి పూర్తయింది. రేపు మళ్ళీ ప్రయత్నించండి.";
+const SEARCH_FAILED_MSG = "ఇప్పుడు database లో వెతకలేకపోయాను. కొద్దిసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.";
+
 const AI_UNAVAILABLE_MSG = "AI సేవ ఇప్పుడు అందుబాటులో లేదు. కొద్దిసేపటి తర్వాత మళ్ళీ ప్రయత్నించండి.";
 const EMPTY_INPUT_MSG = "ప్రశ్న లేదా పద్యం ఖాళీగా ఉంది.";
 
@@ -147,6 +157,49 @@ function splitPadalu(poem: string): string[] {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+/** database నుంచి వచ్చిన link సురక్షితమైతేనే (సైట్ పేజీ లేదా https) — javascript: లాంటివి వద్దు */
+function safeLink(link: unknown): string {
+  const value = String(link ?? "").trim();
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    return new URL(value).protocol === "https:" ? value : "";
+  } catch {
+    return "";
+  }
+}
+
+/** భావం పదాలతో database లో వెతకడం; ఇప్పుడు చదువుతున్న పద్యం తప్ప. */
+async function searchSimilarPoems(
+  query: string,
+  currentTitle: string,
+): Promise<{ poems: SimilarPoem[] } | { error: string }> {
+  const url = `${SEARCH_URL}?query=${encodeURIComponent(query)}&top_k=${SIMILAR_SHOW + 1}`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS) });
+    if (res.status === 429) return { error: SEARCH_LIMIT_MSG };
+    if (!res.ok) {
+      console.error("[poem-ai rsc] similar search failed", { status: res.status });
+      return { error: SEARCH_FAILED_MSG };
+    }
+    const data = (await res.json()) as { results?: Record<string, unknown>[] };
+    const poems = (data.results ?? [])
+      .map((r) => ({
+        title: String(r.title ?? "").trim(),
+        mala: String(r.mala ?? "").trim(),
+        snippet: stripMarkdown(String(r.snippet ?? "")),
+        link: safeLink(r.link),
+      }))
+      .filter((p) => p.title && p.title !== currentTitle)
+      .slice(0, SIMILAR_SHOW);
+    return { poems };
+  } catch (error) {
+    console.error("[poem-ai rsc] similar search error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { error: SEARCH_FAILED_MSG };
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -245,6 +298,36 @@ async function askPoem(input: AskPoemInput): Promise<PoemUIMessage> {
             });
             lifecycle.done({ step: "done", tool: "explainWords" });
             return <PoemAIWords words={list} />;
+          },
+        },
+        // మూడో సహాయకుడు: Groq భావం పదాలు ఇస్తాడు → మన code database లో వెతుకుతుంది
+        findSimilarPoems: {
+          description: toolInfo("findSimilarPoems").description,
+          inputSchema: z.object({
+            query: z.string().min(2).max(120).describe("ఈ పద్యం ముఖ్య భావం, 2–6 తెలుగు పదాలు"),
+          }),
+          generate: async function* ({ query }) {
+            lifecycle.update({ step: "tool", tool: "findSimilarPoems" });
+            yield <PoemAIToolLoading label="database లో ఇలాంటి పద్యాలు వెతుకుతున్నాను…" />;
+
+            const theme = query.trim();
+            const found = await searchSimilarPoems(theme, title);
+            if ("error" in found) {
+              finish({ role: "assistant", content: found.error, tool: "findSimilarPoems" });
+              lifecycle.done({ step: "done", tool: "findSimilarPoems" });
+              return <PoemAIError message={found.error} />;
+            }
+
+            // AI state లో పేర్లు మాత్రమే — తర్వాతి ప్రశ్నకు Groq కి ఏం చూపించామో తెలుస్తుంది
+            finish({
+              role: "assistant",
+              content: found.poems.length
+                ? `"${theme}" భావంతో దొరికినవి:\n${found.poems.map((p) => `${p.title}${p.mala ? ` (${p.mala})` : ""}`).join("\n")}`
+                : `"${theme}" భావంతో ఇంకేమీ దొరకలేదు.`,
+              tool: "findSimilarPoems",
+            });
+            lifecycle.done({ step: "done", tool: "findSimilarPoems" });
+            return <PoemAISimilar query={theme} poems={found.poems} />;
           },
         },
       },

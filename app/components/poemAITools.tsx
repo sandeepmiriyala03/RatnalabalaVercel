@@ -10,7 +10,7 @@
    PoemCard లోని chips, సంఖ్య, system prompt సూచన ఆటోమేటిక్‌గా వస్తాయి.
    ═══════════════════════════════════════════════════════════════ */
 
-export type PoemToolName = "showPadalu" | "explainWords";
+export type PoemToolName = "showPadalu" | "explainWords" | "findSimilarPoems";
 
 export type PoemToolInfo = {
   name: PoemToolName;
@@ -36,7 +36,25 @@ export const POEM_TOOLS: readonly PoemToolInfo[] = [
     description:
       "పద్యంలోని కఠిన పదాలు, వాటి సులభమైన అర్థాలు అడిగినప్పుడు వాడు. పద్యంలో నిజంగా ఉన్న పదాలనే ఇవ్వు.",
   },
+  {
+    name: "findSimilarPoems",
+    label: "ఇలాంటి పద్యాలు",
+    example: "ఇలాంటి భావం ఉన్న ఇతర పద్యాలు చూపించు",
+    description:
+      "ఈ పద్యం లాంటి భావం ఉన్న ఇతర పద్యాలు, సామెతలు, కథలు database లో వెతకమని అడిగినప్పుడు వాడు. query లో ఈ పద్యం ముఖ్య భావాన్ని 2 నుంచి 6 తెలుగు పదాల్లో ఇవ్వు (ఉదా: \"కోపం వద్దు, సహనం\"). పద్యం మొత్తం పంపవద్దు.",
+  },
 ];
+
+/** findSimilarPoems ఫలితం — database (/api/search) నుంచి వచ్చే ఒక్కో పద్యం */
+export type SimilarPoem = {
+  title: string;
+  /** ఏ మాల నుంచి (శతకం, సామెతలు, గీత…) */
+  mala: string;
+  /** మొదటి కొన్ని పంక్తులు */
+  snippet: string;
+  /** సైట్‌లో ఆ పద్యం పేజీ — "/" తో మొదలయ్యేది లేదా https; లేకపోతే "" */
+  link: string;
+};
 
 /** సహాయకుడు అవసరం లేని మామూలు ప్రశ్న — పోలిక కోసం chip గా కూడా చూపిస్తాం */
 export const PLAIN_EXAMPLE = {
