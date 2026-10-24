@@ -31,12 +31,12 @@ import {
 } from "@mui/material";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import HubRoundedIcon from "@mui/icons-material/HubRounded";
-import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
-import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
-import GridOnRoundedIcon from "@mui/icons-material/GridOnRounded";
+import { ContrastRounded as ContrastRoundedIcon } from "@/lib/yuktai-icons";
+import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
+import { GridOnRounded as GridOnRoundedIcon } from "@/lib/yuktai-icons";
 import FontDownloadRoundedIcon from "@mui/icons-material/FontDownloadRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
+import { CheckRounded as CheckRoundedIcon } from "@/lib/yuktai-icons";
 
 import {
   YuktaiGrid,

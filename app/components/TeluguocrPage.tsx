@@ -19,7 +19,7 @@ import {
   Divider,
   Chip,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { ExpandMore as ExpandMoreIcon } from "@/lib/yuktai-icons";
 
 import { FileUploadComponent } from "./FileUploadComponent";
 import FileUploadManager from "./FileUploadManager";

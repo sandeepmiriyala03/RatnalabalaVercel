@@ -17,16 +17,16 @@ import {
   useTheme,
 } from "@mui/material";
 
-import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
-import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
-import QuestionAnswerRoundedIcon from "@mui/icons-material/QuestionAnswerRounded";
+import { HeadphonesRounded as HeadphonesRoundedIcon } from "@/lib/yuktai-icons";
+import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { HelpOutlineRounded as HelpOutlineRoundedIcon } from "@/lib/yuktai-icons";
+import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
+import { QuestionAnswerRounded as QuestionAnswerRoundedIcon } from "@/lib/yuktai-icons";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
-import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import { TableRowsRounded as TableRowsRoundedIcon } from "@/lib/yuktai-icons";
+import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 
 import PoemCard from "@/app/components/PoemCard";

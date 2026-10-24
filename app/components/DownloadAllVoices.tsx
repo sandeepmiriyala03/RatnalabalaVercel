@@ -19,7 +19,7 @@ import {
   Switch,
   Typography,
 } from "@mui/material";
-import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
+import { DownloadForOfflineRounded as DownloadForOfflineRoundedIcon } from "@/lib/yuktai-icons";
 
 interface Poem {
   title: string;

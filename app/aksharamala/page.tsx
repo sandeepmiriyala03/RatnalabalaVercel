@@ -10,17 +10,17 @@ import {
   AccordionDetails,
 } from "@mui/material";
 // ఒకే icon library — @mui/icons-material
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import EditIcon from "@mui/icons-material/Edit";
+import { ExpandMore as ExpandMoreIcon } from "@/lib/yuktai-icons";
+import { VolumeUp as VolumeUpIcon } from "@/lib/yuktai-icons";
+import { Edit as EditIcon } from "@/lib/yuktai-icons";
 import TouchAppIcon from "@mui/icons-material/TouchApp";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
+import { MenuBook as MenuBookIcon } from "@/lib/yuktai-icons";
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
-import MicIcon from "@mui/icons-material/Mic";
-import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRounded";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import { Mic as MicIcon } from "@/lib/yuktai-icons";
+import { TableRowsRounded as TableRowsRoundedIcon } from "@/lib/yuktai-icons";
+import { SearchRounded as SearchRoundedIcon } from "@/lib/yuktai-icons";
+import { RecordVoiceOverRounded as RecordVoiceOverRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
 
 import AksharamalaParent from "@/app/components/Aksharamal";
 

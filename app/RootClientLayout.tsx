@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Button, CircularProgress, ClickAwayListener, Fab, IconButton, Stack, TextField, Typography } from "@mui/material";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
-import TravelExploreRoundedIcon from "@mui/icons-material/TravelExploreRounded";
-import AppsRoundedIcon from "@mui/icons-material/AppsRounded";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
+import { TravelExploreRounded as TravelExploreRoundedIcon } from "@/lib/yuktai-icons";
+import { AppsRounded as AppsRoundedIcon } from "@/lib/yuktai-icons";
 import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import Navbar from "@/app/components/Navbar";
 import ChatbotWindow from "@/app/components/ChatbotWindow";       // check path

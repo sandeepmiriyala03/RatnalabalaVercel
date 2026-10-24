@@ -38,16 +38,16 @@ import {
   TextField,
   Popover,
 } from "@mui/material";
-import UndoIcon from "@mui/icons-material/Undo";
+import { Undo as UndoIcon } from "@/lib/yuktai-icons";
 import RedoIcon from "@mui/icons-material/Redo";
-import DownloadIcon from "@mui/icons-material/Download";
-import ImageIcon from "@mui/icons-material/Image";
-import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
+import { Download as DownloadIcon } from "@/lib/yuktai-icons";
+import { Image as ImageIcon } from "@/lib/yuktai-icons";
+import { FormatColorFill as FormatColorFillIcon } from "@/lib/yuktai-icons";
 import TextFieldsIcon from "@mui/icons-material/TextFields";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import { Visibility as VisibilityIcon } from "@/lib/yuktai-icons";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import AddIcon from "@mui/icons-material/Add";
+import { Add as AddIcon } from "@/lib/yuktai-icons";
 import { toPng } from "html-to-image";
 // Fonts come only from main.py; each loads when it's chosen
 import { DEFAULT_FONT, fontStack, loadTeluguFont, useTeluguFonts } from "@/lib/teluguFonts";

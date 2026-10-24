@@ -20,16 +20,16 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
+import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
+import { PauseRounded as PauseRoundedIcon } from "@/lib/yuktai-icons";
+import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
+import { ShareRounded as ShareRoundedIcon } from "@/lib/yuktai-icons";
 import LinkRoundedIcon from "@mui/icons-material/LinkRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
-import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import { ArticleRounded as ArticleRoundedIcon } from "@/lib/yuktai-icons";
+import { HelpOutlineRounded as HelpOutlineRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
 
 // ── Microsoft Edge TTS + Svara AI. browser-native kept as a bonus
 // offline fallback (doesn't call any API at all).

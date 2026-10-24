@@ -13,10 +13,10 @@ import {
   IconButton,
   InputAdornment,
 } from "@mui/material";
-import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
+import { ClearRounded as ClearRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { DownloadForOfflineRounded as DownloadForOfflineRoundedIcon } from "@/lib/yuktai-icons";
 import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
 
 import GeetaCard from "@/app/components/GeetaCard";

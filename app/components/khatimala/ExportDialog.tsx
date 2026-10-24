@@ -25,15 +25,15 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
-import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
-import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
+import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
+import { ImageRounded as ImageRoundedIcon } from "@/lib/yuktai-icons";
+import { DescriptionRounded as DescriptionRoundedIcon } from "@/lib/yuktai-icons";
 import SlideshowRoundedIcon from "@mui/icons-material/SlideshowRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import { CheckCircleRounded as CheckCircleRoundedIcon } from "@/lib/yuktai-icons";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
+import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
+import { ShareRounded as ShareRoundedIcon } from "@/lib/yuktai-icons";
 import { canShareFiles, exportDocx, exportPdf, exportPng, exportPptx, exportShowHtml, exportVideo, makeAudioContext, pickVideoType, saveBlob, shareBlob, sizeLabel, videoSeconds, type VideoShape } from "./exporters";
 import MovieRoundedIcon from "@mui/icons-material/MovieRounded";
 import MusicVideoRoundedIcon from "@mui/icons-material/MusicVideoRounded";

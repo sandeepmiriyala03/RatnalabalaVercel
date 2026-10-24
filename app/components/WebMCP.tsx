@@ -20,11 +20,11 @@ import HubRoundedIcon from "@mui/icons-material/HubRounded";
 import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import ApiRoundedIcon from "@mui/icons-material/ApiRounded";
 import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import { CheckCircleRounded as CheckCircleRoundedIcon } from "@/lib/yuktai-icons";
+import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
+import { SettingsRounded as SettingsRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
 
 export default function WebMCP() {
   const theme = useTheme();

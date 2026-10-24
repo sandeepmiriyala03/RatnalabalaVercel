@@ -18,13 +18,13 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
-import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import { AddRounded as AddRoundedIcon } from "@/lib/yuktai-icons";
+import { RemoveRounded as RemoveRoundedIcon } from "@/lib/yuktai-icons";
+import { ContentCopyRounded as ContentCopyRoundedIcon } from "@/lib/yuktai-icons";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import { ChevronLeftRounded as ChevronLeftRoundedIcon } from "@/lib/yuktai-icons";
+import { ChevronRightRounded as ChevronRightRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
 import { renderPage, type Layout } from "./engine";
 import { cloneBlock, docToSlides, newSlide, SLIDE_LAYOUTS, uid, type Project, type Slide, type SlideLayout } from "./model";
 

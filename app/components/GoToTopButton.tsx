@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from "react";
 import { Box, Fab, Zoom } from "@mui/material";
-import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
+import { KeyboardArrowUpRounded as KeyboardArrowUpRoundedIcon } from "@/lib/yuktai-icons";
 import { fabSx } from "@/lib/floating";
 
 const MAIN_CONTENT_ID = "main-content"; // Navbar skip link తో అదే

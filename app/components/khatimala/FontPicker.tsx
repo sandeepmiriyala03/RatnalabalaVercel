@@ -4,7 +4,7 @@
 
 import { useMemo, useState } from "react";
 import { Box, Button, ListSubheader, MenuItem, Select, Stack, Typography } from "@mui/material";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import { AddRounded as AddRoundedIcon } from "@/lib/yuktai-icons";
 import MyFontsDialog from "@/app/components/MyFontsDialog";
 import { fontStack, loadTeluguFont, useTeluguFonts } from "@/lib/teluguFonts";
 

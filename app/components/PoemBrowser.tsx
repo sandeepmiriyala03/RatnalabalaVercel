@@ -18,11 +18,11 @@ import {
   alpha,
   useTheme,
 } from "@mui/material";
-import ClearRoundedIcon from "@mui/icons-material/ClearRounded";
-import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import { ClearRounded as ClearRoundedIcon } from "@/lib/yuktai-icons";
+import { HeadphonesRounded as HeadphonesRoundedIcon } from "@/lib/yuktai-icons";
+import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
 
 import { SearchIcon, ChevronLeftIcon, ChevronRightIcon } from "@yuktishaalaa/yuktai";
 import type { GridTheme } from "@yuktishaalaa/yuktai";

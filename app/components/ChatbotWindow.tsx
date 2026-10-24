@@ -16,8 +16,8 @@ import {
   Typography,
   alpha,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import { Close as CloseIcon } from "@/lib/yuktai-icons";
+import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
 
 /* ================================================================
    కవిత్వ సేకరణలు — ఇతర files వాడుతున్నాయి, మార్చకండి

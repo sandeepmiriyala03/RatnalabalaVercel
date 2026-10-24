@@ -11,21 +11,21 @@ import {
   alpha, useTheme,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
-import VolumeUpRoundedIcon        from "@mui/icons-material/VolumeUpRounded";
-import VolumeDownRoundedIcon      from "@mui/icons-material/VolumeDownRounded";
-import AutoAwesomeRoundedIcon     from "@mui/icons-material/AutoAwesomeRounded";
-import ExpandMoreRoundedIcon      from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon      from "@mui/icons-material/ExpandLessRounded";
-import TuneRoundedIcon            from "@mui/icons-material/TuneRounded";
-import QuestionAnswerRoundedIcon  from "@mui/icons-material/QuestionAnswerRounded";
-import SendRoundedIcon            from "@mui/icons-material/SendRounded";
-import ContentCopyRoundedIcon     from "@mui/icons-material/ContentCopyRounded";
-import CheckRoundedIcon           from "@mui/icons-material/CheckRounded";
-import InfoOutlinedIcon           from "@mui/icons-material/InfoOutlined";
+import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
+import { VolumeDownRounded as VolumeDownRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { TuneRounded as TuneRoundedIcon } from "@/lib/yuktai-icons";
+import { QuestionAnswerRounded as QuestionAnswerRoundedIcon } from "@/lib/yuktai-icons";
+import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
+import { ContentCopyRounded as ContentCopyRoundedIcon } from "@/lib/yuktai-icons";
+import { CheckRounded as CheckRoundedIcon } from "@/lib/yuktai-icons";
+import { InfoOutlined as InfoOutlinedIcon } from "@/lib/yuktai-icons";
 import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
-import ScheduleRoundedIcon        from "@mui/icons-material/ScheduleRounded";
-import RestartAltRoundedIcon      from "@mui/icons-material/RestartAltRounded";
-import CheckRoundedIcon2          from "@mui/icons-material/DoneAllRounded";
+import { ScheduleRounded as ScheduleRoundedIcon } from "@/lib/yuktai-icons";
+import { RestartAltRounded as RestartAltRoundedIcon } from "@/lib/yuktai-icons";
+import { DoneAllRounded as CheckRoundedIcon2 } from "@/lib/yuktai-icons";
 import PsychologyRoundedIcon      from "@mui/icons-material/PsychologyRounded";
 
 // AI SDK RSC — client వైపు hooks. Server వైపు (createAI, getMutableAIState,
@@ -44,8 +44,8 @@ import {
   type SimilarPoem,
 } from "@/app/components/poemAITools";
 import { capturePosterAsDataUrl } from "@/lib/posterExport";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
+import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";

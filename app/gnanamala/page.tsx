@@ -15,8 +15,8 @@
 import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import NextLink from "next/link";
 import { Box, Button, Chip, CircularProgress, Stack, Typography } from "@mui/material";
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
-import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
+import { OpenInNewRounded as OpenInNewRoundedIcon } from "@/lib/yuktai-icons";
+import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
 
 import TeluguDataGrid, { speakTelugu } from "@/app/components/TeluguDataGrid";
 import type { RecordRow } from "@/app/components/exportPoems";

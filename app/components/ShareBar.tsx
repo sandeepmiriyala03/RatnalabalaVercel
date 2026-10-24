@@ -3,7 +3,7 @@
 import React, { useCallback } from "react";
 import { IconButton, Stack, Tooltip } from "@mui/material";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import DownloadIcon from "@mui/icons-material/Download";
+import { Download as DownloadIcon } from "@/lib/yuktai-icons";
 import { capturePosterAsDataUrl } from "@/lib/posterExport";
 
 type Props = {

@@ -25,11 +25,11 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import ComputerRoundedIcon from "@mui/icons-material/ComputerRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import { CheckRounded as CheckRoundedIcon } from "@/lib/yuktai-icons";
 import {
   addDeviceFont,
   addFontFile,

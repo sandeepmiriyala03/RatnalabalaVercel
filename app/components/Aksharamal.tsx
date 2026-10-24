@@ -29,15 +29,15 @@ import {
   useTheme,
 } from "@mui/material";
 import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
-import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
+import { TimerOutlined as TimerOutlinedIcon } from "@/lib/yuktai-icons";
 import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
-import HelpOutlineRoundedIcon from "@mui/icons-material/HelpOutlineRounded";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import { HelpOutlineRounded as HelpOutlineRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
 import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded";
-import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRounded";
-import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
-import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
-import GridOnRoundedIcon from "@mui/icons-material/GridOnRounded";
+import { RecordVoiceOverRounded as RecordVoiceOverRoundedIcon } from "@/lib/yuktai-icons";
+import { ContrastRounded as ContrastRoundedIcon } from "@/lib/yuktai-icons";
+import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
+import { GridOnRounded as GridOnRoundedIcon } from "@/lib/yuktai-icons";
 
 // యుక్తి AI icons — సైట్ అంతా ఒకే రూపం
 import { CloseIcon, SearchIcon } from "@yuktishaalaa/yuktai";

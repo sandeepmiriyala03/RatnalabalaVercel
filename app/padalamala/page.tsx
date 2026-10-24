@@ -6,10 +6,10 @@ import {
   TextField, InputAdornment, Stack, Button,
   alpha, Tabs, Tab, IconButton, Tooltip,
 } from "@mui/material";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
-import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
-import StopRoundedIcon from "@mui/icons-material/StopRounded";
+import { SearchRounded as SearchRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoStoriesRounded as AutoStoriesRoundedIcon } from "@/lib/yuktai-icons";
+import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
+import { StopRounded as StopRoundedIcon } from "@/lib/yuktai-icons";
 
 import { GridSection, PadalaGrid } from "@/app/components/TeluguDataGrid";
 import { TWO_LETTER, THREE_FOUR_LETTER, PADALU_SWARALU, PADALU_VYANJANALU } from "@/data/bhashaMala";

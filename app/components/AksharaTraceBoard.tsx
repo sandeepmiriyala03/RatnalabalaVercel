@@ -3,9 +3,9 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Box, IconButton, Typography, CircularProgress, Stack, Button } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CancelIcon from "@mui/icons-material/Cancel";
-import SendIcon from "@mui/icons-material/Send";
+import { CheckCircle as CheckCircleIcon } from "@/lib/yuktai-icons";
+import { Cancel as CancelIcon } from "@/lib/yuktai-icons";
+import { Send as SendIcon } from "@/lib/yuktai-icons";
 
 import { getTraceMaskSide, scoreTraceMasks } from "@/lib/telugu-akshara-wasm";
 import { track } from "@/lib/track";

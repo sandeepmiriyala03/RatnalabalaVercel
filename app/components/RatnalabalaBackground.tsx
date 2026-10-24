@@ -9,9 +9,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Button, Chip, Collapse } from "@mui/material";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import { ArrowForwardRounded as ArrowForwardRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
 
 const PREFACE = [
   "మానవజన్మ లభించేక కోరదగిన పురుషార్థాలలో ధర్మం మొదటిది మానవజాతికి ఆదర్శపురుషుడైన శ్రీరామచంద్రుని 'విగ్రహవాన్ ధర్మః' అన్నారు పెద్దలు. ముందుగా ధర్మాన్ని మనం రక్షిస్తే ఆ దర్మమే మనలను రక్షిస్తుంది.",

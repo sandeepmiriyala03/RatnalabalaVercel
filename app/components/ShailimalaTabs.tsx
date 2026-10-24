@@ -14,9 +14,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Accordion, AccordionDetails, AccordionSummary, Button, Tab, Tabs } from "@mui/material";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
+import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
 import type { GridColumn } from "@yuktishaalaa/yuktai";
 import YGrid from "./YuktaiGridClient";
 import { fontStack, getCachedFonts, loadTeluguFont } from "@/lib/teluguFonts";

@@ -21,16 +21,16 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
+import { UndoRounded as UndoRoundedIcon } from "@/lib/yuktai-icons";
 import RedoRoundedIcon from "@mui/icons-material/RedoRounded";
-import NoteAddRoundedIcon from "@mui/icons-material/NoteAddRounded";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import PlayCircleFilledRoundedIcon from "@mui/icons-material/PlayCircleFilledRounded";
+import { NoteAddRounded as NoteAddRoundedIcon } from "@/lib/yuktai-icons";
+import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
+import { PlayCircleFilledRounded as PlayCircleFilledRoundedIcon } from "@/lib/yuktai-icons";
 import FullscreenRoundedIcon from "@mui/icons-material/FullscreenRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
-import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
+import { EditRounded as EditRoundedIcon } from "@/lib/yuktai-icons";
+import { PaletteRounded as PaletteRoundedIcon } from "@/lib/yuktai-icons";
+import { VisibilityRounded as VisibilityRoundedIcon } from "@/lib/yuktai-icons";
 
 import { loadPref } from "@/app/components/exportPoems";
 import { findFont, loadTeluguFont, useTeluguFonts } from "@/lib/teluguFonts";
@@ -55,8 +55,8 @@ import Slideshow from "@/app/components/khatimala/Slideshow";
 import ExportDialog from "@/app/components/khatimala/ExportDialog";
 import { loadMusic, loadProject, saveMusic, saveProject, type Music } from "@/app/components/khatimala/storage";
 import { flash, GuideDialog, Hint, type GuideTarget } from "@/app/components/khatimala/Help";
-import TipsAndUpdatesRoundedIcon from "@mui/icons-material/TipsAndUpdatesRounded";
-import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
+import { TipsAndUpdatesRounded as TipsAndUpdatesRoundedIcon } from "@/lib/yuktai-icons";
+import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
 
 type History = { past: Project[]; present: Project; future: Project[] };
 const MAX_HISTORY = 60;

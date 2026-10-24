@@ -15,7 +15,7 @@ import {
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-import { Calendar, User, Home, Book, Award, MapPin, FileText } from "react-feather";
+import { CalendarIcon as Calendar, PersonIcon as User, HomeIcon as Home, BookIcon as Book, TrophyIcon as Award, PinIcon as MapPin, FileIcon as FileText } from "@yuktishaalaa/yuktai/icons";
 
 const personalDetails = [
   {

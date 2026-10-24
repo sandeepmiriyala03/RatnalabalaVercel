@@ -13,12 +13,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Button, Stack, Typography } from "@mui/material";
-import PlayArrowRounded from "@mui/icons-material/PlayArrowRounded";
-import PauseRounded from "@mui/icons-material/PauseRounded";
-import StopRounded from "@mui/icons-material/StopRounded";
-import IosShareRounded from "@mui/icons-material/IosShareRounded";
-import ChevronLeftRounded from "@mui/icons-material/ChevronLeftRounded";
-import ChevronRightRounded from "@mui/icons-material/ChevronRightRounded";
+import { PlayArrowRounded as PlayArrowRounded } from "@/lib/yuktai-icons";
+import { PauseRounded as PauseRounded } from "@/lib/yuktai-icons";
+import { StopRounded as StopRounded } from "@/lib/yuktai-icons";
+import { IosShareRounded as IosShareRounded } from "@/lib/yuktai-icons";
+import { ChevronLeftRounded as ChevronLeftRounded } from "@/lib/yuktai-icons";
+import { ChevronRightRounded as ChevronRightRounded } from "@/lib/yuktai-icons";
 
 import seethamalaData from "@/data/Pingali_Seethamama.json";
 import { GridSection, SmruthiGrid } from "@/app/components/TeluguDataGrid";

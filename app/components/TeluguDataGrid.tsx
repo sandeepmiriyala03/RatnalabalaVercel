@@ -27,15 +27,15 @@ import {
   alpha,
   useTheme,
 } from "@mui/material";
-import ContrastRoundedIcon from "@mui/icons-material/ContrastRounded";
-import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
-import GridOnRoundedIcon from "@mui/icons-material/GridOnRounded";
+import { ContrastRounded as ContrastRoundedIcon } from "@/lib/yuktai-icons";
+import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
+import { GridOnRounded as GridOnRoundedIcon } from "@/lib/yuktai-icons";
 import DataObjectRoundedIcon from "@mui/icons-material/DataObjectRounded";
 import TextFieldsRoundedIcon from "@mui/icons-material/TextFieldsRounded";
-import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
-import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
-import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
-import StopRoundedIcon from "@mui/icons-material/StopRounded";
+import { PaletteRounded as PaletteRoundedIcon } from "@/lib/yuktai-icons";
+import { TableRowsRounded as TableRowsRoundedIcon } from "@/lib/yuktai-icons";
+import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
+import { StopRounded as StopRoundedIcon } from "@/lib/yuktai-icons";
 
 import { CloseIcon } from "@yuktishaalaa/yuktai";
 import type * as Yuktai from "@yuktishaalaa/yuktai";

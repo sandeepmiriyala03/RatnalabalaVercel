@@ -16,12 +16,12 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
-import SkipNextRoundedIcon from "@mui/icons-material/SkipNextRounded";
-import SkipPreviousRoundedIcon from "@mui/icons-material/SkipPreviousRounded";
+import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
+import { PauseRounded as PauseRoundedIcon } from "@/lib/yuktai-icons";
+import { SkipNextRounded as SkipNextRoundedIcon } from "@/lib/yuktai-icons";
+import { SkipPreviousRounded as SkipPreviousRoundedIcon } from "@/lib/yuktai-icons";
 import ShuffleRoundedIcon from "@mui/icons-material/ShuffleRounded";
-import GraphicEqRoundedIcon from "@mui/icons-material/GraphicEqRounded";
+import { GraphicEqRounded as GraphicEqRoundedIcon } from "@/lib/yuktai-icons";
 
 interface Poem {
   title: string;

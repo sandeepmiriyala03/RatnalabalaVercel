@@ -13,7 +13,7 @@
 
 import { useState } from "react";
 import { Box, Button, Dialog, DialogContent, DialogTitle, IconButton, LinearProgress, Stack, Typography, useMediaQuery } from "@mui/material";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
 
 /* ─────────────────────────────────────────────────────────────── */
 /* 1. HINT — a yellow note under a control (only while help is on)  */

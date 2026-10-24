@@ -15,11 +15,11 @@ import {
   useTheme,
 } from "@mui/material";
 
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import { VolumeUp as VolumeUpIcon } from "@/lib/yuktai-icons";
+import { StopCircle as StopCircleIcon } from "@/lib/yuktai-icons";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice from "@/app/components/TeluguVoice";

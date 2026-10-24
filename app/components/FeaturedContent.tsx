@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Paper, Typography, Chip, Stack, Skeleton, Fade } from "@mui/material";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
 
 interface FeaturedContentData {
   category: "poem" | "katha" | "sameta";

@@ -12,7 +12,7 @@ import {
   LinearProgress,
   Typography,
 } from "@mui/material";
-import DownloadForOfflineRoundedIcon from "@mui/icons-material/DownloadForOfflineRounded";
+import { DownloadForOfflineRounded as DownloadForOfflineRoundedIcon } from "@/lib/yuktai-icons";
 
 import PoemCard from "@/app/components/PoemCard";
 import { capturePosterAsDataUrl } from "@/lib/posterExport";

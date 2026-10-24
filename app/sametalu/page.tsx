@@ -13,7 +13,7 @@ import {
   Paper,
   InputLabel,
 } from "@mui/material";
-import ChatBubbleOutlineRoundedIcon from "@mui/icons-material/ChatBubbleOutlineRounded";
+import { ChatBubbleOutlineRounded as ChatBubbleOutlineRoundedIcon } from "@/lib/yuktai-icons";
 
 import SametaluList from "@/app/components/SametaluList";
 import PythonSametaluChat from "@/app/components/PythonSametaluChat";

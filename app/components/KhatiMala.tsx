@@ -17,9 +17,9 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
-import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
-import DescriptionRoundedIcon from "@mui/icons-material/DescriptionRounded";
+import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
+import { ImageRounded as ImageRoundedIcon } from "@/lib/yuktai-icons";
+import { DescriptionRounded as DescriptionRoundedIcon } from "@/lib/yuktai-icons";
 import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
 import { Document, Packer, Paragraph, TextRun } from "docx";

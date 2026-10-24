@@ -16,11 +16,11 @@ import {
   Paper,
 } from "@mui/material";
 import ArchitectureRoundedIcon from "@mui/icons-material/ArchitectureRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
-import RecordVoiceOverRoundedIcon from "@mui/icons-material/RecordVoiceOverRounded";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
+import { RecordVoiceOverRounded as RecordVoiceOverRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
 import MovieCreationRoundedIcon from "@mui/icons-material/MovieCreationRounded";
 
 import PoemBrowser from "@/app/components/PoemBrowser";

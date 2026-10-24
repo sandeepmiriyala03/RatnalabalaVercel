@@ -10,8 +10,8 @@ import {
   Divider,
   IconButton,
 } from "@mui/material";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
+import { VolumeUp as VolumeUpIcon } from "@/lib/yuktai-icons";
+import { StopCircle as StopCircleIcon } from "@/lib/yuktai-icons";
 
 import ShareButtons from "@/app/components/ShareBar";
 import type { Sameta } from "@/app/types/sametalu";

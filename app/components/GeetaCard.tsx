@@ -19,13 +19,13 @@ import {
   alpha,
   useTheme,
 } from "@mui/material";
-import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
+import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
 
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
-import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoStoriesRounded as AutoStoriesRoundedIcon } from "@/lib/yuktai-icons";
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice from "@/app/components/TeluguVoice";
 import ReadingEntryButton from "@/app/components/ReadingEntryButton";

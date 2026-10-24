@@ -15,9 +15,9 @@
 
 import { useEffect } from "react";
 import { Box, Typography, Button, Stack } from "@mui/material";
-import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
-import HomeIcon from "@mui/icons-material/Home";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import { ErrorOutline as ErrorOutlineIcon } from "@/lib/yuktai-icons";
+import { Home as HomeIcon } from "@/lib/yuktai-icons";
+import { Refresh as RefreshIcon } from "@/lib/yuktai-icons";
 
 export default function Error({
   error,

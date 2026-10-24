@@ -29,11 +29,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
+import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
+import { CheckCircleRounded as CheckCircleRoundedIcon } from "@/lib/yuktai-icons";
 
 const MAX_BYTES = 4 * 1024 * 1024; // main.py PDF_MAX_BYTES తో సమానం
 const SESSION_KEY = "ratnalabala-pdf-rag";

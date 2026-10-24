@@ -10,16 +10,16 @@ import {
   alpha, useTheme,
 } from "@mui/material";
 import type { SelectChangeEvent } from "@mui/material";
-import VolumeUpRoundedIcon        from "@mui/icons-material/VolumeUpRounded";
-import VolumeDownRoundedIcon      from "@mui/icons-material/VolumeDownRounded";
-import AutoAwesomeRoundedIcon     from "@mui/icons-material/AutoAwesomeRounded";
-import ExpandMoreRoundedIcon      from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon      from "@mui/icons-material/ExpandLessRounded";
-import TuneRoundedIcon            from "@mui/icons-material/TuneRounded";
-import QuestionAnswerRoundedIcon  from "@mui/icons-material/QuestionAnswerRounded";
-import SendRoundedIcon            from "@mui/icons-material/SendRounded";
-import ContentCopyRoundedIcon     from "@mui/icons-material/ContentCopyRounded";
-import CheckRoundedIcon           from "@mui/icons-material/CheckRounded";
+import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
+import { VolumeDownRounded as VolumeDownRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { TuneRounded as TuneRoundedIcon } from "@/lib/yuktai-icons";
+import { QuestionAnswerRounded as QuestionAnswerRoundedIcon } from "@/lib/yuktai-icons";
+import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
+import { ContentCopyRounded as ContentCopyRoundedIcon } from "@/lib/yuktai-icons";
+import { CheckRounded as CheckRoundedIcon } from "@/lib/yuktai-icons";
 import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
 
 import ShareButtons from "@/app/components/ShareBar";

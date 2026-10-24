@@ -6,13 +6,13 @@ import {
   TextField, InputAdornment, Collapse, Divider,
   Stack, Button, alpha, Tab, Tabs,
 } from "@mui/material";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
-import FindInPageRoundedIcon from "@mui/icons-material/FindInPageRounded";
-import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
-import TableRowsRoundedIcon from "@mui/icons-material/TableRowsRounded";
+import { SearchRounded as SearchRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoStoriesRounded as AutoStoriesRoundedIcon } from "@/lib/yuktai-icons";
+import { FindInPageRounded as FindInPageRoundedIcon } from "@/lib/yuktai-icons";
+import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
+import { TableRowsRounded as TableRowsRoundedIcon } from "@/lib/yuktai-icons";
 import SamasaDetectorPanel from "@/app/components/SamasaDetectorPanel";
 import { SamasaGrid } from "@/app/components/TeluguDataGrid";
 import { SAMASA_RULES } from "@/data/bhashaMala";

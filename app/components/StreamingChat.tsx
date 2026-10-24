@@ -10,7 +10,7 @@ import {
   Typography,
   Paper,
 } from "@mui/material";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
 
 interface StreamingChatProps {
   api?: string;

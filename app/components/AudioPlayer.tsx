@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import { IconButton } from "@mui/material";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import PauseIcon from "@mui/icons-material/Pause";
+import { VolumeUp as VolumeUpIcon } from "@/lib/yuktai-icons";
+import { Pause as PauseIcon } from "@/lib/yuktai-icons";
 
 type AudioPlayerProps = {
   src: string;

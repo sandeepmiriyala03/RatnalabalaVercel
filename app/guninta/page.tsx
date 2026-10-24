@@ -5,9 +5,9 @@ import {
   Box, Typography, Card, CardContent, Chip,
   Stack, Button, alpha, IconButton, Tooltip,
 } from "@mui/material";
-import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
-import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
-import StopRoundedIcon from "@mui/icons-material/StopRounded";
+import { AutoStoriesRounded as AutoStoriesRoundedIcon } from "@/lib/yuktai-icons";
+import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
+import { StopRounded as StopRoundedIcon } from "@/lib/yuktai-icons";
 
 import { GridSection, GunintaGrid } from "@/app/components/TeluguDataGrid";
 import { GUNINTA_MARKS, GUNINTA_NAMES, GUNINTA_SWARALU, GUNINTA_VYANJANALU } from "@/data/bhashaMala";

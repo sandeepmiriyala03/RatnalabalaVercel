@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Box, Typography, Fade, Collapse } from "@mui/material";
-import BoltIcon from "@mui/icons-material/Bolt";
+import { Bolt as BoltIcon } from "@/lib/yuktai-icons";
 
 export default function PageLoadTime() {
   const [loadTime, setLoadTime] = useState<number | null>(null);

@@ -10,12 +10,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import NavigateBeforeRoundedIcon from "@mui/icons-material/NavigateBeforeRounded";
-import NavigateNextRoundedIcon from "@mui/icons-material/NavigateNextRounded";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
-import MusicNoteRoundedIcon from "@mui/icons-material/MusicNoteRounded";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
+import { NavigateBeforeRounded as NavigateBeforeRoundedIcon } from "@/lib/yuktai-icons";
+import { NavigateNextRounded as NavigateNextRoundedIcon } from "@/lib/yuktai-icons";
+import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
+import { PauseRounded as PauseRoundedIcon } from "@/lib/yuktai-icons";
+import { MusicNoteRounded as MusicNoteRoundedIcon } from "@/lib/yuktai-icons";
 import MusicOffRoundedIcon from "@mui/icons-material/MusicOffRounded";
 import { paintPage, type Layout } from "./engine";
 import type { Project } from "./model";

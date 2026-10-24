@@ -10,7 +10,7 @@ import {
   Stack
 } from "@mui/material";
 
-import ClearIcon from "@mui/icons-material/Clear";
+import { Clear as ClearIcon } from "@/lib/yuktai-icons";
 
 import PoemCard from "@/app/components/PoemCard";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";

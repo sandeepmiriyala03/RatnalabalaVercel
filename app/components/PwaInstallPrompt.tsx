@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Typography, Paper, Fab, IconButton, Snackbar, Alert } from '@mui/material';
-import InstallMobileIcon from '@mui/icons-material/InstallMobile';
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import { InstallMobile as InstallMobileIcon } from "@/lib/yuktai-icons";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
 import { fabSx, FAB_EDGE, FAB_GAP, FAB_HEIGHT } from '@/lib/floating';
 
 type BeforeInstallPromptEvent = Event & {

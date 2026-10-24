@@ -9,10 +9,10 @@
 
 import React, { useState } from "react";
 import { Box, Typography, Collapse, Button } from "@mui/material";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import MenuBookRoundedIcon from "@mui/icons-material/MenuBookRounded";
-import AutoStoriesRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
+import { AutoStoriesRounded as AutoStoriesRoundedIcon } from "@/lib/yuktai-icons";
 
 type Props = {
   sloka: string;

@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { Button, Chip } from "@mui/material";
-import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import { ArrowForwardRounded as ArrowForwardRoundedIcon } from "@/lib/yuktai-icons";
 
 export default function MiraIntro() {
   return (

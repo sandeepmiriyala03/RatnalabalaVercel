@@ -4,7 +4,7 @@
 
 import { useState, FormEvent } from "react";
 import { TextField, IconButton, Stack, Typography, Paper, CircularProgress } from "@mui/material";
-import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
 
 interface ChatTurn {
   role: "user" | "assistant";

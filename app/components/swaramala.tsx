@@ -13,15 +13,15 @@ import {
   Collapse,
 } from "@mui/material";
 
-import MicIcon from "@mui/icons-material/Mic";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
-import DownloadIcon from "@mui/icons-material/Download";
-import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import { Mic as MicIcon } from "@/lib/yuktai-icons";
+import { VolumeUp as VolumeUpIcon } from "@/lib/yuktai-icons";
+import { StopCircle as StopCircleIcon } from "@/lib/yuktai-icons";
+import { Download as DownloadIcon } from "@/lib/yuktai-icons";
+import { RestartAlt as RestartAltIcon } from "@/lib/yuktai-icons";
 
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
-import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
-import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
+import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
 
 import { alpha, useTheme } from "@mui/material";
 import { toPng } from "html-to-image";

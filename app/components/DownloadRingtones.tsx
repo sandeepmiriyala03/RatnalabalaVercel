@@ -2,8 +2,8 @@
 
 import React from "react";
 import { Box, Typography, Stack, Button } from "@mui/material";
-import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import MusicNoteRoundedIcon from "@mui/icons-material/MusicNoteRounded";
+import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
+import { MusicNoteRounded as MusicNoteRoundedIcon } from "@/lib/yuktai-icons";
 import AndroidRoundedIcon from "@mui/icons-material/AndroidRounded";
 
 /* Assumed filenames based on the existing Style1.mp3 reference in

@@ -18,7 +18,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import MusicNoteRoundedIcon from "@mui/icons-material/MusicNoteRounded";
+import { MusicNoteRounded as MusicNoteRoundedIcon } from "@/lib/yuktai-icons";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { layoutProject, renderPage } from "./engine";
 import { SIZES, type Mode, type Project, type SizeId } from "./model";

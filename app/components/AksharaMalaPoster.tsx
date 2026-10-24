@@ -4,13 +4,13 @@ import React, { useRef, useState, useCallback, useEffect, useId } from "react";
 import {
   Box, Typography, Card, CardContent, Divider, IconButton, Button, Stack, Tooltip, CircularProgress, Chip,
 } from "@mui/material";
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import StopCircleIcon from "@mui/icons-material/StopCircle";
-import EditIcon from "@mui/icons-material/Edit";
-import CloseIcon from "@mui/icons-material/Close";
-import MicIcon from "@mui/icons-material/Mic";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CancelIcon from "@mui/icons-material/Cancel";
+import { VolumeUp as VolumeUpIcon } from "@/lib/yuktai-icons";
+import { StopCircle as StopCircleIcon } from "@/lib/yuktai-icons";
+import { Edit as EditIcon } from "@/lib/yuktai-icons";
+import { Close as CloseIcon } from "@/lib/yuktai-icons";
+import { Mic as MicIcon } from "@/lib/yuktai-icons";
+import { CheckCircle as CheckCircleIcon } from "@/lib/yuktai-icons";
+import { Cancel as CancelIcon } from "@/lib/yuktai-icons";
 
 import ShareButtons from "@/app/components/ShareBar";
 import AksharaTraceBoard from "./AksharaTraceBoard";

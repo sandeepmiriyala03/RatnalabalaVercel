@@ -11,7 +11,7 @@ import {
   Chip,
   Alert,
 } from "@mui/material";
-import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
 type AgentResult = {
   success: boolean;
   poem: {

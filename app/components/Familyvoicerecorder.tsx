@@ -14,15 +14,15 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import MicRoundedIcon from "@mui/icons-material/MicRounded";
-import StopRoundedIcon from "@mui/icons-material/StopRounded";
-import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
+import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
+import { MicRounded as MicRoundedIcon } from "@/lib/yuktai-icons";
+import { StopRounded as StopRoundedIcon } from "@/lib/yuktai-icons";
+import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
+import { PauseRounded as PauseRoundedIcon } from "@/lib/yuktai-icons";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import { ChevronLeftRounded as ChevronLeftRoundedIcon } from "@/lib/yuktai-icons";
+import { ChevronRightRounded as ChevronRightRoundedIcon } from "@/lib/yuktai-icons";
+import { CheckCircleRounded as CheckCircleRoundedIcon } from "@/lib/yuktai-icons";
 
 import {
   MAX_RECORDING_MS,
