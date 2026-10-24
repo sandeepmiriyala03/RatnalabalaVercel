@@ -40,3 +40,6 @@ public/sw.js
 public/sw.js.map
 .vercel
 .env*
+icons-scan.csv
+icons-review.html
+icons-report.csv
