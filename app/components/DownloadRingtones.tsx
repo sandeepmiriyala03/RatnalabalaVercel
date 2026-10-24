@@ -4,7 +4,7 @@ import React from "react";
 import { Box, Typography, Stack, Button } from "@mui/material";
 import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
 import { MusicNoteRounded as MusicNoteRoundedIcon } from "@/lib/yuktai-icons";
-import AndroidRoundedIcon from "@mui/icons-material/AndroidRounded";
+import { AndroidRounded as AndroidRoundedIcon } from "../../lib/yuktai-icons";
 
 /* Assumed filenames based on the existing Style1.mp3 reference in
    MusicPlayer.tsx — update TRACKS below if the real second filename

@@ -20,7 +20,7 @@ import {
 } from "@mui/material";
 import { Bolt as BoltIcon } from "@/lib/yuktai-icons";
 import { RestartAlt as RestartAltIcon } from "@/lib/yuktai-icons";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
+import { SmartToy as SmartToyIcon } from "../../lib/yuktai-icons";
 import { AddRounded as AddRoundedIcon } from "@/lib/yuktai-icons";
 import MyFontsDialog from "./MyFontsDialog";
 // YuktAI icons wherever one fits; MUI only where YuktAI has no matching icon

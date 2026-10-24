@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { IconButton, Tooltip } from "@mui/material";
-import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
-import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
+import { FavoriteRounded as FavoriteRoundedIcon } from "../../lib/yuktai-icons";
+import { FavoriteBorderRounded as FavoriteBorderRoundedIcon } from "../../lib/yuktai-icons";
 import {
   addReadingTime,
   getReadingRecord,

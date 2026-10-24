@@ -22,11 +22,11 @@ import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
 import { ContentCopyRounded as ContentCopyRoundedIcon } from "@/lib/yuktai-icons";
 import { CheckRounded as CheckRoundedIcon } from "@/lib/yuktai-icons";
 import { InfoOutlined as InfoOutlinedIcon } from "@/lib/yuktai-icons";
-import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
+import { WhatsApp as WhatsAppIcon } from "../../lib/yuktai-icons";
 import { ScheduleRounded as ScheduleRoundedIcon } from "@/lib/yuktai-icons";
 import { RestartAltRounded as RestartAltRoundedIcon } from "@/lib/yuktai-icons";
 import { DoneAllRounded as CheckRoundedIcon2 } from "@/lib/yuktai-icons";
-import PsychologyRoundedIcon      from "@mui/icons-material/PsychologyRounded";
+import { PsychologyRounded as PsychologyRoundedIcon } from "../../lib/yuktai-icons";
 
 // AI SDK RSC — client వైపు hooks. Server వైపు (createAI, getMutableAIState,
 // streamUI) అంతా ./poemAI.tsx లో ఉంది.

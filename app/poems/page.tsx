@@ -24,10 +24,10 @@ import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
 import { HelpOutlineRounded as HelpOutlineRoundedIcon } from "@/lib/yuktai-icons";
 import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";
 import { QuestionAnswerRounded as QuestionAnswerRoundedIcon } from "@/lib/yuktai-icons";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import { WhatsApp as WhatsAppIcon } from "../../lib/yuktai-icons";
 import { TableRowsRounded as TableRowsRoundedIcon } from "@/lib/yuktai-icons";
 import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
-import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
+import { SmartToyRounded as SmartToyRoundedIcon } from "../../lib/yuktai-icons";
 
 import PoemCard from "@/app/components/PoemCard";
 import DownloadAllPosters from "@/app/components/DownloadAllPosters";

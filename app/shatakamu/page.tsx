@@ -15,13 +15,13 @@ import {
   Grid,
   Paper,
 } from "@mui/material";
-import ArchitectureRoundedIcon from "@mui/icons-material/ArchitectureRounded";
+import { ArchitectureRounded as ArchitectureRoundedIcon } from "../../lib/yuktai-icons";
 import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
 import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
 import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
 import { RecordVoiceOverRounded as RecordVoiceOverRoundedIcon } from "@/lib/yuktai-icons";
 import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
-import MovieCreationRoundedIcon from "@mui/icons-material/MovieCreationRounded";
+import { MovieCreationRounded as MovieCreationRoundedIcon } from "../../lib/yuktai-icons";
 
 import PoemBrowser from "@/app/components/PoemBrowser";
 import {

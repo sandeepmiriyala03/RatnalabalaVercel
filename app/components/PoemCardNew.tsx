@@ -20,7 +20,7 @@ import { QuestionAnswerRounded as QuestionAnswerRoundedIcon } from "@/lib/yuktai
 import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
 import { ContentCopyRounded as ContentCopyRoundedIcon } from "@/lib/yuktai-icons";
 import { CheckRounded as CheckRoundedIcon } from "@/lib/yuktai-icons";
-import WhatsAppIcon               from "@mui/icons-material/WhatsApp";
+import { WhatsApp as WhatsAppIcon } from "../../lib/yuktai-icons";
 
 import ShareButtons from "@/app/components/ShareBar";
 import TeluguVoice  from "@/app/components/TeluguVoice";

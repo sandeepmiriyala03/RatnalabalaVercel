@@ -9,7 +9,7 @@ import {
   useTheme,
   useMediaQuery,
 } from "@mui/material";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
+import { SmartToy as SmartToyIcon } from "../../lib/yuktai-icons";
 import ChatbotWindow from "./ChatbotWindow";
 
 export default function FloatingAIButton() {

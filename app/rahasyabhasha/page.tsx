@@ -3,15 +3,15 @@
 import { useState, useRef, useEffect } from "react";
 // MUI Icons
 import { SwapVert as SwapVertIcon } from "@/lib/yuktai-icons";
-import CodeIcon from "@mui/icons-material/Code";
-import LockOpenIcon from "@mui/icons-material/LockOpen";
+import { Code as CodeIcon } from "../../lib/yuktai-icons";
+import { LockOpen as LockOpenIcon } from "../../lib/yuktai-icons";
 import { ContentCopy as ContentCopyIcon } from "@/lib/yuktai-icons";
 import { Check as CheckIcon } from "@/lib/yuktai-icons";
 import { VolumeUp as VolumeUpIcon } from "@/lib/yuktai-icons";
-import VolumeOffIcon from "@mui/icons-material/VolumeOff";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { VolumeOff as VolumeOffIcon } from "../../lib/yuktai-icons";
+import { DeleteOutline as DeleteOutlineIcon } from "../../lib/yuktai-icons";
 import { MenuBook as MenuBookIcon } from "@/lib/yuktai-icons";
-import GavelIcon from "@mui/icons-material/Gavel";
+import { Gavel as GavelIcon } from "../../lib/yuktai-icons";
 
 export default function MlechhaBhashaPage() {
   const [inputText, setInputText] = useState("");

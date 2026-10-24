@@ -22,11 +22,11 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { UndoRounded as UndoRoundedIcon } from "@/lib/yuktai-icons";
-import RedoRoundedIcon from "@mui/icons-material/RedoRounded";
+import { RedoRounded as RedoRoundedIcon } from "../../lib/yuktai-icons";
 import { NoteAddRounded as NoteAddRoundedIcon } from "@/lib/yuktai-icons";
 import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
 import { PlayCircleFilledRounded as PlayCircleFilledRoundedIcon } from "@/lib/yuktai-icons";
-import FullscreenRoundedIcon from "@mui/icons-material/FullscreenRounded";
+import { FullscreenRounded as FullscreenRoundedIcon } from "../../lib/yuktai-icons";
 import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
 import { EditRounded as EditRoundedIcon } from "@/lib/yuktai-icons";
 import { PaletteRounded as PaletteRoundedIcon } from "@/lib/yuktai-icons";

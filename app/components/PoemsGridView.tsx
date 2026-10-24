@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Box, Chip, Stack, Typography, alpha, useTheme } from "@mui/material";
-import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
-import HubRoundedIcon from "@mui/icons-material/HubRounded";
+import { SmartToyRounded as SmartToyRoundedIcon } from "../../lib/yuktai-icons";
+import { HubRounded as HubRoundedIcon } from "../../lib/yuktai-icons";
 import { YuktaiGrid, type GridColumn, type WebMCPStatus } from "@yuktishaalaa/yuktai";
 
 /**

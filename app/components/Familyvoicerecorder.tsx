@@ -19,7 +19,7 @@ import { MicRounded as MicRoundedIcon } from "@/lib/yuktai-icons";
 import { StopRounded as StopRoundedIcon } from "@/lib/yuktai-icons";
 import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
 import { PauseRounded as PauseRoundedIcon } from "@/lib/yuktai-icons";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { DeleteOutlineRounded as DeleteOutlineRoundedIcon } from "../../lib/yuktai-icons";
 import { ChevronLeftRounded as ChevronLeftRoundedIcon } from "@/lib/yuktai-icons";
 import { ChevronRightRounded as ChevronRightRoundedIcon } from "@/lib/yuktai-icons";
 import { CheckCircleRounded as CheckCircleRoundedIcon } from "@/lib/yuktai-icons";

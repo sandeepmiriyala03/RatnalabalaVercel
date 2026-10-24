@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Box, IconButton, Typography, CircularProgress, Stack, Button } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
+import { Delete as DeleteIcon } from "../../lib/yuktai-icons";
 import { CheckCircle as CheckCircleIcon } from "@/lib/yuktai-icons";
 import { Cancel as CancelIcon } from "@/lib/yuktai-icons";
 import { Send as SendIcon } from "@/lib/yuktai-icons";

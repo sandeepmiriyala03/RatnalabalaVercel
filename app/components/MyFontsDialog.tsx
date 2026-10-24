@@ -26,9 +26,9 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
-import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
-import ComputerRoundedIcon from "@mui/icons-material/ComputerRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { UploadFileRounded as UploadFileRoundedIcon } from "../../lib/yuktai-icons";
+import { ComputerRounded as ComputerRoundedIcon } from "../../lib/yuktai-icons";
+import { DeleteOutlineRounded as DeleteOutlineRoundedIcon } from "../../lib/yuktai-icons";
 import { CheckRounded as CheckRoundedIcon } from "@/lib/yuktai-icons";
 import {
   addDeviceFont,

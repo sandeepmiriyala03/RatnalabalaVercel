@@ -31,7 +31,7 @@ import {
 } from "@mui/material";
 import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
 import { SendRounded as SendRoundedIcon } from "@/lib/yuktai-icons";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { DeleteOutlineRounded as DeleteOutlineRoundedIcon } from "../../lib/yuktai-icons";
 import { MenuBookRounded as MenuBookRoundedIcon } from "@/lib/yuktai-icons";
 import { CheckCircleRounded as CheckCircleRoundedIcon } from "@/lib/yuktai-icons";
 

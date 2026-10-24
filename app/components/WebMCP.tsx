@@ -16,10 +16,10 @@ import {
   useTheme,
 } from "@mui/material";
 
-import HubRoundedIcon from "@mui/icons-material/HubRounded";
-import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
-import ApiRoundedIcon from "@mui/icons-material/ApiRounded";
-import StorageRoundedIcon from "@mui/icons-material/StorageRounded";
+import { HubRounded as HubRoundedIcon } from "../../lib/yuktai-icons";
+import { SmartToyRounded as SmartToyRoundedIcon } from "../../lib/yuktai-icons";
+import { ApiRounded as ApiRoundedIcon } from "../../lib/yuktai-icons";
+import { StorageRounded as StorageRoundedIcon } from "../../lib/yuktai-icons";
 import { CheckCircleRounded as CheckCircleRoundedIcon } from "@/lib/yuktai-icons";
 import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
 import { SettingsRounded as SettingsRoundedIcon } from "@/lib/yuktai-icons";

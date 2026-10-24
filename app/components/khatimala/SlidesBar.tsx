@@ -21,7 +21,7 @@ import {
 import { AddRounded as AddRoundedIcon } from "@/lib/yuktai-icons";
 import { RemoveRounded as RemoveRoundedIcon } from "@/lib/yuktai-icons";
 import { ContentCopyRounded as ContentCopyRoundedIcon } from "@/lib/yuktai-icons";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { DeleteOutlineRounded as DeleteOutlineRoundedIcon } from "../../../lib/yuktai-icons";
 import { ChevronLeftRounded as ChevronLeftRoundedIcon } from "@/lib/yuktai-icons";
 import { ChevronRightRounded as ChevronRightRoundedIcon } from "@/lib/yuktai-icons";
 import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";

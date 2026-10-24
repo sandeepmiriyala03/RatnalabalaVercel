@@ -17,7 +17,7 @@ import { ClearRounded as ClearRoundedIcon } from "@/lib/yuktai-icons";
 import { ExpandMoreRounded as ExpandMoreRoundedIcon } from "@/lib/yuktai-icons";
 import { ExpandLessRounded as ExpandLessRoundedIcon } from "@/lib/yuktai-icons";
 import { DownloadForOfflineRounded as DownloadForOfflineRoundedIcon } from "@/lib/yuktai-icons";
-import SearchOffRoundedIcon from "@mui/icons-material/SearchOffRounded";
+import { SearchOffRounded as SearchOffRoundedIcon } from "../../lib/yuktai-icons";
 
 import GeetaCard from "@/app/components/GeetaCard";
 import { GEETA_CHAPTERS } from "@/types/geeta";

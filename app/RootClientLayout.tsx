@@ -6,7 +6,7 @@ import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
 import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
 import { TravelExploreRounded as TravelExploreRoundedIcon } from "@/lib/yuktai-icons";
 import { AppsRounded as AppsRoundedIcon } from "@/lib/yuktai-icons";
-import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
+import { SwapHorizRounded as SwapHorizRoundedIcon } from "../lib/yuktai-icons";
 import Navbar from "@/app/components/Navbar";
 import ChatbotWindow from "@/app/components/ChatbotWindow";       // check path
 import PwaInstallPrompt from "@/app/components/PwaInstallPrompt"; // check path

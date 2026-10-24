@@ -12,8 +12,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, IconButton, Snackbar, Tooltip } from "@mui/material";
-import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
-import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
+import { FavoriteRounded as FavoriteRoundedIcon } from "../../lib/yuktai-icons";
+import { FavoriteBorderRounded as FavoriteBorderRoundedIcon } from "../../lib/yuktai-icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getReadingRecord, setEntryFavorite, subscribeToReadingChanges } from "@/lib/myReading";

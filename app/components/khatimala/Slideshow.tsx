@@ -16,7 +16,7 @@ import { NavigateNextRounded as NavigateNextRoundedIcon } from "@/lib/yuktai-ico
 import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
 import { PauseRounded as PauseRoundedIcon } from "@/lib/yuktai-icons";
 import { MusicNoteRounded as MusicNoteRoundedIcon } from "@/lib/yuktai-icons";
-import MusicOffRoundedIcon from "@mui/icons-material/MusicOffRounded";
+import { MusicOffRounded as MusicOffRoundedIcon } from "../../../lib/yuktai-icons";
 import { paintPage, type Layout } from "./engine";
 import type { Project } from "./model";
 

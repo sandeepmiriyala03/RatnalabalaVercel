@@ -21,13 +21,13 @@ import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
 import { ChatBubbleOutlineRounded as ChatBubbleOutlineRoundedIcon } from "@/lib/yuktai-icons";
 import { AutoStoriesTwoTone as AutoStoriesTwoToneIcon } from "@/lib/yuktai-icons";
 import { HeadphonesTwoTone as HeadphonesTwoToneIcon } from "@/lib/yuktai-icons";
-import SchoolTwoToneIcon from "@mui/icons-material/SchoolTwoTone";
+import { SchoolTwoTone as SchoolTwoToneIcon } from "../../lib/yuktai-icons";
 import { BrushTwoTone as BrushTwoToneIcon } from "@/lib/yuktai-icons";
 import { ForumTwoTone as ForumTwoToneIcon } from "@/lib/yuktai-icons";
-import VolunteerActivismTwoToneIcon from "@mui/icons-material/VolunteerActivismTwoTone";
-import LockTwoToneIcon from "@mui/icons-material/LockTwoTone";
+import { VolunteerActivismTwoTone as VolunteerActivismTwoToneIcon } from "../../lib/yuktai-icons";
+import { LockTwoTone as LockTwoToneIcon } from "../../lib/yuktai-icons";
 import { GridViewTwoTone as GridViewTwoToneIcon } from "@/lib/yuktai-icons";
-import PhoneAndroidTwoToneIcon from "@mui/icons-material/PhoneAndroidTwoTone";
+import { PhoneAndroidTwoTone as PhoneAndroidTwoToneIcon } from "../../lib/yuktai-icons";
 
 import { MALA_GROUPS, MALA_COUNT, toneClass, type Tone } from "@/lib/malas";
 import YGrid from "./YuktaiGridClient";

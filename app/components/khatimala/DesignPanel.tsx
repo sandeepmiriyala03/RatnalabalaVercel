@@ -19,7 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 import { MusicNoteRounded as MusicNoteRoundedIcon } from "@/lib/yuktai-icons";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { DeleteOutlineRounded as DeleteOutlineRoundedIcon } from "../../../lib/yuktai-icons";
 import { layoutProject, renderPage } from "./engine";
 import { SIZES, type Mode, type Project, type SizeId } from "./model";
 import { THEMES } from "./themes";

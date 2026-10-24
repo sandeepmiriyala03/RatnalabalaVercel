@@ -30,8 +30,8 @@ import {
 import { ContrastRounded as ContrastRoundedIcon } from "@/lib/yuktai-icons";
 import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
 import { GridOnRounded as GridOnRoundedIcon } from "@/lib/yuktai-icons";
-import DataObjectRoundedIcon from "@mui/icons-material/DataObjectRounded";
-import TextFieldsRoundedIcon from "@mui/icons-material/TextFieldsRounded";
+import { DataObjectRounded as DataObjectRoundedIcon } from "../../lib/yuktai-icons";
+import { TextFieldsRounded as TextFieldsRoundedIcon } from "../../lib/yuktai-icons";
 import { PaletteRounded as PaletteRoundedIcon } from "@/lib/yuktai-icons";
 import { TableRowsRounded as TableRowsRoundedIcon } from "@/lib/yuktai-icons";
 import { VolumeUpRounded as VolumeUpRoundedIcon } from "@/lib/yuktai-icons";

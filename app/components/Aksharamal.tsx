@@ -28,12 +28,12 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
+import { CodeRounded as CodeRoundedIcon } from "../../lib/yuktai-icons";
 import { TimerOutlined as TimerOutlinedIcon } from "@/lib/yuktai-icons";
-import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
+import { CloudOutlined as CloudOutlinedIcon } from "../../lib/yuktai-icons";
 import { HelpOutlineRounded as HelpOutlineRoundedIcon } from "@/lib/yuktai-icons";
 import { AutoAwesomeRounded as AutoAwesomeRoundedIcon } from "@/lib/yuktai-icons";
-import TouchAppRoundedIcon from "@mui/icons-material/TouchAppRounded";
+import { TouchAppRounded as TouchAppRoundedIcon } from "../../lib/yuktai-icons";
 import { RecordVoiceOverRounded as RecordVoiceOverRoundedIcon } from "@/lib/yuktai-icons";
 import { ContrastRounded as ContrastRoundedIcon } from "@/lib/yuktai-icons";
 import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";

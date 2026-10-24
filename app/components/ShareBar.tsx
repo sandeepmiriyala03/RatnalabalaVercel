@@ -2,7 +2,7 @@
 
 import React, { useCallback } from "react";
 import { IconButton, Stack, Tooltip } from "@mui/material";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import { WhatsApp as WhatsAppIcon } from "../../lib/yuktai-icons";
 import { Download as DownloadIcon } from "@/lib/yuktai-icons";
 import { capturePosterAsDataUrl } from "@/lib/posterExport";
 

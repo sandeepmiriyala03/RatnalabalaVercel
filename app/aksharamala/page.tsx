@@ -13,9 +13,9 @@ import {
 import { ExpandMore as ExpandMoreIcon } from "@/lib/yuktai-icons";
 import { VolumeUp as VolumeUpIcon } from "@/lib/yuktai-icons";
 import { Edit as EditIcon } from "@/lib/yuktai-icons";
-import TouchAppIcon from "@mui/icons-material/TouchApp";
+import { TouchApp as TouchAppIcon } from "../../lib/yuktai-icons";
 import { MenuBook as MenuBookIcon } from "@/lib/yuktai-icons";
-import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
+import { CodeRounded as CodeRoundedIcon } from "../../lib/yuktai-icons";
 import { Mic as MicIcon } from "@/lib/yuktai-icons";
 import { TableRowsRounded as TableRowsRoundedIcon } from "@/lib/yuktai-icons";
 import { SearchRounded as SearchRoundedIcon } from "@/lib/yuktai-icons";

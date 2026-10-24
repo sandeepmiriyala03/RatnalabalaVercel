@@ -39,14 +39,14 @@ import {
   Popover,
 } from "@mui/material";
 import { Undo as UndoIcon } from "@/lib/yuktai-icons";
-import RedoIcon from "@mui/icons-material/Redo";
+import { Redo as RedoIcon } from "../../lib/yuktai-icons";
 import { Download as DownloadIcon } from "@/lib/yuktai-icons";
 import { Image as ImageIcon } from "@/lib/yuktai-icons";
 import { FormatColorFill as FormatColorFillIcon } from "@/lib/yuktai-icons";
-import TextFieldsIcon from "@mui/icons-material/TextFields";
+import { TextFields as TextFieldsIcon } from "../../lib/yuktai-icons";
 import { Visibility as VisibilityIcon } from "@/lib/yuktai-icons";
-import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { VisibilityOff as VisibilityOffIcon } from "../../lib/yuktai-icons";
+import { DeleteOutline as DeleteOutlineIcon } from "../../lib/yuktai-icons";
 import { Add as AddIcon } from "@/lib/yuktai-icons";
 import { toPng } from "html-to-image";
 // Fonts come only from main.py; each loads when it's chosen

@@ -29,14 +29,14 @@ import { CloseRounded as CloseRoundedIcon } from "@/lib/yuktai-icons";
 import { PictureAsPdfRounded as PictureAsPdfRoundedIcon } from "@/lib/yuktai-icons";
 import { ImageRounded as ImageRoundedIcon } from "@/lib/yuktai-icons";
 import { DescriptionRounded as DescriptionRoundedIcon } from "@/lib/yuktai-icons";
-import SlideshowRoundedIcon from "@mui/icons-material/SlideshowRounded";
+import { SlideshowRounded as SlideshowRoundedIcon } from "../../../lib/yuktai-icons";
 import { CheckCircleRounded as CheckCircleRoundedIcon } from "@/lib/yuktai-icons";
-import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUncheckedRounded";
+import { RadioButtonUncheckedRounded as RadioButtonUncheckedRoundedIcon } from "../../../lib/yuktai-icons";
 import { DownloadRounded as DownloadRoundedIcon } from "@/lib/yuktai-icons";
 import { ShareRounded as ShareRoundedIcon } from "@/lib/yuktai-icons";
 import { canShareFiles, exportDocx, exportPdf, exportPng, exportPptx, exportShowHtml, exportVideo, makeAudioContext, pickVideoType, saveBlob, shareBlob, sizeLabel, videoSeconds, type VideoShape } from "./exporters";
-import MovieRoundedIcon from "@mui/icons-material/MovieRounded";
-import MusicVideoRoundedIcon from "@mui/icons-material/MusicVideoRounded";
+import { MovieRounded as MovieRoundedIcon } from "../../../lib/yuktai-icons";
+import { MusicVideoRounded as MusicVideoRoundedIcon } from "../../../lib/yuktai-icons";
 import type { Project } from "./model";
 
 export type Format = "pdf" | "png" | "video" | "docx" | "pptx" | "show";

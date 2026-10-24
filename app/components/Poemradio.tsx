@@ -20,7 +20,7 @@ import { PlayArrowRounded as PlayArrowRoundedIcon } from "@/lib/yuktai-icons";
 import { PauseRounded as PauseRoundedIcon } from "@/lib/yuktai-icons";
 import { SkipNextRounded as SkipNextRoundedIcon } from "@/lib/yuktai-icons";
 import { SkipPreviousRounded as SkipPreviousRoundedIcon } from "@/lib/yuktai-icons";
-import ShuffleRoundedIcon from "@mui/icons-material/ShuffleRounded";
+import { ShuffleRounded as ShuffleRoundedIcon } from "../../lib/yuktai-icons";
 import { GraphicEqRounded as GraphicEqRoundedIcon } from "@/lib/yuktai-icons";
 
 interface Poem {

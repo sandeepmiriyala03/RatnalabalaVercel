@@ -23,25 +23,25 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import FormatBoldRoundedIcon from "@mui/icons-material/FormatBoldRounded";
-import FormatItalicRoundedIcon from "@mui/icons-material/FormatItalicRounded";
-import FormatUnderlinedRoundedIcon from "@mui/icons-material/FormatUnderlinedRounded";
-import FormatAlignLeftRoundedIcon from "@mui/icons-material/FormatAlignLeftRounded";
-import FormatAlignCenterRoundedIcon from "@mui/icons-material/FormatAlignCenterRounded";
-import FormatAlignRightRoundedIcon from "@mui/icons-material/FormatAlignRightRounded";
-import FormatAlignJustifyRoundedIcon from "@mui/icons-material/FormatAlignJustifyRounded";
+import { FormatBoldRounded as FormatBoldRoundedIcon } from "../../../lib/yuktai-icons";
+import { FormatItalicRounded as FormatItalicRoundedIcon } from "../../../lib/yuktai-icons";
+import { FormatUnderlinedRounded as FormatUnderlinedRoundedIcon } from "../../../lib/yuktai-icons";
+import { FormatAlignLeftRounded as FormatAlignLeftRoundedIcon } from "../../../lib/yuktai-icons";
+import { FormatAlignCenterRounded as FormatAlignCenterRoundedIcon } from "../../../lib/yuktai-icons";
+import { FormatAlignRightRounded as FormatAlignRightRoundedIcon } from "../../../lib/yuktai-icons";
+import { FormatAlignJustifyRounded as FormatAlignJustifyRoundedIcon } from "../../../lib/yuktai-icons";
 import { ArrowUpwardRounded as ArrowUpwardRoundedIcon } from "@/lib/yuktai-icons";
-import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
+import { ArrowDownwardRounded as ArrowDownwardRoundedIcon } from "../../../lib/yuktai-icons";
 import { ContentCopyRounded as ContentCopyRoundedIcon } from "@/lib/yuktai-icons";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import TitleRoundedIcon from "@mui/icons-material/TitleRounded";
+import { DeleteOutlineRounded as DeleteOutlineRoundedIcon } from "../../../lib/yuktai-icons";
+import { TitleRounded as TitleRoundedIcon } from "../../../lib/yuktai-icons";
 import { NotesRounded as NotesRoundedIcon } from "@/lib/yuktai-icons";
-import FormatQuoteRoundedIcon from "@mui/icons-material/FormatQuoteRounded";
+import { FormatQuoteRounded as FormatQuoteRoundedIcon } from "../../../lib/yuktai-icons";
 import { FormatListBulletedRounded as FormatListBulletedRoundedIcon } from "@/lib/yuktai-icons";
 import { TableChartRounded as TableChartRoundedIcon } from "@/lib/yuktai-icons";
 import { ImageRounded as ImageRoundedIcon } from "@/lib/yuktai-icons";
 import { HorizontalRuleRounded as HorizontalRuleRoundedIcon } from "@/lib/yuktai-icons";
-import InsertPageBreakRoundedIcon from "@mui/icons-material/InsertPageBreakRounded";
+import { InsertPageBreakRounded as InsertPageBreakRoundedIcon } from "../../../lib/yuktai-icons";
 import { AddRounded as AddRoundedIcon } from "@/lib/yuktai-icons";
 import { RemoveRounded as RemoveRoundedIcon } from "@/lib/yuktai-icons";
 import { BLOCK_LABEL, isStyled, type Block, type BlockType, type ImageBlock, type Mode, type TableBlock, type TextStyle } from "./model";

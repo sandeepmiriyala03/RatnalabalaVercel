@@ -7,15 +7,15 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import type { SvgIconComponent } from "@mui/icons-material";
-import SpellcheckTwoToneIcon from "@mui/icons-material/SpellcheckTwoTone";
+import { SpellcheckTwoTone as SpellcheckTwoToneIcon } from "./yuktai-icons";
 import { MenuBookTwoTone as MenuBookTwoToneIcon } from "@/lib/yuktai-icons";
 import { PaletteTwoTone as PaletteTwoToneIcon } from "@/lib/yuktai-icons";
-import AbcTwoToneIcon from "@mui/icons-material/AbcTwoTone";
+import { AbcTwoTone as AbcTwoToneIcon } from "./yuktai-icons";
 import { GraphicEqTwoTone as GraphicEqTwoToneIcon } from "@/lib/yuktai-icons";
-import TextFieldsTwoToneIcon from "@mui/icons-material/TextFieldsTwoTone";
-import FormatQuoteTwoToneIcon from "@mui/icons-material/FormatQuoteTwoTone";
-import JoinFullTwoToneIcon from "@mui/icons-material/JoinFullTwoTone";
-import CallMergeTwoToneIcon from "@mui/icons-material/CallMergeTwoTone";
+import { TextFieldsTwoTone as TextFieldsTwoToneIcon } from "./yuktai-icons";
+import { FormatQuoteTwoTone as FormatQuoteTwoToneIcon } from "./yuktai-icons";
+import { JoinFullTwoTone as JoinFullTwoToneIcon } from "./yuktai-icons";
+import { CallMergeTwoTone as CallMergeTwoToneIcon } from "./yuktai-icons";
 import { AutoStoriesTwoTone as AutoStoriesTwoToneIcon } from "@/lib/yuktai-icons";
 import { SelfImprovementTwoTone as SelfImprovementTwoToneIcon } from "@/lib/yuktai-icons";
 import { ImportContactsTwoTone as ImportContactsTwoToneIcon } from "@/lib/yuktai-icons";
@@ -24,14 +24,14 @@ import { ChromeReaderModeTwoTone as ChromeReaderModeTwoToneIcon } from "@/lib/yu
 import { WbSunnyTwoTone as WbSunnyTwoToneIcon } from "@/lib/yuktai-icons";
 import { TempleHinduTwoTone as TempleHinduTwoToneIcon } from "@/lib/yuktai-icons";
 import { QuizTwoTone as QuizTwoToneIcon } from "@/lib/yuktai-icons";
-import BookmarkTwoToneIcon from "@mui/icons-material/BookmarkTwoTone";
+import { BookmarkTwoTone as BookmarkTwoToneIcon } from "./yuktai-icons";
 import { AppsTwoTone as AppsTwoToneIcon } from "@/lib/yuktai-icons";
-import FontDownloadTwoToneIcon from "@mui/icons-material/FontDownloadTwoTone";
+import { FontDownloadTwoTone as FontDownloadTwoToneIcon } from "./yuktai-icons";
 import { ImageTwoTone as ImageTwoToneIcon } from "@/lib/yuktai-icons";
 import { MicTwoTone as MicTwoToneIcon } from "@/lib/yuktai-icons";
 import { TranslateTwoTone as TranslateTwoToneIcon } from "@/lib/yuktai-icons";
-import VpnKeyTwoToneIcon from "@mui/icons-material/VpnKeyTwoTone";
-import StyleTwoToneIcon from "@mui/icons-material/StyleTwoTone";
+import { VpnKeyTwoTone as VpnKeyTwoToneIcon } from "./yuktai-icons";
+import { StyleTwoTone as StyleTwoToneIcon } from "./yuktai-icons";
 import { NewspaperTwoTone as NewspaperTwoToneIcon } from "@/lib/yuktai-icons";
 
 export type Tone = "maroon" | "gold" | "ink";
