@@ -13,7 +13,7 @@ export default function YuktaiClient({ children }: { children: ReactNode }) {
   if (!mounted) return <>{children}</>;
 
   return (
-    <YuktAIWrapper position="right">
+    <YuktAIWrapper position="right" showRag={true} showAgent={true}>
       {children}
     </YuktAIWrapper>
   );

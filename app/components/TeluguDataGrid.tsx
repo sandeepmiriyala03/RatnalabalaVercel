@@ -987,7 +987,7 @@ export default function TeluguDataGrid({
           theme={theme}
           locale="te-IN"
           inputLanguage="te-IN"
-          engine="rust" 
+          engine="rust"  showSearchTime
           customRules={rules}
           search
           pagination={{ pageSize: 10, showSizeChanger: true, sizeOptions: [10, 20, 50, 100] }}

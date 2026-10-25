@@ -1478,7 +1478,7 @@ export default function AksharamalaParent() {
                       locale="te-IN"
                       inputLanguage="te-IN"
                       customRules={gridRules}
-                      engine="rust"
+                      engine="rust" showSearchTime 
                       search
                       pagination={{ pageSize: 10, showSizeChanger: true, sizeOptions: [10, 20, 50, 100] }}
                       loading={loading}
