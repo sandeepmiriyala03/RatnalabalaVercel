@@ -100,8 +100,8 @@ export default function RootLayout({
       </head>
 
       <body>
-        {/* Navbar, page content, WebMCP registration and the floating
-            buttons (left: AI, right: install + search) */}
+        {/* Navbar, page content, WebMCP registration, the సహాయం button and
+            the yuktai tools (always in the opposite corner) — all in RootClientLayout */}
         <PoemAI>
           <RootClientLayout>{children}</RootClientLayout>
         </PoemAI>

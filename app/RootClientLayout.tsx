@@ -16,6 +16,7 @@ import GoToTopButton from "@/app/components/GoToTopButton";
 import type { TeluguFont } from "@/app/types/fonts";
 import { FAB_EDGE, FAB_GAP, FAB_HEIGHT, FAB_Z, fabSx } from "@/lib/floating";
 import NextLink from "next/link";
+import { YuktAIWrapper } from "@yuktishaalaa/yuktai";
 import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME, type SearchResult } from "@/lib/webmcp";
 
 /* ═══════════════════════════════════════════
@@ -31,6 +32,9 @@ import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME, type Searc
            Tap again, Esc, or tap anywhere outside → the group hides.
    ⬆ పైకి stays OUTSIDE the group: it appears by itself after scrolling
    down, just above the సహాయం button.
+
+   yuktai tools (✨ ♿ 💬 🤖) sit in the OTHER bottom corner, and move
+   when the reader moves సహాయం, so the two never cover each other.
 
    The group stays mounted while hidden (inert + invisible), so the
    install prompt keeps its state and nothing re-downloads.
@@ -127,8 +131,18 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
     requestAnimationFrame(() => launcherRef.current?.focus());
   }, []);
 
+  // yuktai tools always go to the corner opposite the సహాయం button
+  const yuktaiSide: Side = side === "right" ? "left" : "right";
+
   return (
-    <>
+    <YuktAIWrapper
+      position={yuktaiSide}
+      launcher
+      showAccessibility
+      showRag
+      showAgent
+      engine="rust"
+    >
       <Navbar />
 
       {/* id="main-content" = Navbar skip-link target (and where the "పైకి" button sends focus) */}
@@ -282,7 +296,7 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
       <ChatbotWindow open={chatOpen} onClose={() => setChatOpen(false)} />
 
       <WebMCPPanel open={searchOpen} onClose={closeSearch} side={side} />
-    </>
+    </YuktAIWrapper>
   );
 }
 

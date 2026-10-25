@@ -1,19 +1,10 @@
 "use client";
-
-import { useState, useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { YuktAIWrapper } from "@yuktishaalaa/yuktai";
 
 export default function YuktaiClient({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return <>{children}</>;
-
   return (
-    <YuktAIWrapper position="right" showRag={true} showAgent={true}>
+    <YuktAIWrapper position="left" launcher showAccessibility showRag showAgent showVibeCoder engine="rust">
       {children}
     </YuktAIWrapper>
   );
