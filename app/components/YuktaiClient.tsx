@@ -4,7 +4,7 @@ import { YuktAIWrapper } from "@yuktishaalaa/yuktai";
 
 export default function YuktaiClient({ children }: { children: ReactNode }) {
   return (
-    <YuktAIWrapper position="left" launcher showAccessibility showRag showAgent showVibeCoder engine="rust">
+    <YuktAIWrapper position="left" launcher showAccessibility showRag showAgent showVibeCoder showPageTools voiceLang="te-IN" engine="rust">
       {children}
     </YuktAIWrapper>
   );

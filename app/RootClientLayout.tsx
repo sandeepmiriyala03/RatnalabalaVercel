@@ -33,7 +33,7 @@ import { initWebMCP, isWebMCPAvailable, searchBhavalamala, TOOL_NAME, type Searc
    ⬆ పైకి stays OUTSIDE the group: it appears by itself after scrolling
    down, just above the సహాయం button.
 
-   yuktai tools (✨ ♿ 💬 🤖) sit in the OTHER bottom corner, and move
+   yuktai tools (✨ ♿ 💬 🤖 🛠) sit in the OTHER bottom corner, and move
    when the reader moves సహాయం, so the two never cover each other.
 
    The group stays mounted while hidden (inert + invisible), so the
@@ -141,6 +141,8 @@ export default function RootClientLayout({ children }: { children: React.ReactNo
       showAccessibility
       showRag
       showAgent
+      showPageTools
+      voiceLang="te-IN"
       engine="rust"
     >
       <Navbar />
